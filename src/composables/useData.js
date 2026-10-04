@@ -46,6 +46,7 @@ function mapBook(b) {
     tanker: b.thoughts,
     sitat: b.quote,
     ol_key: b.ol_key,
+    leser: !!+b.reading,
   }
 }
 
@@ -77,7 +78,7 @@ async function load() {
         merged.sanger = (db.songs || []).map((x) => ({
           id: x.id, tittel: x.title, artist: x.artist, akkorder: x.chords,
           bpm: x.bpm ? +x.bpm : null, slag: x.beats ? +x.beats : null, capo: x.capo ? +x.capo : null,
-          ug: x.ug_url, notat: x.notes, ark: x.sheet,
+          ug: x.ug_url, notat: x.notes, ark: x.sheet, ovrer: !!+x.practising,
         }))
         state.fromDb = true
       }

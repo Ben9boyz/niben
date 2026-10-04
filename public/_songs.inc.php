@@ -6,24 +6,32 @@ function songs_ensure(): void {
 CREATE TABLE IF NOT EXISTS songs (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT, title VARCHAR(200) NOT NULL, artist VARCHAR(200) NULL,
   chords VARCHAR(400) NOT NULL, bpm SMALLINT UNSIGNED NULL, beats TINYINT UNSIGNED NULL, capo TINYINT UNSIGNED NULL,
-  ug_url VARCHAR(255) NULL, notes TEXT NULL, sheet TEXT NULL,
+  ug_url VARCHAR(255) NULL, notes TEXT NULL, sheet TEXT NULL, practising TINYINT(1) NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 SQL);
     // tables made before the chord sheet existed get the column added once
-    try { db()->exec('ALTER TABLE songs ADD COLUMN sheet TEXT NULL'); } catch (PDOException $e) { /* already there */ }
+    foreach (['sheet TEXT NULL', 'practising TINYINT(1) NOT NULL DEFAULT 0'] as $col) {
+        try { db()->exec('ALTER TABLE songs ADD COLUMN ' . $col); } catch (PDOException $e) { /* already there */ }
+    }
 }
 
 function songs_list(PDO $pdo): array {
+    $sql = 'SELECT id, title, artist, chords, bpm, beats, capo, ug_url, notes, sheet, practising FROM songs ORDER BY title, id';
     try {
-        // the pasted chord sheet is for my own practice – only sent when I'm logged in
-        $rows = $pdo->query('SELECT id, title, artist, chords, bpm, beats, capo, ug_url, notes, sheet FROM songs ORDER BY title, id')->fetchAll();
-        if (!is_admin()) foreach ($rows as &$r) $r['sheet'] = null;
-        return $rows;
+        $rows = $pdo->query($sql)->fetchAll();
     } catch (PDOException $e) {
-        return []; // no songs saved yet (the table is made on the first save)
+        try {
+            songs_ensure(); // no table yet, or the newest columns are missing: make/extend it and ask again
+            $rows = $pdo->query($sql)->fetchAll();
+        } catch (PDOException $e2) {
+            return [];
+        }
     }
+    // the pasted chord sheet is for my own practice – only sent when I'm logged in
+    if (!is_admin()) foreach ($rows as &$r) $r['sheet'] = null;
+    return $rows;
 }
 
 function songs_handle(string $action, bool $post): void {
@@ -50,12 +58,13 @@ function songs_handle(string $action, bool $post): void {
             $url,
             str_or_null($b['notes'] ?? null, 4000),
             str_or_null($b['sheet'] ?? null, 8000),
+            empty($b['practising']) ? 0 : 1,
         ];
         $id = int_or_null($b['id'] ?? null, 1, PHP_INT_MAX);
         if ($id) {
-            db()->prepare('UPDATE songs SET title=?, artist=?, chords=?, bpm=?, beats=?, capo=?, ug_url=?, notes=?, sheet=? WHERE id=?')->execute([...$vals, $id]);
+            db()->prepare('UPDATE songs SET title=?, artist=?, chords=?, bpm=?, beats=?, capo=?, ug_url=?, notes=?, sheet=?, practising=? WHERE id=?')->execute([...$vals, $id]);
         } else {
-            db()->prepare('INSERT INTO songs (title, artist, chords, bpm, beats, capo, ug_url, notes, sheet) VALUES (?,?,?,?,?,?,?,?,?)')->execute($vals);
+            db()->prepare('INSERT INTO songs (title, artist, chords, bpm, beats, capo, ug_url, notes, sheet, practising) VALUES (?,?,?,?,?,?,?,?,?,?)')->execute($vals);
             $id = (int)db()->lastInsertId();
         }
         out(['ok' => true, 'id' => $id]);

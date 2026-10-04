@@ -16,8 +16,8 @@ const busy = ref(false)
 function edit(s) {
   msg.value = null
   editing.value = reactive(s
-    ? { id: s.id, title: s.tittel, artist: s.artist || '', chords: s.akkorder, bpm: s.bpm || '', beats: s.slag || 4, capo: s.capo || 0, ug_url: s.ug || '', notes: s.notat || '', sheet: s.ark || '' }
-    : { id: null, title: '', artist: '', chords: '', bpm: 80, beats: 4, capo: 0, ug_url: '', notes: '', sheet: '' })
+    ? { id: s.id, title: s.tittel, artist: s.artist || '', chords: s.akkorder, bpm: s.bpm || '', beats: s.slag || 4, capo: s.capo || 0, ug_url: s.ug || '', notes: s.notat || '', sheet: s.ark || '', practising: !!s.ovrer }
+    : { id: null, title: '', artist: '', chords: '', bpm: 80, beats: 4, capo: 0, ug_url: '', notes: '', sheet: '', practising: false })
 }
 const chordList = computed(() => [...new Set(parseProgression(editing.value?.chords))])
 const ugSearch = computed(() => {
@@ -95,6 +95,7 @@ async function remove() {
         <textarea v-model="editing.sheet" placeholder="[Vers]&#10;Am  F  C  G&#10;(tekst under, hvis du vil)&#10;&#10;[Refreng]&#10;F  C  G  Am" style="min-height: 180px; font-family: ui-monospace, Menlo, monospace"></textarea>
         <small>Ei linje med bare akkorder blir uthevet og kan transponeres. «[Vers]» på egen linje starter en ny del.</small>
       </label>
+      <label class="check"><input v-model="editing.practising" type="checkbox" /> Øver på denne nå <small>(vises på «Nå»-siden)</small></label>
       <label class="field"><span>Notat</span><textarea v-model="editing.notes" placeholder="Slagmønster, hva du øver på …" style="min-height: 70px"></textarea></label>
       <p v-if="msg?.error" class="notice error">{{ msg.error }}</p>
       <div class="form-actions">
@@ -120,4 +121,6 @@ async function remove() {
 .preview { display: flex; flex-wrap: wrap; gap: 8px; }
 .preview .missing { opacity: 0.6; }
 .three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.check { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.check small { color: var(--text-3); font-weight: 500; }
 </style>

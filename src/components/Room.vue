@@ -19,7 +19,7 @@ const failed = ref(false)
 useSpotify() // keeps records/iPod in the room up to date
 let api
 
-const ROUTES = { hjem: '/', japansk: '/japansk', gaming: '/gaming', lytte: '/lytte', ovelse: '/ovelse', gitar: '/gitar', boker: '/boker', reiser: '/reiser', kode: '/kode', om: '/om' }
+const ROUTES = { hjem: '/', na: '/na', japansk: '/japansk', gaming: '/gaming', lytte: '/lytte', ovelse: '/ovelse', gitar: '/gitar', boker: '/boker', reiser: '/reiser', kode: '/kode', om: '/om' }
 
 let nextPeek = null // the record clicked on the way down to the shelf (pulled out first)
 function onPick(p) {

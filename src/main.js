@@ -26,9 +26,12 @@ import JapanPanel from './panels/JapanPanel.vue'
 import JapanPage from './pages/JapanPage.vue'
 import GamingPanel from './panels/GamingPanel.vue'
 import GamingPage from './pages/GamingPage.vue'
+import NowPanel from './panels/NowPanel.vue'
+import NowPage from './pages/NowPage.vue'
 
 const routes = [
   { path: '/', name: 'hjem', component: HomePanel, meta: { page: HomePage, title: 'Hjem' } },
+  { path: '/na', name: 'na', component: NowPanel, meta: { page: NowPage, title: 'Nå' } },
   { path: '/lytte', name: 'lytte', component: MusicPanel, meta: { page: MusicPage, title: 'Musikk' } },
   { path: '/ovelse', name: 'ovelse', component: PracticePanel, meta: { page: PracticePage, title: 'Øving' } },
   { path: '/gitar', name: 'gitar', component: GuitarPanel, meta: { page: GuitarPage, title: 'Gitar' } },

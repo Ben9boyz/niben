@@ -280,7 +280,13 @@ try {
         foreach ($photos as $p) $byTrip[$p['trip_id']][] = $p;
         foreach ($trips as &$t) $t['photos'] = $byTrip[$t['id']] ?? [];
         unset($t);
-        $books = $pdo->query('SELECT id, title, author, isbn, ol_key, cover_url, published_year, pages, read_on, rating, thoughts, quote FROM books ORDER BY COALESCE(read_on, created_at) DESC, id DESC')->fetchAll();
+        $bookCols = 'id, title, author, isbn, ol_key, cover_url, published_year, pages, read_on, rating, thoughts, quote';
+        $bookOrder = ' FROM books ORDER BY COALESCE(read_on, created_at) DESC, id DESC';
+        try {
+            $books = $pdo->query('SELECT ' . $bookCols . ', reading' . $bookOrder)->fetchAll();
+        } catch (PDOException $e) {
+            $books = $pdo->query('SELECT ' . $bookCols . $bookOrder)->fetchAll(); // "reading" column not added yet
+        }
         $recs = $pdo->query('SELECT id, guitar, title, recorded_on, youtube, audio_path, notes FROM recordings ORDER BY COALESCE(recorded_on, created_at) DESC, id DESC')->fetchAll();
         out(['trips' => $trips, 'books' => $books, 'recordings' => $recs, 'songs' => songs_list($pdo)]);
     }
@@ -408,13 +414,15 @@ try {
             int_or_null($b['rating'] ?? null, 1, 5),
             str_or_null($b['thoughts'] ?? null, 20000),
             str_or_null($b['quote'] ?? null, 2000),
+            empty($b['reading']) ? 0 : 1,
         ];
+        try { db()->exec('ALTER TABLE books ADD COLUMN reading TINYINT(1) NOT NULL DEFAULT 0'); } catch (PDOException $e) { /* already there */ }
         $id = int_or_null($b['id'] ?? null, 1, PHP_INT_MAX);
         if ($id) {
-            db()->prepare('UPDATE books SET title=?, author=?, isbn=?, ol_key=?, cover_url=?, published_year=?, pages=?, read_on=?, rating=?, thoughts=?, quote=? WHERE id=?')
+            db()->prepare('UPDATE books SET title=?, author=?, isbn=?, ol_key=?, cover_url=?, published_year=?, pages=?, read_on=?, rating=?, thoughts=?, quote=?, reading=? WHERE id=?')
                 ->execute([...$vals, $id]);
         } else {
-            db()->prepare('INSERT INTO books (title, author, isbn, ol_key, cover_url, published_year, pages, read_on, rating, thoughts, quote) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+            db()->prepare('INSERT INTO books (title, author, isbn, ol_key, cover_url, published_year, pages, read_on, rating, thoughts, quote, reading) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
                 ->execute($vals);
             $id = (int)db()->lastInsertId();
         }

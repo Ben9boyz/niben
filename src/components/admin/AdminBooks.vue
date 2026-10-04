@@ -56,7 +56,7 @@ async function search(term) {
 }
 
 function blank() {
-  return reactive({ id: null, title: '', author: '', isbn: '', ol_key: '', cover_url: '', published_year: '', pages: '', read_on: '', rating: 0, thoughts: '', quote: '' })
+  return reactive({ id: null, title: '', author: '', isbn: '', ol_key: '', cover_url: '', published_year: '', pages: '', read_on: '', rating: 0, thoughts: '', quote: '', reading: false })
 }
 function pickResult(r) {
   const f = blank()
@@ -69,7 +69,7 @@ function edit(b) {
   editing.value = b
     ? reactive({
         id: b.id, title: b.tittel, author: b.forfatter || '', isbn: b.isbn || '', ol_key: b.ol_key || '',
-        cover_url: b.omslag || '', published_year: b.utgitt || '', pages: b.sider || '', read_on: b.lest || '',
+        cover_url: b.omslag || '', published_year: b.utgitt || '', pages: b.sider || '', read_on: b.lest || '', reading: !!b.leser,
         rating: b.vurdering || 0, thoughts: b.tanker || '', quote: b.sitat || '',
       })
     : blank()
@@ -161,6 +161,7 @@ async function remove() {
 
       <div class="form-row">
         <label class="field"><span>Lest (dato)</span><input v-model="editing.read_on" type="date" /></label>
+        <label class="field"><span>Leser nå</span><span class="reading"><input v-model="editing.reading" type="checkbox" /> vises på «Nå»-siden</span></label>
         <div class="field">
           <span>Vurdering</span>
           <div class="stars" role="radiogroup">
