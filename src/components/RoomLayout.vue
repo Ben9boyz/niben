@@ -8,6 +8,7 @@ import MusicSwitch from './MusicSwitch.vue'
 import IpodScreen from './IpodScreen.vue'
 import RecordOverlay from './RecordOverlay.vue'
 import MiniNowPlaying from './MiniNowPlaying.vue'
+import MusicDrawer from './MusicDrawer.vue'
 import BrandLogo from './BrandLogo.vue'
 import { useData } from '../composables/useData'
 import { room } from '../composables/useRoom'
@@ -39,7 +40,7 @@ const holdingIpod = computed(() => isMusic.value && room.musicView === 'ipod')
 const mobile = ref(window.matchMedia('(max-width: 900px)').matches)
 const collapsed = ref(false)
 // desktop: the side panel can be slid away so the 3D view (e.g. the held iPod) gets the whole screen.
-// Remembered per station.
+// Only the listening corner remembers it – every other station opens with its panel showing.
 const HIDE_KEY = 'niben-panel-hidden'
 function hiddenSet() {
   try { return new Set(JSON.parse(localStorage.getItem(HIDE_KEY) || '[]')) } catch { return new Set() }
@@ -52,19 +53,23 @@ const hidden = computed(() => canHide.value && room.panelHidden)
 const showMini = computed(() => !!spotify.now?.name && shell.value !== 'player' && !mobile.value && (hidden.value || route.name !== 'lytte'))
 // a side panel on the right moves down below it
 const belowMini = computed(() => showMini.value && !hidden.value && !isFocus.value && !isHome.value)
+// the mini player opens the music panel on its own, on top of wherever you are (in the listening
+// corner itself it just brings the side panel back)
+const drawer = ref(false)
 function openMini() {
   if (route.name === 'lytte') setHidden(false)
-  else router.push('/lytte')
+  else drawer.value = !drawer.value
 }
+watch(() => route.name, () => (drawer.value = false))
 // top-right corner, unless the nav row reaches that far – then one row down
 const miniTop = computed(() => (navRight.value + 16 + 250 > window.innerWidth - 20 ? 84 : 20))
 function setHidden(v) {
   room.panelHidden = v
   const set = hiddenSet()
-  v ? set.add(route.name) : set.delete(route.name)
+  if (route.name === 'lytte') v ? set.add('lytte') : set.delete('lytte')
   try { localStorage.setItem(HIDE_KEY, JSON.stringify([...set])) } catch {}
 }
-watch(() => route.name, (n) => (room.panelHidden = hiddenSet().has(n)), { immediate: true })
+watch(() => route.name, (n) => (room.panelHidden = n === 'lytte' && hiddenSet().has(n)), { immediate: true })
 // the panel may use the full height when the nav row (top-left) doesn't reach it
 const tall = ref(false)
 const navRight = ref(0)
@@ -156,10 +161,11 @@ watch(() => route.name, () => (collapsed.value = false))
 
   <!-- panel slid away: a tiny "now playing" in the top-right corner -->
   <MiniNowPlaying v-if="showMini && room.ready" :style="{ top: `${miniTop}px` }" @open="openMini" />
+  <MusicDrawer v-if="drawer && showMini && room.ready" :style="{ top: `${miniTop + 62}px` }" @close="drawer = false" />
 
   <!-- desktop: slide the panel away / bring it back -->
   <button
-    v-if="canHide && room.ready && !(hidden && showMini)"
+    v-if="canHide && room.ready && !(hidden && showMini && isMusic)"
     class="hide-toggle glass"
     :class="{ out: hidden }"
     :style="hidden ? null : { right: `${panelW + 20 - 16}px` }"

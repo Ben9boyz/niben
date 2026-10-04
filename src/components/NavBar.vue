@@ -23,7 +23,7 @@ const { theme, toggle } = useTheme()
 const links = [
   { to: '/', name: 'hjem', label: 'Hjem', icon: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z' },
   { to: '/gitar', name: 'gitar', label: 'Gitar', icon: 'M19.6 2.6l1.8 1.8-2.1 2.1.6.6-1.4 1.4-.6-.6-3.3 3.3a4 4 0 0 1-1 5.2 4.6 4.6 0 0 1-3 4.4 5 5 0 0 1-6.5-6.5 4.6 4.6 0 0 1 4.4-3 4 4 0 0 1 5.2-1l3.3-3.3-.6-.6 1.4-1.4.6.6zM8.5 13a2 2 0 1 0 2.5 2.5' },
-  { to: '/lytte', name: 'lytte', label: 'Musikk', icon: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zm0-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0-2.2a.8.8 0 1 0 0-1.6.8.8 0 0 0 0 1.6z' },
+  { to: '/lytte', name: 'lytte', label: 'Musikk', icon: 'M9 18V5l12-2v13M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6z' },
   { to: '/ovelse', name: 'ovelse', label: 'Øving', icon: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm0-12v4l2.5 2.5M10 2h4M12 2v3' },
   { to: '/boker', name: 'boker', label: 'Bøker', icon: 'M4 4.5A1.5 1.5 0 0 1 5.5 3H11v17H5.5A1.5 1.5 0 0 1 4 18.5zM13 3h5.5A1.5 1.5 0 0 1 20 4.5v14a1.5 1.5 0 0 1-1.5 1.5H13z' },
   { to: '/reiser', name: 'reiser', label: 'Reiser', icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 0c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9m0-18C9.5 5.5 8.5 8.5 8.5 12s1 6.5 3.5 9M3.5 9h17M3.5 15h17' },
