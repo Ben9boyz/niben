@@ -47,7 +47,8 @@ const uid = `nl${Math.random().toString(36).slice(2, 8)}`
 
     <template v-if="!mark">
       <!-- i: guitar, with a note as the dot -->
-      <g stroke="var(--logo-line)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+      <g transform="translate(152 127) scale(0.68) translate(-152 -127)">
+      <g stroke="var(--logo-line)" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round">
         <path fill="var(--logo-glass)" d="M146 18 Q146 9 154 9 L157 9 Q162 9 161 15 L159 36 L148 36 Z" />
         <rect x="148.5" y="34" width="10" height="44" rx="3" fill="var(--logo-glass-hi)" />
         <path :fill="`url(#${uid}-body)`" d="M144 76 Q137 66 132 70 Q127 76 134 88 Q124 98 128 112 Q133 128 152 127 Q170 128 174 114 Q178 100 168 92 Q174 80 168 72 Q162 68 160 78 Z" />
@@ -57,13 +58,15 @@ const uid = `nl${Math.random().toString(36).slice(2, 8)}`
         <rect x="143" y="100" width="22" height="5" rx="2.5" />
         <rect x="143" y="109" width="22" height="5" rx="2.5" />
       </g>
+      </g>
+      <!-- the note is the dot over the i -->
       <g fill="var(--logo-star)" stroke="var(--logo-line)" stroke-width="2.6" stroke-linejoin="round">
-        <ellipse cx="166" cy="28" rx="6.5" ry="5" transform="rotate(-18 166 28)" />
-        <path d="M171 27 L171 6 Q178 8 182 14 Q177 12 173 13 L173 27" />
+        <ellipse cx="149" cy="35" rx="6.5" ry="5" transform="rotate(-18 149 35)" />
+        <path d="M154 34 L154 13 Q161 15 165 21 Q160 19 156 20 L156 34" />
       </g>
 
       <!-- "be": the cable from the guitar's jack, writing the letters on its way to the amp -->
-      <circle cx="170" cy="120" r="5.5" fill="var(--logo-glass-hi)" stroke="var(--logo-line)" stroke-width="2.5" />
+      <circle cx="164" cy="122" r="5" fill="var(--logo-glass-hi)" stroke="var(--logo-line)" stroke-width="2.5" />
       <path
         id="cable"
         fill="none"
@@ -71,7 +74,7 @@ const uid = `nl${Math.random().toString(36).slice(2, 8)}`
         stroke-width="11"
         stroke-linecap="round"
         stroke-linejoin="round"
-        d="M172 121 C188 126 198 116 207 100 C219 79 238 44 249 22 C255 9 246 4 238 13 C229 24 227 70 227 112 C227 126 243 131 256 125 C271 117 275 97 263 92 C254 89 248 96 255 99 C264 102 276 99 288 97 C300 96 316 97 318 88 C320 77 301 74 292 88 C283 103 290 127 313 125 C335 123 344 98 371 95"
+        d="M166 123 C186 128 198 116 207 100 C219 79 238 44 249 22 C255 9 246 4 238 13 C229 24 227 70 227 112 C227 126 243 131 256 125 C271 117 275 97 263 92 C254 89 248 96 255 99 C264 102 276 99 288 97 C300 96 316 97 318 88 C320 77 301 74 292 88 C283 103 290 127 313 125 C335 123 344 98 371 95"
       />
       <path
         fill="none"
@@ -93,7 +96,7 @@ const uid = `nl${Math.random().toString(36).slice(2, 8)}`
         <circle cx="371" cy="95" r="6" fill="var(--logo-glass-hi)" stroke-width="2.5" />
         <path fill="none" stroke="var(--logo-line)" stroke-width="3" d="M380 135 L380 130 M450 135 L450 130" stroke-linecap="round" />
       </g>
-      <path fill="none" :stroke="`url(#${uid}-cable)`" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" d="M392 111 C399 111 402 88 415 88 C428 88 431 111 438 111" />
+      <path fill="none" :stroke="`url(#${uid}-cable)`" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" d="M403 112 V86 M403 96 C405 89 410 85 416.5 85 C424 85 428 90 428 98 V112" />
     </template>
   </svg>
 </template>
