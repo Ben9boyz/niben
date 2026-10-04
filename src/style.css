@@ -21,6 +21,10 @@
   --logo-cable-hi: #a9bddf;
   --logo-grille: #b6d8ff;
   --logo-knob: #2b8cff;
+  --logo-cover-1: #5cb0ff;
+  --logo-cover-2: #1f6fe0;
+  --logo-page: #fffaf0;
+  --logo-page-line: #c9b99a;
 
   --glass: rgba(255, 255, 255, 0.66);
   --glass-strong: rgba(255, 255, 255, 0.72);
@@ -67,6 +71,10 @@
   --logo-cable-hi: #c3d3ee;
   --logo-grille: #193d6e;
   --logo-knob: #8fdcff;
+  --logo-cover-1: #6cc0ff;
+  --logo-cover-2: #2f7fe6;
+  --logo-page: #eef3fb;
+  --logo-page-line: #8a9bb5;
 
   --glass: rgba(22, 32, 52, 0.62);
   --glass-strong: rgba(26, 38, 62, 0.72);

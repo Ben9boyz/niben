@@ -1,6 +1,7 @@
 <script setup>
-// The niben logo: N = an open book with < > and a star (books, code, travel), i = a guitar with a
-// note for its dot, "be" = the guitar cable writing the letters, n = sitting in an amp.
+// The niben logo: N = a book (the letter is the cover, pages and back cover behind it) with a star
+// over it, i = a guitar with a note for its dot, "be" = the guitar cable writing the letters,
+// n = a piece of cable in an amp.
 // Flat "glass" style in the site's blues; colours follow the light/dark theme.
 // mark: just the book-N (small places, e.g. a square icon).
 defineProps({ mark: Boolean })
@@ -31,18 +32,29 @@ const uid = `nl${Math.random().toString(36).slice(2, 8)}`
       </linearGradient>
     </defs>
 
-    <!-- N: open book -->
-    <g stroke="var(--logo-line)" stroke-width="3.5" stroke-linejoin="round">
-      <path :fill="`url(#${uid}-glass)`" d="M10 36 Q10 25 20 29 L44 39 Q52 43 52 52 L52 112 Q52 123 42 119 L19 109 Q10 105 10 96 Z" />
-      <path :fill="`url(#${uid}-glass)`" d="M118 36 Q118 25 108 29 L84 39 Q76 43 76 52 L76 112 Q76 123 86 119 L109 109 Q118 105 118 96 Z" />
-      <!-- the N's diagonal: from the top of the left page to the foot of the right one -->
-      <path d="M45 42 L83 116" stroke-width="22" stroke-linecap="round" />
-      <path d="M45 42 L83 116" :stroke="`url(#${uid}-glass)`" stroke-width="15" stroke-linecap="round" />
+    <!-- N: a book – the letter is the front cover, with the pages and the back cover behind it -->
+    <defs>
+      <path :id="`${uid}-n`" d="M14 112 L36 34 L58 34 L76 84 L90 34 L110 34 L88 112 L66 112 L48 62 L34 112 Z" />
+      <linearGradient :id="`${uid}-cover`" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="var(--logo-cover-1)" />
+        <stop offset="1" stop-color="var(--logo-cover-2)" />
+      </linearGradient>
+    </defs>
+    <g stroke="var(--logo-line)" stroke-linejoin="round">
+      <use :href="`#${uid}-n`" transform="translate(10 9)" fill="var(--logo-cable-3)" stroke-width="3" />
+      <!-- bookmark ribbon peeking out at the bottom -->
+      <path fill="#e5533d" stroke-width="2.2" d="M74 110 L84 110 L84 132 L79 127 L74 132 Z" />
+      <use :href="`#${uid}-n`" transform="translate(6 5.5)" fill="var(--logo-page)" stroke-width="2.2" />
     </g>
-    <g fill="none" stroke="var(--logo-ink)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M36 64 L25 76 L36 88" />
-      <path d="M92 64 L103 76 L92 88" />
+    <!-- page edges -->
+    <g fill="none" stroke="var(--logo-page-line)" stroke-width="1.3" stroke-linejoin="round">
+      <use :href="`#${uid}-n`" transform="translate(2.5 2.2)" />
+      <use :href="`#${uid}-n`" transform="translate(4.5 4)" />
+      <use :href="`#${uid}-n`" transform="translate(7.5 6.8)" />
     </g>
+    <use :href="`#${uid}-n`" :fill="`url(#${uid}-cover)`" stroke="var(--logo-line)" stroke-width="3" stroke-linejoin="round" />
+    <!-- a little shine along the cover's top edges -->
+    <path fill="none" stroke="var(--logo-glass-hi)" stroke-width="2" stroke-linecap="round" opacity="0.55" d="M38.5 38 L55 38 M92.5 38 L106 38" />
     <path fill="var(--logo-star)" stroke="var(--logo-line)" stroke-width="3" stroke-linejoin="round" d="M64 2 Q66.5 13.5 78 16 Q66.5 18.5 64 30 Q61.5 18.5 50 16 Q61.5 13.5 64 2 Z" />
 
     <template v-if="!mark">
