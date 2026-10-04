@@ -1,7 +1,7 @@
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import { spotify, useSpotify, refreshSpotify, prefetchTracks } from '../composables/useSpotify'
+import { spotify, useSpotify, refreshSpotify, prefetchTracks, findAlbum } from '../composables/useSpotify'
 import { admin, checkLogin, api } from '../composables/useAdmin'
 import { room } from '../composables/useRoom'
 import { mode } from '../composables/useMode'
@@ -23,9 +23,15 @@ const q = ref('')
 const spot = ref(false) // searching all of Spotify (albums + songs) instead of just the shelf
 const sq = ref('')
 const rootEl = ref(null)
+// in the room, the shelf search also pulls the matching records out of the shelf – and the camera goes there
+watch(q, (v) => {
+  room.shelfQ = v
+  if (v.trim() && mode.value === 'rom' && !room.sel.musikk) { room.musicView = 'vinyl'; room.shelfView = true }
+})
+onBeforeUnmount(() => { room.shelfQ = '' })
 
 const selectedUri = computed(() => (room.sel.musikk?.kind === 'album' ? room.sel.musikk.uri : null))
-const album = computed(() => spotify.albums.find((a) => a.uri === selectedUri.value))
+const album = computed(() => findAlbum(selectedUri.value))
 const items = computed(() => {
   const n = q.value.trim().toLowerCase()
   const list = n ? spotify.albums.filter((a) => `${a.name} ${a.artist}`.toLowerCase().includes(n)) : spotify.albums

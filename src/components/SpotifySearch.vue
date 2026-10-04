@@ -1,7 +1,9 @@
 <script setup>
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { Play, Lock, Plus, Check, Music, ListPlus } from 'lucide-vue-next'
-import { spotify, lockLeft, fmtClock, play, lockNote, searchSpotify, saveAlbum, addToPlaylist } from '../composables/useSpotify'
+import { spotify, lockLeft, fmtClock, play, lockNote, searchSpotify, saveAlbum, addToPlaylist, addGuest, control } from '../composables/useSpotify'
+import { room } from '../composables/useRoom'
+import { mode } from '../composables/useMode'
 import { admin } from '../composables/useAdmin'
 import MusicDetail from './MusicDetail.vue'
 
@@ -54,10 +56,26 @@ watch(() => props.q, (q) => {
 }, { immediate: true })
 onBeforeUnmount(() => clearTimeout(timer))
 
+// flat page: the album opens here. In the room: the record flies in (guests) or comes off the shelf and is
+// held up – the panel's own album view takes over (VinylPanel), and "back" returns to these results
+function openAlbum(item) {
+  if (mode.value === 'rom') {
+    addGuest(item)
+    room.musicView = 'vinyl'
+    room.sel.musikk = { kind: 'album', uri: item.uri, t: Date.now() }
+  } else open.value = { item, kind: 'album' }
+}
 const albumOf = (t) => ({ uri: t.album_uri, name: t.album, artist: t.album_artist, image: t.album_image, image_large: t.album_image_large, url: t.album_url })
 
 async function playTrack(t) {
-  if (!admin.loggedIn || locked.value || busy.value) return
+  if (!admin.loggedIn || busy.value) return
+  if (spotify.now?.uri === t.uri) { // already on: pause / resume works even while locked
+    const r = await control(spotify.now.playing ? 'pause' : 'resume')
+    msg.value = r.ok ? null : { error: r.error }
+    return
+  }
+  if (locked.value) { msg.value = { error: `Låst – hør ferdig (${fmtClock(lockLeft.value)} igjen)` }; return }
+  addGuest(albumOf(t)) // an album that isn't on the shelf gets a record by the turntable
   busy.value = t.uri
   const r = await play(t.album_uri, t.uri)
   busy.value = null
@@ -98,7 +116,7 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
 
       <section v-if="myAlbums.length">
         <h4>Mine album</h4>
-        <button v-for="a in myAlbums.slice(0, 12)" :key="a.uri" class="row" @click="open = { item: a, kind: 'album' }">
+        <button v-for="a in myAlbums.slice(0, 12)" :key="a.uri" class="row" @click="openAlbum(a)">
           <img v-if="a.thumb || a.image" crossorigin="anonymous" :src="a.thumb || a.image" alt="" class="art" />
           <span class="t"><b>{{ a.name }}</b><small>{{ a.artist }}<template v-if="a.year"> · {{ a.year }}</template></small></span>
         </button>
@@ -111,7 +129,7 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
       <section v-if="otherAlbums.length">
         <h4>Album på Spotify</h4>
         <div v-for="a in otherAlbums" :key="a.uri" class="row wrap">
-          <button class="main" @click="open = { item: a, kind: 'album' }">
+          <button class="main" @click="openAlbum(a)">
             <img v-if="a.thumb || a.image" crossorigin="anonymous" :src="a.thumb || a.image" alt="" class="art" />
             <span class="t"><b>{{ a.name }}</b><small>{{ a.artist }}<template v-if="a.year"> · {{ a.year }}</template></small></span>
           </button>
@@ -123,7 +141,7 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
         <h4>Låter</h4>
         <div v-for="t in found.tracks" :key="t.uri" class="trk">
           <div class="row wrap">
-            <button class="main" :class="{ dim: locked }" :disabled="locked || !!busy" :title="locked ? `Låst ${fmtClock(lockLeft)}` : 'Spill låta i albumet'" @click="playTrack(t)">
+            <button class="main" :class="{ dim: locked && spotify.now?.uri !== t.uri }" :disabled="!!busy" :title="locked ? `Låst ${fmtClock(lockLeft)}` : 'Spill låta i albumet'" @click="playTrack(t)">
               <img v-if="t.album_image" crossorigin="anonymous" :src="t.album_image" alt="" class="art" />
               <span v-else class="art ph"><Music :size="16" /></span>
               <span class="t"><b>{{ t.name }}</b><small>{{ t.artist }} · {{ t.album }}</small></span>

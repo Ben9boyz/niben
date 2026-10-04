@@ -433,6 +433,42 @@ export function buildListeningCorner() {
   let records = [] // { album, index, home, out, hidden, color }
   let albumsKey = ''
   const loose = new Map() // uri -> { mesh, rec, vel, returning }
+  // guests: albums from search that aren't on the shelf. They fly in through the window (the wall on the
+  // right) and leave the same way when put back.
+  const guestRecs = new Map() // uri -> record
+  let guestAlbums = []
+  let windowHome = null
+  function guestHome() {
+    if (!windowHome) {
+      group.updateWorldMatrix(true, false)
+      windowHome = group.worldToLocal(new THREE.Vector3(3.8, 1.55, 1.75))
+    }
+    return windowHome
+  }
+  function recordFor(uri) {
+    const r = records.find((x) => x.album.uri === uri)
+    if (r) return r
+    if (guestRecs.has(uri)) return guestRecs.get(uri)
+    const album = guestAlbums.find((a) => a.uri === uri)
+    if (!album) return null
+    const g = { album, index: -1, guest: true, color: '#3a4352', out: 0, hidden: false, home: guestHome().clone() }
+    const thumb = album.thumb || album.image
+    if (thumb) {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        const col = averageColor(img)
+        if (!col) return
+        g.color = col
+        loose.get(uri)?.mesh.material[1].color.set(col)
+      }
+      img.src = thumb
+    }
+    guestRecs.set(uri, g)
+    return g
+  }
+  // search in the shelf: the matching records slide out
+  let filterSet = null
   const im = new THREE.Matrix4()
   const iq = new THREE.Quaternion()
   const is = new THREE.Vector3()
@@ -509,8 +545,13 @@ export function buildListeningCorner() {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(THICK, SLEEVE, SLEEVE), [coverMat, backMat, pageMat, pageMat, spineMat, pageMat])
     mesh.position.copy(r.home).setZ(r.home.z + r.out * 0.09)
     mesh.castShadow = mesh.receiveShadow = true
-    mesh.userData = { kind: 'album', index: r.index }
+    mesh.userData = { kind: r.guest ? 'guest' : 'album', index: r.index }
     group.add(mesh)
+    if (r.guest) {
+      // tumbling in from the window
+      mesh.quaternion.setFromEuler(new THREE.Euler(0.8, -1.2, 0.5))
+      return { mesh, rec: r, vel: new THREE.Vector3(0, 0.4, 0), returning: false }
+    }
     r.hidden = true
     writeInstance(r)
     return { mesh, rec: r, vel: new THREE.Vector3(), returning: false }
@@ -522,6 +563,7 @@ export function buildListeningCorner() {
     l.mesh.geometry.dispose()
     l.mesh.material.forEach((m) => { if (m !== pageMat) { m.map?.dispose(); m.dispose() } })
     loose.delete(uri)
+    if (l.rec.guest) { guestRecs.delete(uri); return }
     l.rec.hidden = false
     writeInstance(l.rec)
   }
@@ -548,8 +590,9 @@ export function buildListeningCorner() {
     screenDrawn = performance.now()
   }
 
-  function setState({ albums = [], now = null }) {
+  function setState({ albums = [], now = null, guests = [] }) {
     setAlbums(albums)
+    guestAlbums = guests
     playing = !!now?.playing
     playingUri = now?.context && now.context.startsWith('spotify:album:') ? now.context : null
     // fall back to matching the album name when the context isn't an album (e.g. a track from it)
@@ -612,7 +655,7 @@ export function buildListeningCorner() {
     // records that should be off the shelf get a loose mesh; the rest stay instanced
     for (const uri of [selectedUri, playingUri, peekUri]) {
       if (!uri) continue
-      const r = records.find((x) => x.album.uri === uri)
+      const r = recordFor(uri)
       if (r && !loose.has(uri)) loose.set(uri, makeLoose(r))
       else if (loose.has(uri)) loose.get(uri).returning = false
     }
@@ -622,7 +665,7 @@ export function buildListeningCorner() {
 
     // hover: slide the record out a little
     for (const r of records) {
-      const target = r.album.uri === hoverUri ? 1 : 0
+      const target = r.album.uri === hoverUri || filterSet?.has(r.album.uri) ? 1 : 0
       if (Math.abs(target - r.out) > 0.001) {
         r.out += (target - r.out) * Math.min(1, dt * 10)
         if (!r.hidden) writeInstance(r)
@@ -742,6 +785,7 @@ export function buildListeningCorner() {
     setHover(uri) { hoverUri = uri },
     setSelected(uri) { selectedUri = uri },
     setPeek(uri) { peekUri = uri },
+    setFilter(list) { filterSet = list?.length ? new Set(list) : null },
     setHoldIpod(v, big = false) { holdIpod = v; ipodBig = big },
     setFlip(v) { flipSel = v },
     isSpinning: () => playing,

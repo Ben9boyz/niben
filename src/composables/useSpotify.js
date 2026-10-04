@@ -8,6 +8,7 @@ export const spotify = reactive({
   connected: false,
   now: null, // { playing, progress_ms, duration_ms, name, artist, album, image, context, at }
   albums: [],
+  guests: [], // albums found by search that aren't on the shelf – they get a record in the room for a while
   playlists: [],
   lockUntil: 0, // unix seconds (server clock)
   lockSeconds: 600, // how long a play locks switching (admin setting, 0 = never)
@@ -304,3 +305,11 @@ export async function addToPlaylist(playlistUri, trackUri) {
     return { ok: false, error: e.message }
   }
 }
+
+/** An album from search joins the room as a guest record (it flies in through the window). */
+export function addGuest(a) {
+  if (!a?.uri || spotify.albums.some((x) => x.uri === a.uri)) return
+  spotify.guests = [a, ...spotify.guests.filter((g) => g.uri !== a.uri)].slice(0, 3)
+}
+/** An album on the shelf, or a guest from search. */
+export const findAlbum = (uri) => spotify.albums.find((a) => a.uri === uri) || spotify.guests.find((a) => a.uri === uri) || null

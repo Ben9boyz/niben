@@ -3,7 +3,7 @@ import LockControl from './LockControl.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Play, Pause, Lock, RotateCw, X, ChevronLeft, ChevronRight, ArrowUpFromLine } from 'lucide-vue-next'
 import { room } from '../composables/useRoom'
-import { spotify, lockLeft, fmtClock, play, lockNote, control, fetchTracks } from '../composables/useSpotify'
+import { spotify, lockLeft, fmtClock, play, lockNote, control, fetchTracks, findAlbum } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 
 // Sits on the record held up in the 3D room: a play button in its corner, its name underneath, a button
@@ -14,7 +14,7 @@ const busy = ref(false)
 const toast = ref('')
 let raf = 0
 
-const album = computed(() => (room.sel.musikk?.kind === 'album' ? spotify.albums.find((a) => a.uri === room.sel.musikk.uri) : null))
+const album = computed(() => (room.sel.musikk?.kind === 'album' ? findAlbum(room.sel.musikk.uri) : null))
 const locked = computed(() => lockLeft.value > 0)
 const playingThis = computed(() => spotify.now?.context === album.value?.uri)
 
@@ -61,7 +61,9 @@ watch(album, async (a) => {
   if (a) tracks.value = await fetchTracks(a.uri)
 }, { immediate: true })
 async function playTrack(t) {
-  if (!admin.loggedIn || locked.value || busy.value) return
+  if (!admin.loggedIn || busy.value) return
+  if (isOn.value && spotify.now?.uri === t.uri) return onPlay() // already on: pause / resume
+  if (locked.value) { toast.value = `Låst – hør ferdig (${fmtClock(lockLeft.value)})`; setTimeout(() => (toast.value = ''), 3000); return }
   busy.value = true
   const r = await play(album.value.uri, t.uri)
   busy.value = false
@@ -112,7 +114,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); clearTimeout(flipTimer); wind
           <li
             v-for="(t, i) in tracks?.tracks || []"
             :key="t.uri"
-            :class="{ current: spotify.now?.uri === t.uri, clickable: admin.loggedIn && !locked }"
+            :class="{ current: spotify.now?.uri === t.uri, clickable: admin.loggedIn && (!locked || spotify.now?.uri === t.uri) }"
             @click="playTrack(t)"
           >
             <span class="n">{{ t.n || i + 1 }}</span>

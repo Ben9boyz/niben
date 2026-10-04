@@ -11,6 +11,7 @@ export const room = reactive({
   ipod: { view: 'menu', playlist: null, active: 0, q: '' }, // q: the search text, shared by the panel and the iPod screen
   panelHidden: false,
   shelfView: false, // listening corner: camera in front of the record shelf
+  shelfQ: '', // text typed in the shelf search: matching records slide out of the shelf in the room
   peekIndex: 0, // browsing the shelf: the record pulled out (index into the albums)
   recordFlipped: false, // the held-up record turned over to its track list
   practiceTab: 'timer', // practice corner: 'timer' | 'akkorder'

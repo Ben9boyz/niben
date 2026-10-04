@@ -37,7 +37,10 @@ const rows = computed(() => {
   }
   if (view.value === 'playlist') {
     const r = []
-    if (admin.loggedIn) r.push({ kind: 'playall', label: locked.value ? `Låst ${fmtClock(lockLeft.value)}` : 'Spill av lista' })
+    if (admin.loggedIn) {
+      const here = now.value?.context === playlist.value?.uri
+      r.push({ kind: 'playall', label: here ? (now.value?.playing ? 'Pause' : 'Spill videre') : locked.value ? `Låst ${fmtClock(lockLeft.value)}` : 'Spill av lista' })
+    }
     for (const t of tracks.value?.tracks || []) r.push({ kind: 'track', label: t.name, sub: t.artist, item: t, ms: t.ms, img: t.img })
     return r
   }
@@ -63,7 +66,11 @@ async function open(row) {
     return
   }
   if (row.kind === 'playall' || row.kind === 'track') {
-    if (!admin.loggedIn || locked.value) return
+    if (!admin.loggedIn) return
+    // what's already playing can be paused / resumed even while locked
+    const current = row.kind === 'track' ? now.value?.uri === row.item.uri : now.value?.context === playlist.value.uri
+    if (current) { wheel('toggle'); return }
+    if (locked.value) { toast.value = `Låst – hør ferdig (${fmtClock(lockLeft.value)})`; setTimeout(() => (toast.value = ''), 2600); return }
     toast.value = 'Starter …'
     const r = await play(playlist.value.uri, row.kind === 'track' ? row.item.uri : null)
     toast.value = r.ok ? `Spiller${lockNote()}` : r.error
@@ -142,7 +149,7 @@ onBeforeUnmount(() => {
         v-for="(r, i) in rows"
         :key="r.kind + (r.item?.uri || r.label) + i"
         class="row"
-        :class="{ on: i === active, dim: (r.kind === 'playall' && locked) || (r.kind === 'track' && (!admin.loggedIn || locked)) }"
+        :class="{ on: i === active, dim: (r.kind === 'playall' && locked && now?.context !== playlist?.uri) || (r.kind === 'track' && (!admin.loggedIn || (locked && now?.uri !== r.item.uri))) }"
         @click="active = i; open(r)"
         @mouseenter="active = i"
       >

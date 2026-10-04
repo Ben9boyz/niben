@@ -1,7 +1,7 @@
 <script setup>
-import { ChevronLeft, Music, Lock, Play, ArrowUpRight } from 'lucide-vue-next'
+import { ChevronLeft, Music, Lock, Play, Pause, ArrowUpRight } from 'lucide-vue-next'
 import { ref, computed, watch } from 'vue'
-import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote } from '../composables/useSpotify'
+import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote, control } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 
 // Spotify-style page for one album or playlist: big cover, colour from the cover, tracks.
@@ -69,7 +69,16 @@ watch(() => props.item?.uri, async () => {
 }, { immediate: true })
 
 async function onPlay(track = null) {
-  if (locked.value || busy.value) return
+  if (busy.value) return
+  // what's already playing can always be paused / resumed – the lock only stops switching to something else
+  if (track ? spotify.now?.uri === track.uri : isPlayingHere.value) {
+    busy.value = track?.uri || props.item.uri
+    const r = await control(spotify.now?.playing ? 'pause' : 'resume')
+    busy.value = null
+    msg.value = r.ok ? null : { error: r.error }
+    return
+  }
+  if (locked.value) { msg.value = { error: `Låst – hør ferdig (${fmtClock(lockLeft.value)} igjen)` }; return }
   busy.value = track?.uri || props.item.uri
   const r = await play(props.item.uri, track?.uri)
   busy.value = null
@@ -100,12 +109,13 @@ async function onPlay(track = null) {
         </div>
       </div>
       <div class="actions">
-        <button v-if="admin.loggedIn" class="playbtn" :disabled="locked || !!busy" :title="locked ? `Låst ${fmtClock(lockLeft)}` : 'Spill av'" @click="onPlay()">
+        <button v-if="admin.loggedIn" class="playbtn" :disabled="(locked && !isPlayingHere) || !!busy" :title="isPlayingHere ? (spotify.now?.playing ? 'Pause' : 'Spill videre') : locked ? `Låst ${fmtClock(lockLeft)}` : 'Spill av'" @click="onPlay()">
           <template v-if="busy === item.uri">…</template>
-          <Lock v-else-if="locked" :size="20" />
+          <Pause v-else-if="isPlayingHere && spotify.now?.playing" :size="20" fill="currentColor" />
+          <Lock v-else-if="locked && !isPlayingHere" :size="20" />
           <Play v-else :size="20" fill="currentColor" />
         </button>
-        <span v-if="admin.loggedIn && locked" class="lockt">Låst {{ fmtClock(lockLeft) }}</span>
+        <span v-if="admin.loggedIn && locked && !isPlayingHere" class="lockt">Låst {{ fmtClock(lockLeft) }}</span>
         <span v-if="isPlayingHere" class="now-tag">Spilles nå</span>
         <span class="spacer"></span>
         <a v-if="item.url" class="open" :href="item.url" target="_blank" rel="noopener">Åpne i Spotify <ArrowUpRight :size="15" /></a>
@@ -121,8 +131,8 @@ async function onPlay(track = null) {
       <li
         v-for="(t, i) in tracks?.tracks || []"
         :key="t.uri + i"
-        :class="{ current: spotify.now?.uri === t.uri, clickable: admin.loggedIn && !locked }"
-        @click="admin.loggedIn && !locked && onPlay(t)"
+        :class="{ current: spotify.now?.uri === t.uri, clickable: admin.loggedIn && (!locked || spotify.now?.uri === t.uri) }"
+        @click="admin.loggedIn && onPlay(t)"
       >
         <span class="n">
           <span v-if="spotify.now?.uri === t.uri && spotify.now?.playing" class="eq"><i></i><i></i><i></i></span>

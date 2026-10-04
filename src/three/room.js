@@ -831,8 +831,10 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
       const s = listening.selectedRect(camera, r.width, r.height)
       return s && { x: r.left + s.x, y: r.top + s.y, w: s.w, h: s.h }
     },
+    /** The records matching the shelf search slide out of the shelf (null = no search). */
+    setShelfFilter(list) { listening.setFilter(list); invalidate(1) },
     setMusic(state) {
-      music = { albums: state.albums || [], playlists: state.playlists || [], now: state.now || null }
+      music = { albums: state.albums || [], playlists: state.playlists || [], now: state.now || null, guests: state.guests || [] }
       listening.setState(music)
       shadowsDirty = true
       invalidate(1)

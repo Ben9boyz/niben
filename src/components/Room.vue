@@ -95,7 +95,13 @@ watch(() => [steam.profile, steam.library, room.api], () => room.api?.setSteam({
 watch(() => [jp.anime, room.jpAnime, room.api], () => room.api?.setAnime(jp.anime, room.jpAnime), { immediate: true })
 watch(theme, (t) => api?.setTheme(t))
 watch(() => timer.interval, (v) => api?.setTimerInterval(v))
-watch(() => [spotify.albums, spotify.playlists, spotify.now], () => api?.setMusic(spotify), { deep: false })
+watch(() => [spotify.albums, spotify.playlists, spotify.now, spotify.guests], () => api?.setMusic(spotify), { deep: false })
+// typing in the shelf search: the matching records slide out (only a handful – more would just be a mess)
+watch(() => [room.shelfQ, spotify.albums, route.name], () => {
+  const n = room.shelfQ.trim().toLowerCase()
+  const hits = n && route.name === 'lytte' ? spotify.albums.filter((a) => `${a.name} ${a.artist}`.toLowerCase().includes(n)).map((a) => a.uri) : null
+  api?.setShelfFilter(hits && hits.length <= 24 ? hits : null)
+})
 // arriving at the shelf: the record you clicked is pulled out – or a random one if you clicked the
 // sideboard itself
 watch(() => room.shelfView, (on) => {
