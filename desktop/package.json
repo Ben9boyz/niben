@@ -1,0 +1,56 @@
+{
+  "name": "niben-desktop",
+  "productName": "niben",
+  "version": "1.0.1",
+  "description": "niben.no som app – alltid samme versjon som nettsiden",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist:mac": "electron-builder --mac --arm64",
+    "dist:win": "electron-builder --win --x64",
+    "dist": "electron-builder --mac --arm64 --win --x64",
+    "dist:music": "electron-builder --config music.builder.js --mac --arm64 && electron-builder --config music.builder.js --win --x64"
+  },
+  "build": {
+    "appId": "no.niben.app",
+    "productName": "niben",
+    "artifactName": "niben-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "offline.html"
+    ],
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.lifestyle",
+      "icon": "build/icon.png",
+      "identity": "-",
+      "hardenedRuntime": false
+    },
+    "dmg": {
+      "title": "niben"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "shortcutName": "niben"
+    },
+    "electronVersion": "44.5.1+wvcus",
+    "electronDownload": {
+      "mirror": "https://github.com/castlabs/electron-releases/releases/download/"
+    }
+  },
+  "devDependencies": {
+    "electron": "github:castlabs/electron-releases#v44.5.1+wvcus",
+    "electron-builder": "^26.15.3"
+  }
+}

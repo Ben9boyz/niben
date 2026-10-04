@@ -1,0 +1,148 @@
+import { reactive, watch } from 'vue'
+import { api, admin } from './useAdmin'
+import { playDevice, setLocalNow } from './useSpotify'
+import { loadSpotifySdk } from '../lib/spotifySdk'
+
+// niben.no as a Spotify speaker (Spotify Web Playback SDK). Admin only: the browser shows up as a
+// device called "niben.no" in Spotify, and "Spill av" plays straight here. Needs Spotify Premium.
+const KEY = 'niben-webplayer'
+function stored() {
+  try { return localStorage.getItem(KEY) !== 'off' } catch { return true }
+}
+
+// the desktop app's Chromium has no DRM, which Spotify's streams need – there it controls other devices
+const noDrm = !!window.nibenApp && !window.nibenApp.drm
+
+export const web = reactive({
+  unavailable: noDrm,
+  enabled: !noDrm && stored(),
+  status: 'off', // off | loading | ready | reconnect | error
+  error: null,
+  paused: true,
+  volume: 0.7,
+})
+
+let player = null
+let activeHere = false // Spotify is currently playing through this page
+const readyWaiters = []
+
+async function getToken(cb) {
+  try {
+    const r = await api('spotify_token', {})
+    if (!r.streaming) {
+      // the saved Spotify login is from before the player existed – it lacks the "streaming" permission
+      web.status = 'reconnect'
+      stop()
+      return
+    }
+    cb(r.token)
+  } catch (e) {
+    fail(e.message)
+  }
+}
+
+function fail(msg) {
+  web.status = 'error'
+  web.error = msg
+  playDevice.id = null
+}
+
+export async function start() {
+  if (player || !admin.loggedIn || web.unavailable) return
+  web.status = 'loading'
+  web.error = null
+  try {
+    await loadSpotifySdk()
+  } catch (e) {
+    fail(e.message)
+    return
+  }
+  player = new window.Spotify.Player({ name: 'niben.no', getOAuthToken: getToken, volume: web.volume })
+  player.addListener('ready', ({ device_id }) => {
+    playDevice.id = device_id
+    web.status = 'ready'
+    readyWaiters.splice(0).forEach((w) => w(device_id))
+  })
+  player.addListener('not_ready', () => { playDevice.id = null; web.status = 'loading' })
+  player.addListener('initialization_error', ({ message }) => fail(`Nettleseren støtter ikke Spotify-avspilling (${message}).`))
+  player.addListener('authentication_error', () => fail('Spotify godtok ikke innloggingen – koble til på nytt.'))
+  player.addListener('account_error', () => fail('Avspilling i nettleseren krever Spotify Premium.'))
+  player.addListener('playback_error', ({ message }) => { web.error = message })
+  player.addListener('player_state_changed', (st) => {
+    activeHere = !!st
+    web.paused = !st || st.paused
+    // the player knows at once what's playing – show it straight away instead of waiting for the server
+    const t = st?.track_window?.current_track
+    if (!t) return
+    const imgs = [...(t.album?.images || [])].sort((a, b) => (b.width || 0) - (a.width || 0))
+    setLocalNow({
+      playing: !st.paused,
+      progress_ms: st.position,
+      duration_ms: st.duration,
+      name: t.name,
+      artist: (t.artists || []).map((a) => a.name).join(', '),
+      album: t.album?.name || '',
+      image: (imgs.find((i) => (i.width || 0) <= 320) || imgs[0])?.url || null,
+      image_large: imgs[0]?.url || null,
+      uri: t.uri,
+      context: st.context?.uri || null,
+    })
+  })
+  // browsers block sound until the page has been clicked: unlock on the first click/tap
+  playDevice.activate = () => player?.activateElement?.()
+  // pause / resume / seek go straight to the player when the music is playing here
+  playDevice.control = async (op, ms) => {
+    if (!player || !activeHere) return false
+    if (op === 'pause') await player.pause()
+    else if (op === 'resume') await player.resume()
+    else if (op === 'seek') await player.seek(Math.round(ms))
+    else if (op === 'next') await player.nextTrack()
+    else if (op === 'previous') await player.previousTrack()
+    else return false
+    return true
+  }
+  // drop and re-register with Spotify (when Spotify says it can't find this player); resolves the device id
+  playDevice.reconnect = async () => {
+    if (!player) return null
+    const ready = new Promise((resolve) => {
+      readyWaiters.push(resolve)
+      setTimeout(() => resolve(null), 8000)
+    })
+    player.disconnect()
+    await player.connect()
+    const id = await ready
+    if (id) await new Promise((r) => setTimeout(r, 1200)) // let Spotify catch up
+    return id
+  }
+  const ok = await player.connect()
+  if (!ok && web.status === 'loading') fail('Klarte ikke å koble til Spotify.')
+}
+
+export function stop() {
+  player?.disconnect()
+  player = null
+  playDevice.id = null
+  playDevice.activate = null
+  playDevice.control = null
+  playDevice.reconnect = null
+  activeHere = false
+  if (web.status !== 'reconnect') web.status = 'off'
+}
+
+export function setEnabled(on) {
+  web.enabled = on
+  try { localStorage.setItem(KEY, on ? 'on' : 'off') } catch {}
+  if (on) start()
+  else stop()
+}
+
+export function setVolume(v) {
+  web.volume = v
+  player?.setVolume(v)
+}
+
+// start as soon as the admin is known to be logged in; drop the player on logout
+watch(() => admin.loggedIn, (on) => {
+  if (on && web.enabled) start()
+  else if (!on) stop()
+}, { immediate: true })

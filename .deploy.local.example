@@ -1,0 +1,6 @@
+# Copy to .deploy.local and fill in your hosting details (.deploy.local is not committed)
+FTP_USER="your_ftp_user"
+FTP_HOST="ftp.example.com"
+DB_HOST_DEFAULT="mysql.example.com"
+DB_NAME_DEFAULT="your_database"
+DB_USER_DEFAULT="your_db_user"

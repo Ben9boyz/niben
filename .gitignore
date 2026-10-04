@@ -1,0 +1,22 @@
+# ── secrets – never commit (created by setup.sh / spotify-setup.sh) ──
+public/_config.php
+public/_spotify.php
+.deploy.local
+*.env
+.env*
+
+# uploads made through the admin page (live on the server only)
+public/uploads/
+uploads/
+
+# builds and dependencies
+node_modules/
+dist/
+desktop/node_modules/
+desktop/dist/
+
+# macOS / editors
+.DS_Store
+*.log
+.vscode/
+.idea/

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>niben</title>
+  <style>
+    :root { color-scheme: light dark; --bg: #eef4fb; --text: #0f1b2d; --muted: #5b6b80; --accent: #2b8cff; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #060a12; --text: #e8eef7; --muted: #8b9bb0; } }
+    html, body { height: 100%; margin: 0; }
+    body { display: grid; place-items: center; background: var(--bg); color: var(--text); font: 16px/1.5 -apple-system, "Segoe UI", Inter, sans-serif; }
+    main { text-align: center; padding: 24px; }
+    .mark { width: 64px; height: 64px; margin: 0 auto 18px; border-radius: 20px; display: grid; place-items: center; background: linear-gradient(135deg, #6cbcff, #2b7ff0); color: #fff; font: 700 30px/1 inherit; }
+    h1 { font-size: 1.4rem; margin: 0 0 6px; }
+    p { margin: 0 0 20px; color: var(--muted); }
+    button { padding: 11px 24px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; font: 600 15px inherit; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark">n</div>
+    <h1>Ingen forbindelse</h1>
+    <p>niben trenger internett for å hente innholdet.</p>
+    <button id="retry">Prøv igjen</button>
+  </main>
+  <script>
+    const url = new URLSearchParams(location.search).get('url') || 'https://niben.no/'
+    document.getElementById('retry').onclick = () => location.replace(url)
+    window.addEventListener('online', () => location.replace(url))
+  </script>
+</body>
+</html>

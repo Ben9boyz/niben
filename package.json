@@ -1,0 +1,32 @@
+{
+  "name": "niben",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@breezystack/lamejs": "^1.2.7",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
+    "d3-geo": "^3.1.1",
+    "lucide-vue-next": "^1.0.0",
+    "three": "^0.186.1",
+    "three-conic-polygon-geometry": "^2.1.3",
+    "three-geojson-geometry": "^2.1.1",
+    "three-globe": "^2.45.3",
+    "topojson-client": "^3.1.0",
+    "vue": "^3.5.43",
+    "vue-router": "^5.3.1",
+    "world-atlas": "^2.0.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.9",
+    "bcryptjs": "^3.0.3",
+    "vite": "^8.3.2",
+    "vite-plugin-css-injected-by-js": "^5.0.2"
+  }
+}

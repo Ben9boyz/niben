@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Practice Timer</title>
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --surface: #ffffff;
+    --text: #1d1d1f;
+    --muted: #6e6e73;
+    --track: #e4e2dd;
+    --wait: #e08a1e;
+    --go: #2e9d5b;
+    --border: #d9d7d2;
+    --btn: #1d1d1f;
+    --btn-text: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141416;
+      --surface: #1e1e21;
+      --text: #f2f2f4;
+      --muted: #9a9aa2;
+      --track: #2c2c31;
+      --wait: #f0a040;
+      --go: #4cc47e;
+      --border: #34343a;
+      --btn: #f2f2f4;
+      --btn-text: #141416;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    gap: 28px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .dial {
+    position: relative;
+    width: min(80vw, 60vh, 420px);
+    aspect-ratio: 1;
+    cursor: pointer;
+    user-select: none;
+  }
+  .dial svg { width: 100%; height: 100%; transform: rotate(-90deg); display: block; }
+  .track { fill: none; stroke: var(--track); stroke-width: 10; }
+  .ring {
+    fill: none;
+    stroke: var(--wait);
+    stroke-width: 10;
+    stroke-linecap: round;
+    transition: stroke 0.2s;
+  }
+  .dial.go .ring { stroke: var(--go); }
+  .center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .elapsed {
+    font-size: clamp(2.6rem, 12vw, 4.8rem);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .sub {
+    font-size: 0.95rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .status {
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--wait);
+    min-height: 1.2em;
+  }
+  .dial.go .status { color: var(--go); }
+  .controls { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  button {
+    font: inherit;
+    font-weight: 600;
+    padding: 12px 26px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    min-width: 110px;
+  }
+  button.primary { background: var(--btn); color: var(--btn-text); border-color: var(--btn); }
+  .settings {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 20px;
+    font-size: 0.95rem;
+  }
+  .settings label { display: flex; align-items: center; gap: 8px; }
+  .settings input[type=number] {
+    width: 70px;
+    font: inherit;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    text-align: center;
+  }
+  .presets { display: flex; gap: 6px; }
+  .presets button { min-width: 0; padding: 6px 12px; font-weight: 500; font-size: 0.85rem; }
+  .hint { color: var(--muted); font-size: 0.8rem; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="dial" id="dial" title="Click to start/pause">
+  <svg viewBox="0 0 200 200" aria-hidden="true">
+    <circle class="track" cx="100" cy="100" r="90"></circle>
+    <circle class="ring" id="ring" cx="100" cy="100" r="90"></circle>
+  </svg>
+  <div class="center">
+    <div class="status" id="status">Ready</div>
+    <div class="elapsed" id="elapsed">0:00.0</div>
+    <div class="sub" id="sub">Interval 1 · 10s left</div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="primary" id="startBtn">Start</button>
+  <button id="resetBtn">Reset</button>
+</div>
+
+<div class="settings">
+  <label>Interval
+    <input type="number" id="intervalInput" min="1" max="3600" step="1" value="10"> s
+  </label>
+  <div class="presets">
+    <button data-s="5">5s</button>
+    <button data-s="10">10s</button>
+    <button data-s="30">30s</button>
+    <button data-s="60">60s</button>
+  </div>
+  <label><input type="checkbox" id="soundInput" checked> Beep at end of interval</label>
+</div>
+
+<div class="hint">Space = start/pause · R = reset</div>
+
+<script>
+(() => {
+  const R = 90;
+  const CIRC = 2 * Math.PI * R;
+  const GO_FLASH_MS = 1200;
+
+  const dial = document.getElementById('dial');
+  const ring = document.getElementById('ring');
+  const elapsedEl = document.getElementById('elapsed');
+  const subEl = document.getElementById('sub');
+  const statusEl = document.getElementById('status');
+  const startBtn = document.getElementById('startBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const intervalInput = document.getElementById('intervalInput');
+  const soundInput = document.getElementById('soundInput');
+
+  ring.style.strokeDasharray = CIRC;
+  ring.style.strokeDashoffset = CIRC;
+
+  let intervalSec = 10;
+  let running = false;
+  let startTime = 0;      // performance.now() when (re)started, adjusted for pauses
+  let pausedElapsed = 0;  // ms accumulated before the current run segment
+  let lastCycle = 0;
+  let audioCtx = null;
+
+  try {
+    const saved = JSON.parse(localStorage.getItem('practiceTimer') || '{}');
+    if (saved.interval > 0) intervalSec = saved.interval;
+    if (typeof saved.sound === 'boolean') soundInput.checked = saved.sound;
+  } catch (e) {}
+  intervalInput.value = intervalSec;
+
+  function save() {
+    try {
+      localStorage.setItem('practiceTimer', JSON.stringify({ interval: intervalSec, sound: soundInput.checked }));
+    } catch (e) {}
+  }
+
+  function beep() {
+    if (!soundInput.checked) return;
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.35);
+    } catch (e) {}
+  }
+
+  function fmt(ms) {
+    const totalTenths = Math.floor(ms / 100);
+    const tenths = totalTenths % 10;
+    const totalSec = Math.floor(totalTenths / 10);
+    const s = totalSec % 60;
+    const m = Math.floor(totalSec / 60) % 60;
+    const h = Math.floor(totalSec / 3600);
+    const ss = String(s).padStart(2, '0');
+    return h > 0
+      ? `${h}:${String(m).padStart(2, '0')}:${ss}`
+      : `${m}:${ss}.${tenths}`;
+  }
+
+  function elapsedNow() {
+    return running ? pausedElapsed + (performance.now() - startTime) : pausedElapsed;
+  }
+
+  function render() {
+    const ms = elapsedNow();
+    const intervalMs = intervalSec * 1000;
+    const cycle = Math.floor(ms / intervalMs);
+    const inCycle = ms - cycle * intervalMs;
+    const progress = inCycle / intervalMs;
+
+    if (running && cycle > lastCycle) beep();
+    lastCycle = cycle;
+
+    ring.style.strokeDashoffset = CIRC * (1 - progress);
+    elapsedEl.textContent = fmt(ms);
+
+    const left = Math.ceil((intervalMs - inCycle) / 1000);
+    subEl.textContent = `Interval ${cycle + 1} · ${left}s left`;
+
+    // Green "GO" just after an interval completes, amber while waiting
+    const justCompleted = cycle > 0 && inCycle < GO_FLASH_MS;
+    dial.classList.toggle('go', justCompleted);
+    if (!running && ms === 0) statusEl.textContent = 'Ready';
+    else if (!running) statusEl.textContent = 'Paused';
+    else statusEl.textContent = justCompleted ? 'Go' : 'Wait';
+
+    if (running) requestAnimationFrame(render);
+  }
+
+  function start() {
+    if (running) return;
+    // Unlock audio on user gesture (needed on iOS)
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch (e) {}
+    running = true;
+    startTime = performance.now();
+    startBtn.textContent = 'Pause';
+    requestAnimationFrame(render);
+  }
+
+  function pause() {
+    if (!running) return;
+    pausedElapsed = elapsedNow();
+    running = false;
+    startBtn.textContent = 'Resume';
+    render();
+  }
+
+  function toggle() { running ? pause() : start(); }
+
+  function reset() {
+    running = false;
+    pausedElapsed = 0;
+    lastCycle = 0;
+    startBtn.textContent = 'Start';
+    render();
+  }
+
+  function setInterval_(sec) {
+    sec = Math.max(1, Math.min(3600, Math.round(Number(sec) || 10)));
+    intervalSec = sec;
+    intervalInput.value = sec;
+    lastCycle = Math.floor(elapsedNow() / (sec * 1000)); // avoid a spurious beep
+    save();
+    render();
+  }
+
+  startBtn.addEventListener('click', toggle);
+  dial.addEventListener('click', toggle);
+  resetBtn.addEventListener('click', reset);
+  intervalInput.addEventListener('change', () => setInterval_(intervalInput.value));
+  soundInput.addEventListener('change', save);
+  document.querySelectorAll('.presets button').forEach(b =>
+    b.addEventListener('click', () => setInterval_(b.dataset.s)));
+
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.code === 'Space') { e.preventDefault(); toggle(); }
+    else if (e.key === 'r' || e.key === 'R') reset();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

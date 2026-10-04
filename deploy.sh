@@ -1,0 +1,112 @@
+#!/bin/bash
+# Bygger nettsiden og laster den opp til niben.no.
+#   ./deploy.sh        – FTP (standard)
+#   ./deploy.sh sftp   – SFTP (virker ikke hos Webhuset med FTP-passordet)
+#   ./deploy.sh ftp api.php _spotify.inc.php   – bare disse filene (raskt)
+#   ./deploy.sh app    – desktop-appen (desktop/dist) til niben.no/app/
+#
+# Lagre FTP-passordet i nøkkelringen én gang, så slipper du å skrive det:
+#   security add-generic-password -s niben-ftp -a <FTP-brukernavn> -w
+#
+# FTP-bruker og server står i .deploy.local (ikke i git – se .deploy.local.example).
+set -e
+cd "$(dirname "$0")"
+
+[ -f .deploy.local ] && . ./.deploy.local
+: "${FTP_USER:?Mangler FTP_USER – kopier .deploy.local.example til .deploy.local}"
+: "${FTP_HOST:?Mangler FTP_HOST – kopier .deploy.local.example til .deploy.local}"
+USER_NAME="$FTP_USER"
+HOST="$FTP_HOST"
+MODE="${1:-ftp}"
+shift || true
+ONLY="$*" # optional: just these files
+
+echo "Bygger nettsiden …"
+npm run build
+cd dist
+
+upload_sftp() {
+  # one session for everything; the password is asked for by ssh itself (never stored)
+  local batch
+  batch="$(mktemp)"
+  echo "cd www" > "$batch"
+  for f in ${ONLY:-* .user.ini}; do
+    [ -f "$f" ] || continue
+    printf 'put "%s"\n' "$f" >> "$batch"
+  done
+  echo "bye" >> "$batch"
+  echo "Laster opp med SFTP – skriv FTP-passordet når du blir spurt:"
+  sftp -q -o StrictHostKeyChecking=accept-new -o PreferredAuthentications=password,keyboard-interactive \
+    "$USER_NAME@$HOST" < "$batch"
+  local rc=$?
+  rm -f "$batch"
+  return $rc
+}
+
+ftp_password() {
+  # stored once in the macOS keychain (see the comment at the top), otherwise asked for
+  PASS="$(security find-generic-password -s niben-ftp -a "$USER_NAME" -w 2>/dev/null || true)"
+  if [ -z "$PASS" ]; then
+    read -s -p "FTP-passord for $USER_NAME: " PASS
+    echo
+  fi
+}
+
+upload_ftp() {
+  ftp_password
+  local FTP_HOST="ftp://$HOST/www"
+  local FAILED=0
+  for f in ${ONLY:-* .user.ini}; do
+    [ -f "$f" ] || continue
+    local ok=0
+    local tmp=".up-$f.tmp"
+    for attempt in 1 2 3 4 5; do
+      # upload under a temporary name and swap it in only when it arrived whole –
+      # a cut-off upload can then never break the live file
+      # (the password goes via stdin, so it never shows up in the process list)
+      if printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sS -K - -T "$f" "$FTP_HOST/$tmp" -Q "-RNFR $tmp" -Q "-RNTO $f"; then ok=1; break; fi
+      echo "    prøver igjen ($attempt/5) …"; sleep $((attempt * 2))
+    done
+    if [ "$ok" = 1 ]; then echo "  ✓ $f"; else echo "  ✗ $f"; FAILED=1; fi
+  done
+  unset PASS
+  [ "$FAILED" = 0 ]
+}
+
+upload_app() {
+  # the desktop app installers + version.json → niben.no/app/
+  ftp_password
+  local DIR="../desktop/dist"
+  local VER
+  VER="$(node -p "require('../desktop/package.json').version")"
+  printf '{ "version": "%s", "mac": "app/niben-mac-arm64.dmg", "windows": "app/niben-win-x64.exe" }\n' "$VER" > "$DIR/version.json"
+  local FAILED=0
+  for f in niben-mac-arm64.dmg niben-win-x64.exe version.json; do
+    [ -f "$DIR/$f" ] || { echo "  – $f finnes ikke (bygg med: cd desktop && npm run dist)"; continue; }
+    local ok=0 tmp=".up-$f.tmp"
+    for attempt in 1 2 3 4 5; do
+      if printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sS --ftp-create-dirs -K - -T "$DIR/$f" "ftp://$HOST/www/app/$tmp" -Q "-RNFR $tmp" -Q "-RNTO $f"; then ok=1; break; fi
+      echo "    prøver igjen ($attempt/5) …"; sleep $((attempt * 2))
+    done
+    if [ "$ok" = 1 ]; then echo "  ✓ app/$f"; else echo "  ✗ app/$f"; FAILED=1; fi
+  done
+  unset PASS
+  [ "$FAILED" = 0 ]
+}
+
+if [ "$MODE" = "app" ]; then
+  upload_app || { echo "Noen filer feilet – se meldingene over."; exit 1; }
+elif [ "$MODE" = "ftp" ]; then
+  upload_ftp || { echo "Noen filer feilet – se meldingene over."; exit 1; }
+else
+  set +e
+  upload_sftp
+  rc=$?
+  set -e
+  if [ $rc -ne 0 ]; then
+    echo
+    echo "SFTP virket ikke (kode $rc). Prøver med FTP i stedet …"
+    upload_ftp || { echo "Noen filer feilet – se meldingene over."; exit 1; }
+  fi
+fi
+echo "Ferdig! Åpne https://niben.no"

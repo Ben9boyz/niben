@@ -1,0 +1,461 @@
+<?php
+/**
+ * niben.no – innholds-API (reiser, bøker, gitaropptak).
+ *
+ *   GET  api.php?action=content            offentlig: alt innhold som JSON
+ *   GET  api.php?action=me                 er jeg logget inn?
+ *   POST api.php?action=login|logout
+ *   POST api.php?action=trip_save|trip_delete|photo_upload|photo_delete
+ *   POST api.php?action=book_save|book_delete
+ *   POST api.php?action=recording_save|recording_delete
+ *
+ * Tilgangene ligger i _config.php (lages av ./setup.sh og lastes opp sammen med siden).
+ * Alle endringer krever innlogging + headeren "X-Niben: 1" (hindrer forespørsler fra andre sider).
+ */
+
+declare(strict_types=1);
+
+header('Content-Type: application/json; charset=utf-8');
+header('X-Content-Type-Options: nosniff');
+header('Referrer-Policy: same-origin');
+header('Cache-Control: no-store');
+
+const MAX_PHOTO_BYTES = 25 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 60 * 1024 * 1024;
+const PHOTO_MAX_EDGE  = 2400;
+
+function out($data, int $status = 200): never {
+    http_response_code($status);
+    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+function fail(string $msg, int $status = 400): never { out(['error' => $msg], $status); }
+
+$configFile = __DIR__ . '/_config.php';
+if (!is_file($configFile)) fail('Serveren er ikke satt opp ennå (mangler _config.php).', 503);
+$config = require $configFile;
+
+// ── Database ─────────────────────────────────────────────
+function db(): PDO {
+    static $pdo = null;
+    global $config;
+    if ($pdo) return $pdo;
+    try {
+        $pdo = new PDO(
+            sprintf('mysql:host=%s;dbname=%s;charset=utf8mb4', $config['db_host'], $config['db_name']),
+            $config['db_user'],
+            $config['db_pass'],
+            [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+            ]
+        );
+    } catch (PDOException $e) {
+        error_log('niben db: ' . $e->getMessage());
+        fail('Kunne ikke koble til databasen.', 500);
+    }
+    return $pdo;
+}
+
+function ensure_schema(): void {
+    $sql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS trips (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT, country VARCHAR(80) NOT NULL, place VARCHAR(160) NULL,
+  title VARCHAR(200) NOT NULL, year SMALLINT NULL, date_from DATE NULL, date_to DATE NULL, body TEXT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id), KEY idx_trips_country (country)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS trip_photos (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT, trip_id INT UNSIGNED NOT NULL, path VARCHAR(255) NOT NULL,
+  caption VARCHAR(255) NULL, width SMALLINT UNSIGNED NULL, height SMALLINT UNSIGNED NULL, sort INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id), KEY idx_photos_trip (trip_id),
+  CONSTRAINT fk_photos_trip FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS books (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT, title VARCHAR(255) NOT NULL, author VARCHAR(255) NULL,
+  isbn VARCHAR(20) NULL, ol_key VARCHAR(40) NULL, cover_url VARCHAR(255) NULL, published_year SMALLINT NULL,
+  pages SMALLINT UNSIGNED NULL, read_on DATE NULL, rating TINYINT UNSIGNED NULL, thoughts TEXT NULL, quote TEXT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS recordings (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT, guitar VARCHAR(60) NOT NULL, title VARCHAR(200) NOT NULL,
+  recorded_on DATE NULL, youtube VARCHAR(20) NULL, audio_path VARCHAR(255) NULL, notes TEXT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id), KEY idx_rec_guitar (guitar)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS login_attempts (
+  ip VARCHAR(45) NOT NULL, attempted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_login_ip (ip, attempted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL;
+    // one statement at a time (some hosts disable multi-statements)
+    foreach (array_filter(array_map('trim', explode(";\n", $sql))) as $stmt) {
+        db()->exec(rtrim($stmt, ';'));
+    }
+}
+
+// ── Session / auth ────────────────────────────────────────
+session_name('niben_admin');
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+    'httponly' => true,
+    'samesite' => 'Lax', // Lax so the session survives the redirect back from Spotify; writes still need X-Niben
+]);
+session_start();
+
+function is_admin(): bool {
+    return !empty($_SESSION['admin']) && ($_SESSION['expires'] ?? 0) > time();
+}
+function require_admin(): void {
+    if (!is_admin()) fail('Du må logge inn.', 401);
+    if (($_SERVER['HTTP_X_NIBEN'] ?? '') !== '1') fail('Ugyldig forespørsel.', 403);
+    $_SESSION['expires'] = time() + 60 * 60 * 8; // sliding 8 h
+}
+function client_ip(): string { return substr((string)($_SERVER['REMOTE_ADDR'] ?? '0'), 0, 45); }
+
+// ── Input helpers ─────────────────────────────────────────
+function body(): array {
+    static $b = null;
+    if ($b !== null) return $b;
+    $ct = $_SERVER['CONTENT_TYPE'] ?? '';
+    if (str_starts_with($ct, 'application/json')) {
+        $b = json_decode(file_get_contents('php://input') ?: '{}', true) ?: [];
+    } else {
+        $b = $_POST;
+    }
+    return $b;
+}
+function str_or_null($v, int $max): ?string {
+    if ($v === null) return null;
+    $v = trim((string)$v);
+    if ($v === '') return null;
+    return mb_substr($v, 0, $max);
+}
+function int_or_null($v, int $min, int $max): ?int {
+    if ($v === null || $v === '') return null;
+    if (!is_numeric($v)) return null;
+    $n = (int)$v;
+    return ($n < $min || $n > $max) ? null : $n;
+}
+function date_or_null($v): ?string {
+    $v = str_or_null($v, 10);
+    if ($v === null) return null;
+    $d = DateTime::createFromFormat('Y-m-d', $v);
+    return ($d && $d->format('Y-m-d') === $v) ? $v : null;
+}
+function youtube_id($v): ?string {
+    $v = str_or_null($v, 300);
+    if ($v === null) return null;
+    if (preg_match('~(?:v=|youtu\.be/|embed/|shorts/)([\w-]{11})~', $v, $m)) return $m[1];
+    return preg_match('~^[\w-]{11}$~', $v) ? $v : null;
+}
+function https_url_or_null($v): ?string {
+    $v = str_or_null($v, 255);
+    if ($v === null) return null;
+    return preg_match('~^(https://[^\s"<>]+|uploads/[\w./-]+)$~', $v) ? $v : null;
+}
+
+// ── Uploads ───────────────────────────────────────────────
+// Extra upload helpers (clearer error messages, audio format sniffing) live in their own file.
+// If it is missing, simple fallbacks keep everything working.
+@include __DIR__ . '/_upload.inc.php';
+if (function_exists('check_request_size')) check_request_size();
+if (!function_exists('upload_error')) {
+    function upload_error(int $code): string { return 'Opplastingen feilet (kode ' . $code . ').'; }
+}
+if (!function_exists('sniff_audio')) {
+    function sniff_audio(string $path): ?string { return null; }
+}
+function upload_dir(string $sub): string {
+    $base = __DIR__ . '/uploads';
+    if (!is_dir($base)) {
+        mkdir($base, 0755, true);
+        // never execute anything in uploads/
+        file_put_contents($base . '/.htaccess', "Options -Indexes\n<FilesMatch \"\\.(php|phtml|phar|pl|py|cgi|sh)$\">\n  Require all denied\n</FilesMatch>\n");
+    }
+    $dir = $base . '/' . $sub;
+    if (!is_dir($dir)) mkdir($dir, 0755, true);
+    return $dir;
+}
+function random_name(string $ext): string { return bin2hex(random_bytes(10)) . '.' . $ext; }
+
+/** Re-encodes the image (drops EXIF/GPS) and limits its size. Returns [path, w, h]. */
+function save_photo(array $file): array {
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) fail(upload_error((int)($file['error'] ?? UPLOAD_ERR_NO_FILE)));
+    if ($file['size'] > MAX_PHOTO_BYTES) fail('Bildet er for stort.');
+    $info = @getimagesize($file['tmp_name']);
+    if (!$info || !in_array($info[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP], true)) fail('Kun JPEG, PNG eller WebP.');
+    $src = match ($info[2]) {
+        IMAGETYPE_JPEG => @imagecreatefromjpeg($file['tmp_name']),
+        IMAGETYPE_PNG => @imagecreatefrompng($file['tmp_name']),
+        IMAGETYPE_WEBP => @imagecreatefromwebp($file['tmp_name']),
+    };
+    if (!$src) fail('Kunne ikke lese bildet.');
+    [$w, $h] = [$info[0], $info[1]];
+    $scale = min(1, PHOTO_MAX_EDGE / max($w, $h));
+    $nw = max(1, (int)round($w * $scale));
+    $nh = max(1, (int)round($h * $scale));
+    $dst = imagecreatetruecolor($nw, $nh);
+    imagecopyresampled($dst, $src, 0, 0, 0, 0, $nw, $nh, $w, $h);
+    $name = random_name('jpg');
+    $path = upload_dir('photos') . '/' . $name;
+    imagejpeg($dst, $path, 84);
+    imagedestroy($src);
+    imagedestroy($dst);
+    return ['uploads/photos/' . $name, $nw, $nh];
+}
+
+function save_audio(array $file): string {
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) fail(upload_error((int)($file['error'] ?? UPLOAD_ERR_NO_FILE)));
+    if ($file['size'] > MAX_AUDIO_BYTES) fail('Lydfilen er for stor (maks 60 MB).');
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']) ?: '';
+    $ext = match ($mime) {
+        'audio/mpeg', 'audio/mp3' => 'mp3',
+        'audio/mp4', 'audio/x-m4a', 'audio/m4a', 'video/mp4' => 'm4a',
+        'audio/aac', 'audio/x-hx-aac-adts' => 'aac',
+        'audio/wav', 'audio/x-wav', 'audio/wave' => 'wav',
+        'audio/ogg', 'application/ogg' => 'ogg',
+        'audio/webm', 'video/webm' => 'webm',
+        'audio/flac', 'audio/x-flac' => 'flac',
+        default => null,
+    } ?? sniff_audio($file['tmp_name']);
+    if (!$ext) fail('Ukjent lydformat (' . $mime . '). Bruk MP3, M4A, WAV, OGG eller FLAC.');
+    $name = random_name($ext);
+    if (!move_uploaded_file($file['tmp_name'], upload_dir('audio') . '/' . $name)) fail('Kunne ikke lagre lydfilen.', 500);
+    return 'uploads/audio/' . $name;
+}
+
+function delete_upload(?string $rel): void {
+    if (!$rel || !preg_match('~^uploads/(photos|audio)/[a-f0-9]{20}\.[a-z0-9]{2,4}$~', $rel)) return;
+    $p = __DIR__ . '/' . $rel;
+    if (is_file($p)) @unlink($p);
+}
+
+// ── Routing ───────────────────────────────────────────────
+$action = (string)($_GET['action'] ?? '');
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+if ($method !== 'GET' && $method !== 'POST') fail('Metode ikke tillatt.', 405);
+$post = $method === 'POST';
+
+require_once __DIR__ . '/_spotify.inc.php';
+
+try {
+    if (str_starts_with($action, 'spotify_')) {
+        sp_handle($action, $post);
+        fail('Ukjent handling.', 404);
+    }
+    switch ($action) {
+
+    case 'content': {
+        $pdo = db();
+        try {
+            $trips = $pdo->query('SELECT id, country, place, title, year, date_from, date_to, body FROM trips ORDER BY COALESCE(date_from, MAKEDATE(year, 1)) DESC, id DESC')->fetchAll();
+        } catch (PDOException $e) {
+            out(['trips' => [], 'books' => [], 'recordings' => [], 'empty' => true]); // tables not created yet
+        }
+        $photos = $pdo->query('SELECT id, trip_id, path, caption, width, height FROM trip_photos ORDER BY sort, id')->fetchAll();
+        $byTrip = [];
+        foreach ($photos as $p) $byTrip[$p['trip_id']][] = $p;
+        foreach ($trips as &$t) $t['photos'] = $byTrip[$t['id']] ?? [];
+        unset($t);
+        $books = $pdo->query('SELECT id, title, author, isbn, ol_key, cover_url, published_year, pages, read_on, rating, thoughts, quote FROM books ORDER BY COALESCE(read_on, created_at) DESC, id DESC')->fetchAll();
+        $recs = $pdo->query('SELECT id, guitar, title, recorded_on, youtube, audio_path, notes FROM recordings ORDER BY COALESCE(recorded_on, created_at) DESC, id DESC')->fetchAll();
+        out(['trips' => $trips, 'books' => $books, 'recordings' => $recs]);
+    }
+
+    case 'limits':
+        out(function_exists('upload_limits') ? upload_limits() : []);
+
+    case 'me':
+        out(['admin' => is_admin()]);
+
+    case 'login': {
+        if (!$post) fail('Bruk POST.', 405);
+        if (($_SERVER['HTTP_X_NIBEN'] ?? '') !== '1') fail('Ugyldig forespørsel.', 403);
+        ensure_schema();
+        $pdo = db();
+        $pdo->prepare('DELETE FROM login_attempts WHERE attempted_at < NOW() - INTERVAL 1 DAY')->execute();
+        $q = $pdo->prepare('SELECT COUNT(*) FROM login_attempts WHERE ip = ? AND attempted_at > NOW() - INTERVAL 15 MINUTE');
+        $q->execute([client_ip()]);
+        if ((int)$q->fetchColumn() >= 8) fail('For mange forsøk. Vent 15 minutter.', 429);
+        $pw = (string)(body()['password'] ?? '');
+        if ($pw === '' || !password_verify($pw, (string)$config['admin_hash'])) {
+            $pdo->prepare('INSERT INTO login_attempts (ip) VALUES (?)')->execute([client_ip()]);
+            usleep(400000);
+            fail('Feil passord.', 401);
+        }
+        session_regenerate_id(true);
+        $_SESSION['admin'] = true;
+        $_SESSION['expires'] = time() + 60 * 60 * 8;
+        out(['admin' => true]);
+    }
+
+    case 'logout':
+        if (!$post) fail('Bruk POST.', 405);
+        $_SESSION = [];
+        session_destroy();
+        out(['admin' => false]);
+
+    // ── Trips ──
+    case 'trip_save': {
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $b = body();
+        $country = str_or_null($b['country'] ?? null, 80) ?? fail('Velg et land.');
+        $title = str_or_null($b['title'] ?? null, 200) ?? fail('Skriv en tittel.');
+        $vals = [
+            $country,
+            str_or_null($b['place'] ?? null, 160),
+            $title,
+            int_or_null($b['year'] ?? null, 1900, 2200),
+            date_or_null($b['date_from'] ?? null),
+            date_or_null($b['date_to'] ?? null),
+            str_or_null($b['body'] ?? null, 20000),
+        ];
+        if ($vals[3] === null && $vals[4] !== null) $vals[3] = (int)substr($vals[4], 0, 4);
+        $id = int_or_null($b['id'] ?? null, 1, PHP_INT_MAX);
+        if ($id) {
+            $st = db()->prepare('UPDATE trips SET country=?, place=?, title=?, year=?, date_from=?, date_to=?, body=? WHERE id=?');
+            $st->execute([...$vals, $id]);
+        } else {
+            db()->prepare('INSERT INTO trips (country, place, title, year, date_from, date_to, body) VALUES (?,?,?,?,?,?,?)')->execute($vals);
+            $id = (int)db()->lastInsertId();
+        }
+        // caption / order updates for existing photos
+        if (!empty($b['photos']) && is_array($b['photos'])) {
+            $st = db()->prepare('UPDATE trip_photos SET caption=?, sort=? WHERE id=? AND trip_id=?');
+            foreach (array_values($b['photos']) as $i => $p) {
+                $pid = int_or_null($p['id'] ?? null, 1, PHP_INT_MAX);
+                if ($pid) $st->execute([str_or_null($p['caption'] ?? null, 255), $i, $pid, $id]);
+            }
+        }
+        out(['id' => $id]);
+    }
+
+    case 'trip_delete': {
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $id = int_or_null(body()['id'] ?? null, 1, PHP_INT_MAX) ?? fail('Mangler id.');
+        $st = db()->prepare('SELECT path FROM trip_photos WHERE trip_id=?');
+        $st->execute([$id]);
+        foreach ($st->fetchAll() as $p) delete_upload($p['path']);
+        db()->prepare('DELETE FROM trips WHERE id=?')->execute([$id]);
+        out(['ok' => true]);
+    }
+
+    case 'photo_upload': {
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $tripId = int_or_null($_POST['trip_id'] ?? null, 1, PHP_INT_MAX) ?? fail('Mangler reise.');
+        $exists = db()->prepare('SELECT 1 FROM trips WHERE id=?');
+        $exists->execute([$tripId]);
+        if (!$exists->fetchColumn()) fail('Reisen finnes ikke.', 404);
+        [$path, $w, $h] = save_photo($_FILES['file'] ?? []);
+        $sort = db()->prepare('SELECT COALESCE(MAX(sort), -1) + 1 FROM trip_photos WHERE trip_id=?');
+        $sort->execute([$tripId]);
+        db()->prepare('INSERT INTO trip_photos (trip_id, path, width, height, sort) VALUES (?,?,?,?,?)')
+            ->execute([$tripId, $path, $w, $h, (int)$sort->fetchColumn()]);
+        out(['id' => (int)db()->lastInsertId(), 'path' => $path, 'width' => $w, 'height' => $h]);
+    }
+
+    case 'photo_delete': {
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $id = int_or_null(body()['id'] ?? null, 1, PHP_INT_MAX) ?? fail('Mangler id.');
+        $st = db()->prepare('SELECT path FROM trip_photos WHERE id=?');
+        $st->execute([$id]);
+        delete_upload($st->fetchColumn() ?: null);
+        db()->prepare('DELETE FROM trip_photos WHERE id=?')->execute([$id]);
+        out(['ok' => true]);
+    }
+
+    // ── Books ──
+    case 'book_save': {
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $b = body();
+        $vals = [
+            str_or_null($b['title'] ?? null, 255) ?? fail('Boka mangler tittel.'),
+            str_or_null($b['author'] ?? null, 255),
+            str_or_null(preg_replace('~[^0-9Xx]~', '', (string)($b['isbn'] ?? '')), 20),
+            str_or_null($b['ol_key'] ?? null, 40),
+            https_url_or_null($b['cover_url'] ?? null),
+            int_or_null($b['published_year'] ?? null, -3000, 2200),
+            int_or_null($b['pages'] ?? null, 1, 65000),
+            date_or_null($b['read_on'] ?? null),
+            int_or_null($b['rating'] ?? null, 1, 5),
+            str_or_null($b['thoughts'] ?? null, 20000),
+            str_or_null($b['quote'] ?? null, 2000),
+        ];
+        $id = int_or_null($b['id'] ?? null, 1, PHP_INT_MAX);
+        if ($id) {
+            db()->prepare('UPDATE books SET title=?, author=?, isbn=?, ol_key=?, cover_url=?, published_year=?, pages=?, read_on=?, rating=?, thoughts=?, quote=? WHERE id=?')
+                ->execute([...$vals, $id]);
+        } else {
+            db()->prepare('INSERT INTO books (title, author, isbn, ol_key, cover_url, published_year, pages, read_on, rating, thoughts, quote) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+                ->execute($vals);
+            $id = (int)db()->lastInsertId();
+        }
+        out(['id' => $id]);
+    }
+
+    case 'book_delete': {
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $id = int_or_null(body()['id'] ?? null, 1, PHP_INT_MAX) ?? fail('Mangler id.');
+        db()->prepare('DELETE FROM books WHERE id=?')->execute([$id]);
+        out(['ok' => true]);
+    }
+
+    // ── Recordings ──
+    case 'recording_save': {
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $b = body();
+        $guitar = str_or_null($b['guitar'] ?? null, 60) ?? fail('Velg gitar.');
+        if (!preg_match('~^[a-z0-9_-]+$~', $guitar)) fail('Ugyldig gitar.');
+        $title = str_or_null($b['title'] ?? null, 200) ?? fail('Skriv en tittel.');
+        $yt = youtube_id($b['youtube'] ?? null);
+        $audio = !empty($_FILES['file']) && ($_FILES['file']['error'] ?? 4) !== UPLOAD_ERR_NO_FILE ? save_audio($_FILES['file']) : null;
+        $id = int_or_null($b['id'] ?? null, 1, PHP_INT_MAX);
+        if ($id) {
+            $old = db()->prepare('SELECT audio_path FROM recordings WHERE id=?');
+            $old->execute([$id]);
+            $oldPath = $old->fetchColumn() ?: null;
+            if ($audio) delete_upload($oldPath);
+            db()->prepare('UPDATE recordings SET guitar=?, title=?, recorded_on=?, youtube=?, audio_path=?, notes=? WHERE id=?')
+                ->execute([$guitar, $title, date_or_null($b['recorded_on'] ?? null), $yt, $audio ?? $oldPath, str_or_null($b['notes'] ?? null, 5000), $id]);
+        } else {
+            if (!$yt && !$audio) fail('Legg til en lydfil eller en YouTube-lenke.');
+            db()->prepare('INSERT INTO recordings (guitar, title, recorded_on, youtube, audio_path, notes) VALUES (?,?,?,?,?,?)')
+                ->execute([$guitar, $title, date_or_null($b['recorded_on'] ?? null), $yt, $audio, str_or_null($b['notes'] ?? null, 5000)]);
+            $id = (int)db()->lastInsertId();
+        }
+        out(['id' => $id]);
+    }
+
+    case 'recording_delete': {
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $id = int_or_null(body()['id'] ?? null, 1, PHP_INT_MAX) ?? fail('Mangler id.');
+        $st = db()->prepare('SELECT audio_path FROM recordings WHERE id=?');
+        $st->execute([$id]);
+        delete_upload($st->fetchColumn() ?: null);
+        db()->prepare('DELETE FROM recordings WHERE id=?')->execute([$id]);
+        out(['ok' => true]);
+    }
+
+    default:
+        fail('Ukjent handling.', 404);
+    }
+} catch (PDOException $e) {
+    error_log('niben api: ' . $e->getMessage());
+    fail('Databasefeil.', 500);
+}

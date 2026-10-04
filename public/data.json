@@ -1,0 +1,234 @@
+{
+  "site": {
+    "navn": "Benjamin",
+    "undertittel": "Velkommen inn",
+    "intro": "Dette er rommet mitt på nettet – gitarene, bøkene jeg har lest, stedene jeg har reist og ting jeg har kodet."
+  },
+  "gitarer": [
+    {
+      "id": "pacifica",
+      "navn": "Pacifica 112VM",
+      "merke": "Yamaha",
+      "type": "elektrisk",
+      "farge": "#a8c4d4",
+      "pickguard": "#f6f3ec",
+      "gripebrett": "lønn",
+      "beskrivelse": "Yamaha Pacifica 112VM i Ice Blue med lønnegripebrett og hvit pickguard. Skriv litt om gitaren her – hva du spiller på den og hvordan den låter.",
+      "opptak": [],
+      "modell": "pacifica.glb",
+      "farger": {
+        "material_4": "#a8c4d4",
+        "material_1": "#e4c28e",
+        "material": "#e8c793",
+        "blinn3": "#f4f2ec",
+        "material_3": "krom"
+      },
+      "kreditt": {
+        "tekst": "«Guitar» av frcrar (CC BY 4.0)",
+        "url": "https://sketchfab.com/3d-models/93d7c51c67264c65a315388231288305"
+      }
+    },
+    {
+      "id": "fs820",
+      "navn": "FS820 II",
+      "merke": "Yamaha",
+      "type": "akustisk",
+      "farge": "#177394",
+      "pickguard": "#1a1a1a",
+      "gripebrett": "palisander",
+      "beskrivelse": "Yamaha FS820 II i Turquoise – en akustisk gitar med litt mindre kropp. Skriv litt om gitaren her.",
+      "opptak": [],
+      "modell": "fs820.glb",
+      "tre": {
+        "topp": "#119ab8",
+        "kropp": "#16232c"
+      },
+      "kreditt": {
+        "tekst": "«Yamaha F310 Acoustic Guitar Lowpoly» av ivan-wsk (CC BY 4.0)",
+        "url": "https://sketchfab.com/3d-models/f06aadc646e74388a79c1c1f8011a9de"
+      }
+    }
+  ],
+  "boker": [
+    {
+      "tittel": "The Hobbit",
+      "forfatter": "J.R.R. Tolkien",
+      "isbn": "9780547928227",
+      "lest": "2026",
+      "vurdering": 5,
+      "tanker": "Eksempel – skriv dine egne tanker om boka her."
+    },
+    {
+      "tittel": "Dune",
+      "forfatter": "Frank Herbert",
+      "isbn": "9780441172719",
+      "lest": "2026",
+      "vurdering": 4,
+      "tanker": "Eksempel – skriv dine egne tanker om boka her."
+    },
+    {
+      "tittel": "1984",
+      "forfatter": "George Orwell",
+      "isbn": "9780451524935",
+      "lest": "2025",
+      "vurdering": 4,
+      "tanker": "Eksempel – skriv dine egne tanker om boka her."
+    },
+    {
+      "tittel": "Sapiens",
+      "forfatter": "Yuval Noah Harari",
+      "isbn": "9780062316097",
+      "lest": "2025",
+      "vurdering": 4,
+      "tanker": "Eksempel – skriv dine egne tanker om boka her."
+    },
+    {
+      "tittel": "Atomic Habits",
+      "forfatter": "James Clear",
+      "isbn": "9780735211292",
+      "lest": "2025",
+      "vurdering": 3,
+      "tanker": "Eksempel – skriv dine egne tanker om boka her."
+    },
+    {
+      "tittel": "Project Hail Mary",
+      "forfatter": "Andy Weir",
+      "isbn": "9780593135204",
+      "lest": "2025",
+      "vurdering": 5,
+      "tanker": "Eksempel – skriv dine egne tanker om boka her."
+    },
+    {
+      "tittel": "The Pragmatic Programmer",
+      "forfatter": "Hunt & Thomas",
+      "isbn": "9780135957059",
+      "lest": "2024",
+      "vurdering": 4,
+      "tanker": "Eksempel – skriv dine egne tanker om boka her."
+    },
+    {
+      "tittel": "Kafka on the Shore",
+      "forfatter": "Haruki Murakami",
+      "isbn": "9781400079278",
+      "lest": "2024",
+      "vurdering": 4,
+      "tanker": "Eksempel – skriv dine egne tanker om boka her."
+    },
+    {
+      "tittel": "Norwegian Wood",
+      "forfatter": "Haruki Murakami",
+      "isbn": "9780375704024",
+      "lest": "2024",
+      "vurdering": 4,
+      "tanker": "Eksempel – skriv dine egne tanker om boka her."
+    },
+    {
+      "tittel": "The Martian",
+      "forfatter": "Andy Weir",
+      "isbn": "9780553418026",
+      "lest": "2023",
+      "vurdering": 5,
+      "tanker": "Eksempel – skriv dine egne tanker om boka her."
+    },
+    {
+      "tittel": "Thinking, Fast and Slow",
+      "forfatter": "Daniel Kahneman",
+      "isbn": "9780374533557",
+      "lest": "2023",
+      "vurdering": 4,
+      "tanker": "Eksempel – skriv dine egne tanker om boka her."
+    },
+    {
+      "tittel": "Sofies verden",
+      "forfatter": "Jostein Gaarder",
+      "lest": "2022",
+      "vurdering": 4,
+      "farge": "#e4eef8",
+      "tanker": "Eksempel – bøker uten ISBN får et automatisk laget omslag."
+    }
+  ],
+  "reiser": [
+    {
+      "land": "Japan",
+      "sted": "Tokyo og Kyoto",
+      "dato": "2025-04",
+      "tittel": "Kirsebærblomster",
+      "tekst": "Eksempeltur – skriv om reisen her. Legg gjerne til \"bilde\" med en lenke til et bilde."
+    },
+    {
+      "land": "Italia",
+      "sted": "Roma",
+      "dato": "2024-07",
+      "tittel": "Sommer i Roma",
+      "tekst": "Eksempeltur – bytt ut med dine egne reiser."
+    },
+    {
+      "land": "Island",
+      "sted": "Reykjavík",
+      "dato": "2023-10",
+      "tittel": "Nordlys",
+      "tekst": "Eksempeltur – bytt ut med dine egne reiser."
+    },
+    {
+      "land": "USA",
+      "sted": "New York",
+      "dato": "2023-03",
+      "tittel": "Storbyliv",
+      "tekst": "Eksempeltur – bytt ut med dine egne reiser."
+    },
+    {
+      "land": "Spania",
+      "sted": "Barcelona",
+      "dato": "2022-06",
+      "tittel": "Gaudí og strand",
+      "tekst": "Eksempeltur – bytt ut med dine egne reiser."
+    }
+  ],
+  "prosjekter": [
+    {
+      "navn": "niben.no",
+      "aar": 2026,
+      "beskrivelse": "Denne nettsiden – et 3D-rom bygget med Vue og Three.js, der kameraet flyr mellom gitarene, bokhylla, globusen og pulten.",
+      "teknologi": [
+        "Vue",
+        "Three.js",
+        "Vite"
+      ],
+      "lenke": "https://niben.no"
+    },
+    {
+      "navn": "Øvingstimer",
+      "aar": 2026,
+      "beskrivelse": "En intervall-timer for gitarøving. Ringen fylles hvert intervall, slik at du ikke starter neste øvingsrunde for tidlig.",
+      "teknologi": [
+        "HTML",
+        "CSS",
+        "JavaScript"
+      ],
+      "lenke": "https://niben.no/timer.html"
+    }
+  ],
+  "om": {
+    "bilde": "meg.jpg",
+    "tekst": "Eksempel – skriv litt om deg selv her.",
+    "fakta": [
+      {
+        "tittel": "Spiller",
+        "verdi": "Gitar"
+      },
+      {
+        "tittel": "Leser",
+        "verdi": "Sci-fi"
+      },
+      {
+        "tittel": "Koder i",
+        "verdi": "Vue"
+      },
+      {
+        "tittel": "Neste reise",
+        "verdi": "?"
+      }
+    ],
+    "lenker": []
+  }
+}

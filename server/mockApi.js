@@ -1,0 +1,223 @@
+// Dev-only stand-in for public/api.php (used by `npm run dev`, never deployed).
+// Keeps everything in memory; password is "utvikling".
+import { Readable } from 'node:stream'
+
+export function mockApi() {
+  const db = { trips: [], photos: [], books: [], recordings: [], seq: 1 }
+  const files = new Map() // path -> { type, buf }
+  let loggedIn = false
+  const sp = { lock: 0, lockSeconds: 600, now: { playing: false } }
+  const SP_ALBUMS = [
+    ['Blue Hour', 'The Midnight Club', '#2b6cb0'], ['Paper Planes', 'Northern Lights', '#d69e2e'], ['Fjord', 'Aurora Sky', '#38a169'],
+    ['Late Night Drive', 'Neon Coast', '#805ad5'], ['Wooden Room', 'Acoustic Days', '#c05621'], ['Static', 'Low Tide', '#2d3748'],
+    ['Summer Tapes', 'Vintage Radio', '#e53e3e'], ['Glass', 'Clear Water', '#319795'],
+  ]
+    // 65 records, like the real shelf
+    .flatMap((x, k, all) => Array.from({ length: Math.ceil(65 / all.length) }, (_, j) => [j ? `${x[0]} ${j + 1}` : x[0], x[1], `hsl(${(k * 47 + j * 23) % 360}, 45%, 45%)`]))
+    .slice(0, 65)
+    .map(([name, artist, color], i) => ({ id: 'a' + i, uri: `spotify:album:mockalbum${String(i).padStart(10, '0')}`, name, artist, year: String(2015 + (i % 10)), image: null, color, url: null, tracks: 10 + (i % 6) }))
+  // tiny coloured squares as stand-in covers
+  const mockCover = (h) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><rect width="8" height="8" fill="hsl(${h % 360},60%,50%)"/><circle cx="4" cy="4" r="1.6" fill="#fff"/></svg>`)}`
+  const SP_PLAYLISTS = ['Øving – fokus', 'Gitarhelter', 'Søndagsmorgen', 'Treningsmiks', 'Roadtrip 2025'].map((name, i) => ({
+    id: 'p' + i, uri: `spotify:playlist:mockplaylist${String(i).padStart(10, '0')}`, name, owner: 'Benjamin', image: null, thumb: mockCover(i * 90 + 20), count: 20 + i * 7, url: null,
+  }))
+
+  const send = (res, status, data) => {
+    res.statusCode = status
+    res.setHeader('Content-Type', 'application/json; charset=utf-8')
+    res.end(JSON.stringify(data))
+  }
+
+  async function readBody(req) {
+    const ct = req.headers['content-type'] || ''
+    if (!ct) return { fields: {}, file: null }
+    const request = new Request('http://x', { method: 'POST', headers: req.headers, body: Readable.toWeb(req), duplex: 'half' })
+    if (ct.startsWith('application/json')) return { fields: await request.json(), file: null }
+    const fd = await request.formData()
+    const fields = {}
+    let file = null
+    for (const [k, v] of fd) {
+      if (typeof v === 'string') fields[k] = v
+      else if (v.size) file = v
+    }
+    return { fields, file }
+  }
+
+  const blank = (v) => (v === undefined || v === null || String(v).trim() === '' ? null : v)
+
+  return {
+    name: 'niben-mock-api',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const url = new URL(req.url, 'http://x')
+        if (url.pathname.startsWith('/uploads/')) {
+          const f = files.get(url.pathname.slice(1))
+          if (!f) return next()
+          res.setHeader('Content-Type', f.type)
+          return res.end(f.buf)
+        }
+        if (url.pathname !== '/api.php') return next()
+        const action = url.searchParams.get('action')
+        const isPost = req.method === 'POST'
+        const needAdmin = () => {
+          if (!loggedIn) { send(res, 401, { error: 'Du må logge inn.' }); return false }
+          if (req.headers['x-niben'] !== '1') { send(res, 403, { error: 'Ugyldig forespørsel.' }); return false }
+          return true
+        }
+        const { fields: b, file } = isPost ? await readBody(req) : { fields: {}, file: null }
+        const store = async (sub, f) => {
+          const ext = sub === 'photos' ? 'jpg' : (f.name.split('.').pop() || 'mp3').toLowerCase()
+          const path = `uploads/${sub}/${Math.random().toString(16).slice(2).padEnd(20, '0').slice(0, 20)}.${ext}`
+          files.set(path, { type: f.type || 'application/octet-stream', buf: Buffer.from(await f.arrayBuffer()) })
+          return path
+        }
+
+        switch (action) {
+          case 'content':
+            return send(res, 200, {
+              trips: db.trips.map((t) => ({ ...t, photos: db.photos.filter((p) => p.trip_id === t.id) }))
+                .sort((a, b) => String(b.date_from || b.year || '').localeCompare(String(a.date_from || a.year || ''))),
+              books: [...db.books].reverse(),
+              recordings: [...db.recordings].reverse(),
+            })
+          case 'limits':
+            return send(res, 200, { upload_max_filesize: '64M', post_max_size: '64M', max_execution_time: '30', uploads_writable: true })
+          case 'me':
+            return send(res, 200, { admin: loggedIn })
+          case 'login':
+            if (b.password !== 'utvikling') return send(res, 401, { error: 'Feil passord.' })
+            loggedIn = true
+            return send(res, 200, { admin: true })
+          case 'logout':
+            loggedIn = false
+            return send(res, 200, { admin: false })
+          case 'trip_save': {
+            if (!needAdmin()) return
+            if (!blank(b.country)) return send(res, 400, { error: 'Velg et land.' })
+            if (!blank(b.title)) return send(res, 400, { error: 'Skriv en tittel.' })
+            const row = {
+              country: b.country, place: blank(b.place), title: b.title,
+              year: blank(b.year) ? Number(b.year) : (blank(b.date_from) ? Number(String(b.date_from).slice(0, 4)) : null),
+              date_from: blank(b.date_from), date_to: blank(b.date_to), body: blank(b.body),
+            }
+            let id = Number(b.id) || 0
+            if (id) Object.assign(db.trips.find((t) => t.id === id), row)
+            else { id = db.seq++; db.trips.push({ id, ...row }) }
+            ;(b.photos || []).forEach((p, i) => {
+              const ph = db.photos.find((x) => x.id === p.id)
+              if (ph) { ph.caption = blank(p.caption); ph.sort = i }
+            })
+            db.photos.sort((a, b2) => a.sort - b2.sort)
+            return send(res, 200, { id })
+          }
+          case 'trip_delete':
+            if (!needAdmin()) return
+            db.trips = db.trips.filter((t) => t.id !== Number(b.id))
+            db.photos = db.photos.filter((p) => p.trip_id !== Number(b.id))
+            return send(res, 200, { ok: true })
+          case 'photo_upload': {
+            if (!needAdmin()) return
+            if (!file) return send(res, 400, { error: 'Mangler fil.' })
+            const path = await store('photos', file)
+            const id = db.seq++
+            db.photos.push({ id, trip_id: Number(b.trip_id), path, caption: null, width: null, height: null, sort: db.photos.length })
+            return send(res, 200, { id, path })
+          }
+          case 'photo_delete':
+            if (!needAdmin()) return
+            db.photos = db.photos.filter((p) => p.id !== Number(b.id))
+            return send(res, 200, { ok: true })
+          case 'book_save': {
+            if (!needAdmin()) return
+            if (!blank(b.title)) return send(res, 400, { error: 'Boka mangler tittel.' })
+            const row = {
+              title: b.title, author: blank(b.author), isbn: blank(b.isbn), ol_key: blank(b.ol_key), cover_url: blank(b.cover_url),
+              published_year: blank(b.published_year), pages: blank(b.pages), read_on: blank(b.read_on),
+              rating: blank(b.rating) ? Number(b.rating) : null, thoughts: blank(b.thoughts), quote: blank(b.quote),
+            }
+            let id = Number(b.id) || 0
+            if (id) Object.assign(db.books.find((x) => x.id === id), row)
+            else { id = db.seq++; db.books.push({ id, ...row }) }
+            return send(res, 200, { id })
+          }
+          case 'book_delete':
+            if (!needAdmin()) return
+            db.books = db.books.filter((x) => x.id !== Number(b.id))
+            return send(res, 200, { ok: true })
+          case 'recording_save': {
+            if (!needAdmin()) return
+            if (!blank(b.title)) return send(res, 400, { error: 'Skriv en tittel.' })
+            const yt = (String(b.youtube || '').match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/) || [])[1] || (/^[\w-]{11}$/.test(b.youtube || '') ? b.youtube : null)
+            const audio = file ? await store('audio', file) : null
+            let id = Number(b.id) || 0
+            const row = { guitar: b.guitar, title: b.title, recorded_on: blank(b.recorded_on), youtube: yt, notes: blank(b.notes) }
+            if (id) {
+              const r = db.recordings.find((x) => x.id === id)
+              Object.assign(r, row, audio ? { audio_path: audio } : {})
+            } else {
+              if (!yt && !audio) return send(res, 400, { error: 'Legg til en lydfil eller en YouTube-lenke.' })
+              id = db.seq++
+              db.recordings.push({ id, ...row, audio_path: audio })
+            }
+            return send(res, 200, { id })
+          }
+          case 'recording_delete':
+            if (!needAdmin()) return
+            db.recordings = db.recordings.filter((x) => x.id !== Number(b.id))
+            return send(res, 200, { ok: true })
+          // ── Spotify (fake data, same lock rules as the real server) ──
+          case 'spotify_public':
+            return send(res, 200, {
+              configured: true, connected: true, lock_until: sp.lock, lock_seconds: sp.lockSeconds, server_time: Math.floor(Date.now() / 1000),
+              now: sp.now,
+              albums: SP_ALBUMS, playlists: SP_PLAYLISTS,
+            })
+          case 'spotify_now':
+            return send(res, 200, { configured: true, connected: true, now: sp.now, lock_until: sp.lock, lock_seconds: sp.lockSeconds, server_time: Math.floor(Date.now() / 1000) })
+          case 'spotify_play': {
+            if (!needAdmin()) return
+            const now = Math.floor(Date.now() / 1000)
+            if (sp.lock > now) return send(res, 423, { error: `Låst – du kan bytte om ${Math.ceil((sp.lock - now) / 60)} min.`, lock_until: sp.lock, server_time: now })
+            const item = [...SP_ALBUMS, ...SP_PLAYLISTS].find((x) => x.uri === b.uri)
+            if (!item) return send(res, 400, { error: 'Ugyldig Spotify-lenke.' })
+            sp.lock = now + sp.lockSeconds
+            sp.now = { playing: true, progress_ms: 0, duration_ms: 214000, name: b.track ? `Valgt låt fra ${item.name}` : `Første låt fra ${item.name}`, artist: item.artist || item.owner, album: item.name, image: item.image, context: item.uri, at: now }
+            return send(res, 200, { ok: true, lock_until: sp.lock, server_time: now })
+          }
+          case 'spotify_lock': {
+            if (!needAdmin()) return
+            const now = Math.floor(Date.now() / 1000)
+            if (sp.lock > now) return send(res, 423, { error: `Låsen er på – den kan endres om ${Math.ceil((sp.lock - now) / 60)} min.`, lock_until: sp.lock, lock_seconds: sp.lockSeconds, server_time: now })
+            sp.lockSeconds = Math.max(0, +b.seconds || 0)
+            return send(res, 200, { ok: true, lock_seconds: sp.lockSeconds, lock_until: sp.lock, server_time: now })
+          }
+          case 'spotify_control': {
+            if (!needAdmin()) return
+            const now = Math.floor(Date.now() / 1000)
+            if (b.op === 'seek' && sp.lock > now) return send(res, 423, { error: 'Låst – hør ferdig 🎧', lock_until: sp.lock, server_time: now })
+            if (b.op === 'pause') sp.now.playing = false
+            if (b.op === 'resume') sp.now.playing = true
+            if (b.op === 'seek') sp.now.progress_ms = +b.ms || 0
+            return send(res, 200, { ok: true })
+          }
+          case 'spotify_token':
+            if (!needAdmin()) return
+            return send(res, 200, { token: 'mock', expires: 0, streaming: false }) // no real Spotify in dev
+          case 'spotify_tracks': {
+            const id = url.searchParams.get('id')
+            if (url.searchParams.get('type') === 'playlist' && id.endsWith('3')) return send(res, 200, { hidden: true, tracks: [] })
+            const n = 6 + (id.charCodeAt(id.length - 1) % 7)
+            return send(res, 200, { tracks: Array.from({ length: n }, (_, i) => ({ uri: `spotify:track:mocktrack${id}${String(i).padStart(4, '0')}`, name: ['Intro', 'Golden Hour', 'Slow Down', 'Northern Sky', 'Paper Hearts', 'Drift', 'Home', 'Waves', 'Late Again', 'Outro', 'Echoes', 'Morning'][i % 12], artist: 'Mock Artist', ms: 150000 + i * 17000, n: i + 1, img: mockCover(i * 53) })) })
+          }
+          case 'spotify_refresh':
+          case 'spotify_disconnect':
+            if (!needAdmin()) return
+            return send(res, 200, { ok: true })
+          default:
+            return send(res, 404, { error: 'Ukjent handling.' })
+        }
+      })
+    },
+  }
+}
