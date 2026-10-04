@@ -208,6 +208,21 @@ export function buildListeningCorner() {
     add(new THREE.BoxGeometry(0.015, TOP_Y - 0.08, 0.42), white, x, (TOP_Y + 0.08) / 2 - 0.015, 0.24))
   ;[-0.7, 0.7].forEach((x) => [0.08, 0.42].forEach((z) => add(new THREE.CylinderGeometry(0.015, 0.012, 0.08, 10), wood, x, 0.04, z)))
 
+  // ── lighting for the records ──
+  // a warm spot from above onto the turntable and the sleeve that's playing
+  const spot = new THREE.SpotLight(0xffd9a8, 9, 3.2, 0.62, 0.85, 1.6)
+  spot.position.set(-0.15, 2.15, 0.95)
+  spot.target.position.set(-0.2, TOP_Y, 0.2)
+  group.add(spot, spot.target)
+  // an LED strip under the top board, washing down over the record spines
+  const led = new THREE.Mesh(new THREE.BoxGeometry(BOARD_W - 0.06, 0.008, 0.012), new THREE.MeshBasicMaterial({ color: 0xffe2b8, toneMapped: false }))
+  led.position.set(0, TOP_Y - 0.03, FRONT_Z - 0.03)
+  group.add(led)
+  const ledLight = new THREE.RectAreaLight(0xffd9a8, 5, BOARD_W - 0.06, 0.06)
+  ledLight.position.copy(led.position)
+  ledLight.lookAt(led.position.x, 0, led.position.z - 0.12) // shine down and slightly back onto the spines
+  group.add(ledLight)
+
   // the whole sideboard is clickable ("go to the shelf"), not just the records in it
   for (const m of group.children.slice(sideboardStart)) m.userData.kind = 'shelf'
   // ── Turntable ──
@@ -447,12 +462,17 @@ export function buildListeningCorner() {
 
   /** A real mesh (with cover) for a record that leaves the shelf. */
   function makeLoose(r) {
-    const coverMat = new THREE.MeshStandardMaterial({ map: placeholderCover(r.album), roughness: 0.55 })
-    if (r.album.image) {
-      loader.load(r.album.image, (t) => {
+    // the cover glows a touch on its own so it stays readable in the shade of the shelf
+    const coverMat = new THREE.MeshStandardMaterial({ map: placeholderCover(r.album), roughness: 0.5, emissive: 0xffffff, emissiveIntensity: 0.16 })
+    coverMat.emissiveMap = coverMat.map
+    const src = r.album.image_large || r.album.image // the 640 px cover: sharp even when held up close
+    if (src) {
+      loader.load(src, (t) => {
         t.colorSpace = THREE.SRGBColorSpace
+        t.anisotropy = 16 // stays crisp at a distance and at an angle (clamped to what the GPU allows)
         coverMat.map?.dispose()
         coverMat.map = t
+        coverMat.emissiveMap = t
         coverMat.needsUpdate = true
       }, undefined, () => {})
     }
@@ -524,7 +544,8 @@ export function buildListeningCorner() {
       }
       redrawScreen()
       if (now?.image) {
-        loader.load(now.image, (t) => {
+        loader.load(now.image_large || now.image, (t) => {
+          t.anisotropy = 16
           t.colorSpace = THREE.SRGBColorSpace
           labelMat.map?.dispose()
           labelMat.map = t
