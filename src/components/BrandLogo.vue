@@ -1,7 +1,7 @@
 <script setup>
-// The niben logo: N = a book (the letter is the cover, pages and back cover behind it) with a star
-// over it, i = a guitar with a note for its dot, "be" = the guitar cable writing the letters,
-// n = a piece of cable in an amp.
+// The niben logo: N = a book (the letter is the cover, pages and back cover behind it), i = a plain i
+// with a star for its dot, b = a guitar (neck = the tall stroke, body = the belly), e = the guitar
+// cable writing it on its way to the amp, n = a piece of that cable in the amp.
 // Flat "glass" style in the site's blues; colours follow the light/dark theme.
 // mark: just the book-N (small places, e.g. a square icon).
 defineProps({ mark: Boolean })
@@ -11,7 +11,7 @@ const uid = `nl${Math.random().toString(36).slice(2, 8)}`
 <template>
   <svg
     class="brand-logo"
-    :viewBox="mark ? '0 0 128 140' : '0 0 462 140'"
+    :viewBox="mark ? '0 0 128 140' : '0 0 392 140'"
     role="img"
     aria-label="niben"
     xmlns="http://www.w3.org/2000/svg"
@@ -55,38 +55,35 @@ const uid = `nl${Math.random().toString(36).slice(2, 8)}`
     <use :href="`#${uid}-n`" :fill="`url(#${uid}-cover)`" stroke="var(--logo-line)" stroke-width="3" stroke-linejoin="round" />
     <!-- a little shine along the cover's top edges -->
     <path fill="none" stroke="var(--logo-glass-hi)" stroke-width="2" stroke-linecap="round" opacity="0.55" d="M38.5 38 L55 38 M92.5 38 L106 38" />
-    <path fill="var(--logo-star)" stroke="var(--logo-line)" stroke-width="3" stroke-linejoin="round" d="M64 2 Q66.5 13.5 78 16 Q66.5 18.5 64 30 Q61.5 18.5 50 16 Q61.5 13.5 64 2 Z" />
 
     <template v-if="!mark">
-      <!-- i: guitar, with a note as the dot -->
-      <g transform="translate(152 127) scale(0.68) translate(-152 -127)">
-      <g stroke="var(--logo-line)" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round">
-        <path :fill="`url(#${uid}-cover)`" d="M146 18 Q146 9 154 9 L157 9 Q162 9 161 15 L159 36 L148 36 Z" />
-        <rect x="148.5" y="34" width="10" height="44" rx="3" fill="var(--logo-page)" />
-        <path :fill="`url(#${uid}-cover)`" d="M144 76 Q137 66 132 70 Q127 76 134 88 Q124 98 128 112 Q133 128 152 127 Q170 128 174 114 Q178 100 168 92 Q174 80 168 72 Q162 68 160 78 Z" />
+      <!-- i: a plain i with the star as its dot -->
+      <rect x="140" y="80" width="13" height="44" rx="6.5" :fill="`url(#${uid}-cover)`" stroke="var(--logo-line)" stroke-width="3" />
+      <path fill="var(--logo-star)" stroke="var(--logo-line)" stroke-width="2.6" stroke-linejoin="round" d="M146.5 51 Q148.4 61.6 159 63.5 Q148.4 65.4 146.5 76 Q144.6 65.4 134 63.5 Q144.6 61.6 146.5 51 Z" />
+
+      <!-- b: the guitar – the neck is the b's tall stroke, the body its round belly -->
+      <g stroke="var(--logo-line)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+        <path :fill="`url(#${uid}-cover)`" d="M166 22 Q165 12 173 11 L178 11 Q184 12 182 19 L180 34 L167 34 Z" />
+        <rect x="166.5" y="32" width="11" height="62" rx="3" fill="var(--logo-page)" />
+        <path :fill="`url(#${uid}-cover)`" d="M165 92 Q166 80 178 82 Q186 75 197 82 Q212 89 213 106 Q214 125 194 127 Q174 129 167 119 Q162 110 165 92 Z" />
       </g>
       <g fill="var(--logo-page)" stroke="none">
-        <rect x="143" y="91" width="22" height="5" rx="2.5" />
-        <rect x="143" y="100" width="22" height="5" rx="2.5" />
-        <rect x="143" y="109" width="22" height="5" rx="2.5" />
-      </g>
-      </g>
-      <!-- the note is the dot over the i -->
-      <g fill="var(--logo-star)" stroke="var(--logo-line)" stroke-width="2.6" stroke-linejoin="round">
-        <ellipse cx="149" cy="35" rx="6.5" ry="5" transform="rotate(-18 149 35)" />
-        <path d="M154 34 L154 13 Q161 15 165 21 Q160 19 156 20 L156 34" />
+        <circle cx="172" cy="16" r="1.8" />
+        <circle cx="177" cy="16" r="1.8" />
+        <rect x="181" y="96" width="22" height="4.5" rx="2.2" />
+        <rect x="181" y="104" width="22" height="4.5" rx="2.2" />
+        <rect x="181" y="112" width="22" height="4.5" rx="2.2" />
       </g>
 
-      <!-- "be": the cable from the guitar's jack, writing the letters on its way to the amp -->
-      <circle cx="164" cy="122" r="5" fill="var(--logo-page)" stroke="var(--logo-line)" stroke-width="2.5" />
+      <!-- e: the cable from the guitar's jack writes the e on its way to the amp -->
+      <circle cx="209" cy="120" r="4.6" fill="var(--logo-page)" stroke="var(--logo-line)" stroke-width="2.5" />
       <path
-        id="cable"
         fill="none"
         :stroke="`url(#${uid}-cable)`"
         stroke-width="11"
         stroke-linecap="round"
         stroke-linejoin="round"
-        d="M166 123 C186 128 198 116 207 100 C219 79 238 44 249 22 C255 9 246 4 238 13 C229 24 227 70 227 112 C227 126 243 131 256 125 C271 117 275 97 263 92 C254 89 248 96 255 99 C264 102 276 99 288 97 C300 96 316 97 318 88 C320 77 301 74 292 88 C283 103 290 127 313 125 C335 123 344 98 371 95"
+        d="M211 122 C221 125 226 111 232 99 C244 96 260 97 262 88 C264 77 245 74 236 88 C227 103 234 127 257 125 C277 123 286 100 299 95"
       />
       <path
         fill="none"
@@ -95,9 +92,11 @@ const uid = `nl${Math.random().toString(36).slice(2, 8)}`
         stroke-linecap="round"
         stroke-linejoin="round"
         opacity="0.75"
-        d="M209 96 C220 76 236 44 246 24 M228 108 C228 121 241 127 253 123 M292 86 C283 101 290 125 313 123 M335 116 C344 102 352 97 365 95"
+        d="M236 86 C227 101 234 125 257 123 M279 116 C288 102 293 97 297 96"
       />
 
+      <!-- (moved left to sit right after the e) -->
+      <g transform="translate(-72 0)">
       <!-- n: in an amp -->
       <g stroke="var(--logo-line)" stroke-width="3.5" stroke-linejoin="round">
         <path fill="none" stroke-width="5" stroke-linecap="round" d="M392 54 L392 44 Q392 38 398 38 L428 38 Q434 38 434 44 L434 54" />
@@ -111,6 +110,7 @@ const uid = `nl${Math.random().toString(36).slice(2, 8)}`
       <!-- n: a piece of the same cable – one soft arch with a hook in and a flick out, like the original -->
       <path fill="none" :stroke="`url(#${uid}-cable)`" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" d="M390 107 C392 114 397 115 400 107 C404 94 408 84 416 84 C424 84 427 94 430 104 C432 112 436 115 442 111" />
       <path fill="none" stroke="var(--logo-cable-hi)" stroke-width="2.5" stroke-linecap="round" opacity="0.7" d="M401 102 C405 92 409 86 415 86 C420 86 423 90 425 96" />
+      </g>
     </template>
   </svg>
 </template>
