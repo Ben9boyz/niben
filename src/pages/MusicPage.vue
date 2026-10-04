@@ -95,3 +95,8 @@ function show(view) {
   .main-card { padding: 12px; }
 }
 </style>
+
+<style>
+/* player mode has a fixed top bar: the sticky card must stop below it, not slide underneath */
+@media (min-width: 821px) { html.player-shell .music .side { top: 84px; } }
+</style>
