@@ -179,13 +179,15 @@ function sp_playlists(): ?array {
 
 function sp_now(): ?array {
     return sp_cached('cache_now', 5, function () {
-        [$s, $j] = sp_api('GET', '/me/player/currently-playing?additional_types=track,episode');
+        // the full player state (also tells whether shuffle is on)
+        [$s, $j] = sp_api('GET', '/me/player?additional_types=track,episode');
         if ($s === 204 || !$j || empty($j['item'])) return ['playing' => false];
         if ($s !== 200) return null;
         $it = $j['item'];
         $album = $it['album'] ?? $it['show'] ?? [];
         return [
             'playing' => (bool)($j['is_playing'] ?? false),
+            'shuffle' => (bool)($j['shuffle_state'] ?? false),
             'progress_ms' => (int)($j['progress_ms'] ?? 0),
             'duration_ms' => (int)($it['duration_ms'] ?? 0),
             'name' => $it['name'] ?? '',
@@ -362,6 +364,7 @@ function sp_handle(string $action, bool $post): void {
         elseif ($op === 'seek') [$s, $j] = sp_api('PUT', '/me/player/seek?position_ms=' . max(0, (int)(body()['ms'] ?? 0)));
         elseif ($op === 'next') [$s, $j] = sp_api('POST', '/me/player/next');
         elseif ($op === 'previous') [$s, $j] = sp_api('POST', '/me/player/previous');
+        elseif ($op === 'shuffle') [$s, $j] = sp_api('PUT', '/me/player/shuffle?state=' . (!empty(body()['state']) ? 'true' : 'false'));
         else fail('Ukjent handling.');
         if ($s === 404) fail('Ingen Spotify-enhet spiller nå.', 409);
         if ($s >= 300) fail('Spotify svarte med feil (' . $s . ').', 502);

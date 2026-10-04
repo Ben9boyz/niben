@@ -190,6 +190,18 @@ export async function fetchTracks(uri) {
   return p
 }
 
+/** Shuffle on / off (admin) – for whatever is playing, wherever it plays. */
+export async function setShuffle(on) {
+  try {
+    await api('spotify_control', { op: 'shuffle', state: !!on })
+    if (spotify.now) spotify.now.shuffle = !!on
+    setTimeout(refreshNow, 800)
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+}
+
 /** The in-browser Spotify player (useWebPlayer), when it's running: plays go there. */
 export const playDevice = { id: null, activate: null, control: null, reconnect: null }
 

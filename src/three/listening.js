@@ -130,6 +130,15 @@ function drawIpodScreen(ctx, w, h, now, art, progressMs) {
   x.textAlign = 'center'
   x.textBaseline = 'middle'
   x.fillText(now?.name ? (now.playing ? 'Spilles nå' : 'Pause') : 'iPod', w / 2, 6.8 * u)
+  if (now?.shuffle) {
+    // small shuffle mark at the left of the header
+    x.strokeStyle = '#2b7ff0'
+    x.lineWidth = 0.9 * u
+    x.lineCap = 'round'
+    const sx = 5 * u, sy = 6.8 * u, d = 2.2 * u
+    x.beginPath(); x.moveTo(sx, sy - d); x.bezierCurveTo(sx + 2.5 * u, sy - d, sx + 2.5 * u, sy + d, sx + 5 * u, sy + d); x.stroke()
+    x.beginPath(); x.moveTo(sx, sy + d); x.bezierCurveTo(sx + 2.5 * u, sy + d, sx + 2.5 * u, sy - d, sx + 5 * u, sy - d); x.stroke()
+  }
   if (now?.playing) {
     x.fillStyle = '#1db954'
     x.beginPath(); x.moveTo(w - 9 * u, 4.3 * u); x.lineTo(w - 9 * u, 9.3 * u); x.lineTo(w - 4.8 * u, 6.8 * u); x.fill()
@@ -272,11 +281,12 @@ export function buildListeningCorner() {
   const W = 0.1, H = 0.166, D = 0.018
   add(new RoundedBoxGeometry(W, H, D, 4, 0.008), new THREE.MeshPhysicalMaterial({ color: 0xe2e4e8, roughness: 0.18, clearcoat: 1, metalness: 0.05 }), 0, 0, 0, body)
   const screenCanvas = document.createElement('canvas')
-  screenCanvas.width = 512
-  screenCanvas.height = 420 // same shape as the screen (SW : SH)
+  screenCanvas.width = 1024
+  screenCanvas.height = 840 // same shape as the screen (SW : SH), at 2× for a crisp screen
   const screenCtx = screenCanvas.getContext('2d')
   const screenTex = new THREE.CanvasTexture(screenCanvas)
   screenTex.colorSpace = THREE.SRGBColorSpace
+  screenTex.anisotropy = 8
   const SW = W * 0.84, SH = W * 0.84 * 0.82
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false, color: new THREE.Color(0.9, 0.9, 0.9) }))
   screen.position.set(0, H * 0.22, D / 2 + 0.0006)
@@ -289,15 +299,32 @@ export function buildListeningCorner() {
   body.add(center)
   const wheelText = new THREE.Mesh(new THREE.CircleGeometry(W * 0.36, 48), new THREE.MeshBasicMaterial({
     transparent: true,
-    map: canvasTex(128, 128, (x, w) => {
-      x.fillStyle = '#9aa0a8'
-      x.font = '700 15px Inter, sans-serif'
-      x.textAlign = 'center'
-      x.fillText('MENU', w / 2, 22)
-      x.fillText('▶❙❙', w / 2, w - 10)
-      x.fillText('⏮', 16, w / 2 + 5)
-      x.fillText('⏭', w - 16, w / 2 + 5)
-    }),
+    // the wheel's symbols, drawn as shapes at a high resolution: shuffle (top), previous (left),
+    // next (right), play/pause (bottom)
+    map: (() => {
+      const t = canvasTex(512, 512, (x, w) => {
+        const c = w / 2
+        x.fillStyle = x.strokeStyle = '#8f96a0'
+        x.lineWidth = 9
+        x.lineCap = x.lineJoin = 'round'
+        const tri = (cx, cy, dir, sz) => { x.beginPath(); x.moveTo(cx - dir * sz * 0.5, cy - sz * 0.6); x.lineTo(cx + dir * sz * 0.5, cy); x.lineTo(cx - dir * sz * 0.5, cy + sz * 0.6); x.closePath(); x.fill() }
+        // shuffle: two crossing arrows
+        const sy = 66, sw = 46
+        x.beginPath(); x.moveTo(c - sw, sy - 16); x.bezierCurveTo(c - 10, sy - 16, c + 10, sy + 16, c + sw - 12, sy + 16); x.stroke()
+        x.beginPath(); x.moveTo(c - sw, sy + 16); x.bezierCurveTo(c - 10, sy + 16, c + 10, sy - 16, c + sw - 12, sy - 16); x.stroke()
+        tri(c + sw - 4, sy - 16, 1, 22)
+        tri(c + sw - 4, sy + 16, 1, 22)
+        // previous: |◀◀
+        x.fillRect(48, c - 22, 9, 44); tri(80, c, -1, 34); tri(108, c, -1, 34)
+        // next: ▶▶|
+        tri(w - 108, c, 1, 34); tri(w - 80, c, 1, 34); x.fillRect(w - 57, c - 22, 9, 44)
+        // play / pause
+        tri(c - 26, w - 66, 1, 38)
+        x.fillRect(c + 4, w - 88, 11, 44); x.fillRect(c + 24, w - 88, 11, 44)
+      })
+      t.anisotropy = 8
+      return t
+    })(),
   }))
   wheelText.position.set(0, -H * 0.2, D / 2 + 0.001)
   body.add(wheelText)
@@ -516,7 +543,7 @@ export function buildListeningCorner() {
     const p = screenNow?.duration_ms
       ? Math.min(screenNow.duration_ms, (screenNow.progress_ms || 0) + (screenNow.playing ? performance.now() - screenAt : 0))
       : 0
-    drawIpodScreen(screenCtx, 512, 420, screenNow, screenArt, p)
+    drawIpodScreen(screenCtx, 1024, 840, screenNow, screenArt, p)
     screenTex.needsUpdate = true
     screenDrawn = performance.now()
   }

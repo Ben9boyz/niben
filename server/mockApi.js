@@ -210,6 +210,7 @@ export function mockApi() {
             if (b.op === 'pause') sp.now.playing = false
             if (b.op === 'resume') sp.now.playing = true
             if (b.op === 'seek') sp.now.progress_ms = +b.ms || 0
+            if (b.op === 'shuffle') sp.now.shuffle = !!b.state
             return send(res, 200, { ok: true })
           }
           case 'spotify_token':

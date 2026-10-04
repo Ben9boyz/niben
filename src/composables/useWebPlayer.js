@@ -77,6 +77,7 @@ export async function start() {
     const imgs = [...(t.album?.images || [])].sort((a, b) => (b.width || 0) - (a.width || 0))
     setLocalNow({
       playing: !st.paused,
+      shuffle: !!st.shuffle,
       progress_ms: st.position,
       duration_ms: st.duration,
       name: t.name,

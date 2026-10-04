@@ -1,8 +1,8 @@
 <script setup>
-import { ChevronLeft, ChevronRight, Play, Lock } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, Play, Lock, Shuffle } from 'lucide-vue-next'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { room } from '../composables/useRoom'
-import { spotify, useSpotify, lockLeft, progressMs, fmtClock, play, fetchTracks, lockNote } from '../composables/useSpotify'
+import { spotify, useSpotify, lockLeft, progressMs, fmtClock, play, fetchTracks, lockNote, control, setShuffle } from '../composables/useSpotify'
 import { admin, checkLogin } from '../composables/useAdmin'
 
 // HTML screen laid over the 3D iPod while it's held in front of the camera.
@@ -69,6 +69,16 @@ async function open(row) {
   }
 }
 
+// the click wheel: shuffle (top), previous / next track, play / pause (bottom)
+async function wheel(op) {
+  if (!admin.loggedIn) { toast.value = 'Logg inn for å styre musikken'; setTimeout(() => (toast.value = ''), 2200); return }
+  const r = op === 'shuffle'
+    ? await setShuffle(!spotify.now?.shuffle)
+    : await control(op === 'toggle' ? (spotify.now?.playing ? 'pause' : 'resume') : op)
+  toast.value = !r.ok ? r.error : op === 'shuffle' ? (spotify.now?.shuffle ? 'Shuffle på' : 'Shuffle av') : ''
+  if (toast.value) setTimeout(() => (toast.value = ''), 2200)
+}
+
 function back() {
   if (view.value === 'menu') room.musicView = 'ipodDock'
   else { view.value = 'menu'; active.value = 0 }
@@ -103,7 +113,7 @@ onBeforeUnmount(() => {
   <div v-if="rect" class="ipod" :style="{ left: `${rect.x}px`, top: `${rect.y}px`, width: `${rect.w}px`, height: `${rect.h}px`, '--u': `${rect.h / 100}px` }">
     <header>
       <button class="back" @click="back" :aria-label="view === 'menu' ? 'Legg fra deg iPoden' : 'Tilbake'"><ChevronLeft size="1em" /></button>
-      <span>{{ title }}</span>
+      <span><Shuffle v-if="now?.shuffle" size="0.75em" class="shf" />{{ title }}</span>
       <button class="np" :class="{ on: now?.playing }" @click="view = 'now'" aria-label="Spilles nå"><Play size="1em" fill="currentColor" /></button>
     </header>
 
@@ -143,12 +153,12 @@ onBeforeUnmount(() => {
     <transition name="fade"><div v-if="toast" class="toast">{{ toast }}</div></transition>
   </div>
 
-  <!-- the 3D click wheel works too: MENU = back, ⏮/⏭ = up/down, centre = choose, ⏯ = now playing -->
+  <!-- the 3D click wheel: shuffle (top), ⏮ / ⏭ previous / next track, ⏯ play / pause, centre = choose -->
   <div v-if="rect" class="wheel" :style="{ left: `${rect.x + rect.w / 2}px`, top: `${rect.y + rect.h * 1.51}px`, width: `${rect.h * 1.04}px`, height: `${rect.h * 1.04}px` }">
-    <button class="w-menu" aria-label="Meny" @click="back"></button>
-    <button class="w-prev" aria-label="Opp" @click="move(-1)"></button>
-    <button class="w-next" aria-label="Ned" @click="move(1)"></button>
-    <button class="w-play" aria-label="Spilles nå" @click="view = 'now'"></button>
+    <button class="w-menu" :aria-label="spotify.now?.shuffle ? 'Shuffle av' : 'Shuffle på'" title="Shuffle" @click="wheel('shuffle')"></button>
+    <button class="w-prev" aria-label="Forrige låt" title="Forrige låt" @click="wheel('previous')"></button>
+    <button class="w-next" aria-label="Neste låt" title="Neste låt" @click="wheel('next')"></button>
+    <button class="w-play" :aria-label="spotify.now?.playing ? 'Pause' : 'Spill'" :title="spotify.now?.playing ? 'Pause' : 'Spill'" @click="wheel('toggle')"></button>
     <button class="w-center" aria-label="Velg" @click="open(rows[active])"></button>
   </div>
 
@@ -261,4 +271,5 @@ header span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   cursor: pointer;
 }
 .putdown:hover { color: var(--accent); }
+.shf { margin-right: 0.3em; vertical-align: -0.05em; color: #2b7ff0; }
 </style>
