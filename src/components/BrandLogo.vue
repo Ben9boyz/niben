@@ -96,7 +96,9 @@ const uid = `nl${Math.random().toString(36).slice(2, 8)}`
         <circle cx="371" cy="95" r="6" fill="var(--logo-glass-hi)" stroke-width="2.5" />
         <path fill="none" stroke="var(--logo-line)" stroke-width="3" d="M380 135 L380 130 M450 135 L450 130" stroke-linecap="round" />
       </g>
-      <path fill="none" :stroke="`url(#${uid}-cable)`" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" d="M403 112 V86 M403 96 C405 89 410 85 416.5 85 C424 85 428 90 428 98 V112" />
+      <!-- n: a piece of the same cable – one soft arch with a hook in and a flick out, like the original -->
+      <path fill="none" :stroke="`url(#${uid}-cable)`" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" d="M390 107 C392 114 397 115 400 107 C404 94 408 84 416 84 C424 84 427 94 430 104 C432 112 436 115 442 111" />
+      <path fill="none" stroke="var(--logo-cable-hi)" stroke-width="2.5" stroke-linecap="round" opacity="0.7" d="M401 102 C405 92 409 86 415 86 C420 86 423 90 425 96" />
     </template>
   </svg>
 </template>
