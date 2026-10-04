@@ -1,4 +1,5 @@
 <script setup>
+import LockControl from './LockControl.vue'
 import { ChevronLeft, ChevronRight, Play, Lock, Shuffle } from 'lucide-vue-next'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { room } from '../composables/useRoom'
@@ -153,6 +154,8 @@ onBeforeUnmount(() => {
     <transition name="fade"><div v-if="toast" class="toast">{{ toast }}</div></transition>
   </div>
 
+  <!-- lock length: a tiny button just outside the screen's top-right corner (rarely changed) -->
+  <div v-if="rect && admin.loggedIn" class="ilock" :style="{ left: `${rect.x + rect.w + 6}px`, top: `${rect.y}px` }"><LockControl tiny /></div>
   <!-- the 3D click wheel: shuffle (top), ⏮ / ⏭ previous / next track, ⏯ play / pause, centre = choose -->
   <div v-if="rect" class="wheel" :style="{ left: `${rect.x + rect.w / 2}px`, top: `${rect.y + rect.h * 1.51}px`, width: `${rect.h * 1.04}px`, height: `${rect.h * 1.04}px` }">
     <button class="w-menu" :aria-label="spotify.now?.shuffle ? 'Shuffle av' : 'Shuffle på'" title="Shuffle" @click="wheel('shuffle')"></button>
@@ -272,4 +275,5 @@ header span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 .putdown:hover { color: var(--accent); }
 .shf { margin-right: 0.3em; vertical-align: -0.05em; color: #2b7ff0; }
+.ilock { position: fixed; z-index: 24; }
 </style>

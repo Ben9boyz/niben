@@ -1,7 +1,8 @@
 <script setup>
-import { Lock, LockOpen, Play, Pause } from 'lucide-vue-next'
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { spotify, lockLeft, progressMs, fmtClock, fmtLock, setLockSeconds, control } from '../composables/useSpotify'
+import { Lock, Play, Pause } from 'lucide-vue-next'
+import { ref, computed } from 'vue'
+import LockControl from './LockControl.vue'
+import { spotify, lockLeft, progressMs, fmtClock, control } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 import { web, setEnabled, setVolume } from '../composables/useWebPlayer'
 
@@ -10,32 +11,8 @@ const props = defineProps({ stacked: Boolean })
 const now = computed(() => spotify.now)
 const pct = computed(() => (now.value?.duration_ms ? (progressMs.value / now.value.duration_ms) * 100 : 0))
 
-// ── lock length (admin) ──
-const LOCK_CHOICES = [0, 5, 10, 15, 30, 60].map((m) => m * 60)
-const lockOpen = ref(false)
-const lockMsg = ref('')
+// ── lock ──
 const locked = computed(() => lockLeft.value > 0)
-const lockLabel = computed(() => (spotify.lockSeconds > 0 ? fmtLock(spotify.lockSeconds) : 'Av'))
-const lockEl = ref(null)
-
-function toggleLockMenu() {
-  lockMsg.value = ''
-  lockOpen.value = !lockOpen.value
-}
-async function chooseLock(sec) {
-  if (locked.value) return
-  try {
-    await setLockSeconds(sec)
-    lockOpen.value = false
-  } catch (e) {
-    lockMsg.value = e.message
-  }
-}
-function onDocClick(e) {
-  if (lockOpen.value && lockEl.value && !lockEl.value.contains(e.target)) lockOpen.value = false
-}
-onMounted(() => document.addEventListener('pointerdown', onDocClick))
-onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocClick))
 
 // ── playback controls (admin) ──
 const ctrlMsg = ref('')
@@ -75,28 +52,7 @@ const webLabel = computed(() => ({
       <div class="top">
         <small>{{ now?.playing ? 'Spilles nå' : now?.name ? 'Satt på pause' : 'Ingenting spilles' }}</small>
         <!-- lock: settings for the admin, a countdown for everyone while it's on -->
-        <div v-if="admin.loggedIn" ref="lockEl" class="lockset">
-          <button class="lockbtn" :class="{ off: !spotify.lockSeconds, active: locked }" :title="locked ? 'Låst – kan endres når låsen går ut' : 'Låsetid'" @click="toggleLockMenu">
-            <Lock v-if="locked || spotify.lockSeconds" :size="12" aria-hidden="true" /><LockOpen v-else :size="12" aria-hidden="true" />{{ locked ? fmtClock(lockLeft) : lockLabel }}
-          </button>
-          <transition name="fade">
-            <div v-if="lockOpen" class="lockmenu glass">
-              <b>Lås etter avspilling</b>
-              <p v-if="locked" class="lm-note">Låsen er på nå. Du kan endre den om {{ fmtClock(lockLeft) }}.</p>
-              <div class="chips">
-                <button
-                  v-for="s in LOCK_CHOICES"
-                  :key="s"
-                  :class="{ on: s === spotify.lockSeconds }"
-                  :disabled="locked"
-                  @click="chooseLock(s)"
-                >{{ s ? fmtLock(s) : 'Av' }}</button>
-              </div>
-              <p v-if="lockMsg" class="lm-err">{{ lockMsg }}</p>
-              <p v-else class="lm-note">Låser bytting og hopping i låten. Pause virker alltid. Gjelder fra neste gang noe startes.</p>
-            </div>
-          </transition>
-        </div>
+        <LockControl v-if="admin.loggedIn" />
         <span v-else-if="locked" class="lockbtn active" title="Ingen bytting – hør ferdig"><Lock :size="12" aria-hidden="true" />{{ fmtClock(lockLeft) }}</span>
       </div>
       <b class="title">{{ now?.name || '—' }}</b>
@@ -160,21 +116,8 @@ const webLabel = computed(() => ({
 .pp:hover { filter: brightness(1.08); }
 .vol { flex: 0 1 100px; min-width: 50px; accent-color: #1db954; }
 
-.lockset { position: relative; flex: none; }
-.lockbtn { display: flex; align-items: center; gap: 4px; padding: 2px 8px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass); color: var(--text-2); font: 600 0.68rem var(--font); cursor: pointer; }
-.lockbtn span { font-size: 0.7rem; }
-.lockbtn:hover { color: var(--accent); border-color: var(--accent); }
-.lockbtn.off { color: var(--text-3); }
+.lockbtn { display: flex; align-items: center; gap: 4px; padding: 2px 8px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass); font: 600 0.68rem var(--font); }
 .lockbtn.active { color: #b8711a; border-color: rgba(240, 160, 64, 0.5); }
-.lockmenu { background: var(--bg, #fff); position: absolute; top: calc(100% + 6px); right: 0; z-index: 5; width: 220px; padding: 12px; border-radius: 14px; box-shadow: var(--shadow-2, 0 12px 30px rgba(0,0,0,.2)); display: grid; gap: 8px; }
-.lockmenu > b { font-size: 0.78rem; }
-.chips { display: flex; flex-wrap: wrap; gap: 5px; }
-.chips button { padding: 5px 10px; border: 1px solid var(--glass-border); border-radius: 999px; background: transparent; color: var(--text); font: 600 0.78rem var(--font); cursor: pointer; }
-.chips button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-.chips button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-.chips button:disabled { opacity: 0.45; cursor: not-allowed; }
-.lm-note { font-size: 0.72rem; color: var(--text-3); margin: 0; }
-.lm-err { font-size: 0.72rem; color: #d24b4b; margin: 0; }
 
 
 @media (min-width: 821px) {
