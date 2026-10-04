@@ -61,11 +61,11 @@ const uid = `nl${Math.random().toString(36).slice(2, 8)}`
       <!-- i: guitar, with a note as the dot -->
       <g transform="translate(152 127) scale(0.68) translate(-152 -127)">
       <g stroke="var(--logo-line)" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round">
-        <path fill="var(--logo-glass)" d="M146 18 Q146 9 154 9 L157 9 Q162 9 161 15 L159 36 L148 36 Z" />
-        <rect x="148.5" y="34" width="10" height="44" rx="3" fill="var(--logo-glass-hi)" />
-        <path :fill="`url(#${uid}-body)`" d="M144 76 Q137 66 132 70 Q127 76 134 88 Q124 98 128 112 Q133 128 152 127 Q170 128 174 114 Q178 100 168 92 Q174 80 168 72 Q162 68 160 78 Z" />
+        <path :fill="`url(#${uid}-cover)`" d="M146 18 Q146 9 154 9 L157 9 Q162 9 161 15 L159 36 L148 36 Z" />
+        <rect x="148.5" y="34" width="10" height="44" rx="3" fill="var(--logo-page)" />
+        <path :fill="`url(#${uid}-cover)`" d="M144 76 Q137 66 132 70 Q127 76 134 88 Q124 98 128 112 Q133 128 152 127 Q170 128 174 114 Q178 100 168 92 Q174 80 168 72 Q162 68 160 78 Z" />
       </g>
-      <g fill="var(--logo-glass-hi)" stroke="none">
+      <g fill="var(--logo-page)" stroke="none">
         <rect x="143" y="91" width="22" height="5" rx="2.5" />
         <rect x="143" y="100" width="22" height="5" rx="2.5" />
         <rect x="143" y="109" width="22" height="5" rx="2.5" />
@@ -78,7 +78,7 @@ const uid = `nl${Math.random().toString(36).slice(2, 8)}`
       </g>
 
       <!-- "be": the cable from the guitar's jack, writing the letters on its way to the amp -->
-      <circle cx="164" cy="122" r="5" fill="var(--logo-glass-hi)" stroke="var(--logo-line)" stroke-width="2.5" />
+      <circle cx="164" cy="122" r="5" fill="var(--logo-page)" stroke="var(--logo-line)" stroke-width="2.5" />
       <path
         id="cable"
         fill="none"
@@ -101,11 +101,11 @@ const uid = `nl${Math.random().toString(36).slice(2, 8)}`
       <!-- n: in an amp -->
       <g stroke="var(--logo-line)" stroke-width="3.5" stroke-linejoin="round">
         <path fill="none" stroke-width="5" stroke-linecap="round" d="M392 54 L392 44 Q392 38 398 38 L428 38 Q434 38 434 44 L434 54" />
-        <rect x="372" y="52" width="86" height="76" rx="15" :fill="`url(#${uid}-glass)`" />
-        <rect x="383" y="78" width="64" height="40" rx="8" fill="var(--logo-grille)" stroke-width="2.5" />
-        <circle cx="430" cy="65" r="5" fill="var(--logo-knob)" stroke-width="2.5" />
-        <circle cx="444" cy="65" r="5" fill="var(--logo-knob)" stroke-width="2.5" />
-        <circle cx="371" cy="95" r="6" fill="var(--logo-glass-hi)" stroke-width="2.5" />
+        <rect x="372" y="52" width="86" height="76" rx="15" :fill="`url(#${uid}-cover)`" />
+        <rect x="383" y="78" width="64" height="40" rx="8" fill="var(--logo-page)" stroke-width="2.5" />
+        <circle cx="430" cy="65" r="5" fill="var(--logo-page)" stroke-width="2.5" />
+        <circle cx="444" cy="65" r="5" fill="var(--logo-page)" stroke-width="2.5" />
+        <circle cx="371" cy="95" r="6" fill="var(--logo-page)" stroke-width="2.5" />
         <path fill="none" stroke="var(--logo-line)" stroke-width="3" d="M380 135 L380 130 M450 135 L450 130" stroke-linecap="round" />
       </g>
       <!-- n: a piece of the same cable – one soft arch with a hook in and a flick out, like the original -->
