@@ -2,7 +2,7 @@
 //  - the page itself, data.json and api.php: network first (always fresh when online)
 //  - hashed build files and fonts: cache first (they never change under the same name)
 //  - 3D models and images: shown from the cache at once, refreshed in the background
-const CACHE = 'niben-v2'
+const CACHE = 'niben-v3'
 
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (e) => {
@@ -13,7 +13,7 @@ self.addEventListener('activate', (e) => {
   })())
 })
 
-const isHashed = (p) => /\/[\w-]+-[\w]{6,}(-[\w]+)?\.js$/.test(p)
+const isHashed = (p) => /-[\w-]{6,}\.js$/.test(p)
 const isStatic = (p) => /\.(glb|png|jpg|jpeg|webp|svg|woff2?)$/.test(p)
 
 async function networkFirst(req) {

@@ -1,47 +1,25 @@
-import { createApp } from 'vue'
+import { createApp, defineAsyncComponent } from 'vue'
 import { createRouter, createWebHashHistory } from 'vue-router'
 import App from './App.vue'
 import { registerServiceWorker } from './composables/usePwa'
 import { shell, enterPlayer } from './composables/useShell'
+import { rememberTab } from './lib/nav'
 import './style.css'
-import HomePanel from './panels/HomePanel.vue'
-import GuitarPanel from './panels/GuitarPanel.vue'
-import BooksPanel from './panels/BooksPanel.vue'
-import TravelPanel from './panels/TravelPanel.vue'
-import CodePanel from './panels/CodePanel.vue'
-import AboutPanel from './panels/AboutPanel.vue'
-import PracticePanel from './panels/PracticePanel.vue'
-import AdminPanel from './panels/AdminPanel.vue'
-import HomePage from './pages/HomePage.vue'
-import PracticePage from './pages/PracticePage.vue'
-import GuitarPage from './pages/GuitarPage.vue'
-import BooksPage from './pages/BooksPage.vue'
-import TravelPage from './pages/TravelPage.vue'
-import CodePage from './pages/CodePage.vue'
-import AboutPage from './pages/AboutPage.vue'
-import AdminPage from './pages/AdminPage.vue'
-import MusicPanel from './panels/MusicPanel.vue'
-import MusicPage from './pages/MusicPage.vue'
-import JapanPanel from './panels/JapanPanel.vue'
-import JapanPage from './pages/JapanPage.vue'
-import GamingPanel from './panels/GamingPanel.vue'
-import GamingPage from './pages/GamingPage.vue'
-import NowPanel from './panels/NowPanel.vue'
-import NowPage from './pages/NowPage.vue'
-
+// Every page loads on demand: a panel (3D room) and a page (plain version) per route
+const lazy = (panel, page, title) => ({ component: panel, meta: { page: defineAsyncComponent(page), title } })
 const routes = [
-  { path: '/', name: 'hjem', component: HomePanel, meta: { page: HomePage, title: 'Hjem' } },
-  { path: '/na', name: 'na', component: NowPanel, meta: { page: NowPage, title: 'Nå' } },
-  { path: '/lytte', name: 'lytte', component: MusicPanel, meta: { page: MusicPage, title: 'Musikk' } },
-  { path: '/ovelse', name: 'ovelse', component: PracticePanel, meta: { page: PracticePage, title: 'Øving' } },
-  { path: '/gitar', name: 'gitar', component: GuitarPanel, meta: { page: GuitarPage, title: 'Gitar' } },
-  { path: '/boker', name: 'boker', component: BooksPanel, meta: { page: BooksPage, title: 'Bøker' } },
-  { path: '/reiser', name: 'reiser', component: TravelPanel, meta: { page: TravelPage, title: 'Reiser' } },
-  { path: '/kode', name: 'kode', component: CodePanel, meta: { page: CodePage, title: 'Kode' } },
-  { path: '/gaming', name: 'gaming', component: GamingPanel, meta: { page: GamingPage, title: 'Gaming' } },
-  { path: '/japansk', name: 'japansk', component: JapanPanel, meta: { page: JapanPage, title: 'Japansk' } },
-  { path: '/om', name: 'om', component: AboutPanel, meta: { page: AboutPage, title: 'Om meg' } },
-  { path: '/admin', name: 'admin', component: AdminPanel, meta: { page: AdminPage, title: 'Admin' } },
+  { path: '/', name: 'hjem', ...lazy(() => import('./panels/HomePanel.vue'), () => import('./pages/HomePage.vue'), 'Hjem') },
+  { path: '/lytte', name: 'lytte', ...lazy(() => import('./panels/MusicPanel.vue'), () => import('./pages/MusicPage.vue'), 'Musikk') },
+  { path: '/ovelse', name: 'ovelse', ...lazy(() => import('./panels/PracticePanel.vue'), () => import('./pages/PracticePage.vue'), 'Gitar-øving') },
+  { path: '/gitar', name: 'gitar', ...lazy(() => import('./panels/GuitarPanel.vue'), () => import('./pages/GuitarPage.vue'), 'Gitarer') },
+  { path: '/boker', name: 'boker', ...lazy(() => import('./panels/BooksPanel.vue'), () => import('./pages/BooksPage.vue'), 'Bøker') },
+  { path: '/reiser', name: 'reiser', ...lazy(() => import('./panels/TravelPanel.vue'), () => import('./pages/TravelPage.vue'), 'Reiser') },
+  { path: '/kode', name: 'kode', ...lazy(() => import('./panels/CodePanel.vue'), () => import('./pages/CodePage.vue'), 'Prosjekter') },
+  { path: '/gaming', name: 'gaming', ...lazy(() => import('./panels/GamingPanel.vue'), () => import('./pages/GamingPage.vue'), 'Spill') },
+  { path: '/japansk', name: 'japansk', ...lazy(() => import('./panels/JapanPanel.vue'), () => import('./pages/JapanPage.vue'), 'Japansk') },
+  { path: '/om', name: 'om', ...lazy(() => import('./panels/AboutPanel.vue'), () => import('./pages/AboutPage.vue'), 'Om meg') },
+  { path: '/admin', name: 'admin', ...lazy(() => import('./panels/AdminPanel.vue'), () => import('./pages/AdminPage.vue'), 'Admin') },
+  { path: '/na', redirect: '/' }, // "Nå" now lives on the home page
   // the music player on its own (also what the "niben musikk" app opens)
   { path: '/musicplayer', redirect: () => { enterPlayer(); return '/lytte' } },
   { path: '/:pathMatch(.*)*', redirect: '/' },
@@ -57,6 +35,7 @@ router.beforeEach((to) => {
   if (shell.value === 'player' && to.name !== 'lytte' && to.name !== 'admin' && to.path !== '/musicplayer') return '/lytte'
 })
 router.afterEach((to) => {
+  rememberTab(to.name)
   document.title = shell.value === 'player' ? 'niben musikk' : to.name === 'hjem' ? 'niben' : `${to.meta.title} · niben`
 })
 

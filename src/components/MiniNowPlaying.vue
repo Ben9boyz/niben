@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { Play, Pause } from 'lucide-vue-next'
 import { spotify, progressMs, control } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
+import LockControl from './LockControl.vue'
 
 // Tiny "now playing" in the top-right corner while the side panel is slid away. Click it to bring
 // the panel back.
@@ -14,13 +15,15 @@ const toggle = () => control(now.value?.playing ? 'pause' : 'resume')
 
 <template>
   <transition name="fade">
-    <div v-if="now?.name" class="mini glass" :class="{ playing: now.playing }" role="button" tabindex="0" title="Åpne musikken" @click="emit('open')" @keydown.enter="emit('open')">
-      <img crossorigin="anonymous" v-if="now.image" :src="now.image" alt="" />
+    <div v-if="now?.name || admin.loggedIn" class="mini glass" :class="{ playing: now?.playing }" role="button" tabindex="0" title="Åpne musikken" @click="emit('open')" @keydown.enter="emit('open')">
+      <img crossorigin="anonymous" v-if="now?.image" :src="now.image" alt="" />
       <div class="txt">
-        <b>{{ now.name }}</b>
-        <span>{{ now.artist }}</span>
+        <b>{{ now?.name || 'Ingenting spilles' }}</b>
+        <span>{{ now?.artist }}</span>
       </div>
-      <button v-if="admin.loggedIn" class="pp" :aria-label="now.playing ? 'Pause' : 'Spill'" @click.stop="toggle">
+      <!-- the lock lives here (not on the iPod / the held record) -->
+      <span v-if="admin.loggedIn" class="lk" @click.stop><LockControl tiny /></span>
+      <button v-if="admin.loggedIn && now?.name" class="pp" :aria-label="now.playing ? 'Pause' : 'Spill'" @click.stop="toggle">
         <Pause v-if="now.playing" :size="12" fill="currentColor" />
         <Play v-else :size="12" fill="currentColor" />
       </button>
@@ -51,6 +54,7 @@ img { width: 36px; height: 36px; flex: none; border-radius: 7px; object-fit: cov
 .txt b { font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .txt span { font-size: 0.7rem; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mini.playing .txt b { color: var(--text); }
+.lk { flex: none; display: grid; }
 .pp { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border: 0; border-radius: 50%; background: #1db954; color: #fff; cursor: pointer; }
 .pp:hover { filter: brightness(1.08); }
 .prog { position: absolute; left: 0; bottom: 0; height: 2px; background: #1db954; transition: width 1s linear; }

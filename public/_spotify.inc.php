@@ -482,6 +482,14 @@ function sp_handle(string $action, bool $post): void {
         // play on a specific device, e.g. the browser player on niben.no
         $device = (string)(body()['device'] ?? '');
         if ($device !== '' && !preg_match('~^[A-Za-z0-9]{20,64}$~', $device)) fail('Ugyldig enhet.');
+        // an album is played in order from its start (or from the chosen song). A shuffle left on – e.g. from
+        // the iPod – would otherwise start it in the middle of the album and jump around
+        $isAlbum = $m[1] === 'album';
+        $shuffleOff = fn() => sp_api('PUT', '/me/player/shuffle?state=false' . ($device !== '' ? '&device_id=' . rawurlencode($device) : ''));
+        if ($isAlbum) {
+            if (!isset($payload['offset'])) $payload['offset'] = ['position' => 0];
+            $shuffleOff(); // best effort: there may be no active device yet
+        }
         [$s, $j] = sp_api('PUT', '/me/player/play' . ($device !== '' ? '?device_id=' . $device : ''), $payload);
         if ($s === 404 && $device !== '') {
             // a fresh browser player isn't always known to Spotify yet (especially when nothing else is
@@ -511,6 +519,7 @@ function sp_handle(string $action, bool $post): void {
         if ($s === 401) fail('Spotify-tilkoblingen har gått ut. Koble til på nytt.', 401);
         if ($s >= 300) fail('Spotify svarte med feil (' . $s . '): ' . ($j['error']['message'] ?? 'ukjent'), 502);
 
+        if ($isAlbum) $shuffleOff(); // again now that the device is certainly the active one
         $until = time() + sp_lock_seconds();
         kv_set('lock_until', (string)$until);
         kv_del('cache_now');

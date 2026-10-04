@@ -1,5 +1,4 @@
 <script setup>
-import LockControl from './LockControl.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Play, Pause, Lock, RotateCw, X, ChevronLeft, ChevronRight, ArrowUpFromLine } from 'lucide-vue-next'
 import { room } from '../composables/useRoom'
@@ -129,7 +128,6 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); clearTimeout(flipTimer); wind
       <RotateCw :size="17" /><span>{{ room.recordFlipped ? 'Forside' : 'Låter' }}</span>
     </button>
     <!-- lock length, tucked into the top-left corner (rarely changed) -->
-    <div v-if="admin.loggedIn" class="rlock" :style="{ left: `${rect.x + 12}px`, top: `${rect.y + 12}px` }"><LockControl tiny /></div>
     <button class="rclose glass" :style="{ left: `${rect.x + rect.w - 14}px`, top: `${rect.y + 14}px` }" title="Legg tilbake i hylla (Esc)" aria-label="Legg tilbake" @click="putBack">
       <X :size="16" />
     </button>
@@ -204,7 +202,6 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); clearTimeout(flipTimer); wind
 }
 .rcap b { font-size: 0.98rem; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .rcap span { font-size: 0.8rem; color: var(--text-2); }
-.rlock { position: fixed; z-index: 24; }
 .rcap em { font-style: normal; color: #1db954; font-weight: 600; }
 .rcap em.paused { color: var(--text-3); }
 .rback {

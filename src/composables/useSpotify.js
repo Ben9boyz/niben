@@ -226,7 +226,10 @@ export async function control(op, ms = 0) {
 }
 
 /** Starts an album/playlist (optionally at a given track). Locked for the admin-set lock length afterwards. */
+let starting = false // one start at a time: a double click / tap must not send two plays
 export async function play(uri, track = null) {
+  if (starting) return { ok: false, error: 'Starter allerede …' }
+  starting = true
   // must run inside the click, before any await, or the browser keeps the player muted
   if (playDevice.id) playDevice.activate?.()
   try {
@@ -251,6 +254,8 @@ export async function play(uri, track = null) {
   } catch (e) {
     await refreshNow()
     return { ok: false, error: e.message }
+  } finally {
+    starting = false
   }
 }
 

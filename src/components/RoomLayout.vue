@@ -9,11 +9,13 @@ import IpodScreen from './IpodScreen.vue'
 import RecordOverlay from './RecordOverlay.vue'
 import MiniNowPlaying from './MiniNowPlaying.vue'
 import MusicDrawer from './MusicDrawer.vue'
+import SubTabs from './SubTabs.vue'
 import BrandLogo from './BrandLogo.vue'
 import { useData } from '../composables/useData'
 import { room } from '../composables/useRoom'
 import { spotify } from '../composables/useSpotify'
 import { shell } from '../composables/useShell'
+import { admin } from '../composables/useAdmin'
 
 const data = useData()
 const route = useRoute()
@@ -50,7 +52,7 @@ const hidden = computed(() => canHide.value && room.panelHidden)
 // panel away + music on: the little "now playing" box (top-right) is the way back, so no "Vis panel"
 // little "now playing" top-right while music plays – everywhere in the room (not in the listening
 // corner while its panel shows the full card, and not in the player app, which has its own bar)
-const showMini = computed(() => !!spotify.now?.name && shell.value !== 'player' && !mobile.value && (hidden.value || route.name !== 'lytte'))
+const showMini = computed(() => (!!spotify.now?.name || (admin.loggedIn && isMusic.value)) && shell.value !== 'player' && !mobile.value && (hidden.value || route.name !== 'lytte'))
 // a side panel on the right moves down below it
 const belowMini = computed(() => showMini.value && !hidden.value && !isFocus.value && !isHome.value)
 // the mini player opens the music panel on its own, on top of wherever you are (in the listening
@@ -141,6 +143,7 @@ watch(() => route.name, () => (collapsed.value = false))
     <button v-if="mobile && !isHome && !isFocus" class="grabber" @click="collapsed = !collapsed" :aria-label="collapsed ? 'Vis panel' : 'Skjul panel'">
       <span></span>
     </button>
+    <SubTabs v-if="!isHome" class="dock-tabs" />
     <router-view v-slot="{ Component, route: r }">
       <transition name="panel" mode="out-in" type="transition">
         <component :is="Component" :key="r.path" />
@@ -179,6 +182,8 @@ watch(() => route.name, () => (collapsed.value = false))
   pointer-events: none;
 }
 .dock > :deep(*) { pointer-events: auto; }
+.dock-tabs { align-self: flex-end; margin-bottom: 10px; flex: none; }
+.dock.focus .dock-tabs { align-self: center; }
 .dock { transition: width 0.55s var(--spring); }
 .dock.expanded { width: clamp(410px, 50vw, 780px); }
 .dock.hidden { transform: translateX(calc(100% + 40px)); opacity: 0; pointer-events: none; transition: transform 0.5s var(--spring), opacity 0.3s, width 0.55s var(--spring); }

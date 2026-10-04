@@ -1,5 +1,6 @@
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { GROUPS, groupOf, groupTarget } from '../lib/nav'
 import { useRoute, useRouter } from 'vue-router'
 import { useTheme } from '../composables/useTheme'
 import { mode, toggleMode } from '../composables/useMode'
@@ -20,19 +21,10 @@ function pressStart(e) {
 function pressEnd() { clearTimeout(pressTimer) }
 const { theme, toggle } = useTheme()
 
-const links = [
-  { to: '/', name: 'hjem', label: 'Hjem', icon: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z' },
-  { to: '/na', name: 'na', label: 'Nå', icon: 'M12 3v9l5.5 3M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z' },
-  { to: '/gitar', name: 'gitar', label: 'Gitar', icon: 'M19.6 2.6l1.8 1.8-2.1 2.1.6.6-1.4 1.4-.6-.6-3.3 3.3a4 4 0 0 1-1 5.2 4.6 4.6 0 0 1-3 4.4 5 5 0 0 1-6.5-6.5 4.6 4.6 0 0 1 4.4-3 4 4 0 0 1 5.2-1l3.3-3.3-.6-.6 1.4-1.4.6.6zM8.5 13a2 2 0 1 0 2.5 2.5' },
-  { to: '/lytte', name: 'lytte', label: 'Musikk', icon: 'M9 18V5l12-2v13M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6z' },
-  { to: '/ovelse', name: 'ovelse', label: 'Øving', icon: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm0-12v4l2.5 2.5M10 2h4M12 2v3' },
-  { to: '/boker', name: 'boker', label: 'Bøker', icon: 'M4 4.5A1.5 1.5 0 0 1 5.5 3H11v17H5.5A1.5 1.5 0 0 1 4 18.5zM13 3h5.5A1.5 1.5 0 0 1 20 4.5v14a1.5 1.5 0 0 1-1.5 1.5H13z' },
-  { to: '/reiser', name: 'reiser', label: 'Reiser', icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 0c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9m0-18C9.5 5.5 8.5 8.5 8.5 12s1 6.5 3.5 9M3.5 9h17M3.5 15h17' },
-  { to: '/kode', name: 'kode', label: 'Kode', icon: 'M8 7 3 12l5 5M16 7l5 5-5 5M14 4l-4 16' },
-  { to: '/gaming', name: 'gaming', label: 'Gaming', icon: 'M6 11h4M8 9v4M15 12h.01M18 10h.01M17.3 5H6.7a4 4 0 0 0-4 3.6l-.9 7.2A3 3 0 0 0 4.8 19a3 3 0 0 0 2.6-1.5L8 16h8l.6 1.5a3 3 0 0 0 2.6 1.5 3 3 0 0 0 3-3.2l-.9-7.2a4 4 0 0 0-4-3.6z' },
-  { to: '/japansk', name: 'japansk', label: 'Japansk', icon: 'M3 5.5c3.5 1.2 14.5 1.2 18 0M5 9.5h14M7.5 6.5V21M16.5 6.5V21M12 6.8v2.7' },
-  { to: '/om', name: 'om', label: 'Om meg', icon: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9a8 8 0 0 1 16 0' },
-]
+// the menu shows the main tabs; the sub-tabs are pills inside the page (SubTabs). A tab opens the
+// sub-tab you were last on.
+const links = computed(() => GROUPS.map((g) => ({ name: g.id, label: g.label, icon: g.icon, to: groupTarget(g) })))
+const activeGroup = computed(() => groupOf(route.name)?.id)
 
 const track = ref(null)
 const itemEls = ref([])
@@ -42,7 +34,7 @@ const stretching = ref(false)
 const scrolled = ref(false)
 
 function place() {
-  const idx = links.findIndex((l) => l.name === route.name)
+  const idx = links.value.findIndex((l) => l.name === activeGroup.value)
   const el = itemEls.value[idx]
   if (!el || !track.value) return
   const prev = drop.value.x + drop.value.y
@@ -55,7 +47,7 @@ function place() {
   }
 }
 
-watch(() => route.name, () => nextTick(place))
+watch(activeGroup, () => nextTick(place))
 function onScroll() { scrolled.value = window.scrollY > 12 }
 onMounted(() => {
   nextTick(place)
@@ -97,7 +89,7 @@ onBeforeUnmount(() => {
         :key="l.name"
         :to="l.to"
         class="item"
-        :class="{ active: route.name === l.name }"
+        :class="{ active: activeGroup === l.name }"
         :ref="(el) => (itemEls[i] = el?.$el ?? el)"
       >
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path :d="l.icon" /></svg>
