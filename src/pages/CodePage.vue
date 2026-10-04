@@ -12,7 +12,7 @@ const data = useData()
     </header>
     <div class="grid projects">
       <article v-for="(p, i) in data.prosjekter" :key="i" class="glass card proj rise" :style="{ '--i': i }">
-        <div class="top"><span class="num">{{ String(i + 1).padStart(2, '0') }}</span><span class="muted">{{ p.aar }}</span></div>
+        <div class="top"><span class="num">{{ String(i + 1).padStart(2, '0') }}</span><span class="muted">{{ p.aar }}<template v-if="p.stjerner"> · ★ {{ p.stjerner }}</template><template v-if="p.github"> · GitHub</template></span></div>
         <h2>{{ p.navn }}</h2>
         <p class="body">{{ p.beskrivelse }}</p>
         <div class="tags"><span v-for="t in p.teknologi" :key="t" class="chip">{{ t }}</span></div>

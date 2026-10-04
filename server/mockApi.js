@@ -195,6 +195,12 @@ export function mockApi() {
             })
           case 'spotify_now':
             return send(res, 200, { configured: true, connected: true, now: sp.now, lock_until: sp.lock, lock_seconds: sp.lockSeconds, server_time: Math.floor(Date.now() / 1000) })
+          case 'github_repos':
+            return send(res, 200, { repos: [
+              { name: 'niben', description: 'Min personlige nettside – et 3D-rom med Vue og Three.js.', language: 'Vue', topics: ['threejs', 'vite'], stars: 3, url: 'https://github.com/Ben9boyz/niben', homepage: 'https://niben.no', created: '2026', pushed: '2026-10-04T12:00:00Z' },
+              { name: 'dotfiles', description: 'Oppsett for terminal og editor.', language: 'Shell', topics: [], stars: 0, url: 'https://github.com/Ben9boyz/dotfiles', homepage: null, created: '2024', pushed: '2026-05-01T12:00:00Z' },
+              { name: 'chord-trainer', description: null, language: 'JavaScript', topics: ['guitar'], stars: 7, url: 'https://github.com/Ben9boyz/chord-trainer', homepage: null, created: '2025', pushed: '2026-02-01T12:00:00Z' },
+            ] })
           case 'spotify_search': {
             if (!loggedIn) return send(res, 401, { error: 'Logg inn for å søke i hele Spotify.' })
             const q = String(url.searchParams.get('q') || '').trim()

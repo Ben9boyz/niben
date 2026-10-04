@@ -31,7 +31,7 @@ const p = computed(() => list.value[room.sel.prosjekt])
 
       <transition name="fade" mode="out-in">
         <div v-if="p" :key="room.sel.prosjekt" class="detail card">
-          <div class="muted">{{ p.aar }}</div>
+          <div class="muted">{{ p.aar }}<template v-if="p.stjerner"> · ★ {{ p.stjerner }}</template><template v-if="p.github"> · GitHub</template></div>
           <h3>{{ p.navn }}</h3>
           <p class="body">{{ p.beskrivelse }}</p>
           <div class="tags"><span v-for="t in p.teknologi" :key="t" class="chip">{{ t }}</span></div>

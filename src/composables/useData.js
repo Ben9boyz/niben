@@ -54,6 +54,28 @@ function mapRecording(r) {
   return { id: r.id, tittel: r.title, dato: r.recorded_on, youtube: r.youtube, lyd: r.audio_path, notat: r.notes }
 }
 
+/** GitHub repos → the project shape. A repo that is already listed by hand only adds its code link. */
+function mergeRepos(projects, repos) {
+  const list = projects.map((p) => ({ ...p }))
+  const norm = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const extra = []
+  for (const r of repos) {
+    const mine = list.find((p) => norm(p.navn) === norm(r.name) || norm(p.navn) === norm(`${r.name}no`) || (r.homepage && p.lenke === r.homepage))
+    if (mine) { mine.kode ||= r.url; mine.stjerner ??= r.stars; continue }
+    extra.push({
+      navn: r.name,
+      aar: r.created ? +r.created : null,
+      beskrivelse: r.description || '',
+      teknologi: [r.language, ...r.topics].filter(Boolean),
+      lenke: r.homepage || null,
+      kode: r.url,
+      stjerner: r.stars,
+      github: true,
+    })
+  }
+  return [...list, ...extra]
+}
+
 async function load() {
   try {
     const r = await fetch('data.json', { cache: 'no-cache' })
@@ -90,6 +112,16 @@ async function load() {
   Object.assign(state, merged)
   state.loaded = true
   state.version++
+
+  // the GitHub repos arrive after the page is up – the server keeps them for an hour, but never hold the site back
+  fetch('api.php?action=github_repos')
+    .then((r) => (r.ok ? r.json() : null))
+    .then((g) => {
+      if (!g?.repos?.length) return
+      state.prosjekter = mergeRepos(merged.prosjekter || [], g.repos)
+      state.version++
+    })
+    .catch(() => {})
 }
 
 let promise = null
