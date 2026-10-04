@@ -57,11 +57,18 @@ export async function checkLogin() {
 export async function login(password) {
   await api('login', { password })
   admin.loggedIn = true
+  refreshSongs()
 }
 
 export async function logout() {
   try { await api('logout', {}) } catch {}
   admin.loggedIn = false
+  refreshSongs()
+}
+
+// chord sheets are only sent to a logged-in admin, so reload the data when that changes
+function refreshSongs() {
+  import('./useData').then((m) => m.reloadData()).catch(() => {})
 }
 
 /**

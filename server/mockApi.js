@@ -4,7 +4,7 @@ import { Readable } from 'node:stream'
 import { seed } from './mockSeed.js'
 
 export function mockApi() {
-  const db = { trips: [], photos: [], books: [], recordings: [], songs: [{ id: 1, title: 'Wonderwall', artist: 'Oasis', chords: 'Em7 G Dsus4 A7sus4', bpm: 87, beats: 4, capo: 2, ug_url: null, notes: 'Strumming: D DU UDU' }], seq: 1 }
+  const db = { trips: [], photos: [], books: [], recordings: [], songs: [{ id: 1, title: 'Wonderwall', artist: 'Oasis', chords: 'Em7 G Dsus4 A7sus4', bpm: 87, beats: 4, capo: 2, ug_url: null, notes: 'Strumming: D DU UDU', sheet: '[Vers]\nEm7  G  Dsus4  A7sus4\nToday is gonna be the day\n\n[Refreng]\nC  D  Em\nAnd after all' }], seq: 1 }
   const files = new Map() // path -> { type, buf }
   seed(db, files)
   let loggedIn = false
@@ -93,7 +93,7 @@ export function mockApi() {
             })
           case 'song_save': {
             if (!needAdmin()) return
-            const row = { id: b.id || Date.now(), title: b.title, artist: b.artist || null, chords: b.chords, bpm: b.bpm || null, beats: b.beats || null, capo: b.capo || null, ug_url: b.ug_url || null, notes: b.notes || null }
+            const row = { id: b.id || Date.now(), title: b.title, artist: b.artist || null, chords: b.chords, bpm: b.bpm || null, beats: b.beats || null, capo: b.capo || null, ug_url: b.ug_url || null, notes: b.notes || null, sheet: b.sheet || null }
             db.songs = db.songs.filter((x) => x.id !== row.id).concat(row)
             return send(res, 200, { ok: true, id: row.id })
           }

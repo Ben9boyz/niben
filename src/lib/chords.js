@@ -57,3 +57,51 @@ export const GROUPS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'].map((root) => ({
 
 /** Handy pairs for one-minute changes (classic beginner switches first). */
 export const PAIRS = [['G', 'C'], ['C', 'D'], ['G', 'D'], ['Em', 'C'], ['A', 'D'], ['E', 'A'], ['Am', 'C'], ['D', 'Em'], ['G', 'Em'], ['F', 'C'], ['Am', 'F'], ['Bm', 'G']]
+
+// ── chord sheets: recognising and transposing chord names in free text ──
+const SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+const FLAT = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
+const CHORD_RE = /^([A-G][#b]?)((?:m|min|maj|dim|aug|sus|add|M)?\d{0,2}(?:sus[24]|add\d+|[+°ø]|\(\w+\))*)(?:\/([A-G][#b]?))?$/
+
+export const isChord = (t) => CHORD_RE.test(t)
+
+function shiftNote(n, by, preferFlat) {
+  const i = SHARP.indexOf(n) >= 0 ? SHARP.indexOf(n) : FLAT.indexOf(n)
+  if (i < 0) return n
+  return (preferFlat ? FLAT : SHARP)[(((i + by) % 12) + 12) % 12]
+}
+
+/** "Am7/G" up 2 half steps → "Bm7/A" (flats if the original used them or going down in flat keys) */
+export function transposeChord(chord, by) {
+  const m = CHORD_RE.exec(chord)
+  if (!m || !by) return chord
+  const flat = m[1].includes('b') || (m[3] || '').includes('b')
+  return shiftNote(m[1], by, flat) + m[2] + (m[3] ? '/' + shiftNote(m[3], by, flat) : '')
+}
+
+/** Splits a sheet into sections ("[Vers]" lines start a new one) and each line into chord / text tokens. */
+export function parseSheet(text, by = 0) {
+  const sections = []
+  let cur = { name: '', lines: [] }
+  for (const raw of (text || '').replace(/\r/g, '').split('\n')) {
+    const h = /^\s*\[([^\]]+)\]\s*$/.exec(raw)
+    if (h) {
+      if (cur.name || cur.lines.length) sections.push(cur)
+      cur = { name: h[1], lines: [] }
+      continue
+    }
+    const parts = raw.split(/(\s+)/).filter((t) => t !== '')
+    // only a line made entirely of chords is a chord line – so a lyric word like "A" is never mistaken for one
+    const words = parts.filter((t) => !/^\s+$/.test(t))
+    const chordLine = words.length > 0 && words.every(isChord)
+    const tokens = parts.map((t) => (chordLine && !/^\s+$/.test(t) ? { t: transposeChord(t, by), chord: true } : { t }))
+    cur.lines.push(tokens)
+  }
+  if (cur.name || cur.lines.length) sections.push(cur)
+  // drop blank lines at the edges of a section
+  for (const s of sections) {
+    while (s.lines.length && !s.lines[0].length) s.lines.shift()
+    while (s.lines.length && !s.lines[s.lines.length - 1].length) s.lines.pop()
+  }
+  return sections
+}

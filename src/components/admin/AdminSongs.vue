@@ -16,8 +16,8 @@ const busy = ref(false)
 function edit(s) {
   msg.value = null
   editing.value = reactive(s
-    ? { id: s.id, title: s.tittel, artist: s.artist || '', chords: s.akkorder, bpm: s.bpm || '', beats: s.slag || 4, capo: s.capo || 0, ug_url: s.ug || '', notes: s.notat || '' }
-    : { id: null, title: '', artist: '', chords: '', bpm: 80, beats: 4, capo: 0, ug_url: '', notes: '' })
+    ? { id: s.id, title: s.tittel, artist: s.artist || '', chords: s.akkorder, bpm: s.bpm || '', beats: s.slag || 4, capo: s.capo || 0, ug_url: s.ug || '', notes: s.notat || '', sheet: s.ark || '' }
+    : { id: null, title: '', artist: '', chords: '', bpm: 80, beats: 4, capo: 0, ug_url: '', notes: '', sheet: '' })
 }
 const chordList = computed(() => [...new Set(parseProgression(editing.value?.chords))])
 const ugSearch = computed(() => {
@@ -89,6 +89,11 @@ async function remove() {
         <span>Lenke til Ultimate Guitar</span>
         <input v-model="editing.ug_url" type="url" placeholder="https://tabs.ultimate-guitar.com/tab/…" />
         <small><a :href="ugSearch" target="_blank" rel="noopener">Søk etter sangen på Ultimate Guitar <ArrowUpRight :size="12" /></a> – kopier lenken til akkordene du bruker.</small>
+      </label>
+      <label class="field">
+        <span>Akkordark <small>for deg selv – vises bare når du er innlogget</small></span>
+        <textarea v-model="editing.sheet" placeholder="[Vers]&#10;Am  F  C  G&#10;(tekst under, hvis du vil)&#10;&#10;[Refreng]&#10;F  C  G  Am" style="min-height: 180px; font-family: ui-monospace, Menlo, monospace"></textarea>
+        <small>Ei linje med bare akkorder blir uthevet og kan transponeres. «[Vers]» på egen linje starter en ny del.</small>
       </label>
       <label class="field"><span>Notat</span><textarea v-model="editing.notes" placeholder="Slagmønster, hva du øver på …" style="min-height: 70px"></textarea></label>
       <p v-if="msg?.error" class="notice error">{{ msg.error }}</p>

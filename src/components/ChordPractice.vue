@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { Play, Square, ArrowUpRight, Search, Trophy, ArrowLeftRight } from 'lucide-vue-next'
+import { Play, Square, ArrowUpRight, Search, Trophy, ArrowLeftRight, BookOpen } from 'lucide-vue-next'
 import ChordDiagram from './ChordDiagram.vue'
+import ChordSheet from './ChordSheet.vue'
 import { CHORDS, GROUPS, PAIRS, parseProgression, findChord } from '../lib/chords'
 import { useData } from '../composables/useData'
 import { room } from '../composables/useRoom'
@@ -12,6 +13,8 @@ const data = useData()
 const mode = computed({ get: () => room.chordMode, set: (v) => (room.chordMode = v) })
 const songs = computed(() => data.sanger || [])
 const names = Object.keys(CHORDS)
+const sheetId = ref(null) // the song whose chord sheet is open
+const sheetSong = computed(() => songs.value.find((x) => x.id === sheetId.value) || null)
 
 // ── sound: a short click from Web Audio (accent on beat 1) ──
 let ctx = null
@@ -174,6 +177,9 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); clearInter
     </section>
 
     <!-- my songs -->
+    <section v-else-if="mode === 'sanger' && sheetSong" class="pane">
+      <ChordSheet :song="sheetSong" @back="sheetId = null" />
+    </section>
     <section v-else-if="mode === 'sanger'" class="pane">
       <div v-if="!songs.length" class="empty">Ingen sanger ennå – legg dem til under «Sanger» på admin-siden.</div>
       <article v-for="s in songs" :key="s.id" class="song">
@@ -184,6 +190,7 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); clearInter
           <p v-if="s.notat" class="note">{{ s.notat }}</p>
         </div>
         <div class="sa">
+          <button v-if="s.ark" class="btn small" @click="sheetId = s.id"><BookOpen :size="14" />Ark</button>
           <button class="btn primary small" @click="practiseSong(s)"><Play :size="14" fill="currentColor" />Øv</button>
           <a class="btn small" :href="ugLink(s)" target="_blank" rel="noopener">Ultimate Guitar <ArrowUpRight :size="14" /></a>
         </div>
