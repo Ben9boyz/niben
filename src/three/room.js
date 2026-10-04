@@ -481,6 +481,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
       else if (hoverInfo.kind === 'book') { shelf.setHover(hoverInfo.index); label = currentData.boker?.[hoverInfo.index]?.tittel }
       else if (hoverInfo.kind === 'album') { label = music.albums[hoverInfo.index]?.name; listening.setHover(music.albums[hoverInfo.index]?.uri) }
       else if (hoverInfo.kind === 'ipod') label = 'Spillelister'
+      else if (hoverInfo.kind === 'shelf' && lyttePose !== 'shelf') label = 'Bla i platehylla'
       else if (hoverInfo.station === 'reiser' && hoverInfo.country) { globeTable.setHover(hoverInfo.country); label = norskNavn(hoverInfo.country) }
     }
     renderer.domElement.style.cursor = hoverInfo ? 'pointer' : 'default'
@@ -517,6 +518,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     else if (info.station === 'ovelse') onPick?.({ station, kind: 'clock' })
     else if (info.kind === 'album') onPick?.({ station, kind: 'album', uri: music.albums[info.index]?.uri })
     else if (info.kind === 'ipod') onPick?.({ station, kind: 'ipod' })
+    else if (info.kind === 'shelf') onPick?.({ station, kind: 'shelf' })
     else onPick?.({ station, kind: 'object' })
   }
   function onLeave() {

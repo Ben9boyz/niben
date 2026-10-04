@@ -39,6 +39,9 @@ function onPick(p) {
     const i = spotify.albums.findIndex((a) => a.uri === p.uri)
     if (room.sel.musikk || i === room.peekIndex) take()
     else if (i >= 0) room.peekIndex = i
+  } else if (p.kind === 'shelf') {
+    // the sideboard itself: go down to the shelf and browse
+    if (!room.shelfView) { room.musicView = 'vinyl'; room.sel.musikk = null; room.shelfView = true }
   } else if (p.kind === 'ipod') room.musicView = 'ipod'
   else if (p.kind === 'screen') {
     const n = data.prosjekter?.length || 0

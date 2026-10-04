@@ -200,6 +200,7 @@ export function buildListeningCorner() {
   }
 
   // ── Open sideboard = record shelf ──
+  const sideboardStart = group.children.length
   add(new THREE.BoxGeometry(BOARD_W + 0.04, 0.03, 0.45), wood, 0, TOP_Y - 0.015, 0.225) // top
   add(new THREE.BoxGeometry(BOARD_W, 0.025, 0.42), white, 0, BOTTOM_Y - 0.0125, 0.24) // bottom
   add(new THREE.BoxGeometry(BOARD_W, TOP_Y - 0.08, 0.01), inner, 0, (TOP_Y + 0.08) / 2 - 0.015, 0.035) // back
@@ -207,6 +208,8 @@ export function buildListeningCorner() {
     add(new THREE.BoxGeometry(0.015, TOP_Y - 0.08, 0.42), white, x, (TOP_Y + 0.08) / 2 - 0.015, 0.24))
   ;[-0.7, 0.7].forEach((x) => [0.08, 0.42].forEach((z) => add(new THREE.CylinderGeometry(0.015, 0.012, 0.08, 10), wood, x, 0.04, z)))
 
+  // the whole sideboard is clickable ("go to the shelf"), not just the records in it
+  for (const m of group.children.slice(sideboardStart)) m.userData.kind = 'shelf'
   // ── Turntable ──
   const tt = new THREE.Group()
   tt.position.set(-0.42, TOP_Y, 0.24)
@@ -438,6 +441,7 @@ export function buildListeningCorner() {
     })
     colAttr.needsUpdate = true
     shelfMesh.count = records.length
+    shelfMesh.computeBoundingSphere() // clicks/hover test against it – fit it to the records now on the shelf
     atlasTex.needsUpdate = true
   }
 
