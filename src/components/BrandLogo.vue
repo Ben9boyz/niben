@@ -11,7 +11,7 @@ const uid = `nl${Math.random().toString(36).slice(2, 8)}`
 <template>
   <svg
     class="brand-logo"
-    :viewBox="mark ? '0 0 128 140' : '0 0 392 140'"
+    :viewBox="mark ? '0 0 128 140' : '0 0 381 140'"
     role="img"
     aria-label="niben"
     xmlns="http://www.w3.org/2000/svg"
@@ -57,6 +57,8 @@ const uid = `nl${Math.random().toString(36).slice(2, 8)}`
     <path fill="none" stroke="var(--logo-glass-hi)" stroke-width="2" stroke-linecap="round" opacity="0.55" d="M38.5 38 L55 38 M92.5 38 L106 38" />
 
     <template v-if="!mark">
+    <!-- everything after the N, pulled in closer to it -->
+    <g transform="translate(-11 0)">
       <!-- i: a plain i with the star as its dot -->
       <rect x="140" y="80" width="13" height="44" rx="6.5" :fill="`url(#${uid}-cover)`" stroke="var(--logo-line)" stroke-width="3" />
       <path fill="var(--logo-star)" stroke="var(--logo-line)" stroke-width="2.6" stroke-linejoin="round" d="M146.5 51 Q148.4 61.6 159 63.5 Q148.4 65.4 146.5 76 Q144.6 65.4 134 63.5 Q144.6 61.6 146.5 51 Z" />
@@ -111,6 +113,7 @@ const uid = `nl${Math.random().toString(36).slice(2, 8)}`
       <path fill="none" :stroke="`url(#${uid}-cable)`" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" d="M390 107 C392 114 397 115 400 107 C404 94 408 84 416 84 C424 84 427 94 430 104 C432 112 436 115 442 111" />
       <path fill="none" stroke="var(--logo-cable-hi)" stroke-width="2.5" stroke-linecap="round" opacity="0.7" d="M401 102 C405 92 409 86 415 86 C420 86 423 90 425 96" />
       </g>
+    </g>
     </template>
   </svg>
 </template>

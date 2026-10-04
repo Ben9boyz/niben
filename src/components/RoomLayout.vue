@@ -8,6 +8,7 @@ import MusicSwitch from './MusicSwitch.vue'
 import IpodScreen from './IpodScreen.vue'
 import RecordOverlay from './RecordOverlay.vue'
 import MiniNowPlaying from './MiniNowPlaying.vue'
+import BrandLogo from './BrandLogo.vue'
 import { useData } from '../composables/useData'
 import { room } from '../composables/useRoom'
 import { spotify } from '../composables/useSpotify'
@@ -113,7 +114,7 @@ watch(() => route.name, () => (collapsed.value = false))
 
   <transition name="loader">
     <div v-if="!room.ready || !data.loaded" class="loader">
-      <div class="loader-mark">n</div>
+      <BrandLogo mark class="loader-mark" />
       <div class="loader-bar"><span></span></div>
     </div>
   </transition>
@@ -290,15 +291,8 @@ watch(() => route.name, () => (collapsed.value = false))
   background: var(--bg);
 }
 .loader-mark {
-  width: 72px;
-  height: 72px;
-  border-radius: 24px;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  font: 800 40px var(--font-display);
-  background: linear-gradient(135deg, var(--accent-2), var(--accent));
-  box-shadow: 0 12px 40px var(--accent-glow);
+  height: 84px;
+  filter: drop-shadow(0 12px 28px var(--accent-glow));
   animation: breathe 1.6s ease-in-out infinite;
 }
 @keyframes breathe { 50% { transform: scale(1.08) rotate(-4deg); } }

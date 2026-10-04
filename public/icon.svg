@@ -1,15 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- niben app icon: the book-N from the logo (BrandLogo.vue, mark) on a light tile -->
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#8fdcff"/>
-      <stop offset="1" stop-color="#2b8cff"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f5faff"/>
+      <stop offset="1" stop-color="#d4e8ff"/>
     </linearGradient>
-    <radialGradient id="s" cx="0.3" cy="0.2" r="0.8">
-      <stop offset="0" stop-color="#fff" stop-opacity="0.45"/>
-      <stop offset="0.6" stop-color="#fff" stop-opacity="0"/>
-    </radialGradient>
+    <linearGradient id="cover" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5cb0ff"/>
+      <stop offset="1" stop-color="#1f6fe0"/>
+    </linearGradient>
+    <path id="n" d="M14 112 L36 34 L58 34 L76 84 L90 34 L110 34 L88 112 L66 112 L48 62 L34 112 Z"/>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#g)"/>
-  <rect width="512" height="512" rx="112" fill="url(#s)"/>
-  <path d="M168 372V196c0-8 6-14 14-14h18c8 0 13 5 14 12l2 14c18-20 40-30 67-30 50 0 79 32 79 88v106c0 8-6 14-14 14h-30c-8 0-14-6-14-14V276c0-32-14-48-42-48-29 0-48 19-48 52v92c0 8-6 14-14 14h-30c-8 0-14-6-14-14z" fill="#fff"/>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <g transform="translate(44 -6) scale(3.2)" stroke-linejoin="round">
+    <use href="#n" transform="translate(10 9)" fill="#243b63" stroke="#1f6fe0" stroke-width="3"/>
+    <path d="M74 110 L84 110 L84 132 L79 127 L74 132 Z" fill="#e5533d" stroke="#1f6fe0" stroke-width="2.2"/>
+    <use href="#n" transform="translate(6 5.5)" fill="#fffaf0" stroke="#1f6fe0" stroke-width="2.2"/>
+    <g fill="none" stroke="#c9b99a" stroke-width="1.3">
+      <use href="#n" transform="translate(2.5 2.2)"/>
+      <use href="#n" transform="translate(4.5 4)"/>
+      <use href="#n" transform="translate(7.5 6.8)"/>
+    </g>
+    <use href="#n" fill="url(#cover)" stroke="#1f6fe0" stroke-width="3"/>
+    <path d="M38.5 38 L55 38 M92.5 38 L106 38" fill="none" stroke="#f4f9ff" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+  </g>
 </svg>
