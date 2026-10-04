@@ -480,6 +480,7 @@ export function buildListeningCorner() {
   let playingUri = null
   let playing = false
   let holdIpod = false
+  let flipSel = false // the held-up record shows its back (the track list)
   let ipodBig = false // panel hidden: hold it bigger
   let nowKey = ''
   let screenNow = null
@@ -582,10 +583,11 @@ export function buildListeningCorner() {
       const isPlaying = uri === playingUri && !sel && !l.returning
       let scale = 1
       if (sel) {
-        // hold still in front of the camera, cover (local +x) facing it
+        // hold still in front of the camera, cover (local +x) facing it – or flipped over to its back
         tmpV.copy(camera.position).addScaledVector(camFwd, 0.95).addScaledVector(camUp, -0.03)
         targetPos.copy(group.worldToLocal(tmpV))
-        ax.copy(camFwd).negate()
+        ax.copy(camFwd)
+        if (!flipSel) ax.negate()
         ay.copy(camUp)
         az.crossVectors(ax, ay)
         basis.makeBasis(ax, ay, az)
@@ -682,6 +684,7 @@ export function buildListeningCorner() {
     setHover(uri) { hoverUri = uri },
     setSelected(uri) { selectedUri = uri },
     setHoldIpod(v, big = false) { holdIpod = v; ipodBig = big },
+    setFlip(v) { flipSel = v },
     isSpinning: () => playing,
     isHoldingIpod: () => holdIpod,
     ipodScreenRect,

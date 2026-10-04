@@ -40,6 +40,8 @@ const STATIONS = {
 // sleeve beside it in focus, the record shelf still visible underneath
 const LYTTE_TOP = { pos: [2.55, 1.55, -0.2], target: [3.72, 0.5, -0.12] }
 // a playlist playing: looking at the iPod back on its stand on the coffee table (its screen shows the song)
+// in front of the record shelf (under the turntable), to browse the spines
+const LYTTE_SHELF = { pos: [2.12, 0.8, 0.1], target: [3.6, 0.3, 0.1] }
 const LYTTE_IPOD = { pos: [2.06, 0.9, 1.74], target: [2.65, 0.56, 2.02] }
 
 export const STATION_LABELS = { japansk: 'Japansk', lytte: 'Lytteplassen', ovelse: 'Øvingstimer', gitar: 'Gitarer', boker: 'Bokhylla', kode: 'Prosjekter', reiser: 'Reiser', om: 'Om meg' }
@@ -384,11 +386,11 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   const camPos = new THREE.Vector3().copy(camera.position)
   const camTarget = lookAt.clone()
 
-  let lyttePose = null // null (sofa view) | 'top' (turntable) | 'ipod' (iPod on its stand)
+  let lyttePose = null // null (sofa view) | 'top' (turntable) | 'shelf' (record shelf) | 'ipod' (iPod on its stand)
   function goTo(name, { instant = false, duration } = {}) {
     invalidate(0.5)
     station = STATIONS[name] ? name : 'hjem'
-    const s = station === 'lytte' && lyttePose ? (lyttePose === 'ipod' ? LYTTE_IPOD : LYTTE_TOP) : STATIONS[station]
+    const s = station === 'lytte' && lyttePose ? { ipod: LYTTE_IPOD, shelf: LYTTE_SHELF, top: LYTTE_TOP }[lyttePose] : STATIONS[station]
     const to = { pos: new THREE.Vector3(...s.pos), target: new THREE.Vector3(...s.target) }
     if (instant || reduced) {
       camPos.copy(to.pos)
@@ -783,9 +785,10 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     setInsets,
     strum(i) { if (guitars[i]) { guitars[i].strum = 1; invalidate(1) } },
     setTimerInterval(v) { timerInterval = v },
-    setMusicView({ selected = null, ipod = false, big = false, pose = null } = {}) {
+    setMusicView({ selected = null, ipod = false, big = false, pose = null, flip = false } = {}) {
       invalidate(1)
       listening.setSelected(selected)
+      listening.setFlip(flip)
       listening.setHoldIpod(ipod, big)
       // where the camera looks in the listening corner
       if (pose !== lyttePose) {

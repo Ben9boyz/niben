@@ -1,6 +1,8 @@
 <script setup>
 import { computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { timer, timerState, formatTime, toggle, reset, setIntervalSeconds, setSound } from '../composables/useTimer'
+import { room } from '../composables/useRoom'
+import ChordPractice from '../components/ChordPractice.vue'
 
 // re-evaluates every frame while the timer runs (timer.now ticks)
 const st = computed(() => { void timer.now; void timer.running; void timer.pausedMs; void timer.interval; return timerState() })
@@ -12,7 +14,7 @@ const C = 2 * Math.PI * R
 const dash = computed(() => C * (1 - (st.value.go ? 1 : st.value.progress)))
 
 function onKey(e) {
-  if (e.target.tagName === 'INPUT') return
+  if (e.target.tagName === 'INPUT' || room.practiceTab !== 'timer') return
   if (e.code === 'Space') { e.preventDefault(); toggle() }
   else if (e.key === 'r' || e.key === 'R') reset()
 }
@@ -40,7 +42,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="focus glass" :class="{ go: st.go, running: st.running }">
+  <section class="focus glass" :class="{ go: st.go && room.practiceTab === 'timer', running: st.running, chords: room.practiceTab === 'akkorder' }">
+    <nav class="ptabs" role="tablist" aria-label="Øving">
+      <button role="tab" :aria-selected="room.practiceTab === 'timer'" :class="{ on: room.practiceTab === 'timer' }" @click="room.practiceTab = 'timer'">Timer</button>
+      <button role="tab" :aria-selected="room.practiceTab === 'akkorder'" :class="{ on: room.practiceTab === 'akkorder' }" @click="room.practiceTab = 'akkorder'">Akkorder</button>
+    </nav>
+
+    <ChordPractice v-if="room.practiceTab === 'akkorder'" class="chordpane" />
+
+    <template v-else>
     <button class="dial" @click="toggle" :aria-label="st.running ? 'Pause' : 'Start'">
       <svg viewBox="0 0 100 100">
         <circle class="track" cx="50" cy="50" :r="R" />
@@ -76,6 +86,7 @@ onBeforeUnmount(() => {
     </div>
 
     <p class="keys">Trykk på ringen eller mellomrom for start/pause · R nullstiller</p>
+    </template>
   </section>
 </template>
 
@@ -94,6 +105,11 @@ onBeforeUnmount(() => {
 }
 @keyframes focusIn { from { opacity: 0; transform: scale(0.9) translateY(20px); } }
 .focus.go { --c: #3cc47e; }
+.focus.chords { align-items: stretch; overflow-y: auto; max-height: 100%; }
+.chordpane { width: 100%; }
+.ptabs { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--glass-strong); border: 1px solid var(--glass-border); align-self: center; }
+.ptabs button { padding: 7px 18px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: 700 0.9rem var(--font); cursor: pointer; }
+.ptabs button.on { background: var(--text); color: var(--bg); }
 
 .dial {
   position: relative;

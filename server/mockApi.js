@@ -3,7 +3,7 @@
 import { Readable } from 'node:stream'
 
 export function mockApi() {
-  const db = { trips: [], photos: [], books: [], recordings: [], seq: 1 }
+  const db = { trips: [], photos: [], books: [], recordings: [], songs: [{ id: 1, title: 'Wonderwall', artist: 'Oasis', chords: 'Em7 G Dsus4 A7sus4', bpm: 87, beats: 4, capo: 2, ug_url: null, notes: 'Strumming: D DU UDU' }], seq: 1 }
   const files = new Map() // path -> { type, buf }
   let loggedIn = false
   const sp = { lock: 0, lockSeconds: 600, now: { playing: false } }
@@ -80,7 +80,18 @@ export function mockApi() {
                 .sort((a, b) => String(b.date_from || b.year || '').localeCompare(String(a.date_from || a.year || ''))),
               books: [...db.books].reverse(),
               recordings: [...db.recordings].reverse(),
+              songs: db.songs,
             })
+          case 'song_save': {
+            if (!needAdmin()) return
+            const row = { id: b.id || Date.now(), title: b.title, artist: b.artist || null, chords: b.chords, bpm: b.bpm || null, beats: b.beats || null, capo: b.capo || null, ug_url: b.ug_url || null, notes: b.notes || null }
+            db.songs = db.songs.filter((x) => x.id !== row.id).concat(row)
+            return send(res, 200, { ok: true, id: row.id })
+          }
+          case 'song_delete':
+            if (!needAdmin()) return
+            db.songs = db.songs.filter((x) => x.id !== b.id)
+            return send(res, 200, { ok: true })
           case 'limits':
             return send(res, 200, { upload_max_filesize: '64M', post_max_size: '64M', max_execution_time: '30', uploads_writable: true })
           case 'me':

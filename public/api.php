@@ -246,10 +246,15 @@ $post = $method === 'POST';
 
 require_once __DIR__ . '/_spotify.inc.php';
 require_once __DIR__ . '/_jpdb.inc.php';
+require_once __DIR__ . '/_songs.inc.php';
 
 try {
     if (str_starts_with($action, 'spotify_')) {
         sp_handle($action, $post);
+        fail('Ukjent handling.', 404);
+    }
+    if (str_starts_with($action, 'song_')) {
+        songs_handle($action, $post);
         fail('Ukjent handling.', 404);
     }
     if (str_starts_with($action, 'jpdb_')) {
@@ -263,7 +268,7 @@ try {
         try {
             $trips = $pdo->query('SELECT id, country, place, title, year, date_from, date_to, body FROM trips ORDER BY COALESCE(date_from, MAKEDATE(year, 1)) DESC, id DESC')->fetchAll();
         } catch (PDOException $e) {
-            out(['trips' => [], 'books' => [], 'recordings' => [], 'empty' => true]); // tables not created yet
+            out(['trips' => [], 'books' => [], 'recordings' => [], 'songs' => [], 'empty' => true]); // tables not created yet
         }
         $photos = $pdo->query('SELECT id, trip_id, path, caption, width, height FROM trip_photos ORDER BY sort, id')->fetchAll();
         $byTrip = [];
@@ -272,7 +277,7 @@ try {
         unset($t);
         $books = $pdo->query('SELECT id, title, author, isbn, ol_key, cover_url, published_year, pages, read_on, rating, thoughts, quote FROM books ORDER BY COALESCE(read_on, created_at) DESC, id DESC')->fetchAll();
         $recs = $pdo->query('SELECT id, guitar, title, recorded_on, youtube, audio_path, notes FROM recordings ORDER BY COALESCE(recorded_on, created_at) DESC, id DESC')->fetchAll();
-        out(['trips' => $trips, 'books' => $books, 'recordings' => $recs]);
+        out(['trips' => $trips, 'books' => $books, 'recordings' => $recs, 'songs' => songs_list($pdo)]);
     }
 
     case 'limits':

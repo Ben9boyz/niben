@@ -1,7 +1,7 @@
 <script setup>
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Room from './Room.vue'
 import LeaderLine from './LeaderLine.vue'
 import MusicSwitch from './MusicSwitch.vue'
@@ -16,10 +16,11 @@ import { shell } from '../composables/useShell'
 
 const data = useData()
 const route = useRoute()
+const router = useRouter()
 const dock = ref(null)
 const isHome = computed(() => route.name === 'hjem')
 const isFocus = computed(() => route.name === 'ovelse' || route.name === 'admin')
-const isWide = computed(() => route.name === 'admin')
+const isWide = computed(() => route.name === 'admin' || (route.name === 'ovelse' && room.practiceTab === 'akkorder'))
 // a selected country gets a wider panel so its photos can be scrolled comfortably
 // once something is chosen, the panel grows to about half the screen and the 3D view steps back
 const isExpanded = computed(() => {
@@ -46,7 +47,15 @@ function hiddenSet() {
 const canHide = computed(() => !mobile.value && !isHome.value && !isFocus.value)
 const hidden = computed(() => canHide.value && room.panelHidden)
 // panel away + music on: the little "now playing" box (top-right) is the way back, so no "Vis panel"
-const showMini = computed(() => hidden.value && !!spotify.now?.name && shell.value !== 'player') // the player app has its bar
+// little "now playing" top-right while music plays – everywhere in the room (not in the listening
+// corner while its panel shows the full card, and not in the player app, which has its own bar)
+const showMini = computed(() => !!spotify.now?.name && shell.value !== 'player' && !mobile.value && (hidden.value || route.name !== 'lytte'))
+// a side panel on the right moves down below it
+const belowMini = computed(() => showMini.value && !hidden.value && !isFocus.value && !isHome.value)
+function openMini() {
+  if (route.name === 'lytte') setHidden(false)
+  else router.push('/lytte')
+}
 // top-right corner, unless the nav row reaches that far – then one row down
 const miniTop = computed(() => (navRight.value + 16 + 250 > window.innerWidth - 20 ? 84 : 20))
 function setHidden(v) {
@@ -132,6 +141,7 @@ watch(() => route.name, () => (collapsed.value = false))
     ref="dock"
     class="dock"
     :class="{ tall, home: isHome, focus: isFocus, wide: isWide, expanded: isExpanded, collapsed: collapsed && mobile && !isFocus, hidden }"
+    :style="belowMini ? { top: `${miniTop + 62}px` } : null"
     :inert="hidden || undefined"
   >
     <button v-if="mobile && !isHome && !isFocus" class="grabber" @click="collapsed = !collapsed" :aria-label="collapsed ? 'Vis panel' : 'Skjul panel'">
@@ -145,11 +155,11 @@ watch(() => route.name, () => (collapsed.value = false))
   </aside>
 
   <!-- panel slid away: a tiny "now playing" in the top-right corner -->
-  <MiniNowPlaying v-if="showMini && room.ready" :style="{ top: `${miniTop}px` }" @open="setHidden(false)" />
+  <MiniNowPlaying v-if="showMini && room.ready" :style="{ top: `${miniTop}px` }" @open="openMini" />
 
   <!-- desktop: slide the panel away / bring it back -->
   <button
-    v-if="canHide && room.ready && !showMini"
+    v-if="canHide && room.ready && !(hidden && showMini)"
     class="hide-toggle glass"
     :class="{ out: hidden }"
     :style="hidden ? null : { right: `${panelW + 20 - 16}px` }"

@@ -4,6 +4,7 @@ import { admin, checkLogin, login, logout } from '../composables/useAdmin'
 import AdminTrips from '../components/admin/AdminTrips.vue'
 import AdminBooks from '../components/admin/AdminBooks.vue'
 import AdminRecordings from '../components/admin/AdminRecordings.vue'
+import AdminSongs from '../components/admin/AdminSongs.vue'
 
 const tab = ref('reiser')
 const password = ref('')
@@ -49,7 +50,7 @@ async function submit() {
 
     <template v-else>
       <nav class="tabs" role="tablist">
-        <button v-for="t in [['reiser', 'Reiser'], ['boker', 'Bøker'], ['opptak', 'Gitaropptak']]" :key="t[0]" role="tab" :aria-selected="tab === t[0]" :class="{ on: tab === t[0] }" @click="tab = t[0]">
+        <button v-for="t in [['reiser', 'Reiser'], ['boker', 'Bøker'], ['opptak', 'Gitaropptak'], ['sanger', 'Sanger']]" :key="t[0]" role="tab" :aria-selected="tab === t[0]" :class="{ on: tab === t[0] }" @click="tab = t[0]">
           {{ t[1] }}
         </button>
       </nav>
@@ -57,6 +58,7 @@ async function submit() {
         <transition name="fade" mode="out-in">
           <AdminTrips v-if="tab === 'reiser'" key="r" />
           <AdminBooks v-else-if="tab === 'boker'" key="b" />
+          <AdminSongs v-else-if="tab === 'sanger'" key="s" />
           <AdminRecordings v-else key="o" />
         </transition>
       </div>

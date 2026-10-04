@@ -14,7 +14,7 @@ const toggle = () => control(now.value?.playing ? 'pause' : 'resume')
 
 <template>
   <transition name="fade">
-    <div v-if="now?.name" class="mini glass" :class="{ playing: now.playing }" role="button" tabindex="0" title="Vis panelet" @click="emit('open')" @keydown.enter="emit('open')">
+    <div v-if="now?.name" class="mini glass" :class="{ playing: now.playing }" role="button" tabindex="0" title="Åpne musikken" @click="emit('open')" @keydown.enter="emit('open')">
       <img crossorigin="anonymous" v-if="now.image" :src="now.image" alt="" />
       <div class="txt">
         <b>{{ now.name }}</b>
