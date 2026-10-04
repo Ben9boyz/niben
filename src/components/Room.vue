@@ -114,7 +114,7 @@ watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room
     selected: here && room.musicView !== 'spiller' && room.sel.musikk?.kind === 'album' ? room.sel.musikk.uri : null,
     ipod: here && room.musicView === 'ipod',
     big: room.panelHidden, // no panel: the held iPod can fill much more of the screen
-    // "Vinyler": the camera stays by the turntable · "Spillelister": by the iPod on its stand
+    // "Album": the camera stays by the turntable · "Spillelister": by the iPod on its stand
     // (picking something lifts the iPod up in front of the camera)
     pose: !here ? null : room.musicView.startsWith('ipod') ? 'ipod' : room.shelfView ? 'shelf' : 'top',
     flip: room.recordFlipped,

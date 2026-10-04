@@ -32,7 +32,8 @@ const pct = computed(() => (now.value?.duration_ms ? (progressMs.value / now.val
 const rows = computed(() => {
   if (view.value === 'menu') {
     // same order as the panel's list so the highlight can be shared
-    return spotify.playlists.map((p) => ({ kind: 'playlist', label: p.name, sub: p.count ? `${p.count} låter` : p.owner, item: p, img: p.thumb || p.image }))
+    const f = room.ipod.q.trim().toLowerCase()
+    return spotify.playlists.filter((p) => !f || p.name.toLowerCase().includes(f)).map((p) => ({ kind: 'playlist', label: p.name, sub: p.count ? `${p.count} låter` : p.owner, item: p, img: p.thumb || p.image }))
   }
   if (view.value === 'playlist') {
     const r = []
@@ -43,6 +44,7 @@ const rows = computed(() => {
   return []
 })
 
+watch(() => room.ipod.q, () => { if (view.value === 'menu') active.value = 0 })
 const title = computed(() => (view.value === 'menu' ? 'Spillelister' : view.value === 'now' ? 'Spilles nå' : playlist.value?.name || ''))
 
 function frame() {
@@ -133,6 +135,7 @@ onBeforeUnmount(() => {
     </div>
 
     <div v-else ref="listEl" class="list">
+      <input v-if="view === 'menu'" v-model="room.ipod.q" type="search" class="isearch" placeholder="Søk" aria-label="Søk i spillelistene" @keydown.stop />
       <div v-if="view === 'playlist' && !tracks" class="msg">Henter låter …</div>
       <div v-else-if="view === 'playlist' && tracks?.hidden" class="msg">Spotify viser bare låtene i spillelister du har laget selv.</div>
       <button
@@ -148,7 +151,7 @@ onBeforeUnmount(() => {
         <span v-if="r.ms" class="r">{{ fmtClock(r.ms / 1000) }}</span>
         <span v-else-if="r.kind === 'playlist' || r.kind === 'now'" class="r"><ChevronRight size="1em" /></span>
       </button>
-      <div v-if="view === 'menu' && !rows.length" class="msg">Ingen spillelister.</div>
+      <div v-if="view === 'menu' && !rows.length" class="msg">{{ room.ipod.q ? 'Ingen treff.' : 'Ingen spillelister.' }}</div>
     </div>
 
     <transition name="fade"><div v-if="toast" class="toast">{{ toast }}</div></transition>
@@ -218,6 +221,7 @@ header span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .back:hover { background: rgba(43, 127, 240, 0.22); }
 .list { flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
 .list::-webkit-scrollbar { display: none; }
+.isearch { display: block; width: calc(100% - var(--u) * 6); margin: calc(var(--u) * 1.5) calc(var(--u) * 3); padding: calc(var(--u) * 1.2) calc(var(--u) * 3); border: 0; border-radius: 999px; background: rgba(0, 0, 0, 0.08); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18); font: inherit; font-size: 0.8em; outline: none; color: #111; }
 .row {
   display: flex;
   align-items: center;

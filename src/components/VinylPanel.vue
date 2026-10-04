@@ -7,8 +7,11 @@ import { room } from '../composables/useRoom'
 import { mode } from '../composables/useMode'
 import CoverGrid from './CoverGrid.vue'
 import MusicDetail from './MusicDetail.vue'
+import SpotifySearch from './SpotifySearch.vue'
+import { Search as SearchIcon, X as CloseIcon } from 'lucide-vue-next'
 
 // The record shelf: a grid of covers, or one record opened (mirrors the record picked in the 3D room).
+const props = defineProps({ search: { type: Boolean, default: true } }) // false: the page has its own search bar
 useSpotify()
 checkLogin()
 const route = useRoute()
@@ -17,6 +20,8 @@ if (route.query.spotify === 'ok') msg.value = { ok: 'Spotify er koblet til.' }
 if (route.query.spotify === 'feil') msg.value = { error: 'Klarte ikke å koble til Spotify. Prøv igjen.' }
 
 const q = ref('')
+const spot = ref(false) // searching all of Spotify (albums + songs) instead of just the shelf
+const sq = ref('')
 const rootEl = ref(null)
 
 const selectedUri = computed(() => (room.sel.musikk?.kind === 'album' ? room.sel.musikk.uri : null))
@@ -57,7 +62,7 @@ async function disconnect() {
     <div v-if="spotify.loaded && !spotify.connected" class="empty">
       <template v-if="!spotify.configured">Spotify er ikke satt opp ennå.</template>
       <template v-else-if="admin.loggedIn">
-        <p>Koble til Spotify-kontoen din for å fylle platehylla.</p>
+        <p>Koble til Spotify-kontoen din for å fylle albumene dine.</p>
         <a class="btn primary" href="api.php?action=spotify_login">Koble til Spotify</a>
       </template>
       <template v-else>Musikken er ikke koblet til ennå.</template>
@@ -65,15 +70,25 @@ async function disconnect() {
 
     <template v-if="spotify.connected">
       <transition name="fade" mode="out-in">
-        <MusicDetail v-if="album" :key="album.uri" :item="album" kind="album" back-label="Alle plater" :compact="mode === 'rom'" @back="back" />
+        <MusicDetail v-if="album" :key="album.uri" :item="album" kind="album" back-label="Alle album" :compact="mode === 'rom'" @back="back" />
 
         <div v-else class="browse">
-          <div class="head">
-            <b>Platehylla</b>
-            <input v-model="q" type="search" class="search" placeholder="Søk …" aria-label="Søk i platene" />
+          <div v-if="spot" class="head">
+            <input v-model="sq" type="search" class="search wide" placeholder="Søk album og låter på Spotify …" aria-label="Søk på Spotify" autofocus />
+            <button class="spot on" @click="spot = false; sq = ''"><CloseIcon :size="14" />Lukk</button>
           </div>
-          <CoverGrid :items="items" :playing-uri="spotify.now?.context" @pick="pick" @hover="(it) => prefetchTracks(it.uri)" />
-          <p v-if="!items.length" class="muted">Ingen treff.</p>
+          <SpotifySearch v-if="spot" :q="sq" scope="player" />
+          <template v-else>
+            <div class="head">
+              <b>Album</b>
+              <span v-if="search" class="tools">
+                <input v-model="q" type="search" class="search" placeholder="Søk i albumene …" aria-label="Søk i albumene" />
+                <button v-if="admin.loggedIn" class="spot" title="Søk i hele Spotify" @click="spot = true"><SearchIcon :size="14" />Spotify</button>
+              </span>
+            </div>
+            <CoverGrid :items="items" :playing-uri="spotify.now?.context" @pick="pick" @hover="(it) => prefetchTracks(it.uri)" />
+            <p v-if="!items.length" class="muted">Ingen treff.</p>
+          </template>
           <div v-if="admin.loggedIn" class="admin-row">
             <button class="btn small" @click="api('spotify_refresh', {}).then(refreshSpotify)">Oppdater fra Spotify</button>
             <button class="btn small danger" @click="disconnect">Koble fra</button>
@@ -92,5 +107,9 @@ async function disconnect() {
 .head b { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
 .search { width: 160px; min-width: 0; flex: 0 1 160px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--glass-border); background: var(--glass-strong); color: var(--text); font: 500 0.82rem var(--font); outline: none; }
 .search:focus { border-color: var(--accent); }
+.tools { display: flex; align-items: center; gap: 6px; }
+.search.wide { width: auto; flex: 1 1 auto; }
+.spot { display: inline-flex; align-items: center; gap: 4px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--glass-border); background: var(--glass-strong); color: var(--text-2); font: 600 0.78rem var(--font); cursor: pointer; flex: none; }
+.spot:hover, .spot.on { color: var(--accent); border-color: var(--accent); }
 .admin-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 </style>

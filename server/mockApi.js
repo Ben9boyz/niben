@@ -195,11 +195,25 @@ export function mockApi() {
             })
           case 'spotify_now':
             return send(res, 200, { configured: true, connected: true, now: sp.now, lock_until: sp.lock, lock_seconds: sp.lockSeconds, server_time: Math.floor(Date.now() / 1000) })
+          case 'spotify_search': {
+            if (!loggedIn) return send(res, 401, { error: 'Logg inn for å søke i hele Spotify.' })
+            const q = String(url.searchParams.get('q') || '').trim()
+            if (q.length < 2) return send(res, 200, { albums: [], tracks: [] })
+            const albums = [0, 1, 2].map((i) => ({ id: `s${i}`, uri: `spotify:album:searchalbum${String(i).padStart(10, '0')}`, name: `${q} (album ${i + 1})`, artist: 'Søkeartist', year: String(2000 + i * 7), image: mockCover(i * 70 + 10), image_large: mockCover(i * 70 + 10), thumb: mockCover(i * 70 + 10), url: null, tracks: 9 + i }))
+            const tracks = [0, 1, 2, 3].map((i) => ({ uri: `spotify:track:searchtrack${String(i).padStart(10, '0')}`, name: `${q} – låt ${i + 1}`, artist: 'Søkeartist', ms: 180000 + i * 20000, n: i + 1, img: mockCover(i * 50), album: albums[i % 3].name, album_uri: albums[i % 3].uri, album_artist: 'Søkeartist', album_image: albums[i % 3].image, album_image_large: albums[i % 3].image, album_url: null }))
+            return send(res, 200, { albums, tracks })
+          }
+          case 'spotify_save':
+            if (!needAdmin()) return
+            return send(res, 200, { ok: true })
+          case 'spotify_playlist_add':
+            if (!needAdmin()) return
+            return send(res, 200, { ok: true })
           case 'spotify_play': {
             if (!needAdmin()) return
             const now = Math.floor(Date.now() / 1000)
             if (sp.lock > now) return send(res, 423, { error: `Låst – du kan bytte om ${Math.ceil((sp.lock - now) / 60)} min.`, lock_until: sp.lock, server_time: now })
-            const item = [...SP_ALBUMS, ...SP_PLAYLISTS].find((x) => x.uri === b.uri)
+            const item = [...SP_ALBUMS, ...SP_PLAYLISTS].find((x) => x.uri === b.uri) || (/^spotify:album:/.test(b.uri || '') ? { name: 'Album fra søk', artist: 'Søk' } : null)
             if (!item) return send(res, 400, { error: 'Ugyldig Spotify-lenke.' })
             sp.lock = now + sp.lockSeconds
             sp.now = { playing: true, progress_ms: 0, duration_ms: 214000, name: b.track ? `Valgt låt fra ${item.name}` : `Første låt fra ${item.name}`, artist: item.artist || item.owner, album: item.name, image: item.image, context: item.uri, at: now }

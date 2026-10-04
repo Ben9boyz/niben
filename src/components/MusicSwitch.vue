@@ -8,7 +8,7 @@ import { spotify } from '../composables/useSpotify'
     <span class="pill" :class="{ ipod: room.musicView.startsWith('ipod') }"></span>
     <button role="tab" :aria-selected="!room.musicView.startsWith('ipod')" :class="{ on: !room.musicView.startsWith('ipod') }" @click="room.musicView = 'vinyl'">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="2.5" /></svg>
-      Vinyler <small>{{ spotify.albums.length || '' }}</small>
+      Album <small>{{ spotify.albums.length || '' }}</small>
     </button>
     <button role="tab" :aria-selected="room.musicView.startsWith('ipod')" :class="{ on: room.musicView.startsWith('ipod') }" @click="room.musicView = 'ipodDock'; room.sel.musikk = null">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="2.5" width="12" height="19" rx="2.5" /><rect x="8.5" y="5" width="7" height="5.5" rx="0.8" /><circle cx="12" cy="16" r="2.6" /></svg>

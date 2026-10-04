@@ -272,3 +272,35 @@ export function useSpotify() {
   })
   return spotify
 }
+
+// ── search (admin) and saving ──
+/** Albums + tracks from all of Spotify. Throws with a readable message. */
+export async function searchSpotify(q) {
+  const r = await fetch(`api.php?action=spotify_search&q=${encodeURIComponent(q)}`, { cache: 'no-store', credentials: 'same-origin', headers: { 'X-Niben': '1' } })
+  let j = {}
+  try { j = await r.json() } catch {}
+  if (!r.ok || j.error) throw new Error(j.error || `Søket feilet (${r.status})`)
+  return { albums: j.albums || [], tracks: j.tracks || [] }
+}
+
+/** Put an album in the library – it joins the record shelf. */
+export async function saveAlbum(uri) {
+  try {
+    await api('spotify_save', { uri })
+    await refreshLists(true)
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+}
+
+/** Add a song to one of my playlists. */
+export async function addToPlaylist(playlistUri, trackUri) {
+  try {
+    await api('spotify_playlist_add', { playlist: playlistUri, uri: trackUri })
+    refreshLists(true)
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+}

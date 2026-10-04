@@ -32,7 +32,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   <section class="drawer glass" aria-label="Musikk">
     <header>
       <nav class="tabs" role="tablist">
-        <button role="tab" :aria-selected="!ipod()" :class="{ on: !ipod() }" @click="show('vinyl')"><Disc3 :size="15" />Vinyler<small>{{ spotify.albums.length || '' }}</small></button>
+        <button role="tab" :aria-selected="!ipod()" :class="{ on: !ipod() }" @click="show('vinyl')"><Disc3 :size="15" />Album<small>{{ spotify.albums.length || '' }}</small></button>
         <button role="tab" :aria-selected="ipod()" :class="{ on: ipod() }" @click="show('ipod')"><ListMusic :size="15" />Spillelister<small>{{ spotify.playlists.length || '' }}</small></button>
       </nav>
       <button class="corner" title="Gå til lyttehjørnet" @click="toCorner">Lyttehjørnet<ArrowUpRight :size="13" /></button>

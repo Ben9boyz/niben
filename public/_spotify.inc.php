@@ -10,7 +10,7 @@
  */
 
 const SP_LOCK_SECONDS = 600;
-const SP_SCOPES = 'user-library-read playlist-read-private playlist-read-collaborative user-read-currently-playing user-read-playback-state user-modify-playback-state streaming user-read-email user-read-private';
+const SP_SCOPES = 'user-library-read playlist-read-private playlist-read-collaborative user-read-currently-playing user-read-playback-state user-modify-playback-state streaming user-read-email user-read-private user-library-modify playlist-modify-private playlist-modify-public';
 
 function sp_config(): ?array {
     static $c = false;
@@ -105,6 +105,12 @@ function sp_api(string $method, string $path, ?array $body = null): array {
     return [401, null];
 }
 
+/** Did the admin's Spotify login include this permission? (older logins lack the ones added later) */
+function sp_has_scope(string $scope): bool {
+    return in_array($scope, explode(' ', (string)kv_get('scopes')), true);
+}
+const SP_RECONNECT = 'Koble til Spotify på nytt (Admin → Koble til Spotify) for å få lov til å lagre.';
+
 // ── data shaping ──────────────────────────────────────────
 function sp_img(array $images, int $want = 300): ?string {
     if (!$images) return null;
@@ -155,6 +161,8 @@ function sp_albums(): ?array {
 function sp_playlists(): ?array {
     return sp_cached('cache_playlists_v3', 1800, function () {
         $out = [];
+        [$ms, $me] = sp_api('GET', '/me');
+        $meId = $ms === 200 ? (string)($me['id'] ?? '') : '';
         for ($offset = 0; $offset < 500; $offset += 50) {
             [$s, $j] = sp_api('GET', '/me/playlists?limit=50&offset=' . $offset);
             if ($s !== 200) return $out ?: null;
@@ -165,6 +173,8 @@ function sp_playlists(): ?array {
                     'uri' => $p['uri'],
                     'name' => $p['name'],
                     'owner' => $p['owner']['display_name'] ?? null,
+                    // my own (or shared) lists – the ones a song can be added to
+                    'editable' => $meId === '' ? null : (($p['owner']['id'] ?? '') === $meId || !empty($p['collaborative'])),
                     'image' => sp_img($p['images'] ?? [], 300),
                     'thumb' => sp_img($p['images'] ?? [], 64),
                     'count' => $p['items']['total'] ?? $p['tracks']['total'] ?? null,
@@ -384,6 +394,72 @@ function sp_handle(string $action, bool $post): void {
             'expires' => (int)kv_get('access_expires'),
             'streaming' => in_array('streaming', $scopes, true),
         ]);
+    }
+
+    case 'spotify_search': {
+        // search all of Spotify for albums and tracks (admin only – it spends the app's request quota)
+        if (!is_admin()) fail('Logg inn for å søke i hele Spotify.', 401);
+        $q = trim((string)($_GET['q'] ?? ''));
+        if (mb_strlen($q) < 2) out(['albums' => [], 'tracks' => []]);
+        [$s, $j] = sp_api('GET', '/search?type=album,track&limit=10&q=' . rawurlencode(mb_substr($q, 0, 100)));
+        if ($s === 429) fail('For mange søk – vent litt.', 429);
+        if ($s === 401) fail('Spotify-tilkoblingen har gått ut. Koble til på nytt.', 401);
+        if ($s !== 200) fail('Spotify svarte med feil (' . $s . ').', 502);
+        $albums = [];
+        foreach ($j['albums']['items'] ?? [] as $a) {
+            if (!$a) continue;
+            $albums[] = [
+                'id' => $a['id'], 'uri' => $a['uri'], 'name' => $a['name'],
+                'artist' => implode(', ', array_map(fn($x) => $x['name'], $a['artists'] ?? [])),
+                'year' => substr((string)($a['release_date'] ?? ''), 0, 4),
+                'image' => sp_img($a['images'] ?? [], 300), 'image_large' => sp_img($a['images'] ?? [], 640), 'thumb' => sp_img($a['images'] ?? [], 64),
+                'url' => $a['external_urls']['spotify'] ?? null, 'tracks' => $a['total_tracks'] ?? null,
+            ];
+        }
+        $tracks = [];
+        foreach ($j['tracks']['items'] ?? [] as $t) {
+            if (!$t) continue;
+            $tracks[] = sp_track($t) + [
+                'album' => $t['album']['name'] ?? '', 'album_uri' => $t['album']['uri'] ?? null,
+                'album_artist' => implode(', ', array_map(fn($x) => $x['name'], $t['album']['artists'] ?? [])),
+                'album_image' => sp_img($t['album']['images'] ?? [], 300), 'album_image_large' => sp_img($t['album']['images'] ?? [], 640),
+                'album_url' => $t['album']['external_urls']['spotify'] ?? null,
+            ];
+        }
+        out(['albums' => $albums, 'tracks' => $tracks]);
+    }
+
+    case 'spotify_save': {
+        // put an album in the library (it then shows up on the record shelf)
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $uri = (string)(body()['uri'] ?? '');
+        if (!preg_match('~^spotify:album:([A-Za-z0-9]{10,40})$~', $uri, $m)) fail('Ugyldig album.');
+        if (!sp_has_scope('user-library-modify')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
+        [$s, $j] = sp_api('PUT', '/me/library?uris=' . rawurlencode($uri));
+        if ($s >= 400 && $s !== 401 && $s !== 403) [$s, $j] = sp_api('PUT', '/me/albums?ids=' . $m[1]); // older endpoint
+        if ($s === 401 || $s === 403) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
+        if ($s >= 300) fail('Spotify svarte med feil (' . $s . ').', 502);
+        kv_del('cache_albums_v3');
+        out(['ok' => true]);
+    }
+
+    case 'spotify_playlist_add': {
+        // add a song to one of my playlists
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $pl = (string)(body()['playlist'] ?? '');
+        $track = (string)(body()['uri'] ?? '');
+        if (!preg_match('~^spotify:playlist:([A-Za-z0-9]{10,40})$~', $pl, $m)) fail('Ugyldig spilleliste.');
+        if (!preg_match('~^spotify:track:[A-Za-z0-9]{10,40}$~', $track)) fail('Ugyldig låt.');
+        if (!sp_has_scope('playlist-modify-private')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
+        [$s, $j] = sp_api('POST', '/playlists/' . $m[1] . '/items', ['uris' => [$track]]);
+        if ($s === 404 || $s === 405) [$s, $j] = sp_api('POST', '/playlists/' . $m[1] . '/tracks', ['uris' => [$track]]); // older endpoint
+        if ($s === 403) out(['error' => 'Spotify sier nei – du kan bare legge til i lister du har laget selv.', 'code' => 'forbidden'], 403);
+        if ($s === 401) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
+        if ($s >= 300) fail('Spotify svarte med feil (' . $s . ').', 502);
+        kv_del('cache_playlists_v3', 'tracks2_playlist_' . $m[1]);
+        out(['ok' => true]);
     }
 
     case 'spotify_play': {

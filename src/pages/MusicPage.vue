@@ -1,15 +1,18 @@
 <script setup>
-import { Disc3, ListMusic } from 'lucide-vue-next'
+import { ref } from 'vue'
+import { Disc3, ListMusic, Search, X } from 'lucide-vue-next'
 import { room } from '../composables/useRoom'
 import { spotify, useSpotify } from '../composables/useSpotify'
 import { shell } from '../composables/useShell'
 import NowPlaying from '../components/NowPlaying.vue'
 import VinylPanel from '../components/VinylPanel.vue'
 import PlaylistPanel from '../components/PlaylistPanel.vue'
+import SpotifySearch from '../components/SpotifySearch.vue'
 
 // Plain version: "now playing" in a sidebar on the left, a Spotify-like library on the right.
 // On phones everything stacks.
 useSpotify()
+const gq = ref('') // one search for playlists, albums and songs
 
 function show(view) {
   room.musicView = view
@@ -32,7 +35,7 @@ function show(view) {
           <NowPlaying v-if="shell !== 'player'" stacked />
           <nav class="lib" role="tablist" aria-label="Bibliotek">
             <button role="tab" :aria-selected="!room.musicView.startsWith('ipod')" :class="{ on: !room.musicView.startsWith('ipod') }" @click="show('vinyl')">
-              <Disc3 class="ic" :size="19" aria-hidden="true" />Vinyler<small>{{ spotify.albums.length || '' }}</small>
+              <Disc3 class="ic" :size="19" aria-hidden="true" />Album<small>{{ spotify.albums.length || '' }}</small>
             </button>
             <button role="tab" :aria-selected="room.musicView.startsWith('ipod')" :class="{ on: room.musicView.startsWith('ipod') }" @click="show('ipod')">
               <ListMusic class="ic" :size="19" aria-hidden="true" />Spillelister<small>{{ spotify.playlists.length || '' }}</small>
@@ -42,8 +45,16 @@ function show(view) {
       </aside>
 
       <main class="glass main-card">
-        <PlaylistPanel v-if="room.musicView.startsWith('ipod')" />
-        <VinylPanel v-else />
+        <label class="gsearch">
+          <Search :size="16" aria-hidden="true" />
+          <input v-model="gq" type="search" placeholder="Søk i spillelister, album og låter …" aria-label="Søk i musikken" />
+          <button v-if="gq" type="button" aria-label="Tøm søket" @click="gq = ''"><X :size="15" /></button>
+        </label>
+        <SpotifySearch v-if="gq.trim()" :q="gq" scope="all" />
+        <template v-else>
+          <PlaylistPanel v-if="room.musicView.startsWith('ipod')" :search="false" />
+          <VinylPanel v-else :search="false" />
+        </template>
       </main>
     </div>
   </div>
@@ -56,6 +67,11 @@ function show(view) {
 .side-card { display: grid; gap: 14px; padding: 14px; border-radius: 22px; }
 .main-card { padding: 18px; border-radius: 22px; container-type: inline-size; min-width: 0; }
 .lib { display: grid; gap: 4px; }
+.gsearch { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--glass-border); background: var(--glass-strong); color: var(--text-3); }
+.gsearch:focus-within { border-color: var(--accent); color: var(--accent); }
+.gsearch input::-webkit-search-cancel-button { display: none; }
+.gsearch input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--text); font: 500 0.95rem var(--font); }
+.gsearch button { display: grid; place-items: center; border: 0; background: transparent; color: var(--text-3); cursor: pointer; padding: 0; }
 .lib button {
   display: flex;
   align-items: center;

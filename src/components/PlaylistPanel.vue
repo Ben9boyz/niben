@@ -5,8 +5,10 @@ import { room } from '../composables/useRoom'
 import CoverGrid from './CoverGrid.vue'
 import MusicDetail from './MusicDetail.vue'
 
-// Panel twin of the iPod: same selected playlist, same highlighted row (room.ipod).
-const q = ref('')
+// Panel twin of the iPod: same selected playlist, same highlighted row (room.ipod) – and the same
+// search text, so typing here filters the iPod's list too.
+defineProps({ search: { type: Boolean, default: true } }) // false: the page has its own search bar
+const q = computed({ get: () => room.ipod.q, set: (v) => { room.ipod.q = v; room.ipod.active = 0 } })
 const playlist = computed(() => room.ipod.playlist)
 const items = computed(() => {
   const n = q.value.trim().toLowerCase()
@@ -42,7 +44,7 @@ function back() {
       <div v-else class="browse">
         <div class="head">
           <b>Spillelister</b>
-          <input v-model="q" type="search" class="search" placeholder="Søk …" aria-label="Søk i spillelistene" />
+          <input v-if="search" v-model="q" type="search" class="search" placeholder="Søk …" aria-label="Søk i spillelistene" />
         </div>
         <CoverGrid :items="items" :playing-uri="spotify.now?.context" :cursor-uri="cursorUri" @pick="open" @hover="hover" />
         <p v-if="!items.length" class="muted">Ingen treff.</p>

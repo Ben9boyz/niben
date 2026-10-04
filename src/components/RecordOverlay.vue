@@ -159,9 +159,9 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); clearTimeout(flipTimer); wind
   <div v-if="room.shelfView" class="shelfbar">
     <button class="pill glass" @click="toTurntable"><ChevronLeft :size="16" />Til platespilleren</button>
     <div v-if="peeked" class="browser glass">
-      <button class="arrow" aria-label="Forrige plate (←)" title="Forrige (←)" @click="browse(-1)"><ChevronLeft :size="22" /></button>
+      <button class="arrow" aria-label="Forrige album (←)" title="Forrige (←)" @click="browse(-1)"><ChevronLeft :size="22" /></button>
       <div class="pk"><b>{{ peeked.name }}</b><small>{{ peeked.artist }}<template v-if="peeked.year"> · {{ peeked.year }}</template> · {{ room.peekIndex + 1 }}/{{ shelfCount }}</small></div>
-      <button class="arrow" aria-label="Neste plate (→)" title="Neste (→)" @click="browse(1)"><ChevronRight :size="22" /></button>
+      <button class="arrow" aria-label="Neste album (→)" title="Neste (→)" @click="browse(1)"><ChevronRight :size="22" /></button>
       <button class="take" title="Ta ut (Enter)" @click="takeOut"><ArrowUpFromLine :size="16" />Ta ut</button>
     </div>
   </div>
