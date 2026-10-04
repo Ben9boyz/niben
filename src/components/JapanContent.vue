@@ -100,7 +100,7 @@ watch(() => room.jpAnime, async (i) => {
 </template>
 
 <style scoped>
-.jpc { display: grid; gap: 14px; }
+.jpc { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .wotd {
   display: grid;
   justify-items: center;

@@ -140,7 +140,7 @@ watch(() => route.name, () => (collapsed.value = false))
   <aside
     ref="dock"
     class="dock"
-    :class="{ tall, home: isHome, focus: isFocus, wide: isWide, expanded: isExpanded, collapsed: collapsed && mobile && !isFocus, hidden }"
+    :class="{ tall, home: isHome, focus: isFocus, wide: isWide, expanded: isExpanded, big: isExpanded && route.name !== 'lytte', collapsed: collapsed && mobile && !isFocus, hidden }"
     :style="belowMini ? { top: `${miniTop + 62}px` } : null"
     :inert="hidden || undefined"
   >
@@ -271,7 +271,14 @@ watch(() => route.name, () => (collapsed.value = false))
     max-height: 46dvh;
     transition: transform 0.5s var(--spring);
   }
+  /* something chosen (a country, a guitar, a book …; not the music corner, which is always "expanded"): the sheet takes most of the screen and the
+     room shrinks to a strip above it; the header gets compact so the content has room */
   .dock.expanded { width: auto; }
+  .dock.big { max-height: 74dvh; }
+  .dock.big :deep(.panel-head) { padding: 10px 18px 4px; }
+  .dock.big :deep(.panel-head .eyebrow),
+  .dock.big :deep(.panel-head p) { display: none; }
+  .dock.big :deep(.panel-head h2) { font-size: 1.25rem; }
   .dock.collapsed { transform: translateY(calc(100% - 60px)); }
   .dock.focus {
     top: 70px;

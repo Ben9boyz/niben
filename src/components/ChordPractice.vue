@@ -257,5 +257,12 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); clearInter
 .group { width: 100%; display: grid; gap: 6px; }
 .gh { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.1em; color: var(--text-3); }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px 8px; justify-items: center; }
-@media (max-width: 520px) { .counter { width: 150px; height: 150px; } .stage { gap: 12px; } }
+@media (max-width: 520px) {
+  .counter { width: 150px; height: 150px; }
+  .stage { gap: 12px; }
+  /* songs: buttons in a row under the text, so the title gets the full width */
+  .song { flex-direction: column; align-items: stretch; }
+  .sa { flex-direction: row; }
+  .sa .btn { flex: 1; justify-content: center; }
+}
 </style>

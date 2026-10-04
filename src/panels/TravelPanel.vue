@@ -41,7 +41,7 @@ const yearsLabel = (ys) => (ys.length > 3 ? `${ys[0]}–${ys.at(-1)}` : ys.join(
       <p v-if="!room.sel.land">{{ countries.length }} land · {{ (data.reiser || []).length }} reiser<template v-if="totalPhotos"> · {{ totalPhotos }} bilder</template></p>
     </header>
 
-    <div class="search">
+    <div v-if="!room.sel.land" class="search">
       <CountryPicker :highlight="visited" clear-on-pick placeholder="Søk etter et land …" @pick="(c) => (room.sel.land = c)" />
     </div>
 

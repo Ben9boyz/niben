@@ -318,9 +318,10 @@ onBeforeUnmount(() => {
     right: 72px;
     bottom: auto;
   }
-  .nav { padding: 5px; }
+  /* phones: the bar spans the width and every icon gets an equal share, so none are cut off */
+  .nav { padding: 5px; width: calc(100vw - 16px); max-width: 520px; }
   .drop { top: 5px; bottom: 5px; }
-  .item { padding: 12px 13px; }
+  .item { flex: 1 1 0; min-width: 0; justify-content: center; padding: 12px 0; }
 }
 
 /* Desktop: everything in one row at the top-left, so the right side is free for the panel */

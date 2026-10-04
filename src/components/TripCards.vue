@@ -1,6 +1,8 @@
 <script setup>
-import { ChevronLeft, ChevronRight, X } from 'lucide-vue-next'
+import { Images } from 'lucide-vue-next'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { thumb } from '../lib/photos'
+import PhotoViewer from './PhotoViewer.vue'
 
 defineProps({ trips: { type: Array, default: () => [] } })
 
@@ -15,21 +17,23 @@ function when(t) {
   return t.dato ? fmt(t.dato) : ''
 }
 
-const lb = ref(null) // { list, i }
-function open(list, i) { lb.value = { list, i } }
-function step(d) { if (lb.value) lb.value.i = (lb.value.i + d + lb.value.list.length) % lb.value.list.length }
-function onKey(e) {
-  if (!lb.value) return
-  if (e.key === 'Escape') lb.value = null
-  else if (e.key === 'ArrowRight') step(1)
-  else if (e.key === 'ArrowLeft') step(-1)
-}
-onMounted(() => window.addEventListener('keydown', onKey))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
+// a few photos as a mosaic on the card; the rest are one tap away in the full-screen viewer
+// (narrow: 3 columns – big + 5; wide: 4 columns – big + 4, two rows either way)
+const root = ref(null)
+const wide = ref(false)
+let ro = null
+onMounted(() => {
+  ro = new ResizeObserver(([e]) => { wide.value = e.contentRect.width >= 560 })
+  ro.observe(root.value)
+})
+onBeforeUnmount(() => ro?.disconnect())
+const SHOWN = (n) => (n >= 6 ? (wide.value ? 5 : 6) : n >= 3 ? 3 : n)
+const viewer = ref(null) // { trip, index } – index null = the grid of all photos
+const open = (trip, index = null) => { viewer.value = { trip, index } }
 </script>
 
 <template>
-  <div class="trips">
+  <div ref="root" class="trips" :class="{ wide }">
     <article v-for="(t, i) in trips" :key="t.id || i" class="trip" :style="{ '--i': i }">
       <div class="trip-body">
         <div class="muted">
@@ -39,29 +43,24 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <h3>{{ t.tittel }}</h3>
         <p v-if="t.tekst" class="body">{{ t.tekst }}</p>
       </div>
-      <!-- every photo is shown inline – just scroll; tapping one opens it full screen -->
-      <div v-if="t.bilder?.length" class="photos">
-        <figure v-for="(b, j) in t.bilder" :key="b.id || j" :class="{ wide: j === 0 || (b.w && b.h && b.w / b.h > 1.6) }">
-          <button class="ph" @click="open(t.bilder, j)" :aria-label="b.tekst || 'Vis bildet større'">
-            <img :src="b.src" :alt="b.tekst || ''" loading="lazy" />
+      <template v-if="t.bilder?.length">
+        <div class="mosaic" :class="`n${SHOWN(t.bilder.length)}`">
+          <button v-for="(b, j) in t.bilder.slice(0, SHOWN(t.bilder.length))" :key="b.id || j" class="ph" :aria-label="b.tekst || `Bilde ${j + 1}`" @click="open(t, j === SHOWN(t.bilder.length) - 1 && t.bilder.length > SHOWN(t.bilder.length) ? null : j)">
+            <img :src="thumb(b.src, j === 0 ? 900 : 400)" :alt="b.tekst || ''" loading="lazy" decoding="async" />
+            <span v-if="j === SHOWN(t.bilder.length) - 1 && t.bilder.length > SHOWN(t.bilder.length)" class="more">+{{ t.bilder.length - SHOWN(t.bilder.length) }}</span>
           </button>
-          <figcaption v-if="b.tekst">{{ b.tekst }}</figcaption>
-        </figure>
-      </div>
+        </div>
+        <button v-if="t.bilder.length > 1" class="all" @click="open(t)"><Images :size="16" />Se alle {{ t.bilder.length }} bildene</button>
+      </template>
     </article>
 
-    <teleport to="body">
-      <transition name="fade">
-        <div v-if="lb" class="lightbox" @click.self="lb = null">
-          <img :src="lb.list[lb.i].src" :alt="lb.list[lb.i].tekst || ''" />
-          <p v-if="lb.list[lb.i].tekst" class="cap">{{ lb.list[lb.i].tekst }}</p>
-          <button class="nav prev" @click="step(-1)" v-if="lb.list.length > 1" aria-label="Forrige"><ChevronLeft :size="24" /></button>
-          <button class="nav next" @click="step(1)" v-if="lb.list.length > 1" aria-label="Neste"><ChevronRight :size="24" /></button>
-          <button class="close" @click="lb = null" aria-label="Lukk"><X :size="20" /></button>
-          <span class="count">{{ lb.i + 1 }} / {{ lb.list.length }}</span>
-        </div>
-      </transition>
-    </teleport>
+    <PhotoViewer
+      v-if="viewer"
+      :title="viewer.trip.tittel"
+      :photos="viewer.trip.bilder"
+      v-model:index="viewer.index"
+      @close="viewer = null"
+    />
   </div>
 </template>
 
@@ -70,33 +69,30 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   margin-bottom: 12px; border-radius: 20px; overflow: hidden; background: var(--glass-strong); border: 1px solid var(--glass-border);
   animation: rowIn 0.6s var(--ease) both; animation-delay: calc(var(--i) * 70ms);
 }
-.photos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0 8px 8px; }
-figure { margin: 0; }
-figure.wide { grid-column: 1 / -1; }
-.ph { display: block; width: 100%; padding: 0; border: 0; border-radius: 12px; overflow: hidden; cursor: zoom-in; background: #000; }
-.ph img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; transition: transform 0.6s var(--ease); }
-figure.wide .ph img { aspect-ratio: 16 / 10; }
-.ph:hover img { transform: scale(1.03); }
-figcaption { font-size: 0.8rem; color: var(--text-3); padding: 4px 4px 2px; }
+.mosaic { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 0 8px; }
+.mosaic.n1 { grid-template-columns: 1fr; }
+.mosaic.n2 { grid-template-columns: 1fr 1fr; }
+.ph { position: relative; display: block; width: 100%; aspect-ratio: 1; padding: 0; border: 0; border-radius: 6px; overflow: hidden; cursor: zoom-in; background: var(--accent-soft); }
+.mosaic.n1 .ph { aspect-ratio: 3 / 2; }
+.mosaic.n3 .ph:first-child, .mosaic.n6 .ph:first-child { grid-column: span 2; grid-row: span 2; aspect-ratio: auto; }
+.mosaic .ph:first-child { border-top-left-radius: 12px; }
+.ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s var(--ease); }
+.ph:hover img { transform: scale(1.04); }
+.more { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(5, 10, 20, 0.55); color: #fff; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }
+.all { display: flex; align-items: center; justify-content: center; gap: 6px; width: calc(100% - 16px); margin: 6px 8px 8px; padding: 10px; border: 0; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font: 600 0.88rem var(--font); cursor: pointer; }
+.all:hover { filter: brightness(1.05); }
+/* wide cards: four columns, so six photos make two rows */
+.wide .mosaic.n5, .wide .mosaic.n3 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.wide .mosaic.n5 .ph:first-child { grid-column: span 2; grid-row: span 2; aspect-ratio: auto; }
+.wide .mosaic.n3 .ph:first-child { grid-column: span 2; grid-row: span 2; aspect-ratio: auto; }
+.wide .mosaic.n3 .ph:not(:first-child) { grid-column: span 2; aspect-ratio: 2 / 1; }
 .trip-body { padding: 14px 16px 16px; }
 .muted { color: var(--text-3); font-size: 0.88rem; }
 .year { display: inline-block; padding: 2px 8px; margin-right: 4px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 0.75rem; }
 .trip h3 { font-size: 1.15rem; margin-top: 6px; }
 .body { margin-top: 6px; font-size: 0.94rem; color: var(--text-2); white-space: pre-line; }
 
-.lightbox { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: rgba(3, 7, 15, 0.9);  }
-.lightbox img { max-width: 92vw; max-height: 84vh; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.5); animation: zoomIn 0.35s var(--ease); }
-@keyframes zoomIn { from { transform: scale(0.94); opacity: 0; } }
-.cap { position: absolute; bottom: 4vh; left: 50%; transform: translateX(-50%); color: #e8eef7; font-size: 0.95rem; text-align: center; max-width: 80vw; }
-.nav, .close { position: absolute; border: 0; cursor: pointer; color: #fff; background: rgba(255,255,255,0.12); width: 48px; height: 48px; border-radius: 50%; font-size: 1.6rem; transition: background 0.2s; }
-.nav:hover, .close:hover { background: rgba(255,255,255,0.25); }
-.prev { left: 3vw; top: 50%; transform: translateY(-50%); }
-.next { right: 3vw; top: 50%; transform: translateY(-50%); }
-.close { top: 20px; right: 20px; font-size: 1.1rem; }
-.count { position: absolute; top: 30px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,.7); font-size: 0.85rem; }
-
 @container (min-width: 560px) {
-  .photos { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
   .trip h3 { font-size: 1.5rem; }
   .body { font-size: 1.02rem; }
 }

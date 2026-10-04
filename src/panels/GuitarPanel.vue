@@ -1,4 +1,5 @@
 <script setup>
+import RecordingList from '../components/RecordingList.vue'
 import { Guitar } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { useData } from '../composables/useData'
@@ -8,11 +9,6 @@ const data = useData()
 const list = computed(() => data.gitarer || [])
 const g = computed(() => list.value[room.sel.gitar])
 
-function ytId(v) {
-  if (!v) return null
-  const m = String(v).match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/)
-  return m ? m[1] : String(v)
-}
 function strum() { room.api?.strum(room.sel.gitar) }
 </script>
 
@@ -39,16 +35,7 @@ function strum() { room.api?.strum(room.sel.gitar) }
 
           <div class="section-label">Opptak</div>
           <div v-if="!g.opptak?.length" class="empty">Ingen opptak lagt inn ennå.</div>
-          <div v-for="(o, i) in g.opptak" :key="i" class="rec" :style="{ '--i': i }">
-            <div class="rec-head">
-              <b>{{ o.tittel }}</b>
-              <span v-if="o.dato" class="muted">{{ o.dato }}</span>
-            </div>
-            <div v-if="o.youtube" class="video">
-              <iframe :src="`https://www.youtube-nocookie.com/embed/${ytId(o.youtube)}`" :title="o.tittel" loading="lazy" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
-            </div>
-            <audio v-else-if="o.lyd" :src="o.lyd" controls preload="none"></audio>
-          </div>
+          <RecordingList :items="g.opptak || []" />
           <p v-if="g.kreditt" class="credit">
             3D-modell: <a :href="g.kreditt.url" target="_blank" rel="noopener">{{ g.kreditt.tekst }}</a>, fargelagt for denne siden.
           </p>

@@ -1,10 +1,12 @@
 // Dev-only stand-in for public/api.php (used by `npm run dev`, never deployed).
 // Keeps everything in memory; password is "utvikling".
 import { Readable } from 'node:stream'
+import { seed } from './mockSeed.js'
 
 export function mockApi() {
   const db = { trips: [], photos: [], books: [], recordings: [], songs: [{ id: 1, title: 'Wonderwall', artist: 'Oasis', chords: 'Em7 G Dsus4 A7sus4', bpm: 87, beats: 4, capo: 2, ug_url: null, notes: 'Strumming: D DU UDU' }], seq: 1 }
   const files = new Map() // path -> { type, buf }
+  seed(db, files)
   let loggedIn = false
   const sp = { lock: 0, lockSeconds: 600, now: { playing: false } }
   const SP_ALBUMS = [
@@ -54,6 +56,13 @@ export function mockApi() {
         if (url.pathname.startsWith('/uploads/')) {
           const f = files.get(url.pathname.slice(1))
           if (!f) return next()
+          res.setHeader('Content-Type', f.type)
+          return res.end(f.buf)
+        }
+        if (url.pathname === '/thumb.php') {
+          // the real one makes small JPEGs; here the original is good enough
+          const f = files.get(`uploads/photos/${url.searchParams.get('f')}`)
+          if (!f) { res.statusCode = 404; return res.end() }
           res.setHeader('Content-Type', f.type)
           return res.end(f.buf)
         }

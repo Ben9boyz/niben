@@ -73,5 +73,5 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .body { color: var(--text-2); margin-top: 14px; white-space: pre-line; }
 blockquote { margin: 16px 0 0; padding: 12px 16px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 4px 12px 12px 4px; font-style: italic; color: var(--text-2); }
 .x { position: absolute; top: 14px; right: 14px; width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--accent-soft); color: var(--text); cursor: pointer; }
-@media (max-width: 600px) { .modal { grid-template-columns: 1fr; } .modal img { width: 140px; } .shelf { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); } }
+@media (max-width: 600px) { .modal { grid-template-columns: 1fr; } .modal img { width: 140px; } .shelf { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 10px; } }
 </style>

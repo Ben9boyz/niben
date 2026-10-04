@@ -1,4 +1,6 @@
 <script setup>
+import RecordingList from '../components/RecordingList.vue'
+import { Timer } from 'lucide-vue-next'
 import { ref, computed } from 'vue'
 import { useData } from '../composables/useData'
 import GuitarViewer from '../components/GuitarViewer.vue'
@@ -6,10 +8,6 @@ import GuitarViewer from '../components/GuitarViewer.vue'
 const data = useData()
 const idx = ref(0)
 const g = computed(() => data.gitarer?.[idx.value])
-function ytId(v) {
-  const m = String(v || '').match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/)
-  return m ? m[1] : v
-}
 </script>
 
 <template>
@@ -32,19 +30,12 @@ function ytId(v) {
           <div class="muted">{{ [g.merke, g.type, g.aar].filter(Boolean).join(' · ') }}</div>
           <h2>{{ g.navn }}</h2>
           <p class="body">{{ g.beskrivelse }}</p>
-          <router-link to="/ovelse" class="btn small">⏱ Øvingstimer</router-link>
+          <router-link to="/ovelse" class="btn small"><Timer :size="15" /> Øvingstimer</router-link>
         </div>
         <div class="glass card">
           <h3>Opptak</h3>
           <div v-if="!g.opptak?.length" class="empty">Ingen opptak ennå.</div>
-          <div v-for="(o, i) in g.opptak" :key="o.id || i" class="rec">
-            <div class="rec-head"><b>{{ o.tittel }}</b><span class="muted">{{ o.dato }}</span></div>
-            <div v-if="o.youtube" class="video">
-              <iframe :src="`https://www.youtube-nocookie.com/embed/${ytId(o.youtube)}`" :title="o.tittel" loading="lazy" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
-            </div>
-            <audio v-else-if="o.lyd" :src="o.lyd" controls preload="none"></audio>
-            <p v-if="o.notat" class="muted note">{{ o.notat }}</p>
-          </div>
+          <RecordingList :items="g.opptak || []" />
         </div>
         <p v-if="g.kreditt" class="credit">3D-modell: <a :href="g.kreditt.url" target="_blank" rel="noopener">{{ g.kreditt.tekst }}</a>, fargelagt for denne siden.</p>
       </div>
