@@ -6,7 +6,7 @@ import { room, clearSelection } from '../composables/useRoom'
 import { useData } from '../composables/useData'
 import { useTheme } from '../composables/useTheme'
 import { timer, timerState, toggle as toggleTimer } from '../composables/useTimer'
-import { spotify, useSpotify, prefetchTracks } from '../composables/useSpotify'
+import { spotify, useSpotify, prefetchTracks, fetchTracks } from '../composables/useSpotify'
 import { jp, loadJapanese } from '../composables/useJapanese'
 
 const host = ref(null)
@@ -20,6 +20,7 @@ let api
 
 const ROUTES = { hjem: '/', japansk: '/japansk', lytte: '/lytte', ovelse: '/ovelse', gitar: '/gitar', boker: '/boker', reiser: '/reiser', kode: '/kode', om: '/om' }
 
+let nextPeek = null // the record clicked on the way down to the shelf (pulled out first)
 function onPick(p) {
   if (p.kind === 'station') { router.push(ROUTES[p.station]); return }
   if (p.kind === 'guitar') room.sel.gitar = p.index
@@ -33,10 +34,10 @@ function onPick(p) {
     if (room.sel.musikk?.uri === p.uri) { room.recordFlipped = !room.recordFlipped; return }
     // the record that's playing (by the turntable): pick it up
     if (!room.shelfView && p.uri === spotify.now?.context) { take(); return }
-    // from the turntable view, a click on the shelf takes you down to the shelf to browse
-    if (!room.shelfView) { room.sel.musikk = null; room.shelfView = true; return }
-    // at the shelf: click a record to pull it out, click the pulled-out one to take it
     const i = spotify.albums.findIndex((a) => a.uri === p.uri)
+    // from the turntable view, a click on a record takes you down to the shelf with that record pulled out
+    if (!room.shelfView) { nextPeek = i >= 0 ? i : null; room.sel.musikk = null; room.shelfView = true; return }
+    // at the shelf: click a record to pull it out, click the pulled-out one to take it
     if (room.sel.musikk || i === room.peekIndex) take()
     else if (i >= 0) room.peekIndex = i
   } else if (p.kind === 'shelf') {
@@ -87,10 +88,16 @@ watch(() => [jp.word, room.api], () => room.api?.setJapanWord(jp.word), { immedi
 watch(theme, (t) => api?.setTheme(t))
 watch(() => timer.interval, (v) => api?.setTimerInterval(v))
 watch(() => [spotify.albums, spotify.playlists, spotify.now], () => api?.setMusic(spotify), { deep: false })
-// arriving at the shelf: a random record is pulled out to start browsing from
+// arriving at the shelf: the record you clicked is pulled out – or a random one if you clicked the
+// sideboard itself
 watch(() => room.shelfView, (on) => {
   const n = Math.min(spotify.albums.length, 150)
-  if (on && n) room.peekIndex = Math.floor(Math.random() * n)
+  if (on && n) room.peekIndex = nextPeek ?? Math.floor(Math.random() * n)
+  nextPeek = null
+})
+// fetch the track list as soon as a record is pulled out or taken, so it's there when you turn it over
+watch(() => [room.shelfView && spotify.albums[room.peekIndex]?.uri, room.sel.musikk?.uri], (uris) => {
+  for (const uri of uris) if (uri) fetchTracks(uri)
 })
 watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room.shelfView, room.recordFlipped, room.peekIndex, spotify.albums], () => {
   const here = route.name === 'lytte'
