@@ -785,9 +785,10 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     setInsets,
     strum(i) { if (guitars[i]) { guitars[i].strum = 1; invalidate(1) } },
     setTimerInterval(v) { timerInterval = v },
-    setMusicView({ selected = null, ipod = false, big = false, pose = null, flip = false } = {}) {
+    setMusicView({ selected = null, ipod = false, big = false, pose = null, flip = false, peek = null } = {}) {
       invalidate(1)
       listening.setSelected(selected)
+      listening.setPeek(peek)
       listening.setFlip(flip)
       listening.setHoldIpod(ipod, big)
       // where the camera looks in the listening corner

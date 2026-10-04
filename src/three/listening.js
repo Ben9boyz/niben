@@ -478,6 +478,7 @@ export function buildListeningCorner() {
   let hoverUri = null
   let selectedUri = null
   let playingUri = null
+  let peekUri = null // browsing the shelf: this record is pulled out, cover to the front
   let playing = false
   let holdIpod = false
   let flipSel = false // the held-up record shows its back (the track list)
@@ -557,14 +558,14 @@ export function buildListeningCorner() {
     group.getWorldQuaternion(groupQ).invert()
 
     // records that should be off the shelf get a loose mesh; the rest stay instanced
-    for (const uri of [selectedUri, playingUri]) {
+    for (const uri of [selectedUri, playingUri, peekUri]) {
       if (!uri) continue
       const r = records.find((x) => x.album.uri === uri)
       if (r && !loose.has(uri)) loose.set(uri, makeLoose(r))
       else if (loose.has(uri)) loose.get(uri).returning = false
     }
     for (const [uri, l] of loose) {
-      if (uri !== selectedUri && uri !== playingUri) l.returning = true
+      if (uri !== selectedUri && uri !== playingUri && uri !== peekUri) l.returning = true
     }
 
     // hover: slide the record out a little
@@ -581,6 +582,7 @@ export function buildListeningCorner() {
       const r = l.rec
       const sel = uri === selectedUri && !l.returning
       const isPlaying = uri === playingUri && !sel && !l.returning
+      const peek = uri === peekUri && !sel && !l.returning
       let scale = 1
       if (sel) {
         // hold still in front of the camera, cover (local +x) facing it – or flipped over to its back
@@ -593,6 +595,10 @@ export function buildListeningCorner() {
         basis.makeBasis(ax, ay, az)
         targetQ.setFromRotationMatrix(basis).premultiply(groupQ)
         scale = 1.05
+      } else if (peek) {
+        // pulled out in front of its slot and turned so the cover faces the room
+        targetPos.set(r.home.x, r.home.y + 0.06, FRONT_Z + 0.1)
+        targetQ.setFromEuler(targetRot.set(0, -Math.PI / 2, 0))
       } else if (isPlaying) {
         // "now playing" display: standing next to the turntable, leaning back against the wall,
         // cover facing the room and turned a little towards the listening spot
@@ -683,6 +689,7 @@ export function buildListeningCorner() {
     setState,
     setHover(uri) { hoverUri = uri },
     setSelected(uri) { selectedUri = uri },
+    setPeek(uri) { peekUri = uri },
     setHoldIpod(v, big = false) { holdIpod = v; ipodBig = big },
     setFlip(v) { flipSel = v },
     isSpinning: () => playing,

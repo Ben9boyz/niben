@@ -28,11 +28,17 @@ function onPick(p) {
   else if (p.kind === 'clock') toggleTimer()
   else if (p.kind === 'album') {
     room.musicView = 'vinyl'
+    const take = () => { room.sel.musikk = { kind: 'album', uri: p.uri, t: Date.now() } }
     // the record in your hands: turn it over (track list on the back)
     if (room.sel.musikk?.uri === p.uri) { room.recordFlipped = !room.recordFlipped; return }
-    // from the turntable view, a click on the shelf first takes you to the shelf to browse
-    if (!room.shelfView && !room.sel.musikk) { room.shelfView = true; return }
-    room.sel.musikk = { kind: 'album', uri: p.uri, t: Date.now() }
+    // the record that's playing (by the turntable): pick it up
+    if (!room.shelfView && p.uri === spotify.now?.context) { take(); return }
+    // from the turntable view, a click on the shelf takes you down to the shelf to browse
+    if (!room.shelfView) { room.sel.musikk = null; room.shelfView = true; return }
+    // at the shelf: click a record to pull it out, click the pulled-out one to take it
+    const i = spotify.albums.findIndex((a) => a.uri === p.uri)
+    if (room.sel.musikk || i === room.peekIndex) take()
+    else if (i >= 0) room.peekIndex = i
   } else if (p.kind === 'ipod') room.musicView = 'ipod'
   else if (p.kind === 'screen') {
     const n = data.prosjekter?.length || 0
@@ -78,7 +84,12 @@ watch(() => [jp.word, room.api], () => room.api?.setJapanWord(jp.word), { immedi
 watch(theme, (t) => api?.setTheme(t))
 watch(() => timer.interval, (v) => api?.setTimerInterval(v))
 watch(() => [spotify.albums, spotify.playlists, spotify.now], () => api?.setMusic(spotify), { deep: false })
-watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room.shelfView, room.recordFlipped], () => {
+// arriving at the shelf: a random record is pulled out to start browsing from
+watch(() => room.shelfView, (on) => {
+  const n = Math.min(spotify.albums.length, 150)
+  if (on && n) room.peekIndex = Math.floor(Math.random() * n)
+})
+watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room.shelfView, room.recordFlipped, room.peekIndex, spotify.albums], () => {
   const here = route.name === 'lytte'
   api?.setMusicView({
     // the picked record is held up to the camera – not in the overhead view, where it lies by the turntable
@@ -89,6 +100,7 @@ watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room
     // (picking something lifts the iPod up in front of the camera)
     pose: !here ? null : room.musicView.startsWith('ipod') ? 'ipod' : room.shelfView ? 'shelf' : 'top',
     flip: room.recordFlipped,
+    peek: here && room.shelfView && !room.sel.musikk && room.musicView === 'vinyl' ? spotify.albums[room.peekIndex]?.uri || null : null,
   })
 })
 // started from this page: the side panel slides away and the camera settles on what's playing –
