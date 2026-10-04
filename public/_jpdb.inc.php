@@ -42,12 +42,12 @@ function jp_card(array $r): array {
 
 /** Every word in the user's own decks with its card info (deduplicated). */
 function jp_all_cards(): ?array {
-    [$s, $j] = jp_api('list-user-decks', ['fields' => ['id', 'name', 'vocabulary_count', 'vocabulary_known_coverage', 'vocabulary_in_progress_coverage']]);
+    [$s, $j] = jp_api('list-user-decks', ['fields' => ['id', 'name', 'vocabulary_count', 'vocabulary_known_coverage', 'vocabulary_in_progress_coverage', 'word_count', 'is_built_in']]);
     if ($s !== 200) return null;
     $decks = [];
     $pairs = [];
-    foreach ($j['decks'] ?? [] as [$id, $name, $count, $known, $prog]) {
-        $decks[] = ['id' => $id, 'name' => $name, 'words' => $count, 'known' => round((float)$known, 1), 'learning' => round((float)$prog, 1)];
+    foreach ($j['decks'] ?? [] as [$id, $name, $count, $known, $prog, $occ, $builtIn]) {
+        $decks[] = ['id' => $id, 'name' => $name, 'words' => $count, 'known' => round((float)$known, 1), 'learning' => round((float)$prog, 1), 'occ' => (int)$occ, 'builtin' => (bool)$builtIn];
         [$ds, $dj] = jp_api('deck/list-vocabulary', ['id' => $id]);
         if ($ds !== 200) continue;
         foreach ($dj['vocabulary'] ?? [] as $p) $pairs[$p[0] . ':' . $p[1]] = $p;
@@ -61,6 +61,74 @@ function jp_all_cards(): ?array {
     return ['decks' => $decks, 'cards' => $cards];
 }
 
+// ── anime: the built-in decks (added from jpdb's library) that are anime, one per show ──
+
+/** "Sono Bisque Doll wa Koi wo Suru - Episode 1" → "Sono Bisque Doll wa Koi wo Suru" */
+function jp_show_title(string $name): string {
+    return trim(preg_replace('/\s*[-–:]\s*(episode|ep\.?|volume|vol\.?|chapter|part)\s*\d+.*$/iu', '', $name));
+}
+
+function jp_norm(string $s): string { return preg_replace('/[^\p{L}\p{N}]+/u', '', mb_strtolower($s)); }
+
+/** The show on AniList (cover, titles, link), or null if the title isn't an anime. Cached for 30 days. */
+function jp_anilist(string $title): ?array {
+    $key = 'jp_al_' . md5($title);
+    $raw = kv_get($key);
+    if ($raw) {
+        $c = json_decode($raw, true);
+        if ($c && ($c['t'] ?? 0) > time() - 30 * 86400) return $c['d'];
+    }
+    $q = 'query($s:String){Page(perPage:5){media(search:$s,type:ANIME){id siteUrl seasonYear episodes title{romaji english native} synonyms coverImage{extraLarge large color}}}}';
+    [$status, $res] = http_req('POST', 'https://graphql.anilist.co', ['Content-Type: application/json', 'Accept: application/json'], json_encode(['query' => $q, 'variables' => ['s' => $title]]));
+    if ($status !== 200) return $raw ? (json_decode($raw, true)['d'] ?? null) : null; // try again next time
+    $want = jp_norm($title);
+    $hit = null;
+    foreach (json_decode((string)$res, true)['data']['Page']['media'] ?? [] as $m) {
+        $names = array_filter(array_merge(array_values($m['title'] ?? []), $m['synonyms'] ?? []));
+        foreach ($names as $n) {
+            $n = jp_norm($n);
+            if ($n !== '' && ($n === $want || (mb_strlen($n) > 5 && (str_contains($want, $n) || str_contains($n, $want))))) { $hit = $m; break 2; }
+        }
+    }
+    $d = $hit ? [
+        'anilist' => $hit['id'],
+        'url' => $hit['siteUrl'],
+        'en' => $hit['title']['english'] ?? null,
+        'native' => $hit['title']['native'] ?? null,
+        'year' => $hit['seasonYear'] ?? null,
+        'episodes' => $hit['episodes'] ?? null,
+        'cover' => $hit['coverImage']['extraLarge'] ?? $hit['coverImage']['large'] ?? null,
+        'color' => $hit['coverImage']['color'] ?? null,
+    ] : null;
+    kv_set($key, json_encode(['t' => time(), 'd' => $d], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    return $d;
+}
+
+/** Anime among the decks, best coverage first. Coverage is weighted by how many words each episode has. */
+function jp_anime(array $decks): array {
+    $shows = [];
+    foreach ($decks as $d) {
+        if (!$d['builtin']) continue;
+        $t = jp_show_title($d['name']);
+        $s = &$shows[$t];
+        $s['title'] = $t;
+        $s['decks'][] = $d['id'];
+        $w = max(1, $d['occ']);
+        $s['w'] = ($s['w'] ?? 0) + $w;
+        $s['k'] = ($s['k'] ?? 0) + $d['known'] * $w;
+        $s['l'] = ($s['l'] ?? 0) + $d['learning'] * $w;
+        unset($s);
+    }
+    $out = [];
+    foreach ($shows as $t => $s) {
+        $al = jp_anilist($t);
+        if (!$al) continue;
+        $out[] = ['title' => $t, 'parts' => count($s['decks']), 'known' => round($s['k'] / $s['w'], 1), 'learning' => round($s['l'] / $s['w'], 1)] + $al;
+    }
+    usort($out, fn($a, $b) => $b['known'] <=> $a['known']);
+    return $out;
+}
+
 function jp_is(array $c, string ...$states): bool { return (bool)array_intersect($states, $c['state']); }
 
 function jp_handle(string $action, bool $post): void {
@@ -69,7 +137,7 @@ function jp_handle(string $action, bool $post): void {
     switch ($action) {
     case 'jpdb_public': {
         // statistics + word of the day for everyone (cached for 10 minutes)
-        $data = sp_cached('jp_public', 600, function () {
+        $data = sp_cached('jp_public_v2', 600, function () {
             $all = jp_all_cards();
             if (!$all) return null;
             $cards = $all['cards'];
@@ -87,7 +155,8 @@ function jp_handle(string $action, bool $post): void {
             usort($pool, fn($a, $b) => $a['vid'] <=> $b['vid']);
             $word = $pool ? $pool[crc32(date('Y-m-d')) % count($pool)] : null;
             if ($word) unset($word['due']);
-            return ['decks' => $all['decks'], 'count' => $count, 'word' => $word, 'at' => time()];
+            $decks = array_map(fn($d) => array_diff_key($d, ['occ' => 1, 'builtin' => 1]), $all['decks']);
+            return ['decks' => $decks, 'anime' => jp_anime($all['decks']), 'count' => $count, 'word' => $word, 'at' => time()];
         });
         if (!$data) fail('Fikk ikke kontakt med jpdb.', 502);
         out(['configured' => true] + $data);
@@ -118,7 +187,7 @@ function jp_handle(string $action, bool $post): void {
         if ($vid <= 0 || $sid <= 0) fail('Ugyldig kort.');
         [$s, $j] = jp_api('review', ['vid' => $vid, 'sid' => $sid, 'grade' => $grade]);
         if ($s !== 200) fail('jpdb svarte: ' . ($j['error_message'] ?? $s), 502);
-        kv_del('jp_public');
+        kv_del('jp_public_v2');
         // the card's new state
         [$ls, $lj] = jp_api('lookup-vocabulary', ['list' => [[$vid, $sid]], 'fields' => ['card_state', 'due_at']]);
         $info = $lj['vocabulary_info'][0] ?? null;

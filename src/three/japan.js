@@ -70,7 +70,120 @@ function drawWordCard(x, w, h, word) {
   x.fillText(m, w / 2, h - 58)
 }
 
-export function buildJapanCorner() {
+// ── anime DVDs: the shows from the jpdb decks, in cases stacked on the tatami ──
+const DVD = { w: 0.17, d: 0.24, h: 0.019 } // a DVD case (a bit larger than life), lying down: cover on top, spine on the left
+const PER_STACK = 5
+const STACKS = [[0.5, 0.4], [0.78, 0.18], [-0.56, 0.45], [0.66, -0.1]] // spots on the mat, clear of the table
+
+function drawSpine(x, w, h, anime) {
+  const bg = anime.color || '#33415c'
+  x.fillStyle = bg
+  x.fillRect(0, 0, w, h)
+  // light or dark text depending on the colour
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(bg.slice(i, i + 2), 16) || 0)
+  const light = r * 0.3 + g * 0.59 + b * 0.11 > 150
+  x.fillStyle = light ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.16)'
+  x.fillRect(0, 0, 46, h)
+  x.fillStyle = light ? '#1a1a1a' : '#fff'
+  x.textBaseline = 'middle'
+  x.font = '800 22px system-ui, sans-serif'
+  x.textAlign = 'center'
+  x.fillText('DVD', 23, h / 2 + 1)
+  x.textAlign = 'left'
+  const title = anime.native || anime.en || anime.title
+  x.font = '700 26px "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif'
+  let t = title
+  while (t.length > 2 && x.measureText(t).width > w - 150) t = t.slice(0, -1)
+  x.fillText(t === title ? t : `${t}…`, 58, h / 2 + 1)
+  // coverage at the end of the spine
+  x.textAlign = 'right'
+  x.font = '700 20px system-ui, sans-serif'
+  x.fillText(`${Math.round(anime.known)}%`, w - 12, h / 2 + 1)
+}
+
+function buildDvds(onChange) {
+  const group = new THREE.Group()
+  const loader = new THREE.TextureLoader()
+  loader.setCrossOrigin('anonymous')
+  const geo = new THREE.BoxGeometry(DVD.w, DVD.h, DVD.d)
+  const plastic = new THREE.MeshStandardMaterial({ color: 0x1b1d22, roughness: 0.35 })
+  const edge = new THREE.MeshStandardMaterial({ color: 0xd9dbe0, roughness: 0.5 })
+  let items = []
+  let key = ''
+  let hover = -1
+  let selected = -1
+
+  function set(list) {
+    const k = (list || []).map((a) => `${a.anilist}:${Math.round(a.known)}`).join(',')
+    if (k === key) return
+    key = k
+    for (const it of items) {
+      group.remove(it.mesh)
+      it.mesh.material.forEach((m) => { m.map?.dispose(); if (m !== plastic && m !== edge) m.dispose() })
+    }
+    items = []
+    const shows = (list || []).slice(0, PER_STACK * STACKS.length)
+    shows.forEach((a, i) => {
+      const stack = Math.floor(i / PER_STACK)
+      const level = i % PER_STACK
+      const top = level === Math.min(PER_STACK, shows.length - stack * PER_STACK) - 1
+      const spine = canvasTex(512, 40, (x, w, h) => drawSpine(x, w, h, a))
+      const cover = new THREE.MeshStandardMaterial({ color: a.color || 0x33415c, roughness: 0.32 })
+      if (a.cover) {
+        // the same CORS-safe URL as the panel's <img>, so a copy cached without CORS headers is never reused
+        loader.load(`${a.cover}?cors`, (t) => {
+          t.colorSpace = THREE.SRGBColorSpace
+          t.anisotropy = 8
+          cover.map = t
+          cover.color.set(0xffffff)
+          cover.needsUpdate = true
+          onChange()
+        })
+      }
+      // faces: +x (opening edge), -x (spine), +y (front cover), -y, +z, -z
+      const mesh = new THREE.Mesh(geo, [edge, new THREE.MeshStandardMaterial({ map: spine, roughness: 0.4 }), cover, plastic, plastic, plastic])
+      mesh.castShadow = mesh.receiveShadow = true
+      mesh.userData.kind = 'anime'
+      mesh.userData.index = i
+      // spines towards the room, a little untidy; the top one is turned so its cover faces you
+      const seed = Math.sin(i * 12.9898 + 4.1) * 43758.5453
+      const jit = (seed - Math.floor(seed) - 0.5)
+      const rot = top ? 0.18 + jit * 0.3 : Math.PI / 2 + jit * 0.22
+      const [sx, sz] = STACKS[stack]
+      const base = new THREE.Vector3(sx + jit * 0.012, 0.03 + DVD.h / 2 + level * (DVD.h + 0.0008), sz - jit * 0.01)
+      mesh.position.copy(base)
+      mesh.rotation.y = rot
+      group.add(mesh)
+      items.push({ mesh, base, lift: 0 })
+    })
+    onChange()
+  }
+
+  /** Lift and slide out the hovered / picked one. Returns true while moving. */
+  function update(dt) {
+    let moving = false
+    items.forEach((it, i) => {
+      const want = i === selected ? 1 : i === hover ? 0.45 : 0
+      const d = want - it.lift
+      if (Math.abs(d) < 0.001) return
+      it.lift += d * Math.min(1, dt * 10)
+      // pull it out towards the room (+z) and up a touch
+      it.mesh.position.set(it.base.x, it.base.y + it.lift * 0.035, it.base.z + it.lift * 0.09)
+      moving = true
+    })
+    return moving
+  }
+
+  return {
+    group,
+    set,
+    update,
+    setHover(i) { hover = i ?? -1 },
+    setSelected(i) { selected = i ?? -1 },
+  }
+}
+
+export function buildJapanCorner(onChange = () => {}) {
   const group = new THREE.Group()
   const add = (geo, mat, x, y, z, parent = group) => {
     const m = new THREE.Mesh(geo, mat)
@@ -150,5 +263,8 @@ export function buildJapanCorner() {
     cardTex.needsUpdate = true
   }
 
-  return { group, setWord }
+  const dvds = buildDvds(onChange)
+  group.add(dvds.group)
+
+  return { group, setWord, setAnime: dvds.set, setAnimeHover: dvds.setHover, setAnimeSelected: dvds.setSelected, update: dvds.update }
 }

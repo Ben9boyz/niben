@@ -1,7 +1,7 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
-import { GraduationCap, ArrowUpRight } from 'lucide-vue-next'
-import { jp, loadJapanese, jpdbUrl, pitchMorae } from '../composables/useJapanese'
+import { ref, computed, watch, nextTick } from 'vue'
+import { GraduationCap, ArrowUpRight, Tv, Check } from 'lucide-vue-next'
+import { jp, loadJapanese, jpdbUrl, pitchMorae, ANIME_READY } from '../composables/useJapanese'
 import { admin, checkLogin } from '../composables/useAdmin'
 import { room } from '../composables/useRoom'
 import JapanPractice from './JapanPractice.vue'
@@ -16,6 +16,17 @@ const total = computed(() => jp.count.due + jp.count.learning + jp.count.known +
 const word = computed(() => jp.word)
 const morae = computed(() => (word.value ? pitchMorae(word.value.reading, word.value.pitch) : null))
 watch(() => admin.loggedIn, (on) => { if (!on) practicing.value = false })
+
+// anime: the shows in the decks; enough coverage = ready to watch. A DVD clicked in the room is
+// highlighted here (and the other way round).
+const ready = computed(() => jp.anime.filter((a) => a.known >= ANIME_READY))
+const animeEl = ref(null)
+const pickAnime = (i) => { room.jpAnime = room.jpAnime === i ? -1 : i }
+watch(() => room.jpAnime, async (i) => {
+  if (i < 0) return
+  await nextTick()
+  animeEl.value?.querySelector(`[data-i="${i}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+})
 </script>
 
 <template>
@@ -56,6 +67,23 @@ watch(() => admin.loggedIn, (on) => { if (!on) practicing.value = false })
           <i class="known" :style="{ width: `${(jp.count.known / total) * 100}%` }"></i>
           <i class="learning" :style="{ width: `${((jp.count.learning + jp.count.due) / total) * 100}%` }"></i>
         </div>
+
+        <section v-if="jp.anime.length" ref="animeEl" class="anime">
+          <b class="h"><Tv :size="14" /> Anime <small>{{ ready.length ? `${ready.length} klar til å se` : `klar ved ${ANIME_READY} % kjent` }}</small></b>
+          <div v-for="(a, i) in jp.anime" :key="a.anilist" :data-i="i" class="show" :class="{ on: room.jpAnime === i, ready: a.known >= ANIME_READY }" @click="pickAnime(i)">
+            <img v-if="a.cover" :src="`${a.cover}?cors`" alt="" loading="lazy" crossorigin="anonymous" :style="{ background: a.color || undefined }" />
+            <div class="si">
+              <span class="st-t">{{ a.en || a.title }}</span>
+              <small lang="ja">{{ a.native }}<template v-if="a.year"> · {{ a.year }}</template><template v-if="a.parts > 1"> · {{ a.parts }} deler</template></small>
+              <div class="dbar"><i class="known" :style="{ width: `${a.known}%` }"></i><i class="learning" :style="{ width: `${Math.max(0, a.learning - a.known)}%` }"></i><b class="goal" :style="{ left: `${ANIME_READY}%` }"></b></div>
+              <small class="sp">
+                <span v-if="a.known >= ANIME_READY" class="ok"><Check :size="12" /> Klar til å se</span>
+                <span v-else>{{ String(a.known).replace('.', ',') }} % kjent · {{ String(Math.max(0, ANIME_READY - a.known).toFixed(1)).replace('.', ',') }} % igjen</span>
+                <a :href="a.url" target="_blank" rel="noopener" @click.stop>AniList <ArrowUpRight :size="11" /></a>
+              </small>
+            </div>
+          </div>
+        </section>
 
         <section v-if="jp.decks.length" class="decks">
           <b class="h">Kortstokker</b>
@@ -119,6 +147,22 @@ watch(() => admin.loggedIn, (on) => { if (!on) practicing.value = false })
 .dn span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dn small { flex: none; color: var(--text-3); font-weight: 500; }
 .dp { font-size: 0.72rem; color: var(--text-3); }
+.anime { display: grid; gap: 8px; }
+.h { display: flex; align-items: center; gap: 6px; }
+.h small { margin-left: auto; font-size: 0.7rem; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.show { display: flex; gap: 12px; padding: 10px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--glass-border); cursor: pointer; transition: border-color 0.2s, transform 0.2s; }
+.show:hover { transform: translateY(-1px); }
+.show.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.show img { flex: none; width: 52px; aspect-ratio: 135 / 190; object-fit: cover; border-radius: 4px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25); }
+.si { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; justify-content: center; }
+.st-t { font-weight: 700; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.si > small { font-size: 0.74rem; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.si .dbar { position: relative; overflow: visible; }
+.si .dbar i:first-child { border-radius: 6px 0 0 6px; }
+.goal { position: absolute; top: -3px; bottom: -3px; width: 2px; border-radius: 2px; background: var(--text-3); }
+.sp { display: flex; justify-content: space-between; gap: 8px; }
+.sp .ok { display: inline-flex; align-items: center; gap: 3px; color: #3aa76d; font-weight: 700; }
+.sp a { display: inline-flex; align-items: center; gap: 2px; color: var(--accent); text-decoration: none; font-weight: 600; }
 .src { font-size: 0.72rem; color: var(--text-3); margin: 0; }
 .src a { color: inherit; }
 </style>

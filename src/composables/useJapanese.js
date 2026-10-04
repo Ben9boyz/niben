@@ -8,6 +8,7 @@ export const jp = reactive({
   configured: false,
   error: null,
   decks: [],
+  anime: [], // shows from the decks, with cover (AniList) and coverage – best first
   count: { due: 0, learning: 0, known: 0, new: 0 },
   word: null,
 })
@@ -23,6 +24,7 @@ export function loadJapanese(force = false) {
       else {
         jp.error = null
         jp.decks = j.decks || []
+        jp.anime = j.anime || []
         jp.count = j.count || jp.count
         jp.word = j.word || null
       }
@@ -31,6 +33,9 @@ export function loadJapanese(force = false) {
     .finally(() => { jp.loaded = true })
   return loading
 }
+
+/** Known coverage (%) at which a show is comfortable to watch. */
+export const ANIME_READY = 80
 
 // ── practice (admin) ──
 const NEW_KEY = 'niben-jp-new'

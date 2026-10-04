@@ -43,7 +43,8 @@ function onPick(p) {
   } else if (p.kind === 'shelf') {
     // the sideboard itself: go down to the shelf and browse
     if (!room.shelfView) { room.musicView = 'vinyl'; room.sel.musikk = null; room.shelfView = true }
-  } else if (p.kind === 'ipod') room.musicView = 'ipod'
+  } else if (p.kind === 'anime') room.jpAnime = room.jpAnime === p.index ? -1 : p.index
+  else if (p.kind === 'ipod') room.musicView = 'ipod'
   else if (p.kind === 'screen') {
     const n = data.prosjekter?.length || 0
     if (n) room.sel.prosjekt = (room.sel.prosjekt + 1) % n
@@ -55,6 +56,7 @@ function onPick(p) {
     }
     room.sel.bok = -1
     room.sel.land = null
+    room.jpAnime = -1
   }
 }
 
@@ -85,6 +87,8 @@ watch(() => data.version, () => data.loaded && api?.setData(data))
 // the word of the day on the card in the Japanese corner
 loadJapanese()
 watch(() => [jp.word, room.api], () => room.api?.setJapanWord(jp.word), { immediate: true })
+// …and the anime from the decks as DVDs stacked on the mat
+watch(() => [jp.anime, room.jpAnime, room.api], () => room.api?.setAnime(jp.anime, room.jpAnime), { immediate: true })
 watch(theme, (t) => api?.setTheme(t))
 watch(() => timer.interval, (v) => api?.setTimerInterval(v))
 watch(() => [spotify.albums, spotify.playlists, spotify.now], () => api?.setMusic(spotify), { deep: false })

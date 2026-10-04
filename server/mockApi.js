@@ -217,7 +217,15 @@ export function mockApi() {
             if (!needAdmin()) return
             return send(res, 200, { token: 'mock', expires: 0, streaming: false }) // no real Spotify in dev
           case 'jpdb_public':
-            return send(res, 200, { configured: true, decks: [{ id: 1, name: 'Sono Bisque Doll wa Koi wo Suru - Episode 1', words: 448, known: 2.8, learning: 4.5 }], count: { due: 3, learning: 2, known: 6, new: 436 },
+            return send(res, 200, { configured: true, decks: [{ id: 1, name: 'Sono Bisque Doll wa Koi wo Suru - Episode 1', words: 448, known: 2.8, learning: 4.5 }], anime: [
+              { title: 'Yuru Camp△', parts: 12, known: 91.4, learning: 94, anilist: 98444, url: 'https://anilist.co/anime/98444', en: 'Laid-Back Camp', native: 'ゆるキャン△', year: 2018, cover: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx98444-Vzysp1EsrzgD.jpg', color: '#f1ae5d' },
+              { title: 'K-ON!', parts: 1, known: 84.2, learning: 88, anilist: 5680, url: 'https://anilist.co/anime/5680', en: 'K-ON!', native: 'けいおん!', year: 2009, cover: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx5680-r3AI3Cwfv0Aq.png', color: '#e47843' },
+              { title: 'SPY×FAMILY', parts: 3, known: 72.5, learning: 80, anilist: 140960, url: 'https://anilist.co/anime/140960', en: 'SPY x FAMILY', native: 'SPY×FAMILY', year: 2022, cover: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx140960-Kb6R5nYQfjmP.jpg', color: '#c9f1f1' },
+              { title: 'Bocchi the Rock!', parts: 1, known: 61, learning: 70, anilist: 130003, url: 'https://anilist.co/anime/130003', en: 'BOCCHI THE ROCK!', native: 'ぼっち・ざ・ろっく！', year: 2022, cover: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx130003-HTDmeL4RGeJ4.png', color: '#e4bb50' },
+              { title: 'Sousou no Frieren', parts: 1, known: 40.3, learning: 52, anilist: 154587, url: 'https://anilist.co/anime/154587', en: 'Frieren: Beyond Journey’s End', native: '葬送のフリーレン', year: 2023, cover: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx154587-qQTzQnEJJ3oB.jpg', color: '#bbf1a1' },
+              { title: 'Shingeki no Kyojin', parts: 1, known: 21, learning: 30, anilist: 16498, url: 'https://anilist.co/anime/16498', en: 'Attack on Titan', native: '進撃の巨人', year: 2013, cover: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx16498-buvcRTBx4NSm.jpg', color: '#f1a143' },
+              { title: 'Sono Bisque Doll wa Koi wo Suru', parts: 1, known: 2.8, learning: 4.5, anilist: 132405, url: 'https://anilist.co/anime/132405', en: 'My Dress-Up Darling', native: 'その着せ替え人形は恋をする', year: 2022, cover: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx132405-qP7FQYGmNI3d.jpg', color: '#e46b5d' },
+            ],  count: { due: 3, learning: 2, known: 6, new: 436 },
               word: { vid: 1, sid: 1, spelling: '可愛い', reading: 'かわいい', meanings: [['cute', 'adorable', 'charming']], pos: ['adj-i'], pitch: 'LHHL', freq: 900, state: ['learning'] } })
           case 'jpdb_queue': {
             if (!needAdmin()) return

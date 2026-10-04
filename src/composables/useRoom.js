@@ -15,6 +15,7 @@ export const room = reactive({
   recordFlipped: false, // the held-up record turned over to its track list
   practiceTab: 'timer', // practice corner: 'timer' | 'akkorder'
   chordMode: 'bytte', // chord practice: 'bytte' | 'progresjon' | 'sanger' | 'grep'
+  jpAnime: -1, // Japanese corner: the anime DVD pulled out (index into jp.anime)
   jpPractice: false, // Japanese corner: flashcard practice open // desktop: the side panel slid away (the 3D view gets the whole screen)
 })
 
@@ -22,6 +23,7 @@ export function clearSelection() {
   room.shelfView = false
   room.recordFlipped = false
   room.jpPractice = false
+  room.jpAnime = -1
   room.sel.gitar = -1
   room.sel.bok = -1
   room.sel.land = null

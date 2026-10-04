@@ -328,6 +328,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   tag(listening.group, 'lytte')
   scene.add(listening.group)
   let music = { albums: [], playlists: [], now: null }
+  let animeList = [] // the Japanese corner's DVDs (from jpdb)
 
   // Practice corner with the interval clock
   const practice = buildPracticeCorner()
@@ -335,7 +336,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   scene.add(practice.group)
 
   // Japanese corner (jpdb): low table on a tatami mat at the front, left of the rug
-  const japan = buildJapanCorner()
+  const japan = buildJapanCorner(() => invalidate(0.3))
   japan.group.position.set(-1.2, 0, 2.85)
   japan.group.rotation.y = 0.12
   tag(japan.group, 'japansk')
@@ -475,11 +476,17 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     shelf.setHover(-1)
     globeTable.setHover(null)
     listening.setHover(null)
+    japan.setAnimeHover(-1)
     if (hoverInfo) {
       if (hoverInfo.station !== station) label = STATION_LABELS[hoverInfo.station]
       else if (hoverInfo.kind === 'guitar') { hoverGuitar = hoverInfo.index; label = currentData.gitarer?.[hoverInfo.index]?.navn }
       else if (hoverInfo.kind === 'book') { shelf.setHover(hoverInfo.index); label = currentData.boker?.[hoverInfo.index]?.tittel }
       else if (hoverInfo.kind === 'album') { label = music.albums[hoverInfo.index]?.name; listening.setHover(music.albums[hoverInfo.index]?.uri) }
+      else if (hoverInfo.kind === 'anime') {
+        const a = animeList[hoverInfo.index]
+        japan.setAnimeHover(hoverInfo.index)
+        if (a) label = `${a.en || a.title} · ${String(a.known).replace('.', ',')} % kjent`
+      }
       else if (hoverInfo.kind === 'ipod') label = 'Spillelister'
       else if (hoverInfo.kind === 'shelf' && lyttePose !== 'shelf') label = 'Bla i platehylla'
       else if (hoverInfo.station === 'reiser' && hoverInfo.country) { globeTable.setHover(hoverInfo.country); label = norskNavn(hoverInfo.country) }
@@ -517,6 +524,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     else if (info.kind === 'screen') onPick?.({ station, kind: 'screen' })
     else if (info.station === 'ovelse') onPick?.({ station, kind: 'clock' })
     else if (info.kind === 'album') onPick?.({ station, kind: 'album', uri: music.albums[info.index]?.uri })
+    else if (info.kind === 'anime') onPick?.({ station, kind: 'anime', index: info.index })
     else if (info.kind === 'ipod') onPick?.({ station, kind: 'ipod' })
     else if (info.kind === 'shelf') onPick?.({ station, kind: 'shelf' })
     else onPick?.({ station, kind: 'object' })
@@ -765,6 +773,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     if (globeTable.update(dt, t, !reduced && near('reiser'))) active = true
     if (timerState && near('ovelse', 'hjem') && practice.update(dt, t, timerState(), timerInterval)) active = true
     if (listening.update(dt, t, camera)) { shadowsDirty = true; active = true }
+    if (japan.update(dt)) { shadowsDirty = true; active = true }
     if (listening.isSpinning() && near('lytte', 'hjem')) active = true
     return active
   }
@@ -808,6 +817,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     },
     /** Word of the day on the card in the Japanese corner. */
     setJapanWord(word) { japan.setWord(word); invalidate(0.2) },
+    /** The anime from jpdb as DVDs on the mat; `selected` is pulled out of its stack. */
+    setAnime(list, selected = -1) { animeList = list || []; japan.setAnime(animeList); japan.setAnimeSelected(selected); invalidate(0.6) },
     /** The held-up record's rectangle in viewport CSS px, or null. */
     recordScreenRect() {
       const r = renderer.domElement.getBoundingClientRect()
