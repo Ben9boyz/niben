@@ -2,6 +2,7 @@
 public/_config.php
 public/_spotify.php
 public/_jpdb.php
+public/_steam.php
 .deploy.local
 *.env
 .env*

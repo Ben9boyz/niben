@@ -100,6 +100,109 @@ function drawScreen(ctx, project, index, total, t) {
   }
 }
 
+// ── the monitor in the gaming corner: a Steam-like screen with what's being played ──
+const imgCache = new Map()
+function steamImg(appid, kind, onLoad) {
+  const url = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appid}/${kind}.jpg`
+  let e = imgCache.get(url)
+  if (!e) {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    e = { img, ok: false }
+    img.onload = () => { e.ok = true; onLoad() }
+    img.src = url
+    imgCache.set(url, e)
+  }
+  return e.ok ? e.img : null
+}
+
+function drawGaming(x, data, t, onLoad) {
+  x.fillStyle = '#171a21'
+  x.fillRect(0, 0, W, H)
+  // top bar
+  x.fillStyle = '#0e1116'
+  x.fillRect(0, 0, W, 64)
+  x.fillStyle = '#c7d5e0'
+  x.font = '800 30px system-ui, sans-serif'
+  x.textBaseline = 'middle'
+  x.textAlign = 'left'
+  x.fillText('STEAM', 40, 33)
+  x.fillStyle = '#8f98a0'
+  x.font = '600 22px system-ui, sans-serif'
+  x.fillText('BIBLIOTEK', 190, 34)
+  x.fillText('PROFIL', 340, 34)
+  const p = data?.profile
+  if (p) {
+    x.textAlign = 'right'
+    x.fillStyle = p.playing ? '#90ba3c' : p.online ? '#57cbde' : '#8f98a0'
+    x.fillText(p.name || '', W - 40, 34)
+  }
+  const lib = data?.library
+  const hero = p?.playing ? (lib?.recent?.find((g) => g.appid === p.playing.appid) || p.playing) : lib?.recent?.[0]
+  if (!hero) {
+    x.textAlign = 'center'
+    x.fillStyle = '#8f98a0'
+    x.font = '600 34px system-ui, sans-serif'
+    x.fillText('Kobler til Steam …', W / 2, H / 2)
+    return
+  }
+  // the big banner (460×215 → 760×355)
+  const bx = 40, by = 96, bw = 760, bh = 355
+  const banner = steamImg(hero.appid, 'header', onLoad)
+  x.fillStyle = '#2a475e'
+  roundRect(x, bx, by, bw, bh, 14)
+  x.fill()
+  if (banner) {
+    x.save()
+    roundRect(x, bx, by, bw, bh, 14)
+    x.clip()
+    x.drawImage(banner, bx, by, bw, bh)
+    x.restore()
+  }
+  // status + name
+  x.textAlign = 'left'
+  const live = !!p?.playing
+  x.fillStyle = live ? '#90ba3c' : '#8f98a0'
+  x.font = '800 22px system-ui, sans-serif'
+  if (live && Math.floor(t * 1.5) % 2 === 0) { x.beginPath(); x.arc(bx + 8, by + bh + 42, 8, 0, Math.PI * 2); x.fill() }
+  x.fillText(live ? 'SPILLER NÅ' : 'SIST SPILT', bx + 26, by + bh + 43)
+  x.fillStyle = '#ffffff'
+  x.font = '800 46px system-ui, sans-serif'
+  let name = hero.name || ''
+  while (name.length > 3 && x.measureText(name).width > bw) name = name.slice(0, -2)
+  x.fillText(name === hero.name ? name : `${name}…`, bx, by + bh + 98)
+  x.fillStyle = '#8f98a0'
+  x.font = '600 26px system-ui, sans-serif'
+  const hrs = hero.hours ? `${Math.round(hero.hours)} timer spilt` : ''
+  const ach = hero.ach ? `  ·  ${hero.ach.done}/${hero.ach.total} prestasjoner` : ''
+  x.fillText(hrs + ach, bx, by + bh + 142)
+  // recently played, on the right
+  const list = (lib?.recent || []).filter((g) => g.appid !== hero.appid).slice(0, 4)
+  const lx = 840, lw = W - lx - 40
+  x.fillStyle = '#8f98a0'
+  x.font = '700 20px system-ui, sans-serif'
+  x.fillText('NYLIG SPILT', lx, 112)
+  list.forEach((g, i) => {
+    const y = 136 + i * 136
+    const img = steamImg(g.appid, 'header', onLoad)
+    x.fillStyle = '#2a475e'
+    roundRect(x, lx, y, lw, lw * 215 / 460, 8)
+    x.fill()
+    if (img) {
+      x.save()
+      roundRect(x, lx, y, lw, lw * 215 / 460, 8)
+      x.clip()
+      x.drawImage(img, lx, y, lw, lw * 215 / 460)
+      x.restore()
+    }
+  })
+  if (lib && !lib.hidden) {
+    x.fillStyle = '#c7d5e0'
+    x.font = '700 24px system-ui, sans-serif'
+    x.fillText(`${lib.count} spill  ·  ${lib.hours.toLocaleString('nb-NO')} timer`, lx, H - 40)
+  }
+}
+
 function slug(s) {
   return String(s || '').toLowerCase().replace(/[æ]/g, 'ae').replace(/[ø]/g, 'o').replace(/[å]/g, 'a').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
@@ -177,6 +280,35 @@ export function buildDesk() {
     l.rotation.set(Math.sin(i) * 0.6, i, Math.cos(i) * 0.6)
   }
 
+  // gamepad (its own group: clicking it goes to the gaming corner)
+  const pad = new THREE.Group()
+  pad.position.set(-0.6, 0.762, 0.14)
+  pad.rotation.y = 0.35
+  group.add(pad)
+  const padMat = new THREE.MeshStandardMaterial({ color: 0x23262e, roughness: 0.55 })
+  const padBody = new THREE.Mesh(new RoundedBoxGeometry(0.15, 0.03, 0.075, 4, 0.014), padMat)
+  padBody.position.y = 0.02
+  padBody.castShadow = padBody.receiveShadow = true
+  pad.add(padBody)
+  ;[-1, 1].forEach((side) => {
+    const grip = new THREE.Mesh(new THREE.CapsuleGeometry(0.022, 0.05, 6, 12), padMat)
+    grip.rotation.set(Math.PI / 2, 0, side * 0.5)
+    grip.position.set(side * 0.06, 0.018, 0.035)
+    grip.castShadow = true
+    pad.add(grip)
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.011, 0.014, 16), new THREE.MeshStandardMaterial({ color: 0x15171c, roughness: 0.8 }))
+    stick.position.set(side * 0.028, 0.04, side < 0 ? -0.006 : 0.016)
+    pad.add(stick)
+  })
+  ;[[0.052, -0.012, 0x3fbf6a], [0.064, 0, 0xe5533d], [0.04, 0, 0x2b8cff], [0.052, 0.012, 0xf5c542]].forEach(([bx, bz, c]) => {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.0045, 10, 8), new THREE.MeshStandardMaterial({ color: c, roughness: 0.3, emissive: c, emissiveIntensity: 0.25 }))
+    b.position.set(bx, 0.036, bz - 0.01)
+    pad.add(b)
+  })
+  const padLight = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.002, 0.004), glow)
+  padLight.position.set(0, 0.036, -0.03)
+  pad.add(padLight)
+
   // FormD T1 (small-form-factor case in steel) on the desk
   const pc = new THREE.Group()
   pc.position.set(0.74, 0.76, -0.12)
@@ -248,18 +380,25 @@ export function buildDesk() {
     current = { project, index, total }
     lastBlink = -1
   }
+  // 'code' (projects) or 'gaming' (Steam)
+  let screenMode = 'code'
+  let steamData = null
+  function setScreenMode(m) { if (m !== screenMode) { screenMode = m; lastBlink = -1 } }
+  function setSteam(d) { steamData = d; lastBlink = -1 }
+  const redraw = () => { lastBlink = -1 }
 
   function update(dt, t) {
     fans.forEach((f) => (f.rotation.x += dt * 14))
     const blink = Math.floor(t * 2)
     if (blink !== lastBlink) {
       lastBlink = blink
-      drawScreen(ctx, current.project, current.index, current.total, t)
+      if (screenMode === 'gaming') drawGaming(ctx, steamData, t, redraw)
+      else drawScreen(ctx, current.project, current.index, current.total, t)
       tex.needsUpdate = true
       return true
     }
     return fans.length > 0
   }
 
-  return { group, screen, setProject, update }
+  return { group, screen, pad, setProject, setScreenMode, setSteam, update }
 }

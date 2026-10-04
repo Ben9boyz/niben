@@ -52,7 +52,7 @@ function show(view) {
 <style scoped>
 .music { width: min(1180px, 100%); }
 .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 18px; align-items: start; }
-.side { position: sticky; top: 84px; }
+.side { position: sticky; top: 24px; }
 .side-card { display: grid; gap: 14px; padding: 14px; border-radius: 22px; }
 .main-card { padding: 18px; border-radius: 22px; container-type: inline-size; min-width: 0; }
 .lib { display: grid; gap: 4px; }

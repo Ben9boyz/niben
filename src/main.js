@@ -24,6 +24,8 @@ import MusicPanel from './panels/MusicPanel.vue'
 import MusicPage from './pages/MusicPage.vue'
 import JapanPanel from './panels/JapanPanel.vue'
 import JapanPage from './pages/JapanPage.vue'
+import GamingPanel from './panels/GamingPanel.vue'
+import GamingPage from './pages/GamingPage.vue'
 
 const routes = [
   { path: '/', name: 'hjem', component: HomePanel, meta: { page: HomePage, title: 'Hjem' } },
@@ -33,6 +35,7 @@ const routes = [
   { path: '/boker', name: 'boker', component: BooksPanel, meta: { page: BooksPage, title: 'Bøker' } },
   { path: '/reiser', name: 'reiser', component: TravelPanel, meta: { page: TravelPage, title: 'Reiser' } },
   { path: '/kode', name: 'kode', component: CodePanel, meta: { page: CodePage, title: 'Kode' } },
+  { path: '/gaming', name: 'gaming', component: GamingPanel, meta: { page: GamingPage, title: 'Gaming' } },
   { path: '/japansk', name: 'japansk', component: JapanPanel, meta: { page: JapanPage, title: 'Japansk' } },
   { path: '/om', name: 'om', component: AboutPanel, meta: { page: AboutPage, title: 'Om meg' } },
   { path: '/admin', name: 'admin', component: AdminPanel, meta: { page: AdminPage, title: 'Admin' } },

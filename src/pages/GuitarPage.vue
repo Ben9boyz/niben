@@ -49,7 +49,7 @@ const g = computed(() => data.gitarer?.[idx.value])
 .tabs button.on { background: var(--glass-strong); color: var(--text); box-shadow: var(--shadow-1); }
 .sw { width: 14px; height: 14px; border-radius: 50%; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
-.stage { height: min(72vh, 640px); border-radius: 28px; overflow: hidden; position: sticky; top: 96px; }
+.stage { height: min(72vh, 640px); border-radius: 28px; overflow: hidden; position: sticky; top: 24px; }
 .info { display: grid; gap: 16px; }
 .muted { color: var(--text-3); font-size: 0.88rem; }
 h2 { font-size: 2rem; margin: 4px 0 8px; }

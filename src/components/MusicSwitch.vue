@@ -20,8 +20,8 @@ import { spotify } from '../composables/useSpotify'
 <style scoped>
 .switch {
   position: fixed;
-  top: 84px;
-  left: 20px;
+  top: 20px;
+  left: calc(var(--rail) + 16px);
   z-index: 35;
   display: grid;
   grid-template-columns: 1fr 1fr;

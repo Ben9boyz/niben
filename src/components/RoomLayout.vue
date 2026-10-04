@@ -61,8 +61,8 @@ function openMini() {
   else drawer.value = !drawer.value
 }
 watch(() => route.name, () => (drawer.value = false))
-// top-right corner, unless the nav row reaches that far – then one row down
-const miniTop = computed(() => (navRight.value + 16 + 250 > window.innerWidth - 20 ? 84 : 20))
+// top-right corner (the nav is a rail on the left, so nothing else is up there)
+const miniTop = 20
 function setHidden(v) {
   room.panelHidden = v
   const set = hiddenSet()
@@ -70,25 +70,14 @@ function setHidden(v) {
   try { localStorage.setItem(HIDE_KEY, JSON.stringify([...set])) } catch {}
 }
 watch(() => route.name, (n) => (room.panelHidden = n === 'lytte' && hiddenSet().has(n)), { immediate: true })
-// the panel may use the full height when the nav row (top-left) doesn't reach it
-const tall = ref(false)
-const navRight = ref(0)
-function checkTall() {
-  const items = [...document.querySelectorAll('.nav-wrap > *')]
-  const el = dock.value
-  if (items.length) navRight.value = Math.max(...items.map((n) => n.getBoundingClientRect().right))
-  if (!items.length || !el || mobile.value) { tall.value = false; return }
-  const panelLeft = window.innerWidth - 20 - el.offsetWidth
-  navRight.value = Math.max(...items.map((n) => n.getBoundingClientRect().right))
-  tall.value = navRight.value + 16 < panelLeft
-}
 
 // Tell the 3D view how much of the screen the panel covers,
 // so the camera keeps its subject centred in the free space.
 let ro
+// width of the nav rail on the left (desktop), from the --rail CSS variable
+const RAIL = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rail')) || 0
 const panelW = ref(0)
 function measure() {
-  checkTall()
   if (dock.value && !hidden.value) panelW.value = dock.value.offsetWidth
   if (!room.api) return
   const el = dock.value
@@ -99,9 +88,9 @@ function measure() {
     room.api.setInsets(mobile.value ? { bottom: (window.innerHeight - r.top) * 0.8 } : { left: r.right * 0.4 })
     return
   }
-  if (hidden.value) { room.api.setInsets({ bottom: shell.value === 'player' ? 90 : 0 }); return }
+  if (hidden.value) { room.api.setInsets({ left: mobile.value ? 0 : RAIL(), bottom: shell.value === 'player' ? 90 : 0 }); return }
   if (mobile.value) room.api.setInsets({ bottom: window.innerHeight - r.top })
-  else room.api.setInsets({ right: hidden.value ? 0 : window.innerWidth - r.left, bottom: shell.value === 'player' ? 90 : 0 })
+  else room.api.setInsets({ left: RAIL(), right: hidden.value ? 0 : window.innerWidth - r.left, bottom: shell.value === 'player' ? 90 : 0 })
 }
 const mq = window.matchMedia('(max-width: 900px)')
 const onMq = (e) => { mobile.value = e.matches; nextTick(measure) }
@@ -145,7 +134,7 @@ watch(() => route.name, () => (collapsed.value = false))
   <aside
     ref="dock"
     class="dock"
-    :class="{ tall, home: isHome, focus: isFocus, wide: isWide, expanded: isExpanded, big: isExpanded && route.name !== 'lytte', collapsed: collapsed && mobile && !isFocus, hidden }"
+    :class="{ home: isHome, focus: isFocus, wide: isWide, expanded: isExpanded, big: isExpanded && route.name !== 'lytte', collapsed: collapsed && mobile && !isFocus, hidden }"
     :style="belowMini ? { top: `${miniTop + 62}px` } : null"
     :inert="hidden || undefined"
   >
@@ -181,7 +170,7 @@ watch(() => route.name, () => (collapsed.value = false))
 .dock {
   position: fixed;
   z-index: 20;
-  top: 96px;
+  top: 20px;
   right: 20px;
   bottom: 20px;
   width: clamp(380px, 32vw, 500px);
@@ -221,15 +210,15 @@ watch(() => route.name, () => (collapsed.value = false))
 .dock.home {
   top: auto;
   right: auto;
-  left: 32px;
+  left: calc(var(--rail) + 20px);
   bottom: 32px;
   width: min(560px, calc(100vw - 64px));
 }
 
 .dock.focus {
-  top: 92px;
+  top: 24px;
   bottom: 24px;
-  left: 50%;
+  left: calc(50% + var(--rail) / 2);
   right: auto;
   width: min(560px, calc(100vw - 32px));
   transform: translateX(-50%);
@@ -265,8 +254,6 @@ watch(() => route.name, () => (collapsed.value = false))
   box-shadow: var(--shadow-1);
 }
 
-/* wide screens: the nav sits top-left, so the panel can use the full height on the right */
-.dock.tall:not(.focus):not(.home) { top: 20px; }
 @media (max-width: 900px) {
   .dock {
     top: auto;

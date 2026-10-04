@@ -247,6 +247,7 @@ $post = $method === 'POST';
 require_once __DIR__ . '/_spotify.inc.php';
 require_once __DIR__ . '/_jpdb.inc.php';
 require_once __DIR__ . '/_songs.inc.php';
+require_once __DIR__ . '/_steam.inc.php';
 
 try {
     if (str_starts_with($action, 'spotify_')) {
@@ -259,6 +260,10 @@ try {
     }
     if (str_starts_with($action, 'jpdb_')) {
         jp_handle($action, $post);
+        fail('Ukjent handling.', 404);
+    }
+    if (str_starts_with($action, 'steam_')) {
+        st_handle($action, $post);
         fail('Ukjent handling.', 404);
     }
     switch ($action) {

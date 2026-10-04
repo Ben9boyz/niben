@@ -225,6 +225,18 @@ export function mockApi() {
           case 'spotify_token':
             if (!needAdmin()) return
             return send(res, 200, { token: 'mock', expires: 0, streaming: false }) // no real Spotify in dev
+          case 'steam_public': {
+            const now = Math.floor(Date.now() / 1000)
+            const G = [[1245620, 'ELDEN RING', 214.5, 6.2, 1, [31, 42]], [413150, 'Stardew Valley', 160.1, 0, 9, [24, 49]], [1086940, "Baldur's Gate 3", 132, 11.4, 0, [18, 54]], [367520, 'Hollow Knight', 88.3, 0, 30, [40, 63]], [730, 'Counter-Strike 2', 76, 1.5, 3, [1, 1]], [1145360, 'Hades', 61.2, 0, 60, [33, 49]], [620, 'Portal 2', 24.8, 0, 200, [51, 51]], [105600, 'Terraria', 22, 0, 400, null], [892970, 'Valheim', 19.5, 0, 120, null], [1794680, 'Vampire Survivors', 12, 0, 75, [120, 230]], [753640, 'Outer Wilds', 18.4, 0, 500, [20, 31]], [4000, "Garry's Mod", 9, 0, 900, null]]
+            const games = G.map(([appid, name, hours, recent, days, ach]) => ({ appid, name, hours, recent, last: now - days * 86400 - 3600, ...(ach ? { ach: { done: ach[0], total: ach[1] } } : {}) }))
+            const byLast = [...games].sort((a, b) => b.last - a.last)
+            return send(res, 200, {
+              configured: true,
+              profile: { name: 'niben', avatar: mockCover(200), url: 'https://steamcommunity.com', state: 'Pålogget', online: true, playing: { appid: 1086940, name: "Baldur's Gate 3" }, last_online: now - 600 },
+              library: { count: 143, played: 98, hours: 1240, level: 27, recent: byLast.slice(0, 6), top: games.map(({ ach, ...g }) => g), hidden: false },
+              at: now,
+            })
+          }
           case 'jpdb_public':
             return send(res, 200, { configured: true, decks: [{ id: 1, name: 'Sono Bisque Doll wa Koi wo Suru - Episode 1', words: 448, known: 2.8, learning: 4.5 }], anime: [
               { title: 'Yuru Camp△', parts: 12, known: 91.4, learning: 94, anilist: 98444, url: 'https://anilist.co/anime/98444', en: 'Laid-Back Camp', native: 'ゆるキャン△', year: 2018, cover: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx98444-Vzysp1EsrzgD.jpg', color: '#f1ae5d' },

@@ -35,6 +35,8 @@ const STATIONS = {
   ovelse: { pos: [-0.55, 1.55, 2.0], target: [-4, 1.4, 2.0] },
   lytte: { pos: [-0.35, 1.65, 0.95], target: [3.7, 0.42, 0.95] },
   japansk: { pos: [-0.9, 1.5, 4.85], target: [-1.2, 0.28, 2.8] },
+  // the desk again, from the left and a little lower: the gamepad in front, Steam on the monitor
+  gaming: { pos: [1.3, 1.22, -1.75], target: [2.05, 1.0, -3.25] },
 }
 // the listening corner while music plays: closer, from above at an angle – the turntable and the
 // sleeve beside it in focus, the record shelf still visible underneath
@@ -44,7 +46,7 @@ const LYTTE_TOP = { pos: [2.55, 1.55, -0.2], target: [3.72, 0.5, -0.12] }
 const LYTTE_SHELF = { pos: [2.12, 0.8, 0.1], target: [3.6, 0.3, 0.1] }
 const LYTTE_IPOD = { pos: [2.06, 0.9, 1.74], target: [2.65, 0.56, 2.02] }
 
-export const STATION_LABELS = { japansk: 'Japansk', lytte: 'Lytteplassen', ovelse: 'Øvingstimer', gitar: 'Gitarer', boker: 'Bokhylla', kode: 'Prosjekter', reiser: 'Reiser', om: 'Om meg' }
+export const STATION_LABELS = { gaming: 'Gaming', japansk: 'Japansk', lytte: 'Lytteplassen', ovelse: 'Øvingstimer', gitar: 'Gitarer', boker: 'Bokhylla', kode: 'Prosjekter', reiser: 'Reiser', om: 'Om meg' }
 
 const THEMES = {
   light: { bg: 0xe9f1fa, wall: 0xe9eef5, floor: 0xffffff, hemi: 0.45, sun: 3.2, sunColor: 0xfff1dc, lamp: 0.3, env: 1.0, bloom: 0.35, threshold: 1.6, exposure: 1.25, window: 6, windowColor: 0xfff4e6, screen: 0.6, night: false },
@@ -287,6 +289,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   const desk = buildDesk()
   desk.group.position.set(2.0, 0, -3.1)
   tag(desk.group, 'kode')
+  tag(desk.pad, 'gaming')
   scene.add(desk.group)
 
   // Globe
@@ -391,6 +394,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   function goTo(name, { instant = false, duration } = {}) {
     invalidate(0.5)
     station = STATIONS[name] ? name : 'hjem'
+    desk.setScreenMode(station === 'gaming' ? 'gaming' : 'code')
     const s = station === 'lytte' && lyttePose ? { ipod: LYTTE_IPOD, shelf: LYTTE_SHELF, top: LYTTE_TOP }[lyttePose] : STATIONS[station]
     const to = { pos: new THREE.Vector3(...s.pos), target: new THREE.Vector3(...s.target) }
     if (instant || reduced) {
@@ -769,7 +773,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     if (shelf.update(dt, t)) { shadowsDirty = true; active = true }
     // things that animate on their own only count where you can see them
     const near = (...st) => st.includes(station) || !!flight
-    if (near('kode') && desk.update(dt, t)) active = true
+    if (near('kode', 'gaming') && desk.update(dt, t)) active = true
     if (globeTable.update(dt, t, !reduced && near('reiser'))) active = true
     if (timerState && near('ovelse', 'hjem') && practice.update(dt, t, timerState(), timerInterval)) active = true
     if (listening.update(dt, t, camera)) { shadowsDirty = true; active = true }
@@ -817,6 +821,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     },
     /** Word of the day on the card in the Japanese corner. */
     setJapanWord(word) { japan.setWord(word); invalidate(0.2) },
+    /** Steam data for the monitor in the gaming corner. */
+    setSteam(d) { desk.setSteam(d); invalidate(0.3) },
     /** The anime from jpdb as DVDs on the mat; `selected` is pulled out of its stack. */
     setAnime(list, selected = -1) { animeList = list || []; japan.setAnime(animeList); japan.setAnimeSelected(selected); invalidate(0.6) },
     /** The held-up record's rectangle in viewport CSS px, or null. */

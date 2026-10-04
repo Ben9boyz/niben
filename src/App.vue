@@ -47,5 +47,5 @@ const toTop = () => window.scrollTo(0, 0)
 @keyframes drift1 { to { transform: translate(14vw, 10vh) scale(1.15); } }
 @keyframes drift2 { to { transform: translate(-12vw, 16vh) scale(0.9); } }
 @keyframes drift3 { to { transform: translate(-10vw, -12vh) scale(1.2); } }
-.data-error { position: fixed; top: 96px; left: 50%; transform: translateX(-50%); padding: 12px 20px; border-radius: 999px; z-index: 50; color: #d33; font-size: 0.9rem; }
+.data-error { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); padding: 12px 20px; border-radius: 999px; z-index: 50; color: #d33; font-size: 0.9rem; }
 </style>

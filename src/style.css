@@ -430,7 +430,12 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 /* ───────────────────────── Plain ("enkel") pages ───────────────────────── */
 /* plain version: the page scrolls normally (overflow left visible so position: sticky works) */
 html.classic, html.classic body { height: auto; overflow: visible; overflow-x: clip; overscroll-behavior: auto; }
-.cpage { width: min(1120px, 100%); margin: 0 auto; padding: 108px 24px 120px; }
+.cpage { width: min(1120px, 100%); margin: 0 auto; padding: 40px 24px 120px; }
+/* desktop: the nav is a rail on the left (see NavBar) – everything else keeps clear of it */
+:root { --rail: 0px; }
+@media (min-width: 721px) { :root { --rail: 92px; } }
+html.player-shell { --rail: 0px; }
+#app > main { padding-left: var(--rail); }
 .cpage-head { margin-bottom: 28px; }
 .cpage-head h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); font-weight: 800; }
 .cpage-head p { color: var(--text-2); margin-top: 8px; font-size: 1.05rem; max-width: 60ch; }

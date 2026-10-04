@@ -28,13 +28,15 @@ const links = [
   { to: '/boker', name: 'boker', label: 'Bøker', icon: 'M4 4.5A1.5 1.5 0 0 1 5.5 3H11v17H5.5A1.5 1.5 0 0 1 4 18.5zM13 3h5.5A1.5 1.5 0 0 1 20 4.5v14a1.5 1.5 0 0 1-1.5 1.5H13z' },
   { to: '/reiser', name: 'reiser', label: 'Reiser', icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 0c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9m0-18C9.5 5.5 8.5 8.5 8.5 12s1 6.5 3.5 9M3.5 9h17M3.5 15h17' },
   { to: '/kode', name: 'kode', label: 'Kode', icon: 'M8 7 3 12l5 5M16 7l5 5-5 5M14 4l-4 16' },
+  { to: '/gaming', name: 'gaming', label: 'Gaming', icon: 'M6 11h4M8 9v4M15 12h.01M18 10h.01M17.3 5H6.7a4 4 0 0 0-4 3.6l-.9 7.2A3 3 0 0 0 4.8 19a3 3 0 0 0 2.6-1.5L8 16h8l.6 1.5a3 3 0 0 0 2.6 1.5 3 3 0 0 0 3-3.2l-.9-7.2a4 4 0 0 0-4-3.6z' },
   { to: '/japansk', name: 'japansk', label: 'Japansk', icon: 'M3 5.5c3.5 1.2 14.5 1.2 18 0M5 9.5h14M7.5 6.5V21M16.5 6.5V21M12 6.8v2.7' },
   { to: '/om', name: 'om', label: 'Om meg', icon: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9a8 8 0 0 1 16 0' },
 ]
 
 const track = ref(null)
 const itemEls = ref([])
-const drop = ref({ x: 0, w: 0, ready: false })
+const drop = ref({ x: 0, y: 0, w: 0, h: 0, ready: false })
+const rail = window.matchMedia('(min-width: 721px)')
 const stretching = ref(false)
 const scrolled = ref(false)
 
@@ -42,9 +44,11 @@ function place() {
   const idx = links.findIndex((l) => l.name === route.name)
   const el = itemEls.value[idx]
   if (!el || !track.value) return
-  const prev = drop.value.x
-  drop.value = { x: el.offsetLeft, w: el.offsetWidth, ready: true }
-  if (prev !== drop.value.x) {
+  const prev = drop.value.x + drop.value.y
+  drop.value = rail.matches
+    ? { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight, ready: true }
+    : { x: el.offsetLeft, y: 0, w: el.offsetWidth, h: 0, ready: true }
+  if (prev !== drop.value.x + drop.value.y) {
     stretching.value = true
     setTimeout(() => (stretching.value = false), 260)
   }
@@ -85,7 +89,7 @@ onBeforeUnmount(() => {
       <span
         class="drop"
         :class="{ ready: drop.ready, stretch: stretching }"
-        :style="{ transform: `translateX(${drop.x}px)`, width: `${drop.w}px` }"
+        :style="{ transform: `translate(${drop.x}px, ${drop.y}px)`, width: `${drop.w}px`, height: drop.h ? `${drop.h}px` : null }"
       ></span>
       <router-link
         v-for="(l, i) in links"
@@ -97,10 +101,13 @@ onBeforeUnmount(() => {
       >
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path :d="l.icon" /></svg>
         <span class="label">{{ l.label }}</span>
+        <span class="tip">{{ l.label }}</span>
       </router-link>
     </nav>
 
-    <router-link to="/admin" class="admin-chip glass" :class="{ on: admin.loggedIn }" :title="admin.loggedIn ? 'Admin (innlogget)' : 'Admin'" aria-label="Admin">
+    <span class="spacer" aria-hidden="true"></span>
+    <!-- only when logged in; the way in is a double-click (or long-press) on the logo -->
+    <router-link v-if="admin.loggedIn" to="/admin" class="admin-chip glass on" title="Admin (innlogget)" aria-label="Admin">
       <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
     </router-link>
 
@@ -268,7 +275,6 @@ onBeforeUnmount(() => {
   animation: navIn 0.6s var(--spring) both;
 }
 .install:hover { transform: translateY(-2px) scale(1.03); }
-@media (max-width: 1280px) { .install span { display: none; } .install { padding: 0 14px; } }
 @media (max-width: 720px) { .install { display: none; } }
 .admin-chip {
   position: absolute;
@@ -284,25 +290,11 @@ onBeforeUnmount(() => {
 }
 .admin-chip:hover { transform: scale(1.08); opacity: 1; color: var(--accent); }
 .admin-chip.on { opacity: 1; color: var(--accent); }
-@media (max-width: 1080px) { .admin-chip { left: 72px; } }
-@media (max-width: 720px) { .admin-chip { position: fixed; top: 18px; left: 14px; } }
 .spin-enter-active, .spin-leave-active { transition: transform 0.4s var(--spring), opacity 0.2s; }
 .spin-enter-from { transform: rotate(-90deg) scale(0.4); opacity: 0; }
 .spin-leave-to { transform: rotate(90deg) scale(0.4); opacity: 0; }
 
-@media (max-width: 1180px) {
-  .mode span { display: none; }
-  .mode { padding: 0 15px; right: 82px; }
-}
-@media (max-width: 1080px) {
-  .logo-full { display: none; }
-  .logo-mark { display: block; }
-  .brand { padding: 7px 10px; }
-}
-@media (max-width: 1120px) {
-  .item .label { display: none; }
-  .item { padding: 10px 14px; }
-}
+.item .label, .tip, .spacer { display: none; }
 @media (max-width: 720px) {
   .nav-wrap { top: auto; bottom: calc(14px + env(safe-area-inset-bottom)); }
   .brand { display: none; }
@@ -324,18 +316,58 @@ onBeforeUnmount(() => {
   .item { flex: 1 1 0; min-width: 0; justify-content: center; padding: 12px 0; }
 }
 
-/* Desktop: everything in one row at the top-left, so the right side is free for the panel */
+/* phones: the admin chip (only shown when logged in) sits top-left */
+@media (max-width: 720px) {
+  .admin-chip { position: fixed; top: 18px; left: 14px; }
+  .install { display: none; }
+}
+
+/* Desktop: a slim rail down the left side – the full height of the screen is left for the room
+   and the panels. Icons with small labels; on short screens only icons (the label shows on hover). */
 @media (min-width: 721px) {
-  .nav-wrap { justify-content: flex-start; padding: 0 20px; }
-  .brand, .admin-chip, .mode, .theme { position: relative; left: auto; right: auto; top: auto; flex: none; }
-  .admin-chip { order: 1; }
-  .brand { order: 0; }
-  .nav { order: 2; }
-  .mode { order: 3; }
-  .theme { order: 4; }
-  .install { order: 5; position: relative; }
-  .mode span { display: none; }
-  .mode { padding: 0 15px; }
-  .item { padding: 10px 12px; }
+  .nav-wrap {
+    top: 16px; bottom: 16px; left: 16px; right: auto;
+    width: 76px;
+    flex-direction: column; justify-content: flex-start; align-items: stretch;
+    gap: 8px; padding: 0;
+    animation-name: railIn;
+  }
+  @keyframes railIn { from { opacity: 0; transform: translateX(-30px) scale(0.94); } }
+  .brand { position: relative; left: auto; justify-content: center; height: 58px; padding: 0; border-radius: 22px; flex: none; }
+  .brand:hover { transform: scale(1.05) rotate(-3deg); }
+  .logo-full { display: none; }
+  .logo-mark { display: block; height: 32px; }
+  .nav { flex-direction: column; padding: 6px; border-radius: 24px; gap: 2px; min-height: 0; overflow-y: auto; scrollbar-width: none; }
+  .nav::-webkit-scrollbar { display: none; }
+  .drop { top: 0; bottom: auto; border-radius: 17px; }
+  .item { flex-direction: column; justify-content: center; gap: 3px; padding: 9px 0 7px; border-radius: 17px; }
+  .item .label { display: block; font-size: 0.62rem; letter-spacing: 0.01em; line-height: 1; }
+  .item:hover svg { transform: scale(1.12); }
+  .spacer { display: block; flex: 1; }
+  .admin-chip, .mode, .theme, .install {
+    position: relative; left: auto; right: auto; top: auto;
+    align-self: center; flex: none;
+    width: 50px; height: 50px; padding: 0; border-radius: 17px;
+    justify-content: center; display: grid; place-items: center;
+    animation: none;
+  }
+  .admin-chip { opacity: 1; }
+  .mode span, .install span { display: none; }
+  .install:hover { transform: scale(1.06); }
+  .theme:hover { transform: rotate(20deg) scale(1.06); }
+  /* labels as tooltips when they're hidden */
+  .tip {
+    position: absolute; left: calc(100% + 14px); top: 50%;
+    display: block; padding: 6px 10px; border-radius: 10px;
+    background: var(--text); color: var(--bg); font-size: 0.78rem; font-weight: 600; white-space: nowrap;
+    opacity: 0; transform: translate(-6px, -50%); pointer-events: none;
+    transition: opacity 0.15s, transform 0.2s var(--ease);
+  }
+}
+@media (min-width: 721px) and (max-height: 860px) {
+  .item .label { display: none; }
+  .item { padding: 11px 0; }
+  .item:hover .tip { opacity: 1; transform: translate(0, -50%); }
+  .nav { overflow: visible; }
 }
 </style>

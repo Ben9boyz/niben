@@ -80,10 +80,10 @@ function select(c) {
 .cols { display: grid; grid-template-columns: 280px minmax(0, 1fr); grid-template-areas: 'list map' 'list detail'; gap: 18px; align-items: start; }
 .mapcard { grid-area: map; padding: 14px; }
 .search { max-width: 380px; margin: 10px auto 0; }
-aside { grid-area: list; position: sticky; top: 96px; max-height: calc(100vh - 120px); overflow-y: auto; padding: 14px; }
+aside { grid-area: list; position: sticky; top: 24px; max-height: calc(100vh - 48px); overflow-y: auto; padding: 14px; }
 aside h3 { margin: 4px 8px 10px; font-size: 1rem; }
 .pin { width: 32px; height: 32px; flex: none; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 0.8rem; color: #fff; background: linear-gradient(135deg, var(--accent-2), var(--accent)); }
-.detail-col { grid-area: detail; scroll-margin-top: 96px; min-height: 200px; }
+.detail-col { grid-area: detail; scroll-margin-top: 24px; min-height: 200px; }
 .dhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .dhead h2 { font-size: 1.8rem; }
 .big { padding: 40px; }

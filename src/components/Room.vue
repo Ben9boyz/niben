@@ -8,6 +8,7 @@ import { useTheme } from '../composables/useTheme'
 import { timer, timerState, toggle as toggleTimer } from '../composables/useTimer'
 import { spotify, useSpotify, prefetchTracks, fetchTracks } from '../composables/useSpotify'
 import { jp, loadJapanese } from '../composables/useJapanese'
+import { steam, loadSteam } from '../composables/useSteam'
 
 const host = ref(null)
 const route = useRoute()
@@ -18,7 +19,7 @@ const failed = ref(false)
 useSpotify() // keeps records/iPod in the room up to date
 let api
 
-const ROUTES = { hjem: '/', japansk: '/japansk', lytte: '/lytte', ovelse: '/ovelse', gitar: '/gitar', boker: '/boker', reiser: '/reiser', kode: '/kode', om: '/om' }
+const ROUTES = { hjem: '/', japansk: '/japansk', gaming: '/gaming', lytte: '/lytte', ovelse: '/ovelse', gitar: '/gitar', boker: '/boker', reiser: '/reiser', kode: '/kode', om: '/om' }
 
 let nextPeek = null // the record clicked on the way down to the shelf (pulled out first)
 function onPick(p) {
@@ -87,6 +88,9 @@ watch(() => data.version, () => data.loaded && api?.setData(data))
 // the word of the day on the card in the Japanese corner
 loadJapanese()
 watch(() => [jp.word, room.api], () => room.api?.setJapanWord(jp.word), { immediate: true })
+// the monitor in the gaming corner shows Steam
+loadSteam()
+watch(() => [steam.profile, steam.library, room.api], () => room.api?.setSteam({ profile: steam.profile, library: steam.library }), { immediate: true })
 // …and the anime from the decks as DVDs stacked on the mat
 watch(() => [jp.anime, room.jpAnime, room.api], () => room.api?.setAnime(jp.anime, room.jpAnime), { immediate: true })
 watch(theme, (t) => api?.setTheme(t))
