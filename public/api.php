@@ -245,10 +245,15 @@ if ($method !== 'GET' && $method !== 'POST') fail('Metode ikke tillatt.', 405);
 $post = $method === 'POST';
 
 require_once __DIR__ . '/_spotify.inc.php';
+require_once __DIR__ . '/_jpdb.inc.php';
 
 try {
     if (str_starts_with($action, 'spotify_')) {
         sp_handle($action, $post);
+        fail('Ukjent handling.', 404);
+    }
+    if (str_starts_with($action, 'jpdb_')) {
+        jp_handle($action, $post);
         fail('Ukjent handling.', 404);
     }
     switch ($action) {

@@ -28,6 +28,7 @@ const links = [
   { to: '/boker', name: 'boker', label: 'Bøker', icon: 'M4 4.5A1.5 1.5 0 0 1 5.5 3H11v17H5.5A1.5 1.5 0 0 1 4 18.5zM13 3h5.5A1.5 1.5 0 0 1 20 4.5v14a1.5 1.5 0 0 1-1.5 1.5H13z' },
   { to: '/reiser', name: 'reiser', label: 'Reiser', icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 0c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9m0-18C9.5 5.5 8.5 8.5 8.5 12s1 6.5 3.5 9M3.5 9h17M3.5 15h17' },
   { to: '/kode', name: 'kode', label: 'Kode', icon: 'M8 7 3 12l5 5M16 7l5 5-5 5M14 4l-4 16' },
+  { to: '/japansk', name: 'japansk', label: 'Japansk', icon: 'M3 5.5c3.5 1.2 14.5 1.2 18 0M5 9.5h14M7.5 6.5V21M16.5 6.5V21M12 6.8v2.7' },
   { to: '/om', name: 'om', label: 'Om meg', icon: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9a8 8 0 0 1 16 0' },
 ]
 

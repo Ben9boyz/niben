@@ -204,6 +204,20 @@ export function mockApi() {
           case 'spotify_token':
             if (!needAdmin()) return
             return send(res, 200, { token: 'mock', expires: 0, streaming: false }) // no real Spotify in dev
+          case 'jpdb_public':
+            return send(res, 200, { configured: true, decks: [{ id: 1, name: 'Sono Bisque Doll wa Koi wo Suru - Episode 1', words: 448, known: 2.8, learning: 4.5 }], count: { due: 3, learning: 2, known: 6, new: 436 },
+              word: { vid: 1, sid: 1, spelling: '可愛い', reading: 'かわいい', meanings: [['cute', 'adorable', 'charming']], pos: ['adj-i'], pitch: 'LHHL', freq: 900, state: ['learning'] } })
+          case 'jpdb_queue': {
+            if (!needAdmin()) return
+            const mk = (vid, spelling, reading, meanings, pitch, kind) => ({ vid, sid: vid * 7, spelling, reading, meanings: [meanings], pos: ['n'], pitch, freq: vid * 40, state: [kind], due: null })
+            return send(res, 200, {
+              due: [mk(11, '衣装', 'いしょう', ['clothing', 'costume'], 'LHHH', 'due'), mk(12, '雛人形', 'ひなにんぎょう', ['hina doll'], 'LHHHLL', 'due'), mk(13, '作る', 'つくる', ['to make', 'to produce'], 'LHL', 'due')],
+              new: [mk(21, '夢', 'ゆめ', ['dream'], 'HL', 'new'), mk(22, '恥ずかしい', 'はずかしい', ['embarrassing', 'shy'], 'LHHHL', 'new')].slice(0, +b.new || 0),
+            })
+          }
+          case 'jpdb_review':
+            if (!needAdmin()) return
+            return send(res, 200, { ok: true, state: ['learning'], due: null })
           case 'spotify_tracks': {
             const id = url.searchParams.get('id')
             if (url.searchParams.get('type') === 'playlist' && id.endsWith('3')) return send(res, 200, { hidden: true, tracks: [] })

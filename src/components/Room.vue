@@ -7,6 +7,7 @@ import { useData } from '../composables/useData'
 import { useTheme } from '../composables/useTheme'
 import { timer, timerState, toggle as toggleTimer } from '../composables/useTimer'
 import { spotify, useSpotify, prefetchTracks } from '../composables/useSpotify'
+import { jp, loadJapanese } from '../composables/useJapanese'
 
 const host = ref(null)
 const route = useRoute()
@@ -17,7 +18,7 @@ const failed = ref(false)
 useSpotify() // keeps records/iPod in the room up to date
 let api
 
-const ROUTES = { hjem: '/', lytte: '/lytte', ovelse: '/ovelse', gitar: '/gitar', boker: '/boker', reiser: '/reiser', kode: '/kode', om: '/om' }
+const ROUTES = { hjem: '/', japansk: '/japansk', lytte: '/lytte', ovelse: '/ovelse', gitar: '/gitar', boker: '/boker', reiser: '/reiser', kode: '/kode', om: '/om' }
 
 function onPick(p) {
   if (p.kind === 'station') { router.push(ROUTES[p.station]); return }
@@ -63,6 +64,9 @@ onMounted(() => {
 })
 
 watch(() => data.version, () => data.loaded && api?.setData(data))
+// the word of the day on the card in the Japanese corner
+loadJapanese()
+watch(() => [jp.word, room.api], () => room.api?.setJapanWord(jp.word), { immediate: true })
 watch(theme, (t) => api?.setTheme(t))
 watch(() => timer.interval, (v) => api?.setTimerInterval(v))
 watch(() => [spotify.albums, spotify.playlists, spotify.now], () => api?.setMusic(spotify), { deep: false })

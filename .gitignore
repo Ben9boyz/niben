@@ -1,6 +1,7 @@
 # ── secrets – never commit (created by setup.sh / spotify-setup.sh) ──
 public/_config.php
 public/_spotify.php
+public/_jpdb.php
 .deploy.local
 *.env
 .env*

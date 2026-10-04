@@ -14,6 +14,7 @@ import { buildBookshelf } from './books'
 import { buildDesk } from './desk'
 import { buildGlobeTable } from './globe'
 import { buildPracticeCorner } from './practice'
+import { buildJapanCorner } from './japan'
 import { buildListeningCorner } from './listening'
 import { woodFloor, wallTexture, skyTexture, canvasTex } from './textures'
 import { atlasName, norskNavn } from './countries'
@@ -33,6 +34,7 @@ const STATIONS = {
   om: { pos: [1.45, 1.62, PORTRAIT.z], target: [4, 1.62, PORTRAIT.z] },
   ovelse: { pos: [-0.55, 1.55, 2.0], target: [-4, 1.4, 2.0] },
   lytte: { pos: [-0.35, 1.65, 0.95], target: [3.7, 0.42, 0.95] },
+  japansk: { pos: [-0.9, 1.5, 4.85], target: [-1.2, 0.28, 2.8] },
 }
 // the listening corner while music plays: closer, from above at an angle – the turntable and the
 // sleeve beside it in focus, the record shelf still visible underneath
@@ -40,7 +42,7 @@ const LYTTE_TOP = { pos: [2.55, 1.55, -0.2], target: [3.72, 0.5, -0.12] }
 // a playlist playing: looking at the iPod back on its stand on the coffee table (its screen shows the song)
 const LYTTE_IPOD = { pos: [2.06, 0.9, 1.74], target: [2.65, 0.56, 2.02] }
 
-export const STATION_LABELS = { lytte: 'Lytteplassen', ovelse: 'Øvingstimer', gitar: 'Gitarer', boker: 'Bokhylla', kode: 'Prosjekter', reiser: 'Reiser', om: 'Om meg' }
+export const STATION_LABELS = { japansk: 'Japansk', lytte: 'Lytteplassen', ovelse: 'Øvingstimer', gitar: 'Gitarer', boker: 'Bokhylla', kode: 'Prosjekter', reiser: 'Reiser', om: 'Om meg' }
 
 const THEMES = {
   light: { bg: 0xe9f1fa, wall: 0xe9eef5, floor: 0xffffff, hemi: 0.45, sun: 3.2, sunColor: 0xfff1dc, lamp: 0.3, env: 1.0, bloom: 0.35, threshold: 1.6, exposure: 1.25, window: 6, windowColor: 0xfff4e6, screen: 0.6, night: false },
@@ -329,6 +331,13 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   const practice = buildPracticeCorner()
   tag(practice.group, 'ovelse')
   scene.add(practice.group)
+
+  // Japanese corner (jpdb): low table on a tatami mat at the front, left of the rug
+  const japan = buildJapanCorner()
+  japan.group.position.set(-1.2, 0, 2.85)
+  japan.group.rotation.y = 0.12
+  tag(japan.group, 'japansk')
+  scene.add(japan.group)
   let timerInterval = 10
 
   function setPortrait(om, navn) {
@@ -791,6 +800,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
       const s = listening.ipodScreenRect(camera, r.width, r.height)
       return { x: r.left + s.x, y: r.top + s.y, w: s.w, h: s.h }
     },
+    /** Word of the day on the card in the Japanese corner. */
+    setJapanWord(word) { japan.setWord(word); invalidate(0.2) },
     /** The held-up record's rectangle in viewport CSS px, or null. */
     recordScreenRect() {
       const r = renderer.domElement.getBoundingClientRect()

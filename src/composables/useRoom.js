@@ -9,10 +9,12 @@ export const room = reactive({
   musicView: 'vinyl', // listening station: 'vinyl' | 'spiller' (record on, turntable view) | 'ipod' (in hand) | 'ipodDock' (playlist on, iPod on its stand)
   // what the iPod shows – shared with the panel so the two mirror each other
   ipod: { view: 'menu', playlist: null, active: 0 },
-  panelHidden: false, // desktop: the side panel slid away (the 3D view gets the whole screen)
+  panelHidden: false,
+  jpPractice: false, // Japanese corner: flashcard practice open // desktop: the side panel slid away (the 3D view gets the whole screen)
 })
 
 export function clearSelection() {
+  room.jpPractice = false
   room.sel.gitar = -1
   room.sel.bok = -1
   room.sel.land = null

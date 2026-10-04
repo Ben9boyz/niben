@@ -27,6 +27,7 @@ const isExpanded = computed(() => {
     case 'gitar': return room.sel.gitar >= 0
     case 'boker': return room.sel.bok >= 0
     case 'lytte': return true // the record grid always gets the wide panel
+    case 'japansk': return room.jpPractice // flashcards get the big panel
     default: return false
   }
 })
