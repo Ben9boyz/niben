@@ -5,6 +5,7 @@ import { useTheme } from '../composables/useTheme'
 import { mode, toggleMode } from '../composables/useMode'
 import { admin, checkLogin } from '../composables/useAdmin'
 import { pwa, install, desktopApp } from '../composables/usePwa'
+import BrandLogo from './BrandLogo.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -75,8 +76,8 @@ onBeforeUnmount(() => {
       @pointerleave="pressEnd"
       @contextmenu="(e) => e.pointerType === 'touch' && e.preventDefault()"
     >
-      <span class="logo">n</span>
-      <span class="brand-text">niben</span>
+      <BrandLogo class="logo-full" />
+      <BrandLogo mark class="logo-mark" />
     </router-link>
 
     <nav class="nav glass" ref="track">
@@ -150,7 +151,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 16px 6px 6px;
+  height: 46px;
+  padding: 7px 16px;
   border-radius: 999px;
   color: var(--text);
   font-family: var(--font-display);
@@ -160,17 +162,8 @@ onBeforeUnmount(() => {
   transition: transform 0.4s var(--spring);
 }
 .brand:hover { transform: scale(1.04); }
-.logo {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  font-weight: 800;
-  background: linear-gradient(135deg, var(--accent-2), var(--accent));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 4px 14px var(--accent-glow);
-}
+.logo-full { height: 34px; }
+.logo-mark { height: 30px; display: none; }
 
 .nav {
   display: flex;
@@ -301,8 +294,9 @@ onBeforeUnmount(() => {
   .mode { padding: 0 15px; right: 82px; }
 }
 @media (max-width: 1080px) {
-  .brand-text { display: none; }
-  .brand { padding: 6px; }
+  .logo-full { display: none; }
+  .logo-mark { display: block; }
+  .brand { padding: 7px 10px; }
 }
 @media (max-width: 1120px) {
   .item .label { display: none; }

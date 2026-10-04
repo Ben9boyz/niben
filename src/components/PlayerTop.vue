@@ -1,4 +1,5 @@
 <script setup>
+import BrandLogo from './BrandLogo.vue'
 import { ref } from 'vue'
 import { Box, LayoutGrid, Sun, Moon, LogIn, ArrowUpRight } from 'lucide-vue-next'
 import { mode, toggleMode } from '../composables/useMode'
@@ -37,7 +38,7 @@ function toSite() {
 
 <template>
   <header class="ptop">
-    <div class="brand glass"><span class="mark">n</span><b>musikk</b></div>
+    <div class="brand glass"><BrandLogo mark class="mark" /><b>musikk</b></div>
 
     <div class="seg glass" role="tablist" aria-label="Visning">
       <button role="tab" :aria-selected="mode === 'rom'" :class="{ on: mode === 'rom' }" @click="setMode('rom')"><Box :size="15" />3D</button>
@@ -67,7 +68,7 @@ function toSite() {
 .ptop { position: fixed; top: 16px; left: 16px; right: 16px; z-index: 40; display: flex; align-items: center; gap: 10px; pointer-events: none; }
 .ptop > * { pointer-events: auto; }
 .brand { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px 0 6px; border-radius: 999px; }
-.mark { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: linear-gradient(135deg, #6cbcff, #2b7ff0); color: #fff; font-weight: 800; }
+.mark { height: 30px; margin-left: 8px; }
 .brand b { font-size: 0.98rem; letter-spacing: -0.01em; }
 .seg { display: flex; padding: 4px; border-radius: 999px; }
 .seg button { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: 600 0.86rem var(--font); cursor: pointer; transition: background 0.2s, color 0.2s; }

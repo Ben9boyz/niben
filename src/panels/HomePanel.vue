@@ -1,4 +1,5 @@
 <script setup>
+import BrandLogo from '../components/BrandLogo.vue'
 import { computed } from 'vue'
 import { useData } from '../composables/useData'
 import { atlasName } from '../three/countries'
@@ -15,6 +16,7 @@ const stops = computed(() => [
 
 <template>
   <section class="hero glass">
+    <BrandLogo class="home-logo rise" style="--i: 0" />
     <div class="eyebrow rise" style="--i: 0">{{ data.site?.undertittel || 'Velkommen inn' }}</div>
     <h1 class="rise" style="--i: 1">Hei, jeg er <span class="grad">{{ data.site?.navn || 'niben' }}</span></h1>
     <p class="lead rise" style="--i: 2">{{ data.site?.intro }}</p>
@@ -61,4 +63,5 @@ h1 { font-size: clamp(2rem, 4.4vw, 3.3rem); font-weight: 800; }
   .stop b { font-size: 1.25rem; }
   .tap { display: none; }
 }
+.home-logo { height: 54px; margin-bottom: 14px; }
 </style>

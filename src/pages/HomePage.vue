@@ -1,4 +1,5 @@
 <script setup>
+import BrandLogo from '../components/BrandLogo.vue'
 import { Guitar, Timer, BookOpen, Globe, Code, Hand } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { useData } from '../composables/useData'
@@ -23,6 +24,7 @@ const cards = computed(() => [
     <section class="hero">
       <img v-if="data.om?.bilde" :src="data.om.bilde" alt="" class="avatar rise" />
       <div>
+        <BrandLogo class="home-logo rise" style="--i: 0" />
         <div class="eyebrow rise" style="--i: 0">{{ data.site?.undertittel || 'Velkommen' }}</div>
         <h1 class="rise" style="--i: 1">Hei, jeg er <span class="grad">{{ data.site?.navn || 'niben' }}</span></h1>
         <p class="lead rise" style="--i: 2">{{ data.site?.intro }}</p>
@@ -72,4 +74,5 @@ h1 { font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 800; }
 .latest-card b { font-size: 1.1rem; }
 .latest-card span { color: var(--text-2); font-size: 0.9rem; }
 @media (max-width: 720px) { .hero { flex-direction: column; align-items: flex-start; gap: 16px; } .avatar { width: 96px; height: 96px; } }
+.home-logo { height: 64px; margin-bottom: 16px; }
 </style>

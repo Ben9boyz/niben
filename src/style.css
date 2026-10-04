@@ -9,6 +9,18 @@
   --accent-2: #7cd0ff;
   --accent-soft: rgba(43, 140, 255, 0.12);
   --accent-glow: rgba(124, 208, 255, 0.55);
+  /* logo (BrandLogo.vue) */
+  --logo-line: #1f6fe0;
+  --logo-ink: #1f6fe0;
+  --logo-glass: #cfe6ff;
+  --logo-glass-hi: #f4f9ff;
+  --logo-star: #8fcaff;
+  --logo-cable-1: #6cbcff;
+  --logo-cable-2: #2b8cff;
+  --logo-cable-3: #1d5fd0;
+  --logo-cable-hi: #e3f2ff;
+  --logo-grille: #b6d8ff;
+  --logo-knob: #2b8cff;
 
   --glass: rgba(255, 255, 255, 0.66);
   --glass-strong: rgba(255, 255, 255, 0.72);
@@ -44,6 +56,17 @@
   --accent-2: #8fdcff;
   --accent-soft: rgba(92, 182, 255, 0.14);
   --accent-glow: rgba(92, 182, 255, 0.45);
+  --logo-line: #6cc0ff;
+  --logo-ink: #8fd2ff;
+  --logo-glass: #12305a;
+  --logo-glass-hi: #1d4479;
+  --logo-star: #5cb6ff;
+  --logo-cable-1: #8fdcff;
+  --logo-cable-2: #5cb6ff;
+  --logo-cable-3: #2f7fe6;
+  --logo-cable-hi: #d6efff;
+  --logo-grille: #193d6e;
+  --logo-knob: #8fdcff;
 
   --glass: rgba(22, 32, 52, 0.62);
   --glass-strong: rgba(26, 38, 62, 0.72);
