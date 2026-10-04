@@ -55,22 +55,40 @@ ftp_password() {
 upload_ftp() {
   ftp_password
   local FTP_HOST="ftp://$HOST/www"
-  local FAILED=0
-  for f in ${ONLY:-* .user.ini}; do
-    [ -f "$f" ] || continue
-    local ok=0
-    local tmp=".up-$f.tmp"
+  local failed=() f
+
+  # one file: upload under a temporary name and swap it in only when it arrived whole –
+  # a cut-off upload can then never break the live file
+  # (the password goes via stdin, so it never shows up in the process list)
+  upload_one() {
+    local f="$1" tmp=".up-$1.tmp" attempt
     for attempt in 1 2 3 4 5; do
-      # upload under a temporary name and swap it in only when it arrived whole –
-      # a cut-off upload can then never break the live file
-      # (the password goes via stdin, so it never shows up in the process list)
-      if printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sS -K - -T "$f" "$FTP_HOST/$tmp" -Q "-RNFR $tmp" -Q "-RNTO $f"; then ok=1; break; fi
+      if printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sS -K - -T "$f" "$FTP_HOST/$tmp" -Q "-RNFR $tmp" -Q "-RNTO $f"; then return 0; fi
       echo "    prøver igjen ($attempt/5) …"; sleep $((attempt * 2))
     done
-    if [ "$ok" = 1 ]; then echo "  ✓ $f"; else echo "  ✗ $f"; FAILED=1; fi
+    return 1
+  }
+
+  for f in ${ONLY:-* .user.ini}; do
+    [ -f "$f" ] || continue
+    if upload_one "$f"; then echo "  ✓ $f"; else echo "  ✗ $f"; failed+=("$f"); fi
   done
+
+  # the host sometimes answers 451 for a stretch (many connections in a row): wait a little, then
+  # go through the files that failed once more
+  if [ "${#failed[@]}" -gt 0 ]; then
+    echo "  Venter litt og prøver de ${#failed[@]} som feilet på nytt …"; sleep 25
+    local still=()
+    for f in "${failed[@]}"; do
+      if upload_one "$f"; then echo "  ✓ $f"; else echo "  ✗ $f"; still+=("$f"); fi
+    done
+    failed=("${still[@]}")
+  fi
   unset PASS
-  [ "$FAILED" = 0 ]
+  if [ "${#failed[@]}" -gt 0 ]; then
+    echo "  Disse mangler fortsatt – kjør: ./deploy.sh ftp ${failed[*]}"
+    return 1
+  fi
 }
 
 upload_app() {
