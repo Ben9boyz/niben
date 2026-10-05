@@ -10,6 +10,7 @@ import { spotify, useSpotify, prefetchTracks, fetchTracks, fetchTempo, fetchQueu
 import { admin } from '../composables/useAdmin'
 import { useVinylNoise } from '../composables/useVinylNoise'
 import { gfxPayload } from '../composables/useGraphics'
+import { dailyAlbum } from '../composables/useDaily'
 import { weather } from '../composables/useLive'
 import { calm } from '../composables/useCalm'
 import { shelfAlbums, loadGroups } from '../composables/useGroups'
@@ -155,6 +156,7 @@ const stackItems = computed(() => {
   return out
 })
 watch(nextAlbum, (v) => api?.setNext(v), { deep: false })
+watch(() => [dailyAlbum.value?.uri, room.api], () => room.api?.setDaily(dailyAlbum.value?.uri), { immediate: true })
 watch(stackItems, (v) => api?.setStack(v), { deep: false })
 // the turntable spins to the tempo of the song (4 beats – one bar – per turn)
 watch(() => spotify.now?.uri, async (uri) => {

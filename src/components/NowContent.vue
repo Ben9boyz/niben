@@ -10,6 +10,7 @@ import { steam, watchSteam, headerImg, fmtHours } from '../composables/useSteam'
 import { jp, loadJapanese } from '../composables/useJapanese'
 import { parseProgression } from '../lib/chords'
 import { room } from '../composables/useRoom'
+import { dailyAlbum } from '../composables/useDaily'
 
 // "Nå": what I'm doing right now – listening, reading, Japanese, a song on the guitar, games and
 // travel. Everything comes from the places that already hold it, so there is nothing extra to keep up.
@@ -38,6 +39,15 @@ const msAgo = (t) => {
 
 // ── music ──
 const track = computed(() => (spotify.now?.name ? spotify.now : null))
+
+// ── the record of the day ──
+function openDaily() {
+  const a = dailyAlbum.value
+  if (!a) return
+  room.musicView = 'vinyl'
+  room.sel.musikk = { kind: 'album', uri: a.uri, t: Date.now() }
+  router.push('/lytte')
+}
 
 // ── book ──
 const reading = computed(() => (data.boker || []).filter((b) => b.leser))
@@ -95,6 +105,15 @@ const inDays = (t) => {
         <span v-if="track.playing" class="live"><Radio :size="12" />spiller</span>
       </router-link>
       <p v-else class="none">{{ tx('now.listen.none') }}</p>
+    </section>
+
+    <!-- the record of the day -->
+    <section v-if="dailyAlbum" class="card">
+      <h3><Disc3 :size="15" />{{ tx('now.daily') }}</h3>
+      <button class="row daily" @click="openDaily">
+        <img v-if="dailyAlbum.thumb || dailyAlbum.image" :src="dailyAlbum.thumb || dailyAlbum.image" alt="" class="art" crossorigin="anonymous" />
+        <span class="txt"><b>{{ dailyAlbum.name }}</b><small>{{ dailyAlbum.artist }}<template v-if="dailyAlbum.year"> · {{ dailyAlbum.year }}</template></small></span>
+      </button>
     </section>
 
     <!-- book -->
@@ -183,6 +202,7 @@ const inDays = (t) => {
 .ms.fresh { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, var(--glass-strong)), var(--glass-strong)); border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 10%, transparent); }
 .ms.fresh h3 { color: var(--accent); }
 h3 { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
+.row.daily { width: 100%; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; font: inherit; }
 .row, .word { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; min-width: 0; }
 .art { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex: none; }
 .art.book { width: 40px; height: 56px; border-radius: 4px; }

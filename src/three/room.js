@@ -1135,6 +1135,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     setCalm(v) { reduced = deviceReduced || !!v; listening.setCalm(reduced); if (reduced) { rain.visible = false; snow.visible = false }; invalidate(1) },
     /** The weather where I live: { kind: clear | cloud | fog | drizzle | rain | thunder | snow }. */
     setWeather(w) { weather = { kind: w?.kind || 'clear' }; setTheme(themeName); invalidate(1) },
+    /** The record of the day sticks out of the shelf. */
+    setDaily(uri) { listening.setDaily(uri); invalidate(1) },
     /** The records on the table: queued albums on top (next first), then the ones I heard last. */
     setStack(list) { stack = list || []; listening.setStack(stack, () => { shadowsDirty = true; invalidate(1) }) },
     /** Tempo (BPM) of the song that's playing; 0 = unknown (the record turns at 33⅓ rpm). */

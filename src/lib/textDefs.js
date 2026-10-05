@@ -13,6 +13,7 @@ export const TEXT_GROUPS = [
   { title: 'Akkurat nå-kortene', items: [
     { k: 'now.listen', label: 'Overskrift: musikk', d: 'Hører på' },
     { k: 'now.listen.none', label: 'Når ingenting spilles', d: 'Ingenting akkurat nå.' },
+    { k: 'now.daily', label: 'Overskrift: dagens plate', d: 'Dagens plate' },
     { k: 'now.read', label: 'Overskrift: bok', d: 'Leser' },
     { k: 'now.read.none', label: 'Når jeg ikke leser', d: 'Ingen bok i gang.' },
     { k: 'now.jp', label: 'Overskrift: japansk', d: 'Japansk' },

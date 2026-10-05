@@ -878,6 +878,7 @@ export function buildListeningCorner() {
   }
 
   let hoverUri = null
+  let dailyUri = null // the record of the day: always sticks out a little from the shelf
   let selectedUri = null
   let playingUri = null
   let peekUri = null // browsing the shelf: this record is pulled out, cover to the front
@@ -997,7 +998,7 @@ export function buildListeningCorner() {
 
     // hover: slide the record out a little
     for (const r of records) {
-      const target = r.album.uri === hoverUri || filterSet?.has(r.album.uri) ? 1 : 0
+      const target = r.album.uri === hoverUri || filterSet?.has(r.album.uri) || r.album.uri === dailyUri ? 1 : 0
       if (Math.abs(target - r.out) > 0.001) {
         r.out += (target - r.out) * Math.min(1, dt * 10)
         if (!r.hidden) writeInstance(r)
@@ -1136,6 +1137,7 @@ export function buildListeningCorner() {
     setHoldIpod(v, big = false) { holdIpod = v; ipodBig = big },
     setFlip(v) { flipSel = v },
     setCalm(v) { calm = !!v },
+    setDaily(uri) { dailyUri = uri || null },
     setStack,
     setNext,
     setTempo(bpm) { tempo = Number(bpm) || 0 },
