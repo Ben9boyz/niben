@@ -23,7 +23,7 @@ const route = useRoute()
 const router = useRouter()
 const dock = ref(null)
 const isHome = computed(() => route.name === 'hjem')
-const isFocus = computed(() => route.name === 'ovelse' || route.name === 'admin')
+const isFocus = computed(() => (route.name === 'ovelse' || route.name === 'admin') && !decor.editing) // (editing the room: the room itself must be sharp)
 const isWide = computed(() => route.name === 'admin' || (route.name === 'ovelse' && room.practiceTab === 'akkorder'))
 // a selected country gets a wider panel so its photos can be scrolled comfortably
 // once something is chosen, the panel grows to about half the screen and the 3D view steps back
@@ -89,7 +89,7 @@ function measure() {
   const el = dock.value
   if (!el) { room.api.setInsets({}); return }
   const r = el.getBoundingClientRect()
-  if (isFocus.value) { room.api.setInsets({}); return }
+  if (isFocus.value || decor.editing) { room.api.setInsets({}); return }
   if (isHome.value) {
     room.api.setInsets(mobile.value ? { bottom: (window.innerHeight - r.top) * 0.8 } : { left: r.right * 0.4 })
     return
@@ -115,7 +115,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', measure)
   mq.removeEventListener('change', onMq)
 })
-watch(() => [route.name, room.api, collapsed.value, isExpanded.value, holdingIpod.value, hidden.value], () => nextTick(() => setTimeout(measure, 30)))
+watch(() => [route.name, room.api, collapsed.value, isExpanded.value, holdingIpod.value, hidden.value, decor.editing], () => nextTick(() => setTimeout(measure, 30)))
 // the panel animates its width – keep the camera offset in sync while it does
 watch(isExpanded, () => [150, 350, 600].forEach((t) => setTimeout(measure, t)))
 watch(() => route.name, () => (collapsed.value = false))
