@@ -112,9 +112,11 @@ async function disconnect() {
 </template>
 
 <style scoped>
-.stick { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 16px; }
-.stick .head { flex: 0 0 auto; min-height: 30px; margin: 0 2px; }
+.stick { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 16px; }
+.stick .head { flex: 0 0 auto; margin: 0 2px; padding-bottom: 6px; }
 .stick :deep(.gb) { flex: 1 1 280px; min-width: 0; }
+.stick :deep(.gb .row) { justify-content: flex-end; }
+.stick .head b { font-size: 1.05rem; letter-spacing: 0.04em; color: var(--text-2); }
 .vp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .browse { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .muted { color: var(--text-3); font-size: 0.85rem; }
