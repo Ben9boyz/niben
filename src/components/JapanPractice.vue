@@ -1,8 +1,9 @@
 <script setup>
+import PitchReading from './PitchReading.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ArrowUpRight, RotateCcw, X, Volume2 } from 'lucide-vue-next'
 import { speak, canSpeak } from '../lib/speak'
-import { fetchQueue, gradeCard, GRADES, jpdbUrl, pitchMorae, loadJapanese, newPerSession, setNewPerSession } from '../composables/useJapanese'
+import { fetchQueue, gradeCard, GRADES, jpdbUrl, loadJapanese, newPerSession, setNewPerSession } from '../composables/useJapanese'
 
 // Flashcard review against jpdb: word → (space) reading, pitch, meanings → grade 1–5.
 // Each grade is sent to jpdb right away. Cards you didn't remember come back at the end.
@@ -20,7 +21,6 @@ const newCount = ref(newPerSession())
 const card = computed(() => queue.value[i.value] || null)
 const done = computed(() => !loading.value && !card.value)
 const left = computed(() => Math.max(0, queue.value.length - i.value))
-const morae = computed(() => (card.value ? pitchMorae(card.value.reading, card.value.pitch) : null))
 
 async function load() {
   loading.value = true
@@ -123,10 +123,7 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); loadJapane
 
       <template v-if="revealed">
         <div class="reading" lang="ja">
-          <template v-if="morae">
-            <span v-for="(p, k) in morae" :key="k" class="mora" :class="{ high: p.high, drop: p.drop }">{{ p.m }}</span>
-          </template>
-          <template v-else>{{ card.reading }}</template>
+          <PitchReading :reading="card.reading" :pitch="card.pitch" />
         </div>
         <ol class="meanings">
           <li v-for="(m, k) in card.meanings" :key="k">{{ m.join('; ') }}</li>
@@ -183,9 +180,6 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); loadJapane
 .reveal { margin-top: 18px; display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border: 0; border-radius: 999px; background: #1a1a1a; color: #fff; font: 600 0.9rem var(--font); cursor: pointer; }
 .reveal kbd, .g kbd { font: 600 0.65rem var(--font); padding: 2px 6px; border-radius: 5px; background: rgba(255, 255, 255, 0.18); }
 .reading { display: flex; gap: 1px; font-family: "Hiragino Sans", "Noto Sans JP", sans-serif; font-size: 1.35rem; color: #333; }
-.mora { position: relative; padding: 6px 1px 0; border-top: 2px solid transparent; }
-.mora.high { border-top-color: #2b6fd6; }
-.mora.drop::after { content: ''; position: absolute; right: -1px; top: -2px; height: 12px; border-right: 2px solid #2b6fd6; }
 .meanings { margin: 4px 0 0; padding: 0; list-style: none; counter-reset: m; display: grid; gap: 4px; max-width: 46ch; }
 .meanings li { counter-increment: m; font-size: 0.95rem; color: #333; }
 .meanings li::before { content: counter(m) '. '; color: #9b2c22; font-weight: 700; }

@@ -76,19 +76,6 @@ function strum() { room.api?.strum(room.sel.gitar) }
   flex: none;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.4), inset 0 -6px 12px rgba(0,0,0,.2), 0 4px 10px rgba(0,0,0,.12);
 }
-.rec {
-  padding: 12px;
-  margin-bottom: 8px;
-  border-radius: 18px;
-  background: var(--glass-strong);
-  border: 1px solid var(--glass-border);
-  animation: rowIn 0.6s var(--ease) both;
-  animation-delay: calc(var(--i) * 60ms);
-}
-.rec-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 0.92rem; }
-.video { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #000; }
-.video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-audio { width: 100%; height: 40px; }
 .credit { margin-top: 14px; font-size: 0.75rem; color: var(--text-3); }
 .credit a { color: var(--text-2); text-decoration: underline; text-underline-offset: 2px; }
 .timer {

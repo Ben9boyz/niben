@@ -38,6 +38,8 @@ const coverFailed = (g) => { noCover.value = new Set(noCover.value).add(g.appid)
     <p v-else-if="steam.error" class="notice error">{{ steam.error }}</p>
 
     <template v-if="p">
+      <div class="gl">
+      <div class="gl-col">
       <!-- profile -->
       <a class="profile" :href="p.url" target="_blank" rel="noopener">
         <span class="av" :class="{ on: p.online, game: !!playing }"><img :src="p.avatar" alt="" /></span>
@@ -72,9 +74,11 @@ const coverFailed = (g) => { noCover.value = new Set(noCover.value).add(g.appid)
       </div>
       <p v-else-if="lib?.hidden" class="muted">Spillbiblioteket er privat på Steam.</p>
 
+      </div>
+      <div class="gl-col">
       <!-- recently played -->
       <section v-if="recent.length" class="sec">
-        <b class="h">Nylig spilt</b>
+        <b class="label-caps">Nylig spilt</b>
         <div class="shelf">
           <a v-for="g in recent" :key="g.appid" class="cap" :href="storeUrl(g.appid)" target="_blank" rel="noopener" :title="g.name">
             <span class="art"><img :src="cover(g)" :alt="g.name" loading="lazy" @error="coverFailed(g)" /></span>
@@ -87,7 +91,7 @@ const coverFailed = (g) => { noCover.value = new Set(noCover.value).add(g.appid)
 
       <!-- most played -->
       <section v-if="top.length" class="sec">
-        <b class="h">Mest spilt</b>
+        <b class="label-caps">Mest spilt</b>
         <ol class="top">
           <li v-for="(g, i) in top" :key="g.appid">
             <a :href="storeUrl(g.appid)" target="_blank" rel="noopener">
@@ -101,17 +105,23 @@ const coverFailed = (g) => { noCover.value = new Set(noCover.value).add(g.appid)
             </a>
           </li>
         </ol>
-        <button v-if="(lib.top || []).length > 8" class="more" @click="all = !all">
+        <button v-if="(lib.top || []).length > 8" class="more-btn" @click="all = !all">
           <ChevronDown :size="16" :class="{ up: all }" />{{ all ? 'Vis færre' : `Vis ${Math.min(60, lib.top.length)} mest spilte` }}
         </button>
       </section>
+      </div>
+      </div>
       <p class="src">Fra <a :href="p.url" target="_blank" rel="noopener">Steam</a> · oppdateres hvert minutt.</p>
     </template>
   </div>
 </template>
 
 <style scoped>
-.gc { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.gc { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; container-type: inline-size; }
+/* wide: two columns – me, now playing and the numbers | recently played and most played */
+.gl { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.gl-col { display: grid; gap: 14px; align-content: start; min-width: 0; }
+@container (min-width: 860px) { .gl { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; } }
 .muted, .src { color: var(--text-3); font-size: 0.78rem; margin: 0; }
 .src a { color: inherit; }
 
@@ -149,7 +159,6 @@ const coverFailed = (g) => { noCover.value = new Set(noCover.value).add(g.appid)
 .stats span { font-size: 0.7rem; }
 
 .sec { display: grid; gap: 8px; min-width: 0; }
-.h { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
 .shelf { display: grid; grid-auto-flow: column; grid-auto-columns: 110px; gap: 10px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; scrollbar-width: thin; }
 .cap { display: grid; gap: 3px; color: var(--text); text-decoration: none; scroll-snap-align: start; min-width: 0; }
 .art { display: block; aspect-ratio: 2 / 3; border-radius: 10px; overflow: hidden; background: var(--accent-soft); box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2); }
@@ -169,6 +178,4 @@ const coverFailed = (g) => { noCover.value = new Set(noCover.value).add(g.appid)
 .bar { display: block; height: 4px; border-radius: 4px; background: var(--accent-soft); overflow: hidden; }
 .bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent-2), var(--accent)); }
 .hrs { flex: none; font-size: 0.78rem; font-weight: 600; color: var(--text-2); font-variant-numeric: tabular-nums; }
-.more { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border: 0; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font: 600 0.86rem var(--font); cursor: pointer; }
-.more .up { transform: rotate(180deg); }
 </style>

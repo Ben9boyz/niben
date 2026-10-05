@@ -48,7 +48,7 @@ function play(o, i) { playing.value = new Set(playing.value).add(key(o, i)) }
       <audio v-else-if="o.lyd" :src="o.lyd" controls preload="none"></audio>
       <p v-if="o.notat" class="note">{{ o.notat }}</p>
     </div>
-    <button v-if="items.length > FIRST" class="more" @click="all = !all">
+    <button v-if="items.length > FIRST" class="more-btn" @click="all = !all">
       <ChevronDown :size="16" :class="{ up: all }" />{{ all ? 'Vis færre' : `Vis alle ${items.length} opptak` }}
     </button>
   </div>
@@ -69,6 +69,5 @@ function play(o, i) { playing.value = new Set(playing.value).add(key(o, i)) }
 .poster:hover .pb { background: #e5332a; }
 audio { width: 100%; }
 .note { margin: 6px 0 0; color: var(--text-3); font-size: 0.86rem; }
-.more { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 8px; padding: 10px; border: 0; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font: 600 0.86rem var(--font); cursor: pointer; }
-.more .up { transform: rotate(180deg); }
+.more-btn { margin-top: 8px; }
 </style>

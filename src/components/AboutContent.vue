@@ -123,7 +123,7 @@ async function save() {
     </header>
 
     <section class="grid-sec">
-      <b class="h">Det jeg driver med</b>
+      <b class="label-caps">Det jeg driver med</b>
       <div class="cards">
         <button v-for="(c, i) in cards" :key="c.to" class="card" :style="{ '--i': i }" @click="router.push(c.to)">
           <span class="ct"><component :is="c.icon" :size="16" />{{ c.title }}</span>
@@ -135,7 +135,7 @@ async function save() {
 
     <!-- about the site itself -->
     <section class="site">
-      <b class="h">Om siden</b>
+      <b class="label-caps">Om siden</b>
       <div class="site-card">
         <Sparkles :size="20" class="spark" />
         <p>
@@ -171,7 +171,6 @@ h1 { font-size: clamp(2.2rem, 4.5vw, 3.4rem); font-weight: 800; letter-spacing: 
 .chip:hover { border-color: var(--accent); color: var(--accent); }
 .edit-btn { color: var(--text-3); border-style: dashed; }
 
-.h { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
 .grid-sec { display: grid; gap: 10px; }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
 .compact .cards { grid-template-columns: 1fr 1fr; }

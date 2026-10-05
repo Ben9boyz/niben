@@ -9,6 +9,7 @@ import VinylPanel from '../components/VinylPanel.vue'
 import PlaylistPanel from '../components/PlaylistPanel.vue'
 import SpotifySearch from '../components/SpotifySearch.vue'
 import MiniNowPlaying from '../components/MiniNowPlaying.vue'
+import SegSwitch from '../components/SegSwitch.vue'
 
 // Plain version, laid out like Spotify: the library on the left, search + the grid in the middle, what's
 // playing on the right. Phones: the search and the Album/Spillelister switch stay at the top while the grid
@@ -18,6 +19,8 @@ const gq = ref('') // one search for playlists, albums and songs
 const ipod = computed(() => room.musicView.startsWith('ipod'))
 const playing = computed(() => !!spotify.now?.name)
 const sheet = ref(false) // phones: the full "now playing" card
+const LIB = [{ id: 'vinyl', label: 'Album', icon: Disc3 }, { id: 'ipod', label: 'Spillelister', icon: ListMusic }]
+const libView = computed({ get: () => (ipod.value ? 'ipod' : 'vinyl'), set: (v) => { gq.value = ''; show(v) } })
 
 function show(view) {
   room.musicView = view
@@ -48,11 +51,7 @@ function show(view) {
       <!-- search + grid -->
       <main class="main-col">
         <div class="toolbar">
-          <div class="seg" role="tablist" aria-label="Bibliotek">
-            <span class="pill" :class="{ right: ipod }"></span>
-            <button role="tab" :class="{ on: !ipod }" @click="gq = ''; show('vinyl')"><Disc3 :size="16" />Album</button>
-            <button role="tab" :class="{ on: ipod }" @click="gq = ''; show('ipod')"><ListMusic :size="16" />Spillelister</button>
-          </div>
+          <SegSwitch v-model="libView" class="seg" :items="LIB" stretch label="Bibliotek" />
           <label class="gsearch">
             <Search :size="16" aria-hidden="true" />
             <input v-model="gq" type="search" placeholder="Søk i spillelister, album og låter …" aria-label="Søk i musikken" />
@@ -112,7 +111,8 @@ function show(view) {
 .lib small { margin-left: auto; font-weight: 500; opacity: 0.6; font-variant-numeric: tabular-nums; }
 .main-col { min-width: 0; display: grid; gap: 12px; }
 .toolbar { display: flex; gap: 10px; align-items: center; }
-.seg { display: none; }
+.seg { display: none !important; }
+@media (max-width: 820px) { .seg { display: grid !important; } }
 .gsearch { flex: 1; display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px; border: 1px solid var(--glass-border); background: var(--glass-strong); color: var(--text-3); box-shadow: var(--shadow-1, none); }
 .gsearch:focus-within { border-color: var(--accent); color: var(--accent); }
 .gsearch input::-webkit-search-cancel-button { display: none; }
@@ -147,11 +147,6 @@ function show(view) {
     background: color-mix(in srgb, var(--bg) 80%, transparent);
     -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%);
   }
-  .seg { position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-border); }
-  .seg .pill { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 999px; background: var(--glass-strong); box-shadow: inset 0 1px 0 var(--glass-hi), 0 4px 12px rgba(43, 140, 255, 0.18); transition: transform 0.45s var(--spring); }
-  .seg .pill.right { transform: translateX(100%); }
-  .seg button { position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; border: 0; background: none; color: var(--text-2); font: 600 0.88rem var(--font); cursor: pointer; }
-  .seg button.on { color: var(--accent); }
   .gsearch { padding: 9px 14px; }
   .main-card { padding: 10px; padding-bottom: 80px; }
   .m-mini { display: flex; top: auto !important; bottom: calc(92px + env(safe-area-inset-bottom)); left: 10px; right: 10px; width: auto; }

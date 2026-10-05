@@ -1,64 +1,24 @@
 <script setup>
+import { computed } from 'vue'
 import { room } from '../composables/useRoom'
 import { spotify } from '../composables/useSpotify'
+import SegSwitch from './SegSwitch.vue'
+
+// The listening corner in the room: records (the shelf / turntable) or playlists (the iPod).
+const DISC = 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zm0-6.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z'
+const IPOD = 'M8.5 2.5h7a2.5 2.5 0 0 1 2.5 2.5v14a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 6 19V5a2.5 2.5 0 0 1 2.5-2.5zM9 5h6v5.5H9zM12 18.6a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2z'
+const items = computed(() => [
+  { id: 'vinyl', label: 'Album', icon: DISC, count: spotify.albums.length || '' },
+  { id: 'ipod', label: 'Spillelister', icon: IPOD, count: spotify.playlists.length || '' },
+])
+const view = computed({
+  get: () => (room.musicView.startsWith('ipod') ? 'ipod' : 'vinyl'),
+  set: (v) => {
+    if (v === 'ipod') { room.musicView = 'ipodDock'; room.sel.musikk = null } else room.musicView = 'vinyl'
+  },
+})
 </script>
 
 <template>
-  <div class="switch glass" role="tablist" aria-label="Musikk">
-    <span class="pill" :class="{ ipod: room.musicView.startsWith('ipod') }"></span>
-    <button role="tab" :aria-selected="!room.musicView.startsWith('ipod')" :class="{ on: !room.musicView.startsWith('ipod') }" @click="room.musicView = 'vinyl'">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="2.5" /></svg>
-      Album <small>{{ spotify.albums.length || '' }}</small>
-    </button>
-    <button role="tab" :aria-selected="room.musicView.startsWith('ipod')" :class="{ on: room.musicView.startsWith('ipod') }" @click="room.musicView = 'ipodDock'; room.sel.musikk = null">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="2.5" width="12" height="19" rx="2.5" /><rect x="8.5" y="5" width="7" height="5.5" rx="0.8" /><circle cx="12" cy="16" r="2.6" /></svg>
-      Spillelister <small>{{ spotify.playlists.length || '' }}</small>
-    </button>
-  </div>
+  <SegSwitch v-model="view" :items="items" floating label="Musikk" />
 </template>
-
-<style scoped>
-.switch {
-  position: fixed;
-  top: 20px;
-  left: calc(var(--rail) + 16px);
-  z-index: 35;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  padding: 5px;
-  border-radius: 999px;
-  animation: drop 0.6s var(--spring) both;
-}
-@keyframes drop { from { opacity: 0; transform: translateY(-14px) scale(0.95); } }
-.pill {
-  position: absolute;
-  top: 5px;
-  bottom: 5px;
-  left: 5px;
-  width: calc(50% - 5px);
-  border-radius: 999px;
-  background: var(--glass-strong);
-  box-shadow: inset 0 1px 0 var(--glass-hi), 0 4px 12px rgba(43, 140, 255, 0.18);
-  transition: transform 0.5s var(--spring);
-}
-.pill.ipod { transform: translateX(100%); }
-button {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 9px 18px;
-  border: 0;
-  background: transparent;
-  color: var(--text-2);
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: color 0.3s;
-}
-button.on { color: var(--accent); }
-small { opacity: 0.55; font-weight: 600; }
-@media (max-width: 720px) { .switch { top: 70px; left: 50%; transform: translateX(-50%); } button { padding: 8px 14px; font-size: 0.85rem; } }
-</style>

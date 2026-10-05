@@ -92,6 +92,11 @@ function click(t, accent) {
   o.start(t)
   o.stop(t + 0.06)
 }
+/** One metronome click right now (accent = beat 1). */
+export function tick(accent = false) {
+  try { audio(); click(ctx.currentTime, accent) } catch {}
+}
+
 function strumAt(notes, t, dir, slotLen) {
   if (dir === 'X') { chuck(t); return }
   const list = dir === 'U' ? [...notes].reverse().slice(0, 4) : notes

@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { reloadData } from './useData'
 
 export const admin = reactive({ checked: false, loggedIn: false })
 
@@ -69,7 +70,7 @@ export async function logout() {
 
 // chord sheets are only sent to a logged-in admin, so reload the data when that changes
 function refreshSongs() {
-  import('./useData').then((m) => m.reloadData()).catch(() => {})
+  reloadData().catch(() => {})
 }
 
 /**

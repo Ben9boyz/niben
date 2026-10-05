@@ -95,7 +95,7 @@ const list = computed(() => {
         </li>
       </ul>
       <p v-if="!list.length" class="muted">Ingen ord passer.</p>
-      <button v-if="list.length > shown" class="more" @click="shown += 120">Vis flere ({{ list.length - shown }} igjen)</button>
+      <button v-if="list.length > shown" class="more-btn" @click="shown += 120">Vis flere ({{ list.length - shown }} igjen)</button>
     </template>
   </div>
 </template>
@@ -132,5 +132,4 @@ const list = computed(() => {
 .ok { margin: 0; color: #3aa76d; font-size: 0.8rem; }
 .say { display: grid; place-items: center; opacity: 0.5; padding: 0 4px; color: var(--accent); }
 .say:hover { opacity: 1; }
-.more { padding: 9px; border: 0; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font: 600 0.85rem var(--font); cursor: pointer; }
 </style>

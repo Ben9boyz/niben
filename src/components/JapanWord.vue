@@ -1,7 +1,8 @@
 <script setup>
+import PitchReading from './PitchReading.vue'
 import { ref, computed, onMounted } from 'vue'
 import { ArrowUpRight, Plus, Check, X, Volume2, Infinity as Forever, EyeOff, Trash2, Quote } from 'lucide-vue-next'
-import { jpdbUrl, pitchMorae, stateOf, STATE_LABEL, fetchWords, addWord, cardAction } from '../composables/useJapanese'
+import { jpdbUrl, stateOf, STATE_LABEL, fetchWords, addWord, cardAction } from '../composables/useJapanese'
 import { speak, canSpeak } from '../lib/speak'
 import { admin } from '../composables/useAdmin'
 
@@ -14,7 +15,6 @@ const props = defineProps({
 const emit = defineEmits(['close', 'added'])
 
 const st = computed(() => stateOf(props.word.state))
-const morae = computed(() => pitchMorae(props.word.reading, props.word.pitch))
 const meanings = computed(() => (props.word.meanings || (props.word.meaning ? [props.word.meaning] : [])).map((m) => (Array.isArray(m) ? m.join('; ') : m)))
 
 const decks = ref([])
@@ -62,8 +62,7 @@ async function add() {
     <button class="x" aria-label="Lukk" @click="emit('close')"><X :size="15" /></button>
     <div class="sp">{{ word.spelling }}</div>
     <div v-if="word.reading && word.reading !== word.spelling" class="rd">
-      <template v-if="morae"><span v-for="(p, k) in morae" :key="k" class="mora" :class="{ high: p.high, drop: p.drop }">{{ p.m }}</span></template>
-      <template v-else>{{ word.reading }}</template>
+      <PitchReading :reading="word.reading" :pitch="word.pitch" />
     </div>
     <button v-if="canSpeak()" class="say" aria-label="Hør ordet" title="Hør ordet" @click="speak(word.reading || word.spelling)"><Volume2 :size="16" /></button>
     <p v-if="word.alt?.length" class="alt">Skrives også {{ word.alt.slice(0, 4).join('、') }}</p>
@@ -108,9 +107,6 @@ async function add() {
 .x { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 50%; background: rgba(0, 0, 0, 0.06); color: #555; cursor: pointer; }
 .sp { font-family: "Hiragino Sans", "Noto Sans JP", sans-serif; font-size: 2.1rem; font-weight: 700; line-height: 1.15; padding-right: 74px; }
 .rd { display: flex; gap: 1px; font-family: "Hiragino Sans", "Noto Sans JP", sans-serif; font-size: 1rem; color: #444; }
-.mora { position: relative; padding-top: 4px; border-top: 2px solid transparent; }
-.mora.high { border-top-color: #2b6fd6; }
-.mora.drop::after { content: ''; position: absolute; right: -1px; top: -2px; height: 10px; border-right: 2px solid #2b6fd6; }
 .tags { display: flex; flex-wrap: wrap; gap: 4px; }
 .tag, .state { padding: 2px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; background: rgba(0, 0, 0, 0.06); color: #555; }
 .state.known { background: #d9f2e4; color: #1f7a48; }
