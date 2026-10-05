@@ -454,10 +454,53 @@ export const findAlbum = (uri) => spotify.albums.find((a) => a.uri === uri) || s
 async function act(action, body) {
   try { return { ok: true, ...(await api(action, body)) } } catch (e) { return { ok: false, error: e.message, code: e.code } }
 }
-/** Up next in Spotify's queue. */
+// ── the queue ──
+// We keep the queue ourselves (server: _queue.inc.php): a list of what plays next – first what I have queued (`nq` songs),
+// then the rest of the album / playlist. Every change goes to Spotify as ONE request, so a whole album goes in at once
+// and the list can be reordered and cleaned up.
+export const queueState = reactive({ items: [], nq: 0, loaded: false })
+/** What plays next (also keeps queueState up to date – the queue panel and the 3D table read it). */
 export async function fetchQueue() {
-  try { const r = await fetch('api.php?action=spotify_queue', { cache: 'no-store' }); return (await r.json()).tracks || [] } catch { return [] }
+  try {
+    const r = await fetch('api.php?action=queue_get', { cache: 'no-store' })
+    const j = await r.json()
+    if (!j.error && !saving) { queueState.items = j.items || []; queueState.nq = j.nq || 0; queueState.loaded = true }
+  } catch {}
+  return queueState.items
 }
+let saving = false
+let saveTimer = 0
+/** The whole list in its new order (after dragging / deleting): shown at once, sent a moment later. */
+export function queueSave(items, nq) {
+  queueState.items = items
+  queueState.nq = Math.max(0, Math.min(nq, items.length))
+  saving = true
+  spotify.queueV++
+  clearTimeout(saveTimer)
+  saveTimer = setTimeout(async () => {
+    const r = await act('queue_save', { items: queueState.items, nq: queueState.nq })
+    saving = false
+    if (!r.ok) notify(r.error || 'Klarte ikke å lagre køen.', true)
+    fetchQueue()
+    spotify.queueV++
+  }, 500)
+}
+async function queueAdd(body, done) {
+  saving = true
+  const r = await act('queue_add', body)
+  saving = false
+  if (r.ok) {
+    queueState.items = r.items || queueState.items
+    queueState.nq = r.nq ?? queueState.nq
+    notify(done(r))
+    spotify.queueV++
+  } else notify(r.error || 'Klarte ikke å legge i køen.', true)
+  return r
+}
+/** Put a song at the end of what I've queued. */
+export const enqueue = (uri, opts = {}) => queueAdd({ tracks: [uri], next: !!opts.next }, () => 'Lagt i køen.')
+/** A whole album at the end of what I've queued (all its songs, in order, in one go). */
+export const enqueueAlbum = (uri, name = '') => queueAdd(/^spotify:playlist:/.test(uri) ? { playlist: uri } : { album: uri }, (r) => (name ? `«${name}» er lagt i køen${r.added ? ` (${r.added} låter)` : ''}.` : 'Albumet er lagt i køen.'))
 /** My Spotify devices (admin). */
 export async function fetchDevices() {
   try { return (await api('spotify_devices')).devices || [] } catch { return [] }
@@ -484,24 +527,6 @@ export async function cycleRepeat() {
   const r = await act('spotify_repeat', { state: next })
   if (!r.ok && spotify.now) spotify.now.repeat = before
   return r
-}
-/** Put a song next in the queue. */
-export async function enqueue(uri) {
-  const r = await act('spotify_enqueue', { uri })
-  if (r.ok) { notify('Lagt i køen.'); spotify.queueV++ }
-  return r
-}
-/** A whole album at the end of the queue (its songs, in order). */
-export async function enqueueAlbum(albumUri, name = '') {
-  const t = await fetchTracks(albumUri)
-  if (!t.tracks.length) { notify('Fant ingen låter i albumet.', true); return { ok: false } }
-  for (const tr of t.tracks) {
-    const r = await act('spotify_enqueue', { uri: tr.uri })
-    if (!r.ok) { notify(r.error || 'Klarte ikke å legge albumet i køen.', true); spotify.queueV++; return r }
-  }
-  notify(name ? `«${name}» er lagt i køen.` : 'Albumet er lagt i køen.')
-  spotify.queueV++
-  return { ok: true }
 }
 /** Is this song among my liked songs? / save or remove it. */
 const likedCache = new Map() // uri -> { t, v }: asked once per song (10 minutes), changed at once by the heart
