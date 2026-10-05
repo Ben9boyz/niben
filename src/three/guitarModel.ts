@@ -67,7 +67,7 @@ function recolorWood(texture: THREE.Texture, { top, body, region = 0.52 }: { top
  *   "tre": { "topp": "#hex", "kropp": "#hex" }       – recolour a wood texture atlas
  */
 /** The colours from data.json that this needs. */
-export interface GuitarColours { farger?: Record<string, string>; tre?: { topp: string; kropp?: string } }
+export interface GuitarColours { farger?: Record<string, string>; tre?: Record<string, string> }
 export function prepareGuitarModel(scene: THREE.Object3D, spec: GuitarColours = {}): THREE.Group {
   const model = scene.clone(true)
   const recolored = new Map<THREE.Material, THREE.Material>()
@@ -90,7 +90,7 @@ export function prepareGuitarModel(scene: THREE.Object3D, spec: GuitarColours = 
         })
       } else if (spec.tre && m instanceof THREE.MeshStandardMaterial && m.map) {
         const wood = m.clone()
-        wood.map = recolorWood(m.map, { top: spec.tre.topp, body: spec.tre.kropp })
+        wood.map = recolorWood(m.map, { top: spec.tre.topp ?? '#c9a96b', body: spec.tre.kropp })
         if (wood instanceof THREE.MeshPhysicalMaterial) wood.clearcoat = Math.min(wood.clearcoat, 0.25)
         wood.needsUpdate = true
         out = wood

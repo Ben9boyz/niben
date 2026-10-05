@@ -42,3 +42,6 @@ interface Window { nibenApp?: NibenAppBridge }
 
 // Safari's prefixed audio context
 interface Window { webkitAudioContext?: typeof AudioContext }
+
+// Chromium only
+interface Navigator { deviceMemory?: number }

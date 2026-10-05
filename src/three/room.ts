@@ -7,7 +7,15 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { VignetteShader } from 'three/examples/jsm/shaders/VignetteShader.js'
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import type { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js'
+import type { Album, NowPlaying, Playlist } from '../types'
+import type { Book, Guitar, Project, Trip } from '../composables/useData'
+import type { DecorItem } from '../composables/useDecor'
+import type { GfxMode, GfxValues } from '../composables/useGraphics'
+import type { JpAnime, JpWord } from '../composables/useJapanese'
+import type { RoomHover } from '../composables/useRoom'
+import type { TimerState } from '../composables/useTimer'
 import { buildGuitar } from './guitar'
 import { prepareGuitarModel } from './guitarModel'
 import { buildBookshelf } from './books'
@@ -15,7 +23,8 @@ import { buildDesk } from './desk'
 import { buildGlobeTable } from './globe'
 import { buildPracticeCorner } from './practice'
 import { buildJapanCorner } from './japan'
-import { buildListeningCorner } from './listening'
+import { buildListeningCorner, type StackEntry } from './listening'
+import type { SteamScreenData } from './desk'
 import { buildFigureShelf } from './figures'
 import { woodFloor, wallTexture, skyTexture, canvasTex } from './textures'
 import { atlasName, norskNavn } from './countries'
@@ -26,7 +35,10 @@ const GLOBE_VIEW_DIR = new THREE.Vector3(0.18, 0.34, 0.92).normalize()
 const PORTRAIT = new THREE.Vector3(3.97, 1.62, -1.1)
 const GUITAR_Z = -0.45
 
-const STATIONS = {
+type Vec3 = [number, number, number]
+/** Where the camera stands and what it looks at. */
+interface Pose { pos: Vec3; target: Vec3 }
+const STATIONS: Record<string, Pose | null> = {
   hjem: { pos: [0.6, 7.4, 15.2], target: [0, 0.5, -0.3] },
   gitar: { pos: [-0.75, 1.35, GUITAR_Z], target: [-4, 1.2, GUITAR_Z] },
   boker: { pos: [-1.6, 1.5, -0.45], target: [-1.6, 1.45, -3.5] },
@@ -41,25 +53,55 @@ const STATIONS = {
 }
 // the listening corner while music plays: closer, from above at an angle – the turntable and the
 // sleeve beside it in focus, the record shelf still visible underneath
-const LYTTE_TOP = { pos: [2.55, 1.7, -0.2], target: [3.72, 0.75, -0.12] }
+const LYTTE_TOP: Pose = { pos: [2.55, 1.7, -0.2], target: [3.72, 0.75, -0.12] }
 // a playlist playing: looking at the iPod back on its stand on the sideboard by the turntable (its screen shows the song)
 // in front of the record shelf (under the turntable), to browse the spines
 // from straight above: the turntable's buttons and the tonearm can be pressed
-const LYTTE_DECK = { pos: [3.47, 1.5, -0.28], target: [3.71, 0.88, -0.28] }
-const LYTTE_SHELF = { pos: [1.9, 0.95, 0.1], target: [3.6, 0.45, 0.1] }
+const LYTTE_DECK: Pose = { pos: [3.47, 1.5, -0.28], target: [3.71, 0.88, -0.28] }
+const LYTTE_SHELF: Pose = { pos: [1.9, 0.95, 0.1], target: [3.6, 0.45, 0.1] }
 // (close up, so what's on the iPod's little screen can be read when it stands there)
-const LYTTE_IPOD = { pos: [3.14, 1.17, 0.138], target: [3.59, 0.97, 0.098] } // (30 % closer than before; aimed at the iPod's screen and wheel, not its base)
+const LYTTE_IPOD: Pose = { pos: [3.14, 1.17, 0.138], target: [3.59, 0.97, 0.098] } // (30 % closer than before; aimed at the iPod's screen and wheel, not its base)
 
-export const STATION_LABELS = { gaming: 'Gaming', japansk: 'Japansk', lytte: 'Lytteplassen', ovelse: 'Øvingstimer', gitar: 'Gitarer', boker: 'Bokhylla', kode: 'Prosjekter', reiser: 'Reiser', om: 'Om meg' }
+export const STATION_LABELS: Record<string, string> = { gaming: 'Gaming', japansk: 'Japansk', lytte: 'Lytteplassen', ovelse: 'Øvingstimer', gitar: 'Gitarer', boker: 'Bokhylla', kode: 'Prosjekter', reiser: 'Reiser', om: 'Om meg' }
 
-const THEMES = {
+/** The look of the room by day and by night. */
+interface Theme {
+  bg: number; wall: number; floor: number; hemi: number; sun: number; sunColor: number; lamp: number; env: number
+  bloom: number; threshold: number; exposure: number; window: number; windowColor: number; screen: number; night: boolean
+}
+type ThemeName = 'light' | 'dark'
+const THEMES: Record<ThemeName, Theme> = {
   light: { bg: 0xe9f1fa, wall: 0xe9eef5, floor: 0xffffff, hemi: 0.45, sun: 3.2, sunColor: 0xfff1dc, lamp: 0.3, env: 1.0, bloom: 0.35, threshold: 1.6, exposure: 1.25, window: 6, windowColor: 0xfff4e6, screen: 0.6, night: false },
   dark: { bg: 0x060a12, wall: 0x8e9bb0, floor: 0x7d746c, hemi: 0.1, sun: 0.55, threshold: 0.9, window: 1.2, windowColor: 0x9fc0ff, screen: 2.2, sunColor: 0x9fc0ff, lamp: 5.5, env: 0.55, bloom: 0.95, exposure: 1.1, night: true },
 }
 
-const easeInOut = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2)
+const easeInOut = (k: number): number => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2)
 
-export function createRoom(host, { onPick, onHover, onReady, timerState, onDecorChange, onDecorSelect } = {}) {
+/** What a click in the room reports to the page. */
+export interface PickEvent { station: string; kind: string; index?: number; name?: string; uri?: string; album?: StackEntry }
+export interface RoomCallbacks {
+  onPick?: (p: PickEvent) => void
+  onHover?: (h: RoomHover | null) => void
+  onReady?: () => void
+  timerState?: () => TimerState
+  onDecorChange?: (list: DecorItem[]) => void
+  onDecorSelect?: (id: string | null) => void
+}
+/** What the room needs to know about the site's data. */
+export interface RoomData { gitarer?: Guitar[]; boker?: Book[]; reiser?: Trip[]; prosjekter?: Project[]; om?: { bilde?: string }; site?: { navn?: string } }
+/** The graphics settings as the room is told them (see useGraphics). */
+export type GfxInput = Partial<Omit<GfxValues, 'res' | 'ao'>> & { mode?: GfxMode; res?: number | 'auto'; ao?: GfxValues['ao'] | 'auto'; showFps?: boolean }
+interface Eff extends Omit<GfxValues, 'res' | 'ao'> { res: number | 'auto'; ao: GfxValues['ao'] | 'auto'; showFps: boolean }
+/** One of my uploaded 3D models in the room. */
+interface DecorObject { root: THREE.Group; item: DecorItem }
+/** What the pointer rests on, found by raycasting. */
+interface HitInfo { object: THREE.Object3D; kind?: string; index?: number; station?: string; country?: string }
+interface Flight { from: Pose3; to: Pose3; t: number; dur: number; lift: number }
+interface Pose3 { pos: THREE.Vector3; target: THREE.Vector3 }
+interface GuitarEntry { holder: THREE.Group; model: THREE.Object3D; hook: THREE.Mesh; home: THREE.Vector3; vel: THREE.Vector3; rot: number; strum: number }
+type LyttePose = 'top' | 'shelf' | 'ipod' | 'deck'
+
+export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerState, onDecorChange, onDecorSelect }: RoomCallbacks = {}) {
   let reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const deviceReduced = reduced
 
@@ -77,7 +119,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
       const gl = renderer.getContext()
       const ext = gl.getExtension('WEBGL_debug_renderer_info')
       gpu = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER) || '').toLowerCase()
-    } catch {}
+    } catch { /* no way to ask: judge by the cores and memory */ }
     const cores = navigator.hardwareConcurrency || 4
     const mem = navigator.deviceMemory || 0 // GB (Chromium only)
     const software = /swiftshader|llvmpipe|software|basic render|softpipe/.test(gpu)
@@ -125,7 +167,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   const maxMsaa = renderer.capabilities.maxSamples || 4
   const maxTex = renderer.capabilities.maxTextureSize || 4096
   // what "Auto" means for this device (the user's own choices override any of these)
-  const autoGfx = () => ({
+  const autoGfx = (): Eff => ({
     res: 'auto', fps: 0,
     msaa: quality === 'low' ? 2 : 4, // 8× MSAA on a half-float target costs a lot and shows little – still available in the settings
     shadows: quality === 'ultra' ? 4096 : quality === 'low' ? 1024 : 2048,
@@ -134,16 +176,17 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     weather: true, ambient: true, exposure: 1, showFps: false,
   })
   let eff = autoGfx()
-  let gfxIn = null // what the user chose in the settings ({ mode: 'auto' | 'custom', … } or null)
-  let ao = null
+  let gfxIn: GfxInput | null = null // what the user chose in the settings (or null)
+  let ao: GTAOPass | null = null
   let aoLoading = false
-  function ensureAO() {
+  function ensureAO(): void {
     if (ao || aoLoading) return
     aoLoading = true
-    import('three/examples/jsm/postprocessing/GTAOPass.js').then(({ GTAOPass }) => {
-      ao = new GTAOPass(scene, camera, 256, 256)
-      ao.output = GTAOPass.OUTPUT.Default
-      composer.insertPass(ao, 1)
+    void import('three/examples/jsm/postprocessing/GTAOPass.js').then(({ GTAOPass: Pass }) => {
+      const pass = new Pass(scene, camera, 256, 256)
+      ao = pass
+      pass.output = Pass.OUTPUT.Default
+      composer.insertPass(pass, 1)
       applyGfx(gfxIn)
       resize()
       invalidate(0.5)
@@ -165,7 +208,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   const trimMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 })
   const sideMat = new THREE.MeshStandardMaterial({ color: 0xdfe6ef, roughness: 0.8 })
 
-  const box = (w, h, d, mat, x, y, z, parent = scene, shadow = true) => {
+  const box = (w: number, h: number, d: number, mat: THREE.Material, x: number, y: number, z: number, parent: THREE.Object3D = scene, shadow = true): THREE.Mesh => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat)
     m.position.set(x, y, z)
     m.castShadow = shadow
@@ -202,15 +245,15 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   scene.add(sky)
   // ── light shafts from the window (ultra only): a soft, dusty volume along the sun's direction ──
   const shaftU = { uTime: { value: 0 }, uStrength: { value: 0 }, uColor: { value: new THREE.Color(0xfff1dc) } }
-  let shafts = null
-  function buildShafts() {
+  let shafts: THREE.Mesh | null = null
+  function buildShafts(): void {
     if (shafts) return
     const dir = new THREE.Vector3(-10, -5.2, -3.2).normalize()
     const L = 6.5
-    const c = [[0.9, 2.3, 1.0], [0.9, 0.9, 1.0], [0.9, 0.9, 2.4], [0.9, 2.3, 2.4]].map(([, y, z]) => new THREE.Vector3(3.95, y, z))
+    const c = ([[0.9, 2.3, 1.0], [0.9, 0.9, 1.0], [0.9, 0.9, 2.4], [0.9, 2.3, 2.4]] as Vec3[]).map(([, y, z]) => new THREE.Vector3(3.95, y, z))
     const far = c.map((v) => v.clone().addScaledVector(dir, L))
-    const pos = [], uv = []
-    const tri = (a, b, d, ua, ub, ud) => { pos.push(...a.toArray(), ...b.toArray(), ...d.toArray()); uv.push(ua, ub, ud) }
+    const pos: number[] = [], uv: number[] = []
+    const tri = (a: THREE.Vector3, b: THREE.Vector3, d: THREE.Vector3, ua: number, ub: number, ud: number): void => { pos.push(...a.toArray(), ...b.toArray(), ...d.toArray()); uv.push(ua, ub, ud) }
     for (let i = 0; i < 4; i++) {
       const j = (i + 1) % 4
       tri(c[i], c[j], far[j], 0, 0, 1); tri(c[i], far[j], far[i], 0, 1, 1)
@@ -247,7 +290,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     applyWeatherLight()
   }
   // ── weather outside the window: rain / snow falling in front of the sky, lightning, grey clouds ──
-  let weather = { kind: 'clear', day: true }
+  let weather: { kind: string; day?: boolean } = { kind: 'clear', day: true }
   const RAIN_N = 110
   const wp = new Float32Array(RAIN_N * 6)
   const wseed = Array.from({ length: RAIN_N }, () => ({ z: 1.02 + Math.random() * 1.36, x: 4.06 + Math.random() * 0.12, y: 0.92 + Math.random() * 1.38, v: 0.8 + Math.random() * 0.8 }))
@@ -266,7 +309,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   snow.visible = false
   scene.add(snow)
   let flash = 0
-  function stepWeather(dt, t) {
+  function stepWeather(dt: number, t: number): boolean {
     if (!eff.weather) { rain.visible = false; snow.visible = false; return false }
     const k = weather.kind
     const raining = k === 'rain' || k === 'drizzle' || k === 'thunder'
@@ -276,6 +319,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
       const speed = k === 'drizzle' ? 1.6 : 3.2
       for (let i = 0; i < RAIN_N; i++) {
         const d = wseed[i]
+        if (!d) continue
         d.y -= d.v * speed * dt
         if (d.y < 0.9) { d.y = 2.3; d.z = 1.02 + Math.random() * 1.36 }
         wp.set([d.x, d.y, d.z, d.x, d.y + 0.1, d.z + 0.012], i * 6)
@@ -284,6 +328,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     } else if (k === 'snow') {
       for (let i = 0; i < RAIN_N; i++) {
         const d = wseed[i]
+        if (!d) continue
         d.y -= d.v * 0.28 * dt
         if (d.y < 0.9) { d.y = 2.3; d.z = 1.02 + Math.random() * 1.36 }
         sp.set([d.x, d.y, d.z + Math.sin(t * 0.8 + i) * 0.03], i * 3)
@@ -294,7 +339,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     if (k === 'thunder') {
       if (flash <= 0 && Math.random() < dt * 0.12) flash = 0.18
     }
-    if (flash > 0) { flash -= dt; windowLight.intensity = (THEMES[themeName]?.window ?? 6) * 3 + 8 * Math.max(0, flash / 0.18); skyMat.color.setScalar(1 + flash * 6); if (flash <= 0) { applyWeatherLight(); skyMat.color.setScalar(1) } }
+    if (flash > 0) { flash -= dt; windowLight.intensity = THEMES[themeName].window * 3 + 8 * Math.max(0, flash / 0.18); skyMat.color.setScalar(1 + flash * 6); if (flash <= 0) { applyWeatherLight(); skyMat.color.setScalar(1) } }
     return raining || k === 'snow' || flash > 0
   }
   // baseboards
@@ -388,25 +433,26 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   scene.add(fill)
 
   // ── Stations ───────────────────────────────────────────
-  const interactive = []
-  const tag = (obj, station) => { obj.userData.station = station; interactive.push(obj); return obj }
+  const interactive: THREE.Object3D[] = []
+  const tag = <T extends THREE.Object3D>(obj: T, station: string): T => { obj.userData.station = station; interactive.push(obj); return obj }
 
   // Guitars
   const guitarRoot = tag(new THREE.Group(), 'gitar')
   scene.add(guitarRoot)
-  let guitars = [] // { holder, model, home, vel, strum }
+  let guitars: GuitarEntry[] = []
   let selGuitar = -1
   let hoverGuitar = -1
   const hookMat = new THREE.MeshStandardMaterial({ color: 0xd7b56d, metalness: 1, roughness: 0.3 })
 
   const gltfLoader = new GLTFLoader()
-  const gltfCache = new Map()
-  const loadModel = (url) => {
-    if (!gltfCache.has(url)) gltfCache.set(url, gltfLoader.loadAsync(url))
-    return gltfCache.get(url)
+  const gltfCache = new Map<string, Promise<GLTF>>()
+  const loadModel = (url: string): Promise<GLTF> => {
+    let p = gltfCache.get(url)
+    if (!p) { p = gltfLoader.loadAsync(url); gltfCache.set(url, p) }
+    return p
   }
 
-  function buildGuitars(list) {
+  function buildGuitars(list: Guitar[]): void {
     guitars.forEach((g) => guitarRoot.remove(g.holder, g.hook))
     guitars = []
     const n = list.length
@@ -416,7 +462,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
       const model = buildGuitar(spec)
       model.scale.setScalar(0.095)
       model.rotation.y = Math.PI / 2
-      model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true } })
+      model.traverse((o) => { if (o instanceof THREE.Mesh) { o.castShadow = true; o.receiveShadow = true } })
       const holder = new THREE.Group()
       const z = GUITAR_Z - (i - (n - 1) / 2) * spacing
       const home = new THREE.Vector3(-3.9, 1.22, z)
@@ -425,7 +471,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
       holder.userData = { kind: 'guitar', index: i }
       guitarRoot.add(holder)
       const hook = box(0.08, 0.025, 0.06, hookMat, -3.97, 1.78, z, guitarRoot)
-      const entry = { holder, model, hook, home, vel: new THREE.Vector3(), rot: 0, strum: 0 }
+      const entry: GuitarEntry = { holder, model, hook, home, vel: new THREE.Vector3(), rot: 0, strum: 0 }
       guitars.push(entry)
       if (spec.modell) {
         loadModel(spec.modell).then((gltf) => {
@@ -498,9 +544,10 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   const figures = buildFigureShelf()
   figures.group.position.set(0.38, 1.28, -3.5)
   scene.add(figures.group)
-  let music = { albums: [], playlists: [], now: null }
-  let stack = [] // the records on the table (see setStack)
-  let animeList = [] // the Japanese corner's DVDs (from jpdb)
+  interface MusicState { albums: Album[]; playlists: Playlist[]; now: NowPlaying | null; guests?: Album[]; playOn?: string }
+  let music: MusicState = { albums: [], playlists: [], now: null }
+  let stack: StackEntry[] = [] // the records on the table (see setStack)
+  let animeList: JpAnime[] = [] // the Japanese corner's DVDs (from jpdb)
 
   // Practice corner with the interval clock
   const practice = buildPracticeCorner()
@@ -515,7 +562,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   scene.add(japan.group)
   let timerInterval = 10
 
-  function setPortrait(om, navn) {
+  function setPortrait(om: RoomData['om'], navn: string | undefined): void {
     const initial = (navn || 'n').trim()[0]?.toUpperCase() || 'N'
     photoMat.map?.dispose()
     photoMat.map = canvasTex(560, 740, (x, w, h) => {
@@ -542,7 +589,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
       new THREE.TextureLoader().load(om.bilde, (tex) => {
         tex.colorSpace = THREE.SRGBColorSpace
         // cover-fit the photo into 0.56 x 0.74
-        const ia = tex.image.width / tex.image.height
+        const img = tex.image as { width: number; height: number }
+        const ia = img.width / img.height
         const fa = 0.56 / 0.74
         if (ia > fa) { tex.repeat.set(fa / ia, 1); tex.offset.set((1 - fa / ia) / 2, 0) }
         else { tex.repeat.set(1, ia / fa); tex.offset.set(0, (1 - ia / fa) / 2) }
@@ -555,18 +603,19 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
 
   // ── Camera flight ──────────────────────────────────────
   let station = 'hjem'
-  let flight = null
+  let flight: Flight | null = null
   const camPos = new THREE.Vector3().copy(camera.position)
   const camTarget = lookAt.clone()
 
-  let lyttePose = null // null (sofa view) | 'top' (turntable) | 'shelf' (record shelf) | 'ipod' (iPod on its stand)
-  function goTo(name, { instant = false, duration } = {}) {
+  let lyttePose: LyttePose | null = null // null (sofa view) | 'top' (turntable) | 'shelf' (record shelf) | 'ipod' (iPod on its stand)
+  function goTo(name: string, { instant = false, duration }: { instant?: boolean; duration?: number } = {}): void {
     invalidate(0.5)
     station = STATIONS[name] ? name : 'hjem'
     zoomTarget = 1 // the zoom is for the globe only
     desk.setScreenMode(station === 'gaming' ? 'gaming' : 'code')
-    const s = station === 'lytte' && lyttePose ? { ipod: LYTTE_IPOD, shelf: LYTTE_SHELF, top: LYTTE_TOP, deck: LYTTE_DECK }[lyttePose] : STATIONS[station]
-    const to = { pos: new THREE.Vector3(...s.pos), target: new THREE.Vector3(...s.target) }
+    const s: Pose | null | undefined = station === 'lytte' && lyttePose ? { ipod: LYTTE_IPOD, shelf: LYTTE_SHELF, top: LYTTE_TOP, deck: LYTTE_DECK }[lyttePose] : STATIONS[station]
+    if (!s) return
+    const to: Pose3 = { pos: new THREE.Vector3(...s.pos), target: new THREE.Vector3(...s.target) }
     if (instant || reduced) {
       camPos.copy(to.pos)
       camTarget.copy(to.target)
@@ -585,7 +634,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
 
   // ── Insets (UI panels) shift the view so the subject stays centred in the free area ──
   const inset = { x: 0, y: 0, tx: 0, ty: 0 }
-  function setInsets({ right = 0, bottom = 0, left = 0 }) {
+  function setInsets({ right = 0, bottom = 0, left = 0 }: { right?: number; bottom?: number; left?: number }): void {
     invalidate(0.3)
     inset.tx = right / 2 - left / 2
     inset.ty = bottom / 2
@@ -596,10 +645,10 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   ray.params.Line.threshold = 0.005 // metres – lines are only decoration
   const ndc = new THREE.Vector2()
   const pointer = { x: 0, y: 0, inside: false }
-  let dragging = null
-  let downAt = null
+  let dragging: { x: number; startX: number; moved: boolean } | null = null
+  let downAt: { x: number; y: number; t: number } | null = null
 
-  function setNdc(e) {
+  function setNdc(e: { clientX: number; clientY: number }): void {
     const r = renderer.domElement.getBoundingClientRect()
     // (the camera's projection already includes the view offset)
     ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1)
@@ -607,17 +656,17 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     pointer.y = -((e.clientY - r.top) / r.height) * 2 + 1
   }
 
-  const shown = (o) => { for (; o; o = o.parent) if (!o.visible) return false; return true }
-  function hitInfo() {
+  const shown = (o: THREE.Object3D | null): boolean => { for (; o; o = o.parent) if (!o.visible) return false; return true }
+  function hitInfo(): HitInfo | null {
     ray.setFromCamera(ndc, camera)
     const hits = ray.intersectObjects(interactive, true)
     for (const h of hits) {
-      if (h.object.isPoints || h.object.isSprite || !shown(h.object)) continue // the raycaster doesn't look at .visible: a hidden thing (the iPod's notes, a hidden station) and dust / sprites are only decoration (a Points hit has a 1 m tolerance by default!) must not eat the click
-      let o = h.object
-      let info = { object: h.object }
+      if (h.object instanceof THREE.Points || h.object instanceof THREE.Sprite || !shown(h.object)) continue // the raycaster doesn't look at .visible: a hidden thing (the iPod's notes, a hidden station) and dust / sprites are only decoration (a Points hit has a 1 m tolerance by default!) must not eat the click
+      let o: THREE.Object3D | null = h.object
+      const info: HitInfo = { object: h.object }
       while (o) {
-        if (o.userData.kind && info.kind === undefined) { info.kind = o.userData.kind; info.index = o.userData.index ?? h.instanceId }
-        if (o.userData.station) { info.station = o.userData.station; break }
+        if (o.userData.kind && info.kind === undefined) { info.kind = o.userData.kind as string; info.index = (o.userData.index as number | undefined) ?? h.instanceId }
+        if (o.userData.station) { info.station = o.userData.station as string; break }
         o = o.parent
       }
       if (info.station) {
@@ -634,8 +683,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     return null
   }
 
-  let hoverInfo = null
-  function onMove(e) {
+  let hoverInfo: HitInfo | null = null
+  function onMove(e: PointerEvent): void {
     invalidate(0.4)
     setNdc(e)
     pointer.inside = true
@@ -649,36 +698,39 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
       return
     }
     hoverInfo = hitInfo()
-    let label = null
+    let label: string | null | undefined = null
     hoverGuitar = -1
     shelf.setHover(-1)
     globeTable.setHover(null)
     listening.setHover(null)
     japan.setAnimeHover(-1)
-    if (hoverInfo) {
-      if (hoverInfo.station !== station) label = STATION_LABELS[hoverInfo.station]
-      else if (hoverInfo.kind === 'guitar') { hoverGuitar = hoverInfo.index; label = currentData.gitarer?.[hoverInfo.index]?.navn }
-      else if (hoverInfo.kind === 'book') { shelf.setHover(hoverInfo.index); label = currentData.boker?.[hoverInfo.index]?.tittel }
-      else if (hoverInfo.kind === 'album') { label = music.albums[hoverInfo.index]?.name; listening.setHover(music.albums[hoverInfo.index]?.uri) }
-      else if (hoverInfo.kind === 'anime') {
-        const a = animeList[hoverInfo.index]
-        japan.setAnimeHover(hoverInfo.index)
+    const hi = hoverInfo
+    if (hi) {
+      const hIndex = hi.index ?? -1
+      const album = music.albums[hIndex]
+      if (hi.station !== station) label = hi.station ? STATION_LABELS[hi.station] : null
+      else if (hi.kind === 'guitar') { hoverGuitar = hIndex; label = currentData.gitarer?.[hIndex]?.navn }
+      else if (hi.kind === 'book') { shelf.setHover(hIndex); label = currentData.boker?.[hIndex]?.tittel }
+      else if (hi.kind === 'album') { label = album?.name; listening.setHover(album?.uri ?? null) }
+      else if (hi.kind === 'anime') {
+        const a = animeList[hIndex]
+        japan.setAnimeHover(hIndex)
         if (a) label = `${a.en || a.title} · ${String(a.known).replace('.', ',')} % kjent`
       }
-      else if (hoverInfo.kind === 'ipod') label = 'Spillelister'
-      else if (hoverInfo.kind === 'stack') label = stack[hoverInfo.index] ? `${stack[hoverInfo.index].queued ? 'Neste i køen: ' : 'Hørt sist: '}${stack[hoverInfo.index].name}` : null
-      else if (hoverInfo.kind === 'turntable') label = 'Se ovenfra'
-      else if (hoverInfo.kind === 'tt-prev') label = 'Forrige låt'
-      else if (hoverInfo.kind === 'tt-next') label = 'Neste låt'
-      else if (hoverInfo.kind === 'tt-toggle') label = music.now?.playing ? 'Pause' : 'Spill'
-      else if (hoverInfo.kind === 'tt-arm') label = music.now?.playing ? 'Løft nålen (pause)' : 'Sett ned nålen (spill)'
-      else if (hoverInfo.kind === 'shelf' && lyttePose !== 'shelf') label = 'Bla i platehylla'
-      else if (hoverInfo.station === 'reiser' && hoverInfo.country) { globeTable.setHover(hoverInfo.country); label = norskNavn(hoverInfo.country) }
+      else if (hi.kind === 'ipod') label = 'Spillelister'
+      else if (hi.kind === 'stack') { const st = stack[hIndex]; label = st ? `${st.queued ? 'Neste i køen: ' : 'Hørt sist: '}${st.name}` : null }
+      else if (hi.kind === 'turntable') label = 'Se ovenfra'
+      else if (hi.kind === 'tt-prev') label = 'Forrige låt'
+      else if (hi.kind === 'tt-next') label = 'Neste låt'
+      else if (hi.kind === 'tt-toggle') label = music.now?.playing ? 'Pause' : 'Spill'
+      else if (hi.kind === 'tt-arm') label = music.now?.playing ? 'Løft nålen (pause)' : 'Sett ned nålen (spill)'
+      else if (hi.kind === 'shelf' && lyttePose !== 'shelf') label = 'Bla i platehylla'
+      else if (hi.station === 'reiser' && hi.country) { globeTable.setHover(hi.country); label = norskNavn(hi.country) }
     }
-    renderer.domElement.style.cursor = hoverInfo ? 'pointer' : 'default'
-    onHover?.(label ? { label, x: e.clientX, y: e.clientY, station: hoverInfo.station, country: hoverInfo.country, uri: hoverInfo.kind === 'album' ? music.albums[hoverInfo.index]?.uri : null } : null)
+    renderer.domElement.style.cursor = hi ? 'pointer' : 'default'
+    onHover?.(label && hi ? { label, x: e.clientX, y: e.clientY, station: hi.station, country: hi.country, uri: hi.kind === 'album' ? music.albums[hi.index ?? -1]?.uri ?? null : null } : null)
   }
-  function onDown(e) {
+  function onDown(e: PointerEvent): void {
     invalidate(0.6)
     setNdc(e)
     if (decorEdit) { startDecorDrag(e); return } // "Rediger rommet": my models are picked up and moved, nothing else reacts
@@ -690,7 +742,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
       renderer.domElement.setPointerCapture?.(e.pointerId)
     }
   }
-  function onUp(e) {
+  function onUp(e: PointerEvent): void {
     if (decorEdit) { if (decorDrag) endDecorDrag(); downAt = null; return }
     const wasDrag = dragging?.moved
     if (dragging) { globeTable.setDragging(false); dragging = null }
@@ -701,29 +753,31 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     setNdc(e)
     const info = hitInfo()
     if (!info) { onPick?.({ station, kind: 'empty' }); return }
-    if (info.station !== station) { onPick?.({ station: info.station, kind: 'station' }); return }
+    if (info.station !== station) { onPick?.({ station: info.station ?? '', kind: 'station' }); return }
+    const gIndex = info.index ?? -1
     if (info.kind === 'guitar') {
-      if (info.index === selGuitar) guitars[info.index].strum = 1
+      const gt = guitars[gIndex]
+      if (gIndex === selGuitar && gt) gt.strum = 1
       onPick?.({ station, kind: 'guitar', index: info.index })
     } else if (info.kind === 'book') onPick?.({ station, kind: 'book', index: info.index })
     else if (info.station === 'reiser' && info.country) onPick?.({ station, kind: 'country', name: info.country })
     else if (info.kind === 'screen') onPick?.({ station, kind: 'screen' })
     else if (info.station === 'ovelse') onPick?.({ station, kind: 'clock' })
-    else if (info.kind === 'album') onPick?.({ station, kind: 'album', uri: music.albums[info.index]?.uri })
+    else if (info.kind === 'album') onPick?.({ station, kind: 'album', uri: music.albums[gIndex]?.uri })
     else if (info.kind === 'anime') onPick?.({ station, kind: 'anime', index: info.index })
     else if (info.kind === 'ipod') onPick?.({ station, kind: 'ipod' })
     else if (info.kind === 'turntable') onPick?.({ station, kind: 'turntable' })
     else if (info.kind?.startsWith('tt-')) onPick?.({ station, kind: info.kind })
-    else if (info.kind === 'stack') onPick?.({ station, kind: 'stackrecord', album: stack[info.index] })
+    else if (info.kind === 'stack') onPick?.({ station, kind: 'stackrecord', album: stack[gIndex] })
     else if (info.kind === 'shelf') onPick?.({ station, kind: 'shelf' })
     else onPick?.({ station, kind: 'object' })
   }
-  function onLeave() {
+  function onLeave(): void {
     pointer.inside = false
     onHover?.(null)
   }
   const el = renderer.domElement
-  function onWheel(e) {
+  function onWheel(e: WheelEvent): void {
     if (decorEdit && decorSel) { // the wheel turns the selected model (with Shift: makes it bigger / smaller)
       e.preventDefault()
       const o = decorObjs.get(decorSel)
@@ -738,41 +792,42 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   // ── My own 3D models (uploaded as .glb in Admin) – placed in the room, and moved around in "Rediger rommet" ──
   const decorGroup = new THREE.Group()
   scene.add(decorGroup)
-  const decorObjs = new Map() // id -> { root, item }
+  const decorObjs = new Map<string, DecorObject>()
   let decorEdit = false
-  let decorSel = null
-  let decorDrag = null
+  let decorSel: string | null = null
+  let decorDrag: { id: string; ox: number; oz: number; moved: boolean } | null = null
   const selBox = new THREE.BoxHelper(new THREE.Object3D(), 0x2b8cff)
-  selBox.material.depthTest = false
-  selBox.material.transparent = true
+  const selMat = selBox.material as THREE.LineBasicMaterial
+  selMat.depthTest = false
+  selMat.transparent = true
   selBox.renderOrder = 30
   selBox.visible = false
   scene.add(selBox)
   const dPoint = new THREE.Vector3()
   const dPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
   const DECOR_X = 3.65, DECOR_Z = 3.2 // the floor (the walls are at ±4 and ±3.5)
-  const clampN = (v, a, b) => Math.max(a, Math.min(b, v))
+  const clampN = (v: number, a: number, b: number): number => Math.max(a, Math.min(b, v))
 
-  function placeDecor(o) {
+  function placeDecor(o: DecorObject): void {
     const it = o.item
     o.root.position.set(it.x, it.y || 0, it.z)
     o.root.rotation.y = it.rot || 0
     o.root.scale.setScalar(it.scale || 1)
     o.root.visible = it.visible !== false || decorEdit // hidden ones still show while editing, so they can be found again
   }
-  function refreshSel() {
-    const o = decorSel && decorObjs.get(decorSel)
+  function refreshSel(): void {
+    const o = decorSel ? decorObjs.get(decorSel) : undefined
     selBox.visible = !!o && decorEdit
     if (o) selBox.setFromObject(o.root)
   }
-  function serializeDecor() { return [...decorObjs.values()].map((o) => ({ ...o.item })) }
-  function selectDecor(id) {
+  function serializeDecor(): DecorItem[] { return [...decorObjs.values()].map((o) => ({ ...o.item })) }
+  function selectDecor(id: string | null): void {
     decorSel = id && decorObjs.has(id) ? id : null
     refreshSel()
     onDecorSelect?.(decorSel)
     invalidate(0.5)
   }
-  function setDecor(list) {
+  function setDecor(list: DecorItem[]): void {
     const ids = new Set(list.map((i) => i.id))
     for (const [id, o] of decorObjs) {
       if (ids.has(id)) continue
@@ -781,9 +836,9 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
       if (decorSel === id) selectDecor(null)
     }
     for (const it of list) {
-      let o = decorObjs.get(it.id)
-      if (o) { if (decorDrag?.id !== it.id) { o.item = { ...it }; placeDecor(o) } continue }
-      o = { root: new THREE.Group(), item: { ...it } }
+      const existing = decorObjs.get(it.id)
+      if (existing) { if (decorDrag?.id !== it.id) { existing.item = { ...it }; placeDecor(existing) } continue }
+      const o: DecorObject = { root: new THREE.Group(), item: { ...it } }
       o.root.userData.decorId = it.id
       decorObjs.set(it.id, o)
       decorGroup.add(o.root)
@@ -798,7 +853,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
         const b = new THREE.Box3().setFromObject(m)
         const c = b.getCenter(new THREE.Vector3())
         m.position.set(-c.x, -b.min.y, -c.z)
-        m.traverse((n) => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true } })
+        m.traverse((n) => { if (n instanceof THREE.Mesh) { n.castShadow = true; n.receiveShadow = true } })
         o.root.add(m)
         shadowsDirty = true
         scheduleEnvCapture(900)
@@ -810,21 +865,22 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     shadowsDirty = true
     invalidate(0.6)
   }
-  function decorAt() {
+  function decorAt(): string | null {
     ray.setFromCamera(ndc, camera)
     const hits = ray.intersectObjects(decorGroup.children.filter((c) => c.visible), true)
     for (const h of hits) {
-      let n = h.object
+      let n: THREE.Object3D | null = h.object
       while (n && !n.userData.decorId) n = n.parent
-      if (n) return n.userData.decorId
+      if (n) return n.userData.decorId as string
     }
     return null
   }
-  function startDecorDrag(e) {
+  function startDecorDrag(e: PointerEvent): boolean {
     const id = decorAt()
     selectDecor(id)
     if (!id) return false
     const o = decorObjs.get(id)
+    if (!o) return false
     dPlane.constant = -o.root.position.y
     ray.setFromCamera(ndc, camera)
     if (!ray.ray.intersectPlane(dPlane, dPoint)) return false
@@ -833,7 +889,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     renderer.domElement.style.cursor = 'grabbing'
     return true
   }
-  function moveDecorDrag() {
+  function moveDecorDrag(): void {
+    if (!decorDrag) return
     const o = decorObjs.get(decorDrag.id)
     if (!o) return
     ray.setFromCamera(ndc, camera)
@@ -846,15 +903,16 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     shadowsDirty = true
     invalidate(0.3)
   }
-  function endDecorDrag() {
+  function endDecorDrag(): void {
     const moved = decorDrag?.moved
     decorDrag = null
     renderer.domElement.style.cursor = 'default'
     if (moved) onDecorChange?.(serializeDecor())
   }
   /** Turn / resize / lift / move / hide the selected (or a given) model. */
-  function adjustDecor(id, patch) {
-    const o = decorObjs.get(id || decorSel)
+  function adjustDecor(id: string | null | undefined, patch: Partial<DecorItem>): void {
+    const key = id || decorSel
+    const o = key ? decorObjs.get(key) : undefined
     if (!o) return
     const it = o.item
     if (patch.rot !== undefined) it.rot = patch.rot
@@ -870,7 +928,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     invalidate(0.5)
     onDecorChange?.(serializeDecor())
   }
-  function setDecorEdit(on) {
+  function setDecorEdit(on: boolean): void {
     decorEdit = !!on
     if (!decorEdit) { decorDrag = null; selectDecor(null) }
     for (const o of decorObjs.values()) placeDecor(o)
@@ -886,12 +944,12 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   el.addEventListener('pointerleave', onLeave)
 
   // ── Data ───────────────────────────────────────────────
-  let currentData = {}
-  function setData(data) {
+  let currentData: RoomData = {}
+  function setData(data: RoomData): void {
     currentData = data
     buildGuitars(data.gitarer || [])
     shelf.setBooks(data.boker || [])
-    const visited = new Set((data.reiser || []).map((r) => atlasName(r.land)))
+    const visited = new Set((data.reiser ?? []).map((r) => atlasName(r.land)).filter((n): n is string => !!n))
     globeTable.setVisited(visited)
     setPortrait(data.om, data.site?.navn)
     setSelection({})
@@ -900,7 +958,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     invalidate(1)
   }
 
-  function setSelection({ gitar = -1, bok = -1, land = null, prosjekt = 0 }) {
+  function setSelection({ gitar = -1, bok = -1, land = null, prosjekt = 0 }: { gitar?: number; bok?: number; land?: string | null; prosjekt?: number }): void {
     invalidate(1)
     selGuitar = gitar
     shelf.setSelected(bok)
@@ -910,11 +968,11 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   }
 
   // ── Theme ──────────────────────────────────────────────
-  let themeName = 'light'
+  let themeName: ThemeName = 'light'
   // grey weather dims the daylight coming in
-  const DIM = { clear: 1, cloud: 0.7, fog: 0.55, drizzle: 0.5, rain: 0.4, thunder: 0.3, snow: 0.65 }
-  function applyWeatherLight() {
-    const t = THEMES[themeName] || THEMES.light
+  const DIM: Record<string, number> = { clear: 1, cloud: 0.7, fog: 0.55, drizzle: 0.5, rain: 0.4, thunder: 0.3, snow: 0.65 }
+  function applyWeatherLight(): void {
+    const t = THEMES[themeName]
     const d = t.night ? 1 : DIM[weather.kind] ?? 1
     windowLight.intensity = t.window * d
     sun.intensity = t.sun * d
@@ -932,9 +990,9 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
       shaftU.uColor.value.copy(t.night ? new THREE.Color(0x9fc0ff) : sun.color)
     }
   }
-  function setTheme(name) {
-    themeName = THEMES[name] ? name : 'light'
-    const t = THEMES[name] || THEMES.light
+  function setTheme(name: string): void {
+    themeName = name === 'dark' ? 'dark' : 'light'
+    const t = THEMES[themeName]
     scene.background = new THREE.Color(t.bg)
     scene.fog = new THREE.Fog(t.bg, 26, 48)
     wallMat.color.set(t.wall)
@@ -954,7 +1012,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     invalidate(1)
     bloom.threshold = t.threshold
     renderer.toneMappingExposure = t.exposure * eff.exposure
-    skyMat.map.dispose()
+    skyMat.map?.dispose()
     skyMat.map = skyTexture(t.night, weather.kind)
     skyMat.needsUpdate = true
     applyWeatherLight()
@@ -974,10 +1032,10 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   // ── Environment from the room itself ──────────────────────
   // Rendering the room into a cube map gives realistic reflections and soft
   // bounce light (a cheap stand-in for global illumination).
-  let envRT = null
+  let envRT: THREE.WebGLRenderTarget | null = null
   let envTimer = 0
   const envPos = new THREE.Vector3(0, 1.4, 0)
-  function captureEnv() {
+  function captureEnv(): void {
     if (!eff.reflections) { // reflections off: the plain studio light instead of the room itself
       if (envRT) { scene.environment = baseEnv; envRT.dispose(); envRT = null }
       return
@@ -991,15 +1049,15 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     old?.dispose()
     bloom.enabled = wasBloom
   }
-  function scheduleEnvCapture(delay = 400) {
+  function scheduleEnvCapture(delay = 400): void {
     clearTimeout(envTimer)
-    envTimer = setTimeout(captureEnv, delay)
+    envTimer = window.setTimeout(captureEnv, delay)
   }
 
   // ── Graphics settings ─────────────────────────────────────
   // "Auto" = what autoGfx() says for this device (and the frame time moves the resolution up and down). In "custom"
   // every value comes from the settings; whatever the user left out stays automatic.
-  function applyGfx(g) {
+  function applyGfx(g: GfxInput | null): void {
     const prev = eff
     eff = g && g.mode === 'custom' ? { ...autoGfx(), ...g } : autoGfx()
     eff.showFps = !!g?.showFps // the frame counter works in Auto too
@@ -1018,7 +1076,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     const wantType = n.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap
     if (renderer.shadowMap.type !== wantType) {
       renderer.shadowMap.type = wantType
-      scene.traverse((o) => { if (o.material) [].concat(o.material).forEach((m) => { m.needsUpdate = true }) })
+      scene.traverse((o) => { if (o instanceof THREE.Mesh || o instanceof THREE.Line || o instanceof THREE.Points) for (const m of Array.isArray(o.material) ? o.material : [o.material]) m.needsUpdate = true })
     }
     shadowsDirty = true
     // ambient occlusion (loaded the first time it is switched on) and the light shafts
@@ -1048,7 +1106,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   }
 
   // ── Resize ─────────────────────────────────────────────
-  function resize() {
+  function resize(): void {
     const w = host.clientWidth || 1
     const h = host.clientHeight || 1
     renderer.setSize(w, h, false)
@@ -1080,7 +1138,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   // Adaptive quality: if frames get slow, lower the rendering resolution step by step.
   // The same ladder for everybody: sharpest first. The starting rung comes from the specs, the frame time moves
   // along it – down when frames are slow, back up when there is plenty of room.
-  const LEVELS = [{ pr: 3 }, { pr: 2 }, { pr: 1.6 }, { pr: 1.25 }, { pr: 1.0 }, { pr: 0.85 }, { pr: 0.7 }]
+  const LEVELS: { pr: number }[] = [{ pr: 3 }, { pr: 2 }, { pr: 1.6 }, { pr: 1.25 }, { pr: 1.0 }, { pr: 0.85 }, { pr: 0.7 }]
   const startLevel = spec.software ? 6 : quality === 'ultra' ? 0 : quality === 'high' ? 2 : 4
   let level = startLevel
   let upCooldown = 0 // windows to wait before trying a sharper rung again
@@ -1088,14 +1146,14 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   let perfSum = 0
   let perfN = 0
   let perfSkip = 90 // ignore the first frames (shader compilation, intro)
-  function applyLevel() {
+  function applyLevel(): void {
     // "Auto": the ladder above (never more than the screen has); a number: exactly that – even supersampling
-    renderer.setPixelRatio(eff.res === 'auto' ? Math.min(window.devicePixelRatio, LEVELS[level].pr) : Number(eff.res))
+    renderer.setPixelRatio(eff.res === 'auto' ? Math.min(window.devicePixelRatio, (LEVELS[level]?.pr ?? 1)) : Number(eff.res))
     if (ao && eff.ao === 'auto') ao.enabled = level <= 3 // AO is the first thing to go when frames get slow
     resize()
   }
   applyLevel()
-  function measure(raw) {
+  function measure(raw: number): void {
     if (document.hidden || eff.res !== 'auto') return
     if (perfSkip > 0) { perfSkip--; return }
     perfSum += raw
@@ -1124,7 +1182,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   }
 
   let shadowTick = 0
-  function frame() {
+  function frame(): void {
     if (!running) return
     raf = requestAnimationFrame(frame)
     if (eff.fps) { // frame-rate cap
@@ -1150,11 +1208,12 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     fpsFrames++
     if (now - fpsAt > 500) { fpsVal = Math.round(fpsFrames * 1000 / (now - fpsAt)); fpsFrames = 0; fpsAt = now; if (fpsEl) fpsEl.textContent = `${fpsVal} fps · ${Math.round(renderer.getPixelRatio() * 100) / 100}× · ${renderer.info.render.calls} anrop` }
   }
-  let lastFrameAt = 0, fpsFrames = 0, fpsAt = performance.now(), fpsVal = 0, fpsEl = null
+  let lastFrameAt = 0, fpsFrames = 0, fpsAt = performance.now(), fpsVal = 0
+  let fpsEl: HTMLDivElement | null = null
   let shadowsDirty = true
   let ambient = false
 
-  function step(dt) {
+  function step(dt: number): boolean {
     simT += dt
     const t = simT
 
@@ -1216,15 +1275,16 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
         active = true
         g.strum *= Math.pow(0.03, dt)
         g.holder.rotation.x = Math.sin(t * 38) * 0.02 * g.strum
-        g.model.userData.strings?.forEach((s, j) => {
-          s.position.x = s.userData.base.x + Math.sin(t * (90 + j * 14)) * 0.06 * g.strum
+        const strings = g.model.userData.strings as THREE.Mesh[] | undefined
+        strings?.forEach((s, j) => {
+          s.position.x = (s.userData.base as THREE.Vector3).x + Math.sin(t * (90 + j * 14)) * 0.06 * g.strum
         })
       }
     })
 
     if (shelf.update(dt, t)) { shadowsDirty = true; active = true }
     // things that animate on their own only count where you can see them
-    const near = (...st) => st.includes(station) || !!flight
+    const near = (...st: string[]): boolean => st.includes(station) || !!flight
     if (near('kode', 'gaming') && desk.update(dt, t)) active = true
     if (globeTable.update(dt, t, !reduced && near('reiser'))) active = true
     if (timerState && near('ovelse', 'hjem') && practice.update(dt, t, timerState(), timerInterval)) active = true
@@ -1243,27 +1303,27 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   document.fonts?.ready.then(() => { shelf.refreshSpines(); practice.redraw() })
   // ready after the first frame – or after a moment if the tab is in the background (no frames there)
   let readyFired = false
-  const fireReady = () => { if (!readyFired) { readyFired = true; onReady?.() } }
+  const fireReady = (): void => { if (!readyFired) { readyFired = true; onReady?.() } }
   requestAnimationFrame(fireReady)
   setTimeout(fireReady, 1500)
 
   // compile every shader up front (in the background, in parallel) instead of stuttering when something first shows;
   // the browser / app keeps its own on-disk cache of the compiled shaders for the next start
-  try { renderer.compileAsync?.(scene, camera)?.catch?.(() => {}) } catch {}
+  try { void renderer.compileAsync(scene, camera).catch(() => {}) } catch { /* the first frames compile them instead */ }
   applyGfx(null) // start with what "Auto" means for this device (the settings are sent in right after)
 
   return {
     goTo,
     get lyttePose() { return lyttePose },
     /** (dev/testing) what the pointer would hit at a screen position */
-    pickAt(x, y) { setNdc({ clientX: x, clientY: y }); const h = hitInfo(); return h ? { kind: h.kind, index: h.index, station: h.station, obj: h.object.name || h.object.type, parent: h.object.parent?.name || h.object.parent?.type } : null },
+    pickAt(x: number, y: number) { setNdc({ clientX: x, clientY: y }); const h = hitInfo(); return h ? { kind: h.kind, index: h.index, station: h.station, obj: h.object.name || h.object.type, parent: h.object.parent?.name || h.object.parent?.type } : null },
     setData,
     setSelection,
     setTheme,
     setInsets,
-    strum(i) { if (guitars[i]) { guitars[i].strum = 1; invalidate(1) } },
-    setTimerInterval(v) { timerInterval = v },
-    setMusicView({ selected = null, ipod = false, big = false, pose = null, flip = false, peek = null, deck = false } = {}) {
+    strum(i: number) { if (guitars[i]) { guitars[i].strum = 1; invalidate(1) } },
+    setTimerInterval(v: number) { timerInterval = v },
+    setMusicView({ selected = null, ipod = false, big = false, pose = null, flip = false, peek = null, deck = false }: { selected?: string | null; ipod?: boolean; big?: boolean; pose?: LyttePose | null; flip?: boolean; peek?: string | null; deck?: boolean } = {}) {
       invalidate(1)
       listening.setSelected(selected)
       listening.setPeek(peek)
@@ -1284,11 +1344,11 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
       return { x: r.left + s.x, y: r.top + s.y, w: s.w, h: s.h }
     },
     /** Word of the day on the card in the Japanese corner. */
-    setJapanWord(word) { japan.setWord(word); invalidate(0.2) },
+    setJapanWord(word: JpWord | null) { japan.setWord(word); invalidate(0.2) },
     /** Steam data for the monitor in the gaming corner. */
-    setSteam(d) { desk.setSteam(d); invalidate(0.3) },
+    setSteam(d: SteamScreenData | null) { desk.setSteam(d); invalidate(0.3) },
     /** The anime from jpdb as DVDs on the mat; `selected` is pulled out of its stack. */
-    setAnime(list, selected = -1) { animeList = list || []; japan.setAnime(animeList); japan.setAnimeSelected(selected); invalidate(0.6) },
+    setAnime(list: JpAnime[] | null | undefined, selected = -1) { animeList = list ?? []; japan.setAnime(animeList); japan.setAnimeSelected(selected); invalidate(0.6) },
     /** The held-up record's rectangle in viewport CSS px, or null. */
     recordScreenRect() {
       const r = renderer.domElement.getBoundingClientRect()
@@ -1297,20 +1357,20 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     },
     /** The records matching the shelf search slide out of the shelf (null = no search). */
     /** The album queued up next (all of it): one sleeve leaning by the turntable, or null. */
-    setNext(a) { listening.setNext(a, () => { shadowsDirty = true; invalidate(1) }) },
+    setNext(a: StackEntry | null | undefined) { listening.setNext(a, () => { shadowsDirty = true; invalidate(1) }) },
     /** Calm mode: no weather, no drifting things; the camera just cuts instead of flying. */
-    setCalm(v) { reduced = deviceReduced || !!v; listening.setCalm(reduced); if (reduced) { rain.visible = false; snow.visible = false }; invalidate(1) },
+    setCalm(v: boolean) { reduced = deviceReduced || !!v; listening.setCalm(reduced); if (reduced) { rain.visible = false; snow.visible = false }; invalidate(1) },
     /** The weather where I live: { kind: clear | cloud | fog | drizzle | rain | thunder | snow }. */
-    setWeather(w) { weather = { kind: w?.kind || 'clear' }; setTheme(themeName); invalidate(1) },
+    setWeather(w: { kind?: string } | null | undefined) { weather = { kind: w?.kind || 'clear' }; setTheme(themeName); invalidate(1) },
     /** The record of the day sticks out of the shelf. */
-    setDaily(uri) { listening.setDaily(uri); invalidate(1) },
+    setDaily(uri: string | null | undefined) { listening.setDaily(uri); invalidate(1) },
     /** The records on the table: queued albums on top (next first), then the ones I heard last. */
-    setStack(list) { stack = list || []; listening.setStack(stack, () => { shadowsDirty = true; invalidate(1) }) },
+    setStack(list: StackEntry[] | null | undefined) { stack = list ?? []; listening.setStack(stack, () => { shadowsDirty = true; invalidate(1) }) },
     /** Tempo (BPM) of the song that's playing; 0 = unknown (the record turns at 33⅓ rpm). */
-    setTempo(bpm) { listening.setTempo(bpm); invalidate(0.5) },
-    setShelfFilter(list) { listening.setFilter(list); invalidate(1) },
-    setMusic(state) {
-      music = { albums: state.albums || [], playlists: state.playlists || [], now: state.now || null, guests: state.guests || [], playOn: state.playOn || 'vinyl' }
+    setTempo(bpm: number | string | null | undefined) { listening.setTempo(bpm); invalidate(0.5) },
+    setShelfFilter(list: string[] | null | undefined) { listening.setFilter(list); invalidate(1) },
+    setMusic(state: Partial<MusicState>) {
+      music = { albums: state.albums ?? [], playlists: state.playlists ?? [], now: state.now ?? null, guests: state.guests ?? [], playOn: state.playOn || 'vinyl' }
       listening.setState(music)
       shadowsDirty = true
       invalidate(1)
@@ -1330,7 +1390,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     selectDecor,
     adjustDecor,
     /** The user's graphics choices ({ mode: 'auto' | 'custom', … }); null = automatic. */
-    setGraphics(g) { gfxIn = g; applyGfx(g) },
+    setGraphics(g: GfxInput | null) { gfxIn = g; applyGfx(g) },
     /** What the picture is made of right now (for the settings window): quality class, resolution, frame rate … */
     get gfxInfo() { return { quality, level, pixelRatio: renderer.getPixelRatio(), fps: fpsVal, maxMsaa, maxTex, dpr: window.devicePixelRatio, gpu: spec.gpu, score: spec.score, auto: autoGfx(), software: spec.software } },
     get debug() { return { station, camPos: camPos.toArray(), cam: camera.position.toArray(), flight: !!flight } },
@@ -1340,7 +1400,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
       renderer.info.reset()
       renderer.render(scene, camera)
       const r = { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, meshes: 0 }
-      scene.traverse((o) => { if (o.isMesh || o.isLine) r.meshes++ })
+      scene.traverse((o) => { if (o instanceof THREE.Mesh || o instanceof THREE.Line) r.meshes++ })
       renderer.info.autoReset = true
       return r
     },
@@ -1348,7 +1408,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     /** What the device was judged to be, and the picture quality now (for debugging). */
     get perf() { return { ...spec, quality, level, pixelRatio: renderer.getPixelRatio() } },
     fastForward(seconds = 3) { for (let i = 0; i < seconds * 60; i++) step(1 / 60); renderer.shadowMap.needsUpdate = true; composer.render() },
-    dispose() {
+    dispose(): void {
       running = false
       fpsEl?.remove()
       cancelAnimationFrame(raf)
