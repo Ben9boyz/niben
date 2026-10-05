@@ -7,6 +7,7 @@ import { useData } from '../composables/useData'
 import { useTheme } from '../composables/useTheme'
 import { timer, timerState, toggle as toggleTimer } from '../composables/useTimer'
 import { spotify, useSpotify, prefetchTracks, fetchTracks } from '../composables/useSpotify'
+import { shelfAlbums, loadGroups } from '../composables/useGroups'
 import { jp, loadJapanese } from '../composables/useJapanese'
 import { steam, loadSteam } from '../composables/useSteam'
 
@@ -17,6 +18,7 @@ const data = useData()
 const { theme } = useTheme()
 const failed = ref(false)
 useSpotify() // keeps records/iPod in the room up to date
+loadGroups() // the shelf order may follow my folders
 let api
 
 const ROUTES = { hjem: '/', japansk: '/japansk', gaming: '/gaming', lytte: '/lytte', ovelse: '/ovelse', gitar: '/gitar', boker: '/boker', reiser: '/reiser', kode: '/kode', om: '/om' }
@@ -35,7 +37,7 @@ function onPick(p) {
     if (room.sel.musikk?.uri === p.uri) { room.recordFlipped = !room.recordFlipped; return }
     // the record that's playing (by the turntable): pick it up
     if (!room.shelfView && p.uri === spotify.now?.context) { take(); return }
-    const i = spotify.albums.findIndex((a) => a.uri === p.uri)
+    const i = shelfAlbums.value.findIndex((a) => a.uri === p.uri)
     // from the turntable view, a click on a record takes you down to the shelf with that record pulled out
     if (!room.shelfView) { nextPeek = i >= 0 ? i : null; room.sel.musikk = null; room.shelfView = true; return }
     // at the shelf: click a record to pull it out, click the pulled-out one to take it
@@ -79,7 +81,7 @@ onMounted(() => {
   if (import.meta.env.DEV) window.__room = api
   api.setTheme(theme.value)
   api.setTimerInterval(timer.interval)
-  api.setMusic(spotify)
+  api.setMusic(sceneMusic())
   if (data.loaded) api.setData(data)
   api.goTo(route.name || 'hjem', { duration: 2.6 })
 })
@@ -95,7 +97,9 @@ watch(() => [steam.profile, steam.library, room.api], () => room.api?.setSteam({
 watch(() => [jp.anime, room.jpAnime, room.api], () => room.api?.setAnime(jp.anime, room.jpAnime), { immediate: true })
 watch(theme, (t) => api?.setTheme(t))
 watch(() => timer.interval, (v) => api?.setTimerInterval(v))
-watch(() => [spotify.albums, spotify.playlists, spotify.now, spotify.guests], () => api?.setMusic(spotify), { deep: false })
+// the records stand in the shelf's order (by artist, or by my folders)
+const sceneMusic = () => ({ albums: shelfAlbums.value, playlists: spotify.playlists, now: spotify.now, guests: spotify.guests })
+watch(() => [shelfAlbums.value, spotify.playlists, spotify.now, spotify.guests], () => api?.setMusic(sceneMusic()), { deep: false })
 // typing in the shelf search: the matching records slide out (only a handful – more would just be a mess)
 watch(() => [room.shelfQ, spotify.albums, route.name], () => {
   const n = room.shelfQ.trim().toLowerCase()
@@ -105,15 +109,15 @@ watch(() => [room.shelfQ, spotify.albums, route.name], () => {
 // arriving at the shelf: the record you clicked is pulled out – or a random one if you clicked the
 // sideboard itself
 watch(() => room.shelfView, (on) => {
-  const n = Math.min(spotify.albums.length, 150)
+  const n = Math.min(shelfAlbums.value.length, 150)
   if (on && n) room.peekIndex = nextPeek ?? Math.floor(Math.random() * n)
   nextPeek = null
 })
 // fetch the track list as soon as a record is pulled out or taken, so it's there when you turn it over
-watch(() => [room.shelfView && spotify.albums[room.peekIndex]?.uri, room.sel.musikk?.uri], (uris) => {
+watch(() => [room.shelfView && shelfAlbums.value[room.peekIndex]?.uri, room.sel.musikk?.uri], (uris) => {
   for (const uri of uris) if (uri) fetchTracks(uri)
 })
-watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room.shelfView, room.recordFlipped, room.peekIndex, spotify.albums], () => {
+watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room.shelfView, room.recordFlipped, room.peekIndex, shelfAlbums.value], () => {
   const here = route.name === 'lytte'
   api?.setMusicView({
     // the picked record is held up to the camera – not in the overhead view, where it lies by the turntable
@@ -124,7 +128,7 @@ watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room
     // (picking something lifts the iPod up in front of the camera)
     pose: !here ? null : room.musicView.startsWith('ipod') ? 'ipod' : room.shelfView ? 'shelf' : 'top',
     flip: room.recordFlipped,
-    peek: here && room.shelfView && !room.sel.musikk && room.musicView === 'vinyl' ? spotify.albums[room.peekIndex]?.uri || null : null,
+    peek: here && room.shelfView && !room.sel.musikk && room.musicView === 'vinyl' ? shelfAlbums.value[room.peekIndex]?.uri || null : null,
   })
 })
 // started from this page: the side panel slides away and the camera settles on what's playing –

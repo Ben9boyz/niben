@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Play, Pause, Lock, RotateCw, X, ChevronLeft, ChevronRight, ArrowUpFromLine } from 'lucide-vue-next'
 import { room } from '../composables/useRoom'
+import { shelfAlbums } from '../composables/useGroups'
 import { spotify, lockLeft, fmtClock, play, lockNote, control, fetchTracks, findAlbum } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 
@@ -74,8 +75,8 @@ const putBack = () => { room.sel.musikk = null }
 function toTurntable() { room.sel.musikk = null; room.shelfView = false }
 
 // ── browsing the shelf: one record pulled out at a time, ← / → to move along, Enter to take it ──
-const shelfCount = computed(() => Math.min(spotify.albums.length, 150))
-const peeked = computed(() => (room.shelfView && !room.sel.musikk ? spotify.albums[room.peekIndex] : null))
+const shelfCount = computed(() => Math.min(shelfAlbums.value.length, 150))
+const peeked = computed(() => (room.shelfView && !room.sel.musikk ? shelfAlbums.value[room.peekIndex] : null))
 function browse(d) {
   const n = shelfCount.value
   if (n) room.peekIndex = (room.peekIndex + d + n) % n

@@ -1,4 +1,4 @@
-import { reactive, watch } from 'vue'
+import { reactive, watch, computed } from 'vue'
 import { api } from './useAdmin'
 import { spotify } from './useSpotify'
 import { room } from './useRoom'
@@ -19,7 +19,7 @@ const phone = typeof window !== 'undefined' ? window.matchMedia('(max-width: 820
 
 const VIEW_KEY = 'niben-grouping-view'
 function readView() {
-  try { const v = localStorage.getItem(VIEW_KEY); return v === 'lister' || v === 'artist' ? v : 'mapper' } catch { return 'mapper' }
+  try { const v = localStorage.getItem(VIEW_KEY); return v === 'lister' || v === 'mapper' ? v : 'artist' } catch { return 'artist' }
 }
 
 export const groups = reactive({
@@ -163,3 +163,13 @@ export function groupCover(id) {
   return null
 }
 export { coverOfUri }
+
+// ── the order of the records on the 3D shelf ──
+// By artist (A–Å, then year) – the default, whether grouping is on or not. When I've picked "Mapper" for the
+// albums, the shelf follows my folders instead (and by artist inside each folder).
+const nb = (a, b) => String(a).localeCompare(String(b), 'nb')
+export const shelfAlbums = computed(() => {
+  const byArtist = [...spotify.albums].sort((a, b) => nb(a.artist || '', b.artist || '') || nb(a.year || '', b.year || '') || nb(a.name, b.name))
+  if (!groups.on || !groups.loaded || groups.view === 'artist') return byArtist
+  return sectionsOf(byArtist, false, true).flatMap((s) => s.items)
+})
