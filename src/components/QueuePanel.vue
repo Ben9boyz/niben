@@ -9,7 +9,10 @@ import { queueDrop, queueOver, drag } from '../composables/useDrag'
 const queue = ref(null)
 const pos = ref(null) // { n, of } while an album plays
 let timer = 0
-const props = defineProps({ flat: Boolean }) // playlists: always the plain song list
+const props = defineProps({ flat: Boolean, collapsible: Boolean }) // playlists: always the plain song list · collapsible: the list can be folded away (3D panel, mini player)
+const KEY = 'niben-queue-open'
+const shut = ref(props.collapsible && (() => { try { return localStorage.getItem(KEY) === '0' } catch { return false } })())
+function toggleShut() { if (!props.collapsible) return; shut.value = !shut.value; try { localStorage.setItem(KEY, shut.value ? '0' : '1') } catch {} }
 const open = ref(new Set()) // album groups that are unfolded
 let soon = 0
 
@@ -48,11 +51,13 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
 
 <template>
   <section v-if="spotify.now?.name" class="qp" :class="{ over: queueOver, armed: drag.track || drag.item }" v-on="queueDrop">
-    <header>
-      <b class="label-caps"><ListMusic :size="13" aria-hidden="true" />Neste i køen</b>
+    <header :class="{ tap: collapsible }" :role="collapsible ? 'button' : null" :tabindex="collapsible ? 0 : null" :aria-expanded="collapsible ? !shut : null" @click="toggleShut" @keydown.enter="toggleShut">
+      <b class="label-caps"><ListMusic :size="13" aria-hidden="true" />Neste i køen<small v-if="collapsible && queue?.length" class="cnt">{{ queue.length }}</small></b>
       <small v-if="pos" class="pos">Låt {{ pos.n }} av {{ pos.of }}</small>
+      <ChevronRight v-if="collapsible" :size="15" class="fold" :class="{ open: !shut }" aria-hidden="true" />
     </header>
     <p v-if="queueOver" class="drophint">Slipp for å legge sist i køen</p>
+    <template v-if="!shut">
     <p v-if="!queue" class="muted">Henter …</p>
     <p v-else-if="!queue.length" class="muted">Ingenting mer i køen.</p>
     <ol v-else-if="asAlbums" class="albums">
@@ -74,6 +79,7 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
         <small class="d">{{ fmtClock(t.ms / 1000) }}</small>
       </li>
     </ol>
+    </template>
   </section>
 </template>
 
@@ -83,6 +89,11 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
 .qp.over { background: color-mix(in srgb, #1db954 14%, var(--glass-strong)); }
 .drophint { margin: 0; padding: 8px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 0.82rem; color: #1db954; background: color-mix(in srgb, #1db954 12%, transparent); }
 header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+header.tap { cursor: pointer; border-radius: 10px; margin: -4px -6px; padding: 4px 6px; }
+header.tap:hover { background: var(--accent-soft); }
+.cnt { margin-left: 4px; padding: 0 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.68rem; letter-spacing: 0; }
+.fold { margin-left: auto; color: var(--text-3); transition: transform 0.2s; }
+.fold.open { transform: rotate(90deg); }
 header b { display: inline-flex; align-items: center; gap: 6px; }
 .pos { padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font: 700 0.7rem var(--font); }
 .muted { margin: 0; color: var(--text-3); font-size: 0.82rem; }

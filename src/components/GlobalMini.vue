@@ -102,7 +102,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 /* phones: just the album cover, up in the top bar next to the other little buttons – tap it for the player + library */
 @media (max-width: 720px) {
-  .gm { z-index: 45; top: calc(10px + env(safe-area-inset-top)); right: 196px; left: auto; bottom: auto; width: 40px; height: 40px; max-width: none; padding: 0; gap: 0; border-radius: 12px; }
+  .gm { z-index: 45; top: calc(10px + env(safe-area-inset-top)); right: 62px; left: auto; bottom: auto; width: 40px; height: 40px; max-width: none; padding: 0; gap: 0; border-radius: 12px; }
   .gm .txt, .gm .ctl, .gm .lk, .gm .chev, .gm .prog { display: none; }
   .gm .cover { width: 40px; height: 40px; border-radius: 12px; }
   .gm.playing .cover { box-shadow: 0 0 0 2px #1db954; }

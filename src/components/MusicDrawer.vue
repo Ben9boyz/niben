@@ -5,6 +5,7 @@ import { Disc3, ListMusic, X, ArrowUpRight } from 'lucide-vue-next'
 import { room } from '../composables/useRoom'
 import { spotify } from '../composables/useSpotify'
 import NowPlaying from './NowPlaying.vue'
+import QueuePanel from './QueuePanel.vue'
 import VinylPanel from './VinylPanel.vue'
 import PlaylistPanel from './PlaylistPanel.vue'
 
@@ -40,6 +41,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     </header>
     <div class="body">
       <div class="np"><NowPlaying /></div>
+      <QueuePanel v-if="spotify.now?.name" collapsible :flat="ipod()" />
       <PlaylistPanel v-if="ipod()" />
       <VinylPanel v-else />
     </div>
