@@ -202,7 +202,48 @@ function drawIpodScreen(ctx, w, h, now, art, progressMs) {
   }
 }
 
+// ── wear: records that have been handled for years – scuffed edges and corners, a pale ring where the vinyl pressed through, specks ──
+function hash01(seed) { let h = 2166136261; for (const ch of String(seed)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) } return ((h >>> 0) % 100000) / 100000 }
+function wearSleeve(x, x0, y0, size, seed, amount = 1) {
+  const R = (k) => hash01(seed + ':' + k)
+  x.save()
+  x.beginPath(); x.rect(x0, y0, size, size); x.clip()
+  // yellowed, dirty edges
+  const vg = x.createRadialGradient(x0 + size / 2, y0 + size / 2, size * 0.34, x0 + size / 2, y0 + size / 2, size * 0.72)
+  vg.addColorStop(0, 'rgba(90,70,40,0)'); vg.addColorStop(1, `rgba(90,70,40,${0.16 * amount})`)
+  x.fillStyle = vg; x.fillRect(x0, y0, size, size)
+  // ring wear: a faint pale circle where the record pushes through
+  x.strokeStyle = `rgba(255,255,255,${0.1 * amount})`
+  x.lineWidth = size * 0.022
+  x.beginPath(); x.arc(x0 + size * (0.5 + (R('rx') - 0.5) * 0.02), y0 + size * (0.5 + (R('ry') - 0.5) * 0.02), size * 0.455, 0, Math.PI * 2); x.stroke()
+  x.strokeStyle = `rgba(0,0,0,${0.05 * amount})`; x.lineWidth = size * 0.006
+  x.beginPath(); x.arc(x0 + size * 0.5, y0 + size * 0.5, size * 0.47, 0, Math.PI * 2); x.stroke()
+  // scuffed edges: short pale strokes along the sides, more at the corners
+  for (let i = 0; i < 70; i++) {
+    const side = Math.floor(R('s' + i) * 4), t = R('t' + i), len = size * (0.01 + R('l' + i) * 0.045), off = size * R('o' + i) * 0.012
+    x.strokeStyle = `rgba(240,236,226,${(0.12 + R('a' + i) * 0.3) * amount})`
+    x.lineWidth = 1 + R('w' + i) * size * 0.003
+    x.beginPath()
+    if (side === 0) { x.moveTo(x0 + t * size, y0 + off); x.lineTo(x0 + t * size + len * (R('d' + i) - 0.5), y0 + off + len) }
+    else if (side === 1) { x.moveTo(x0 + t * size, y0 + size - off); x.lineTo(x0 + t * size + len * (R('d' + i) - 0.5), y0 + size - off - len) }
+    else if (side === 2) { x.moveTo(x0 + off, y0 + t * size); x.lineTo(x0 + off + len, y0 + t * size + len * (R('d' + i) - 0.5)) }
+    else { x.moveTo(x0 + size - off, y0 + t * size); x.lineTo(x0 + size - off - len, y0 + t * size + len * (R('d' + i) - 0.5)) }
+    x.stroke()
+  }
+  for (const [cx, cy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { // corners rubbed through to the cardboard
+    const k = R('c' + cx + cy)
+    if (k < 0.35) continue
+    const g = x.createRadialGradient(x0 + cx * size, y0 + cy * size, 0, x0 + cx * size, y0 + cy * size, size * (0.025 + k * 0.035))
+    g.addColorStop(0, `rgba(226,218,200,${0.75 * amount})`); g.addColorStop(1, 'rgba(226,218,200,0)')
+    x.fillStyle = g; x.fillRect(x0, y0, size, size)
+  }
+  // specks and fine scratches
+  for (let i = 0; i < 160; i++) { x.fillStyle = `rgba(${R('v' + i) < 0.5 ? '255,255,255' : '0,0,0'},${0.05 + R('q' + i) * 0.12 * amount})`; x.fillRect(x0 + R('x' + i) * size, y0 + R('y' + i) * size, 1 + R('z' + i) * 2.5, 1 + R('u' + i) * 2.5) }
+  x.restore()
+}
+
 // a GLB loader that decodes the pictures with plain <img> elements (the default ImageBitmap path failed on some textures in some browsers)
+if (import.meta.env.DEV) window.__glbTest = (url, plain) => new Promise((res) => { const o = console.error; let n = 0; console.error = (...a) => { if (String(a[0]).includes("Couldn't load texture")) n++; else o(...a) }; const l = plain ? new GLTFLoader() : glbLoader(); l.load(url, () => { console.error = o; res({ url, plain: !!plain, failed: n }) }, undefined, (e) => { console.error = o; res({ url, err: String(e) }) }) })
 function glbLoader() {
   const l = new GLTFLoader()
   l.register((parser) => ({ name: 'niben_img', beforeRoot() { parser.textureLoader = new THREE.TextureLoader(parser.options.manager) } }))
@@ -453,7 +494,7 @@ export function buildListeningCorner() {
   const nextMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
   const nextEdge = new THREE.MeshStandardMaterial({ color: 0xe9e4d8, roughness: 0.8 })
   const nextMesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.008), [nextEdge, nextEdge, nextEdge, nextEdge, nextMat, nextEdge])
-  nextMesh.position.set(0.1, TOP_Y + 0.15 * Math.cos(0.26) + 0.002, 0.11)
+  nextMesh.position.set(0.26, TOP_Y + 0.15 * Math.cos(0.26) + 0.002, 0.11)
   nextMesh.rotation.x = -0.26
   nextMesh.castShadow = nextMesh.receiveShadow = true
   nextMesh.userData = { kind: 'next' }
@@ -546,16 +587,48 @@ export function buildListeningCorner() {
   // the turntable model replaces the plain one above (which stays until it has loaded)
   glbLoader().load('models/turntable.glb', (g) => {
     const part = (name) => g.scene.getObjectByName(name)
-    const mark = (o) => o?.traverse((m) => { if (m.isMesh) m.castShadow = m.receiveShadow = true })
-    for (const c of tt.children) if (c !== platter && c !== arm && c !== ttLed) c.visible = false
+    const mark = (o) => o?.traverse((m) => {
+      if (!m.isMesh) return
+      m.castShadow = m.receiveShadow = true
+      const mt = m.material
+      if (mt && mt.metalness > 0.5 && !mt.userData.tuned) { mt.userData.tuned = true; mt.envMapIntensity = 0.22 } // (full metal just mirrors the bright room: the platter turned pale)
+    })
+    for (const c of tt.children) if (c !== platter && c !== arm && c !== ttLed && !deckBtns.includes(c)) c.visible = false
     for (const c of platter.children) if (c !== rec) c.visible = false
     for (const c of arm.children) c.visible = false
+    if (import.meta.env.DEV) { const ms = new Set(); g.scene.traverse((o) => o.isMesh && ms.add(o.material)); window.__ttMats = [...ms] }
     const base = part('tt_static'), pl = part('tt_platter'), ar = part('tt_arm')
     if (base) { mark(base); tt.add(base) }
-    if (pl) { mark(pl); pl.position.set(-TT_C.x, -0.111, -TT_C.z); platter.add(pl) }
+    if (pl) { mark(pl); pl.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.color.multiplyScalar(0.4) } }); pl.position.set(-TT_C.x, -0.111, -TT_C.z); platter.add(pl) } // (the platter under the spot light looked too pale: graphite)
     if (ar) { mark(ar); ar.position.set(-TT_ARM.x, -0.12, -TT_ARM.z); arm.add(ar) }
+    arm.userData.kind = 'tt-arm' // press the tonearm: the needle lifts (pause) / goes down again (play)
     shelfDirty = true
   }, undefined, (e) => console.warn('niben glb turntable', e?.message || e))
+  // the turntable seen from above (deck view): its three knobs on the right become buttons – previous, play / pause, next –
+  // and the tonearm lifts / lowers the needle. Round marks with icons show where to press (only in that view).
+  const deckBtns = []
+  const iconTex = (draw) => canvasTex(128, 128, (x, w) => { x.fillStyle = 'rgba(20,24,32,0.78)'; x.beginPath(); x.arc(64, 64, 62, 0, Math.PI * 2); x.fill(); x.strokeStyle = 'rgba(255,255,255,0.9)'; x.lineWidth = 6; x.beginPath(); x.arc(64, 64, 58, 0, Math.PI * 2); x.stroke(); x.fillStyle = '#fff'; draw(x) })
+  const tri = (x, cx, dir, h = 22) => { x.beginPath(); x.moveTo(cx - dir * 14, 64 - h); x.lineTo(cx + dir * 14, 64); x.lineTo(cx - dir * 14, 64 + h); x.closePath(); x.fill() }
+  ;[
+    { kind: 'tt-prev', z: 0.052, draw: (x) => { x.fillRect(34, 40, 9, 48); tri(x, 66, -1); tri(x, 90, -1) } },
+    { kind: 'tt-toggle', z: 0.087, draw: (x) => { tri(x, 52, 1); x.fillRect(74, 40, 10, 48); x.fillRect(94, 40, 10, 48) } },
+    { kind: 'tt-next', z: 0.109, draw: (x) => { tri(x, 38, 1); tri(x, 62, 1); x.fillRect(85, 40, 9, 48) } },
+  ].forEach((b) => {
+    const m = new THREE.Mesh(new THREE.CircleGeometry(b.kind === 'tt-toggle' ? 0.0125 : 0.0105, 32), new THREE.MeshBasicMaterial({ map: iconTex(b.draw), transparent: true, opacity: 0, depthWrite: false, toneMapped: false }))
+    m.rotation.x = -Math.PI / 2
+    m.position.set(0.191, 0.142, b.z)
+    m.userData.kind = b.kind
+    m.renderOrder = 5
+    tt.add(m)
+    deckBtns.push(m)
+  })
+  let deckOn = false
+  let deckA = 0
+  function updateDeck(dt, t) {
+    deckA += ((deckOn ? 1 : 0) - deckA) * Math.min(1, dt * 6)
+    for (const m of deckBtns) m.material.opacity = deckA * (0.82 + 0.18 * Math.sin(t * 3 + m.position.z * 90))
+    return deckA > 0.01
+  }
   // pitch fader on the right
   add(new THREE.BoxGeometry(0.012, 0.003, 0.09), dark, 0.2, 0.0815, 0.04, tt)
   add(new THREE.BoxGeometry(0.02, 0.008, 0.012), alu, 0.2, 0.0845, 0.03, tt)
@@ -863,6 +936,17 @@ export function buildListeningCorner() {
     x.fillStyle = dark ? 'rgba(0,0,0,0.78)' : 'rgba(255,255,255,0.92)'
     x.fillText(t, 0, 1)
     x.restore()
+    // worn spine: pale scuffs at the top and bottom ends and along the edges
+    x.save()
+    x.beginPath(); x.rect(x0, 0, COLW, AH); x.clip()
+    for (let k = 0; k < 14; k++) {
+      const top = hash01(album.uri + 'sw' + k) < 0.5
+      const yy = top ? AH * 0.1 + hash01(album.uri + 'sy' + k) * 36 : AH - hash01(album.uri + 'sz' + k) * 40
+      x.fillStyle = `rgba(235,230,215,${0.12 + hash01(album.uri + 'sa' + k) * 0.25})`
+      x.fillRect(x0 + hash01(album.uri + 'sx' + k) * (COLW - 6), yy, 2 + hash01(album.uri + 'sl' + k) * 8, 1 + hash01(album.uri + 'sh' + k) * 3)
+    }
+    x.fillStyle = 'rgba(235,230,215,0.14)'; x.fillRect(x0, AH * 0.1, 1, AH); x.fillRect(x0 + COLW - 1, AH * 0.1, 1, AH)
+    x.restore()
   }
 
   const recGeo = new THREE.BoxGeometry(THICK, SLEEVE, SLEEVE)
@@ -1089,6 +1173,8 @@ export function buildListeningCorner() {
         x.fillText(String(r.album.name || '').slice(0, 26), 512, 480); x.font = '600 38px Inter, sans-serif'; x.fillText(String(r.album.artist || '').slice(0, 30), 512, 540)
         x.fillStyle = backCol; x.fillRect(1024, 0, 1024, 1024)
         if (coverImg) x.drawImage(coverImg, 1024, 0, 1024, 1024) // the front
+        wearSleeve(x, 0, 0, 1024, r.album.uri + 'b', 1.1) // worn: the back and the front
+        wearSleeve(x, 1024, 0, 1024, r.album.uri + 'f', 0.9)
         tex.needsUpdate = true
       }
       draw()
@@ -1298,6 +1384,7 @@ export function buildListeningCorner() {
     // the iPod's progress bar moves on once a second while something plays
     if (screenNow?.playing && performance.now() - screenDrawn > 1000) redrawScreen()
     if (updateSound(dt, t, camera, !!screenNow?.playing && !holdIpod && !calm)) moving = true
+    if (updateDeck(dt, t)) moving = true
 
     // the disc travels: out of the sleeve, in an arc, down onto the platter
     if (recFlight) {
@@ -1368,7 +1455,7 @@ export function buildListeningCorner() {
       } else if (isPlaying) {
         // "now playing" display: standing next to the turntable, leaning back against the wall,
         // cover facing the room and turned a little towards the listening spot
-        targetPos.set(0.0, TOP_Y + LEAN_UP, LEAN_Z)
+        targetPos.set(0.06, TOP_Y + LEAN_UP, LEAN_Z)
         targetQ.copy(LEAN_Q)
       } else if (slot) {
         // back on the table, in its place in the stack
@@ -1473,6 +1560,7 @@ export function buildListeningCorner() {
     setSelected(uri) { selectedUri = uri },
     setPeek(uri) { peekUri = uri },
     setFilter(list) { filterSet = list?.length ? new Set(list) : null },
+    setDeck(v) { deckOn = !!v },
     setHoldIpod(v, big = false) { holdIpod = v; ipodBig = big },
     setFlip(v) { flipSel = v },
     setCalm(v) { calm = !!v },

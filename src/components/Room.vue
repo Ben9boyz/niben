@@ -44,7 +44,15 @@ function onPick(p) {
     room.sel.musikk = { kind: 'album', uri: p.album.uri, t: Date.now() }
     return
   }
-  if (p.kind === 'turntable') { if (spotify.now?.name && admin.loggedIn) control(spotify.now.playing ? 'pause' : 'resume'); return }
+  if (p.kind === 'turntable' || p.kind?.startsWith('tt-')) {
+    // the record player: first look at it from above; there the knobs and the tonearm are the buttons
+    if (!room.deckView) { room.deckView = true; room.shelfView = false; room.sel.musikk = null; room.musicView = 'vinyl'; return }
+    if (!spotify.now?.name || !admin.loggedIn) return
+    if (p.kind === 'tt-prev') control('previous')
+    else if (p.kind === 'tt-next') control('next')
+    else control(spotify.now.playing ? 'pause' : 'resume') // the start-stop knob, the tonearm, the record itself
+    return
+  }
   if (p.kind === 'guitar') room.sel.gitar = p.index
   else if (p.kind === 'book') room.sel.bok = room.sel.bok === p.index ? -1 : p.index
   else if (p.kind === 'country') { room.sel.land = room.sel.land === p.name ? null : p.name; if (room.sel.land) room.panelHidden = false } // picking a country always brings the panel (the trip) forward
@@ -71,6 +79,7 @@ function onPick(p) {
     const n = data.prosjekter?.length || 0
     if (n) room.sel.prosjekt = (room.sel.prosjekt + 1) % n
   } else if (p.kind === 'empty') {
+    if (route.name === 'lytte' && room.deckView) { room.deckView = false; return }
     if (route.name === 'lytte') {
       if (!room.sel.musikk && room.musicView !== 'ipod') room.shelfView = false // back up to the turntable
       room.sel.musikk = null
@@ -194,7 +203,7 @@ watch(() => room.shelfView, (on) => {
 watch(() => [room.shelfView && shelfAlbums.value[room.peekIndex]?.uri, room.sel.musikk?.uri], (uris) => {
   for (const uri of uris) if (uri) fetchTracks(uri)
 })
-watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room.shelfView, room.recordFlipped, room.peekIndex, shelfAlbums.value], () => {
+watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room.shelfView, room.deckView, room.recordFlipped, room.peekIndex, shelfAlbums.value], () => {
   const here = route.name === 'lytte'
   api?.setMusicView({
     // the picked record is held up to the camera – not in the overhead view, where it lies by the turntable
@@ -203,7 +212,8 @@ watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room
     big: room.panelHidden || window.matchMedia('(max-width: 900px)').matches, // no panel (or a phone): the held iPod fills the screen
     // "Album": the camera stays by the turntable · "Spillelister": by the iPod on its stand
     // (picking something lifts the iPod up in front of the camera)
-    pose: !here ? null : room.musicView.startsWith('ipod') ? 'ipod' : room.shelfView ? 'shelf' : 'top',
+    pose: !here ? null : room.musicView.startsWith('ipod') ? 'ipod' : room.shelfView ? 'shelf' : room.deckView ? 'deck' : 'top',
+    deck: here && room.deckView && !room.shelfView && !room.musicView.startsWith('ipod'),
     flip: room.recordFlipped,
     peek: here && room.shelfView && !room.sel.musikk && room.musicView === 'vinyl' ? shelfAlbums.value[room.peekIndex]?.uri || null : null,
   })
@@ -232,14 +242,16 @@ watch(() => spotify.now?.uri, (uri, old) => {
 let lastTouch = Date.now()
 const touched = () => { lastTouch = Date.now() }
 let idleTimer = 0
+const onDeckKey = (e) => { if (e.key === 'Escape' && room.deckView) room.deckView = false }
 onMounted(() => {
+  window.addEventListener('keydown', onDeckKey)
   for (const e of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart']) window.addEventListener(e, touched, { passive: true })
   idleTimer = setInterval(() => {
     if (route.name !== 'lytte' || !spotify.now?.playing || Date.now() - lastTouch < 45000) return
     if (room.musicView !== 'spiller' && room.musicView !== 'ipodDock') focusPlayer()
   }, 5000)
 })
-onBeforeUnmount(() => { clearInterval(idleTimer); for (const e of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart']) window.removeEventListener(e, touched) })
+onBeforeUnmount(() => { clearInterval(idleTimer); window.removeEventListener('keydown', onDeckKey); for (const e of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart']) window.removeEventListener(e, touched) })
 watch(() => room.sel.musikk?.uri, (uri) => {
   room.recordFlipped = false
   if (uri && room.musicView === 'spiller') room.musicView = 'vinyl'

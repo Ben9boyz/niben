@@ -44,6 +44,8 @@ const STATIONS = {
 const LYTTE_TOP = { pos: [2.55, 1.7, -0.2], target: [3.72, 0.75, -0.12] }
 // a playlist playing: looking at the iPod back on its stand on the sideboard by the turntable (its screen shows the song)
 // in front of the record shelf (under the turntable), to browse the spines
+// from straight above: the turntable's buttons and the tonearm can be pressed
+const LYTTE_DECK = { pos: [3.47, 1.5, -0.28], target: [3.71, 0.88, -0.28] }
 const LYTTE_SHELF = { pos: [1.9, 0.95, 0.1], target: [3.6, 0.45, 0.1] }
 // (close up, so what's on the iPod's little screen can be read when it stands there)
 const LYTTE_IPOD = { pos: [3.14, 1.17, 0.138], target: [3.59, 0.97, 0.098] } // (30 % closer than before; aimed at the iPod's screen and wheel, not its base)
@@ -563,7 +565,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     station = STATIONS[name] ? name : 'hjem'
     zoomTarget = 1 // the zoom is for the globe only
     desk.setScreenMode(station === 'gaming' ? 'gaming' : 'code')
-    const s = station === 'lytte' && lyttePose ? { ipod: LYTTE_IPOD, shelf: LYTTE_SHELF, top: LYTTE_TOP }[lyttePose] : STATIONS[station]
+    const s = station === 'lytte' && lyttePose ? { ipod: LYTTE_IPOD, shelf: LYTTE_SHELF, top: LYTTE_TOP, deck: LYTTE_DECK }[lyttePose] : STATIONS[station]
     const to = { pos: new THREE.Vector3(...s.pos), target: new THREE.Vector3(...s.target) }
     if (instant || reduced) {
       camPos.copy(to.pos)
@@ -663,7 +665,11 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
       }
       else if (hoverInfo.kind === 'ipod') label = 'Spillelister'
       else if (hoverInfo.kind === 'stack') label = stack[hoverInfo.index] ? `${stack[hoverInfo.index].queued ? 'Neste i køen: ' : 'Hørt sist: '}${stack[hoverInfo.index].name}` : null
-      else if (hoverInfo.kind === 'turntable' && music.now?.name) label = music.now.playing ? 'Pause' : 'Spill videre'
+      else if (hoverInfo.kind === 'turntable') label = 'Se ovenfra'
+      else if (hoverInfo.kind === 'tt-prev') label = 'Forrige låt'
+      else if (hoverInfo.kind === 'tt-next') label = 'Neste låt'
+      else if (hoverInfo.kind === 'tt-toggle') label = music.now?.playing ? 'Pause' : 'Spill'
+      else if (hoverInfo.kind === 'tt-arm') label = music.now?.playing ? 'Løft nålen (pause)' : 'Sett ned nålen (spill)'
       else if (hoverInfo.kind === 'shelf' && lyttePose !== 'shelf') label = 'Bla i platehylla'
       else if (hoverInfo.station === 'reiser' && hoverInfo.country) { globeTable.setHover(hoverInfo.country); label = norskNavn(hoverInfo.country) }
     }
@@ -705,6 +711,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     else if (info.kind === 'anime') onPick?.({ station, kind: 'anime', index: info.index })
     else if (info.kind === 'ipod') onPick?.({ station, kind: 'ipod' })
     else if (info.kind === 'turntable') onPick?.({ station, kind: 'turntable' })
+    else if (info.kind?.startsWith('tt-')) onPick?.({ station, kind: info.kind })
     else if (info.kind === 'stack') onPick?.({ station, kind: 'stackrecord', album: stack[info.index] })
     else if (info.kind === 'shelf') onPick?.({ station, kind: 'shelf' })
     else onPick?.({ station, kind: 'object' })
@@ -1245,18 +1252,20 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
 
   return {
     goTo,
+    get lyttePose() { return lyttePose },
     setData,
     setSelection,
     setTheme,
     setInsets,
     strum(i) { if (guitars[i]) { guitars[i].strum = 1; invalidate(1) } },
     setTimerInterval(v) { timerInterval = v },
-    setMusicView({ selected = null, ipod = false, big = false, pose = null, flip = false, peek = null } = {}) {
+    setMusicView({ selected = null, ipod = false, big = false, pose = null, flip = false, peek = null, deck = false } = {}) {
       invalidate(1)
       listening.setSelected(selected)
       listening.setPeek(peek)
       listening.setFlip(flip)
       listening.setHoldIpod(ipod, big)
+      listening.setDeck(deck)
       // where the camera looks in the listening corner
       if (pose !== lyttePose) {
         lyttePose = pose

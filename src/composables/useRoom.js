@@ -11,6 +11,7 @@ export const room = reactive({
   ipod: { view: 'menu', playlist: null, active: 0, q: '' }, // q: the search text, shared by the panel and the iPod screen
   discover: false, // listening corner: the "Oppdag" view (picks + suggestions) is open instead of albums / playlists
   panelHidden: false,
+  deckView: false, // listening corner: looking straight down at the turntable – the buttons and the needle can be pressed
   shelfView: false, // listening corner: camera in front of the record shelf
   shelfQ: '', // text typed in the shelf search: matching records slide out of the shelf in the room
   peekIndex: 0, // browsing the shelf: the record pulled out (index into the albums)
@@ -23,6 +24,7 @@ export const room = reactive({
 
 export function clearSelection() {
   room.shelfView = false
+  room.deckView = false
   room.recordFlipped = false
   room.jpPractice = false
   room.jpAnime = -1
