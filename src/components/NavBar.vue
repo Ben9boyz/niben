@@ -122,9 +122,6 @@ onBeforeUnmount(() => {
 
     <span class="spacer" aria-hidden="true"></span>
     <!-- the music player on its own (same as the "niben musikk" app) – small, at the bottom of the rail -->
-    <a href="#/musicplayer" class="player-link" title="Åpne musikkspilleren" aria-label="Åpne musikkspilleren">
-      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v-2a9 9 0 0 1 18 0v2" /><path d="M21 16a2 2 0 0 1-2 2h-1a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h3zM3 16a2 2 0 0 0 2 2h1a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1H3z" /></svg>
-    </a>
     <!-- only when logged in; the way in is a double-click (or long-press) on the logo -->
     <span v-if="admin.loggedIn" class="admin-chip glass on"><AdminAvatar /></span>
 
@@ -399,11 +396,6 @@ onBeforeUnmount(() => {
 
 /* phones: labels under the icons, so the tabs say what they are (the top bar of the plain version is in style.css) */
 .mtop { display: none; }
-.player-link { display: none; }
-@media (min-width: 721px) {
-  .player-link { display: grid; place-items: center; align-self: center; width: 40px; height: 40px; border-radius: 14px; color: var(--text-3); opacity: 0.6; transition: opacity 0.2s, color 0.2s, background 0.2s; }
-  .player-link:hover { opacity: 1; color: var(--accent); background: var(--accent-soft); }
-}
 /* phones: only icons (the top bar says where you are), a slim bar that slides away while you scroll down */
 @media (max-width: 720px) {
   .nav-wrap { transition: transform 0.35s var(--ease, ease), opacity 0.25s; }
