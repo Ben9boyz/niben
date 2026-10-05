@@ -1,5 +1,6 @@
 <script setup>
 import NowContent from '../components/NowContent.vue'
+import MadeWith from '../components/MadeWith.vue'
 import { useData } from '../composables/useData'
 
 const data = useData()
@@ -18,6 +19,7 @@ const data = useData()
 
     <h2 class="now-title rise" style="--i: 3">Akkurat nå</h2>
     <div class="rise" style="--i: 4"><NowContent /></div>
+    <MadeWith />
   </div>
 </template>
 

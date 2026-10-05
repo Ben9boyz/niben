@@ -1,6 +1,7 @@
 <script setup>
 import BrandLogo from '../components/BrandLogo.vue'
 import NowContent from '../components/NowContent.vue'
+import MadeWith from '../components/MadeWith.vue'
 import { useData } from '../composables/useData'
 
 const data = useData()
@@ -17,6 +18,7 @@ const data = useData()
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V5a2 2 0 0 1 4 0v6m0-1a2 2 0 0 1 4 0v3a7 7 0 0 1-7 7h-.5a6 6 0 0 1-5-2.7L3 15.5a1.8 1.8 0 0 1 2.9-2.1L9 16" /></svg>
       Trykk på noe i rommet, eller bruk menyen
     </p>
+    <MadeWith />
   </section>
 </template>
 

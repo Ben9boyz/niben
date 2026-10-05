@@ -1,5 +1,6 @@
 <script setup>
 import GuestBook from './GuestBook.vue'
+import MadeWith from './MadeWith.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Guitar, Music, BookOpen, Plane, Languages, Gamepad2, Code2, ArrowUpRight, Pencil, Plus, X, Check, Sparkles, ImageUp } from 'lucide-vue-next'
@@ -167,7 +168,7 @@ async function save() {
     <GuestBook v-if="!compact" />
 
     <!-- a small credit, centred -->
-    <p class="made"><Sparkles :size="13" aria-hidden="true" />Laget med <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code</a></p>
+    <MadeWith />
 
     <!-- the way in for me (also: double-click the logo) – small, at the very bottom -->
     <router-link v-if="!admin.loggedIn" to="/admin" class="login">Logg inn</router-link>
