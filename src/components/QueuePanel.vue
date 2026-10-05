@@ -33,7 +33,10 @@ const groups = computed(() => {
 // songs right after each other from the same album are an album; a single song is from a playlist
 const asAlbums = computed(() => !props.flat && groups.value.length > 0)
 const isAlbum = (g) => g.tracks.length > 1
-const minutes = (g) => fmtClock(g.tracks.reduce((a, t) => a + (t.ms || 0), 0) / 1000)
+const minutes = (g) => {
+  const m = Math.round(g.tracks.reduce((a, t) => a + (t.ms || 0), 0) / 60000)
+  return m >= 60 ? `${Math.floor(m / 60)} t ${m % 60} min` : `${m} min`
+}
 const rest = (g, i) => i === 0 && g.uri && g.uri === spotify.now?.context
 function toggle(i) { const o = new Set(open.value); o.has(i) ? o.delete(i) : o.add(i); open.value = o }
 watch(() => spotify.now?.uri, () => { open.value = new Set() })
