@@ -272,7 +272,7 @@ watch(() => route.name, () => (collapsed.value = false))
     top: calc(64px + env(safe-area-inset-top));
     left: 10px;
     right: 10px;
-    bottom: calc(84px + env(safe-area-inset-bottom));
+    bottom: calc(78px + env(safe-area-inset-bottom));
     width: auto;
     max-height: none;
     transition: transform 0.5s var(--spring), opacity 0.3s;

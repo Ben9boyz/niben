@@ -450,7 +450,7 @@ html.player-shell .cpage { padding-top: 80px; padding-bottom: 40px; }
   html.classic .mtop {
     position: fixed; z-index: 39; top: 0; left: 0; right: 0;
     display: flex; align-items: center; gap: 10px;
-    height: calc(60px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 240px 0 16px;
+    height: calc(60px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 64px 0 16px;
     background: color-mix(in srgb, var(--bg) 72%, transparent);
     -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%);
     border-bottom: 1px solid transparent; transition: border-color 0.2s, box-shadow 0.2s;
@@ -459,13 +459,6 @@ html.player-shell .cpage { padding-top: 80px; padding-bottom: 40px; }
   .mtop-brand { display: flex; align-items: center; height: 30px; pointer-events: auto; }
   .mtop-brand svg { height: 30px; }
   .mtop b { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  /* the buttons sit in the bar: smaller, flat */
-  html.classic .nav-wrap .theme, html.classic .nav-wrap .mode { top: calc(10px + env(safe-area-inset-top)); width: 40px; height: 40px; padding: 0; justify-content: center; box-shadow: none; }
-  html.classic .nav-wrap .theme { right: 12px; }
-  html.classic .nav-wrap .mode { right: 58px; }
-  html.classic .nav-wrap .mode span { display: none; }
-  html.classic .nav-wrap .langbtn { position: fixed; top: calc(10px + env(safe-area-inset-top)); right: 104px; }
-  html.classic .nav-wrap .admin-chip { top: calc(10px + env(safe-area-inset-top)); left: auto; right: 150px; width: 40px; height: 40px; }
 }
 @media (max-width: 720px) { .flat-tabs ~ .cpage { padding-top: 16px; } }
 
@@ -487,9 +480,6 @@ html.player-shell .cpage { padding-top: 80px; padding-bottom: 40px; }
 /* the little player in the top-right corner (flat version): the pages start a little lower so nothing hides under it */
 @media (min-width: 721px) { html.has-mini:not(.player-shell) #app > main > .cpage { padding-top: 84px; } }
 
-/* the language globe: in the rail on the desktop, on phones up in the corner next to the other little buttons */
-@media (min-width: 721px) { .nav-wrap .langbtn { align-self: center; margin: 0 auto; } }
-@media (max-width: 720px) { .nav-wrap .langbtn { position: fixed; top: 14px; right: 130px; width: 40px; height: 40px; } }
 
 /* ── one scrollbar everywhere (the thin soft-blue one the home page has) ── */
 * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 35%, transparent) transparent; }

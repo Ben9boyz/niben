@@ -1,13 +1,8 @@
 <script setup>
-import { shortcuts } from '../composables/useShortcuts'
-import LangSwitch from './LangSwitch.vue'
-import ThemeSwitch from './ThemeSwitch.vue'
-import AdminAvatar from './AdminAvatar.vue'
+import SettingsMenu from './SettingsMenu.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { GROUPS, groupOf, groupTarget } from '../lib/nav'
 import { useRoute, useRouter } from 'vue-router'
-import { useTheme } from '../composables/useTheme'
-import { mode, toggleMode } from '../composables/useMode'
 import { admin, checkLogin } from '../composables/useAdmin'
 import BrandLogo from './BrandLogo.vue'
 
@@ -22,7 +17,6 @@ function pressStart(e) {
   pressTimer = setTimeout(toAdmin, 600)
 }
 function pressEnd() { clearTimeout(pressTimer) }
-const { theme, toggle } = useTheme()
 
 // the menu shows the main tabs; the sub-tabs are pills inside the page (SubTabs). A tab opens the
 // sub-tab you were last on.
@@ -36,6 +30,15 @@ const itemEls = ref([])
 const drop = ref({ x: 0, y: 0, w: 0, h: 0, ready: false })
 const rail = window.matchMedia('(min-width: 721px)')
 const stretching = ref(false)
+// phones: the menu is one small button that opens the bar (it closes again after you pick something) – the screen stays free
+const isPhone = ref(window.matchMedia('(max-width: 720px)').matches)
+const phoneMq = window.matchMedia('(max-width: 720px)')
+const onPhoneMq = () => { isPhone.value = phoneMq.matches }
+const navOpen = ref(false)
+const activeIcon = computed(() => links.value.find((l) => l.name === activeGroup.value)?.icon || 'M4 6h16M4 12h16M4 18h16')
+const closeNav = () => { navOpen.value = false }
+const onNavDoc = (e) => { if (navOpen.value && !e.target.closest?.('.nav-wrap')) closeNav() }
+const onNavKey = (e) => { if (e.key === 'Escape') closeNav() }
 const scrolled = ref(false)
 
 function place() {
@@ -53,7 +56,7 @@ function place() {
 }
 
 watch(activeGroup, () => nextTick(place))
-watch(() => route.fullPath, () => setHidden(false))
+watch(() => route.fullPath, () => { setHidden(false); closeNav() })
 const phone = window.matchMedia('(max-width: 720px)')
 let lastY = 0
 function setHidden(v) { document.documentElement.classList.toggle('nav-hidden', v) }
@@ -71,12 +74,18 @@ onMounted(() => {
   document.fonts?.ready.then(place)
   window.addEventListener('resize', place)
   window.addEventListener('scroll', onScroll, { passive: true })
+  document.addEventListener('pointerdown', onNavDoc)
+  phoneMq.addEventListener('change', onPhoneMq)
+  window.addEventListener('keydown', onNavKey)
   checkLogin()
 })
 onBeforeUnmount(() => {
   setHidden(false)
   window.removeEventListener('resize', place)
   window.removeEventListener('scroll', onScroll)
+  document.removeEventListener('pointerdown', onNavDoc)
+  phoneMq.removeEventListener('change', onPhoneMq)
+  window.removeEventListener('keydown', onNavKey)
 })
 </script>
 
@@ -101,7 +110,7 @@ onBeforeUnmount(() => {
       <BrandLogo mark class="logo-mark" />
     </router-link>
 
-    <nav class="nav glass" ref="track">
+    <nav class="nav glass" :class="{ open: navOpen }" ref="track">
       <span
         class="drop"
         :class="{ ready: drop.ready, stretch: stretching }"
@@ -121,25 +130,17 @@ onBeforeUnmount(() => {
       </router-link>
     </nav>
 
+    <button class="navfab glass" :aria-expanded="navOpen" aria-label="Meny" @click="navOpen = !navOpen">
+      <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path :d="activeIcon" /></svg>
+      <svg class="up" :class="{ on: navOpen }" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6" /></svg>
+    </button>
+
     <span class="spacer" aria-hidden="true"></span>
-    <!-- the music player on its own (same as the "niben musikk" app) – small, at the bottom of the rail -->
-    <!-- only when logged in; the way in is a double-click (or long-press) on the logo -->
-    <span v-if="admin.loggedIn" class="admin-chip glass on"><AdminAvatar /></span>
-
-    <button class="mode glass" @click="toggleMode" :title="mode === 'rom' ? 'Bytt til enkel versjon' : 'Bytt til 3D-rommet'">
-      <svg v-if="mode === 'rom'" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10" /></svg>
-      <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2.5l8.5 4.75v9.5L12 21.5l-8.5-4.75v-9.5z" /><path d="M3.5 7.25L12 12l8.5-4.75M12 12v9.5" /></svg>
-      <span>{{ mode === 'rom' ? 'Enkel' : '3D-rom' }}</span>
-    </button>
-
-    <LangSwitch class="langwrap" />
-
-    <button class="kbdbtn glass" title="Hurtigtaster (?)" aria-label="Hurtigtaster" @click="shortcuts.open = true">
-      <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2.5" /><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M7 14h10" /></svg>
-    </button>
-
-    <ThemeSwitch />
+    <!-- me / settings: my photo (logged in) or a cog – opens the menu with view, theme, language … -->
+    <SettingsMenu v-if="!isPhone" />
   </header>
+  <!-- phones: outside the bar (the bar slides away with a transform, which would drag a fixed button along) -->
+  <SettingsMenu v-if="isPhone" />
 </template>
 
 <style scoped>
@@ -229,40 +230,7 @@ onBeforeUnmount(() => {
 .item.active { color: var(--accent); }
 .item svg { transition: transform 0.5s var(--spring); }
 .item:hover svg { transform: translateY(-1px) rotate(-6deg) scale(1.1); }
-.item.active svg { transform: scale(1.08); }
-
-.theme {
-  position: absolute;
-  right: 24px;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: 0;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  color: var(--text-2);
-  transition: transform 0.5s var(--spring), color 0.3s;
-}
-.theme:hover { transform: rotate(20deg) scale(1.08); color: var(--accent); }
-.mode {
-  position: absolute;
-  right: 82px;
-  height: 48px;
-  padding: 0 16px;
-  border-radius: 999px;
-  border: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  color: var(--text-2);
-  font-weight: 600;
-  font-size: 0.88rem;
-  transition: transform 0.45s var(--spring), color 0.3s;
-}
-.mode:hover { transform: scale(1.05); color: var(--accent); }
-.install {
+.item.active svg { transform: scale(1.08); }.install {
   text-decoration: none;
   position: fixed;
   height: 44px;
@@ -282,54 +250,21 @@ onBeforeUnmount(() => {
   animation: navIn 0.6s var(--spring) both;
 }
 .install:hover { transform: translateY(-2px) scale(1.03); }
-@media (max-width: 720px) { .install { display: none; } }
-.admin-chip {
-  overflow: hidden;
-  position: absolute;
-  left: 140px;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  color: var(--text-3);
-  opacity: 0.45;
-  transition: transform 0.4s var(--spring), opacity 0.3s, color 0.3s;
-}
-.admin-chip:hover { transform: scale(1.08); opacity: 1; color: var(--accent); }
-.admin-chip.on { opacity: 1; color: var(--accent); }
-.spin-enter-active, .spin-leave-active { transition: transform 0.4s var(--spring), opacity 0.2s; }
+@media (max-width: 720px) { .install { display: none; } }.spin-enter-active, .spin-leave-active { transition: transform 0.4s var(--spring), opacity 0.2s; }
 .spin-enter-from { transform: rotate(-90deg) scale(0.4); opacity: 0; }
 .spin-leave-to { transform: rotate(90deg) scale(0.4); opacity: 0; }
 
-.item .label, .tip, .spacer, .kbdbtn { display: none; }
-.langwrap { display: contents; }
+.item .label, .tip, .spacer, .navfab { display: none; }
 @media (max-width: 720px) {
   .nav-wrap { top: auto; bottom: calc(14px + env(safe-area-inset-bottom)); }
   .brand { display: none; }
-  .theme {
-    position: fixed;
-    top: 14px;
-    right: 14px;
-    bottom: auto;
-  }
-  .mode {
-    position: fixed;
-    top: 14px;
-    right: 72px;
-    bottom: auto;
-  }
   /* phones: the bar spans the width and every icon gets an equal share, so none are cut off */
   .nav { padding: 5px; width: calc(100vw - 16px); max-width: 520px; }
   .drop { top: 5px; bottom: 5px; }
   .item { flex: 1 1 0; min-width: 0; justify-content: center; padding: 12px 0; }
 }
 
-/* phones: the admin chip (only shown when logged in) sits top-left */
-@media (max-width: 720px) {
-  .admin-chip { position: fixed; top: 18px; left: 14px; }
-  .install { display: none; }
-}
+@media (max-width: 720px) { .install { display: none; } }
 
 /* Desktop: a slim rail down the left side – the full height of the screen is left for the room
    and the panels. Icons with small labels; on short screens only icons (the label shows on hover). */
@@ -353,19 +288,7 @@ onBeforeUnmount(() => {
   .item .label { display: block; font-size: 0.62rem; letter-spacing: 0.01em; line-height: 1; }
   .item:hover svg { transform: scale(1.12); }
   .spacer { display: block; flex: 1; }
-  .admin-chip, .mode, .theme, .install, .kbdbtn {
-    position: relative; left: auto; right: auto; top: auto;
-    align-self: center; flex: none;
-    width: 50px; height: 50px; padding: 0; border-radius: 17px;
-    justify-content: center; display: grid; place-items: center;
-    animation: none;
-  }
-  .admin-chip { opacity: 1; border-radius: 50% !important; aspect-ratio: 1 / 1; width: 48px; height: 48px; padding: 3px; }
-  .mode span, .install span { display: none; }
-  .kbdbtn { display: grid; color: var(--text-2); border: 0; cursor: pointer; }
-  .kbdbtn:hover { color: var(--accent); }
-  .install:hover { transform: scale(1.06); }
-  .theme:hover { transform: rotate(20deg) scale(1.06); }
+  .install { display: none; }
   /* labels as tooltips when they're hidden */
   .tip {
     position: absolute; left: calc(100% + 14px); top: 50%;
@@ -380,7 +303,6 @@ onBeforeUnmount(() => {
   .nav-wrap { top: 10px; bottom: 10px; gap: 6px; }
   .brand { height: 50px; }
   .item { padding: 7px 0 5px; }
-  .admin-chip, .mode, .theme, .install, .kbdbtn { width: 44px; height: 44px; }
 }
 /* only really low screens (under 700 px) lose the labels – they show on hover instead */
 @media (min-width: 721px) and (max-height: 700px) {
@@ -400,9 +322,28 @@ onBeforeUnmount(() => {
   .item { flex-direction: row; padding: 10px 0; }
   .item .label { display: none; }
 }
+
+/* phones: the menu is one small button; it opens the bar above itself and closes again after a pick */
+@media (max-width: 720px) {
+  .nav-wrap { gap: 0; }
+  .navfab { display: flex; align-items: center; justify-content: center; gap: 4px; height: 48px; min-width: 64px; padding: 0 16px; border: 0; border-radius: 999px; color: var(--accent); cursor: pointer; transition: transform 0.3s var(--spring); }
+  .navfab:active { transform: scale(0.95); }
+  .navfab .up { color: var(--text-3); transition: transform 0.3s var(--spring); }
+  .navfab .up.on { transform: rotate(180deg); }
+  .nav { position: absolute; left: 50%; bottom: calc(100% + 10px); transform: translate(-50%, 12px) scale(0.96); transform-origin: 50% 100%; opacity: 0; visibility: hidden; pointer-events: none; transition: transform 0.35s var(--spring), opacity 0.2s, visibility 0s 0.35s; }
+  .nav.open { transform: translate(-50%, 0); opacity: 1; visibility: visible; pointer-events: auto; transition: transform 0.35s var(--spring), opacity 0.2s; }
+}
+@media (min-width: 721px) { .navfab { display: none; } }
 </style>
 
 <style>
+/* the settings button (SettingsMenu): the last thing in the rail; on phones in the top-right corner */
+@media (min-width: 721px) { .nav-wrap .sm { align-self: center; flex: none; width: 50px; height: 50px; } }
+@media (min-width: 721px) and (max-height: 860px) { .nav-wrap .sm { width: 44px; height: 44px; } }
+@media (max-width: 720px) {
+  html body .sm.sm { position: fixed; top: calc(12px + env(safe-area-inset-top)); right: 12px; width: 42px; height: 42px; z-index: 41; }
+  html.classic body .sm.sm { box-shadow: none; }
+}
 /* phones: the menu slides away while scrolling down (class set in the script) */
 @media (max-width: 720px) {
   html.nav-hidden .nav-wrap { transform: translateY(calc(100% + 28px)); opacity: 0; pointer-events: none; }
