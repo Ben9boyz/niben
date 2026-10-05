@@ -136,8 +136,11 @@ const inDays = (t) => {
 </template>
 
 <style scoped>
-.now { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.card { display: grid; gap: 8px; align-content: start; padding: 14px; border-radius: 16px; background: var(--glass-strong); border: 1px solid var(--glass-border); min-width: 0; }
+.now { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; container-type: inline-size; }
+/* wide (the plain home page): three columns, the cards sit side by side instead of in two tall stacks */
+@container (min-width: 880px) { .now { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; } .card.wide:last-child { grid-column: span 3; } }
+.card:has(> .none:last-child:nth-child(2)) { opacity: 0.7; }
+.card { display: grid; gap: 8px; align-content: start; padding: 16px; border-radius: 16px; background: var(--glass-strong); border: 1px solid var(--glass-border); min-width: 0; }
 .card.wide { grid-column: span 2; }
 h3 { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
 .row, .word { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; min-width: 0; }
