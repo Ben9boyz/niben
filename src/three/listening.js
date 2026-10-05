@@ -24,6 +24,10 @@ const LEAN_Z = 0.165 - (SLEEVE / 2) * Math.sin(LEAN) // bottom edge ~16 cm from 
 // the six compartments of the cabinet: 3 columns × 2 rows, top row first (inner x range + the height of the floor)
 const COLS = [[-0.625, -0.2225], [-0.2075, 0.2025], [0.2175, 0.626]]
 const FLOORS = [0.433, 0.015]
+// the turntable (the model public/models/turntable.glb: a Pioneer, split into base / platter / tonearm): where the platter
+// turns and where the tonearm pivots, in the model's own coordinates
+const TT_C = { x: -0.0618, z: -0.0055 }
+const TT_ARM = { x: 0.141, z: -0.1 }
 const COMPARTMENT = FLOORS.flatMap((y) => COLS.map(([a, b]) => ({ x0: a, x1: b, y })))
 
 function averageColor(img) {
@@ -198,6 +202,13 @@ function drawIpodScreen(ctx, w, h, now, art, progressMs) {
   }
 }
 
+// a GLB loader that decodes the pictures with plain <img> elements (the default ImageBitmap path failed on some textures in some browsers)
+function glbLoader() {
+  const l = new GLTFLoader()
+  l.register((parser) => ({ name: 'niben_img', beforeRoot() { parser.textureLoader = new THREE.TextureLoader(parser.options.manager) } }))
+  return l
+}
+
 export function buildListeningCorner() {
   const group = new THREE.Group()
   const white = new THREE.MeshStandardMaterial({ color: 0xf3f4f6, roughness: 0.45 })
@@ -226,12 +237,12 @@ export function buildListeningCorner() {
   const frameModel = new THREE.Group() // the model's frame (same size as the boards), once it has loaded
   frameModel.position.set(-0.215, 0, CAB_Z)
   group.add(frameModel)
-  new GLTFLoader().load('models/plateskap.glb', (g) => {
+  glbLoader().load('models/plateskap.glb', (g) => {
     g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; o.userData.kind = 'shelf' } })
     frameModel.add(g.scene)
     cabinet.visible = false
     shelfDirty = true
-  }, undefined, () => {})
+  }, undefined, (e) => console.warn('niben glb plateskap', e?.message || e))
   let shelfDirty = false
 
   // ── lighting for the records ──
@@ -254,13 +265,13 @@ export function buildListeningCorner() {
   frameModel.userData.kind = 'shelf'
   // ── Turntable ──
   const tt = new THREE.Group()
-  tt.position.set(-0.42, TOP_Y, 0.24)
+  tt.position.set(-0.38, TOP_Y, 0.24)
   tt.userData = { kind: 'turntable' } // click: pause / play
   group.add(tt)
   add(new RoundedBoxGeometry(0.46, 0.08, 0.36, 3, 0.012), wood, 0, 0.04, 0, tt)
   add(new THREE.CylinderGeometry(0.155, 0.155, 0.016, 64), dark, -0.04, 0.088, 0, tt)
   const platter = new THREE.Group()
-  platter.position.set(-0.04, 0.099, 0)
+  platter.position.set(TT_C.x, 0.111, TT_C.z) // (the platter's centre on the model)
   tt.add(platter)
   const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.004, 96), [
     new THREE.MeshStandardMaterial({ color: 0x0c0c0e, roughness: 0.4 }),
@@ -283,10 +294,54 @@ export function buildListeningCorner() {
   flyDisc.add(disc.clone(), label.clone())
   flyDisc.visible = false
   group.add(flyDisc)
+  // the record's own model (public/models/record.glb: a 12-inch with a hole, grooves as a normal map). Its label is painted here:
+  // the cover of the album that plays, on both sides. The plain disc above stays until the model has loaded.
+  const discCanvas = document.createElement('canvas')
+  discCanvas.width = discCanvas.height = 1024
+  const discTex = new THREE.CanvasTexture(discCanvas)
+  discTex.flipY = false // (like the model's own textures)
+  discTex.colorSpace = THREE.SRGBColorSpace
+  discTex.anisotropy = 8
+  let discLabel = null // the cover image on the label (null: a plain red label)
+  function paintDisc() {
+    const x = discCanvas.getContext('2d')
+    x.fillStyle = '#0a0a0c'
+    x.fillRect(0, 0, 1024, 1024)
+    for (const c of [296, 724]) { // the two sides
+      x.save()
+      x.beginPath(); x.arc(c, c, 97, 0, Math.PI * 2); x.clip()
+      if (discLabel) x.drawImage(discLabel, c - 97, c - 97, 194, 194)
+      else { x.fillStyle = '#d33a2c'; x.fillRect(c - 97, c - 97, 194, 194) }
+      x.restore()
+      x.fillStyle = '#0a0a0c'; x.beginPath(); x.arc(c, c, 7, 0, Math.PI * 2); x.fill() // the spindle hole
+    }
+    discTex.needsUpdate = true
+  }
+  paintDisc()
+  let recTpl = null // { geometry, material, matrix } of the record model, for the discs inside the sleeves
+  let sleeveTpl = null // the sleeve model (a Group)
+  glbLoader().load('models/sleeve.glb', (g) => { sleeveTpl = g.scene }, undefined, (e) => console.warn('niben glb sleeve', e?.message || e))
+  glbLoader().load('models/record.glb', (g) => {
+    let src = null
+    g.scene.traverse((o) => { if (o.isMesh && !src) src = o })
+    if (!src) return
+    src.updateWorldMatrix(true, false)
+    const mat = src.material.clone()
+    mat.map = discTex
+    mat.metalness = 0.15
+    mat.needsUpdate = true
+    recTpl = { geometry: src.geometry, material: src.material, matrix: src.matrixWorld.clone() }
+    const flat = () => { const m = new THREE.Mesh(src.geometry, mat); m.applyMatrix4(src.matrixWorld); m.castShadow = true; return m }
+    for (const c of rec.children) c.visible = false
+    for (const c of flyDisc.children) c.visible = false
+    rec.add(flat())
+    flyDisc.add(flat())
+    shelfDirty = true
+  }, undefined, (e) => console.warn('niben glb record', e?.message || e))
   add(new THREE.CylinderGeometry(0.004, 0.004, 0.02, 8), alu, -0.04, 0.11, 0, tt)
   add(new THREE.CylinderGeometry(0.025, 0.028, 0.03, 24), alu, 0.16, 0.095, -0.1, tt)
   const arm = new THREE.Group()
-  arm.position.set(0.16, 0.12, -0.1)
+  arm.position.set(TT_ARM.x, 0.12, TT_ARM.z) // (where the tonearm turns on the model)
   tt.add(arm)
   const armRod = add(new THREE.CylinderGeometry(0.004, 0.004, 0.24, 8), alu, -0.06, 0, 0.1, arm)
   armRod.rotation.x = Math.PI / 2
@@ -488,6 +543,19 @@ export function buildListeningCorner() {
   const ttLed = new THREE.Mesh(new THREE.SphereGeometry(0.0033, 8, 6), new THREE.MeshBasicMaterial({ color: 0x3be08a, toneMapped: false }))
   ttLed.position.set(-0.2, 0.0905, 0.1)
   tt.add(ttLed)
+  // the turntable model replaces the plain one above (which stays until it has loaded)
+  glbLoader().load('models/turntable.glb', (g) => {
+    const part = (name) => g.scene.getObjectByName(name)
+    const mark = (o) => o?.traverse((m) => { if (m.isMesh) m.castShadow = m.receiveShadow = true })
+    for (const c of tt.children) if (c !== platter && c !== arm && c !== ttLed) c.visible = false
+    for (const c of platter.children) if (c !== rec) c.visible = false
+    for (const c of arm.children) c.visible = false
+    const base = part('tt_static'), pl = part('tt_platter'), ar = part('tt_arm')
+    if (base) { mark(base); tt.add(base) }
+    if (pl) { mark(pl); pl.position.set(-TT_C.x, -0.111, -TT_C.z); platter.add(pl) }
+    if (ar) { mark(ar); ar.position.set(-TT_ARM.x, -0.12, -TT_ARM.z); arm.add(ar) }
+    shelfDirty = true
+  }, undefined, (e) => console.warn('niben glb turntable', e?.message || e))
   // pitch fader on the right
   add(new THREE.BoxGeometry(0.012, 0.003, 0.09), dark, 0.2, 0.0815, 0.04, tt)
   add(new THREE.BoxGeometry(0.02, 0.008, 0.012), alu, 0.2, 0.0845, 0.03, tt)
@@ -528,7 +596,16 @@ export function buildListeningCorner() {
   body.rotation.x = -0.18
   ipod.add(body)
   const W = 0.1, H = 0.166, D = 0.018
-  add(new RoundedBoxGeometry(W, H, D, 4, 0.008), new THREE.MeshPhysicalMaterial({ color: 0xe2e4e8, roughness: 0.18, clearcoat: 1, metalness: 0.05 }), 0, 0, 0, body)
+  // the iPod is the model public/models/ipod.glb (an iPod classic, 10 × 16.6 cm, front towards +z); the plain box is only there until it has loaded
+  const ipodFallback = new THREE.Group()
+  body.add(ipodFallback)
+  add(new RoundedBoxGeometry(W, H, D, 4, 0.008), new THREE.MeshPhysicalMaterial({ color: 0xe2e4e8, roughness: 0.18, clearcoat: 1, metalness: 0.05 }), 0, 0, 0, ipodFallback)
+  glbLoader().load('models/ipod.glb', (g) => {
+    g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = o.receiveShadow = true } })
+    body.add(g.scene)
+    ipodFallback.visible = false
+    shelfDirty = true
+  }, undefined, (e) => console.warn('niben glb ipod', e?.message || e))
   // sound coming out of the iPod: a few music notes drifting up from it (only while it plays)
   const soundFx = new THREE.Group()
   soundFx.position.copy(ipodHome.pos).add(new THREE.Vector3(0, 0.13, 0.02))
@@ -560,21 +637,21 @@ export function buildListeningCorner() {
   }
   const screenCanvas = document.createElement('canvas')
   screenCanvas.width = 2048
-  screenCanvas.height = 1680 // same shape as the screen (SW : SH), at 4× – sharp even when the iPod stands there and the camera is close
+  screenCanvas.height = 1661 // same shape as the screen (SW : SH), at 4× – sharp even when the iPod stands there and the camera is close
   const screenCtx = screenCanvas.getContext('2d')
   const screenTex = new THREE.CanvasTexture(screenCanvas)
   screenTex.colorSpace = THREE.SRGBColorSpace
   screenTex.anisotropy = 16
-  const SW = W * 0.84, SH = W * 0.84 * 0.82
+  const SW = 0.0672, SH = 0.0545 // the model's LCD (measured on the model)
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false, color: new THREE.Color(1, 1, 1) }))
-  screen.position.set(0, H * 0.22, D / 2 + 0.0006)
+  screen.position.set(0.0003, 0.0547, 0.0168) // just in front of the glass over the LCD
   body.add(screen)
   const wheel = new THREE.Mesh(new THREE.CircleGeometry(W * 0.36, 48), new THREE.MeshStandardMaterial({ color: 0xcfd3d9, roughness: 0.55 }))
   wheel.position.set(0, -H * 0.2, D / 2 + 0.0006)
-  body.add(wheel)
+  ipodFallback.add(wheel)
   const center = new THREE.Mesh(new THREE.CircleGeometry(W * 0.13, 32), new THREE.MeshStandardMaterial({ color: 0xf7f7f5, roughness: 0.3 }))
   center.position.set(0, -H * 0.2, D / 2 + 0.0012)
-  body.add(center)
+  ipodFallback.add(center)
   const wheelText = new THREE.Mesh(new THREE.CircleGeometry(W * 0.36, 48), new THREE.MeshBasicMaterial({
     transparent: true,
     // the wheel's symbols, drawn as shapes at a high resolution: shuffle (top), previous (left),
@@ -605,7 +682,7 @@ export function buildListeningCorner() {
     })(),
   }))
   wheelText.position.set(0, -H * 0.2, D / 2 + 0.001)
-  body.add(wheelText)
+  ipodFallback.add(wheelText)
 
   // ── Sofa corner ──
   const fabric = new THREE.MeshStandardMaterial({ color: 0x9fb2c6, roughness: 0.95 })
@@ -854,7 +931,7 @@ export function buildListeningCorner() {
         const col = averageColor(img)
         if (!col) return
         g.color = col
-        loose.get(uri)?.mesh.material[1].color.set(col)
+        loose.get(uri)?.tint?.(col)
       }
       img.src = thumb
     }
@@ -869,9 +946,18 @@ export function buildListeningCorner() {
   const ipos = new THREE.Vector3()
   const ZERO = new THREE.Vector3(0, 0, 0)
 
+  const ieu = new THREE.Euler(0, 0, 0, 'YXZ')
   function writeInstance(r) {
     if (r.hidden) im.compose(r.home, iq.identity(), ZERO)
-    else im.compose(ipos.copy(r.home).setZ(r.home.z + r.out * 0.09), iq.identity(), is.set(1, 1, 1))
+    else {
+      // a little untidy, like a real shelf: some records stick out, some lean (the last one in a row leans a lot)
+      const a = r.lean || 0
+      ipos.copy(r.home).setZ(r.home.z + r.out * 0.09 + (r.dz || 0))
+      ipos.x += -Math.sin(a) * (SLEEVE / 2) // (turns about the bottom edge, not the middle)
+      ipos.y += (Math.cos(a) - 1) * (SLEEVE / 2)
+      iq.setFromEuler(ieu.set(0, r.yaw || 0, a))
+      im.compose(ipos, iq, is.set(1, 1, 1))
+    }
     shelfMesh.setMatrixAt(r.index, im)
     shelfMesh.instanceMatrix.needsUpdate = true
   }
@@ -892,6 +978,8 @@ export function buildListeningCorner() {
     const per = Math.max(14, Math.ceil(Math.min(albums.length, MAX_RECORDS) / 3)) // spread over the top row first, then the bottom row
     const artistOf = (a) => String(a?.artist || '').split(',')[0].trim().toLowerCase()
     let comp = 0, cursor = 0, inComp = 0
+    const rnd = (seed) => { let h = 2166136261; for (const ch of String(seed)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) } return ((h >>> 0) % 10000) / 10000 }
+    const lastOf = new Map() // compartment -> its records
     records = albums.slice(0, MAX_RECORDS).map((album, i) => {
       let gap = i > 0 && cursor > 0 && artistOf(album) !== artistOf(albums[i - 1]) ? GAP : 0
       const full = cursor + gap + THICK > room[comp] + 1e-6 || inComp >= per
@@ -905,8 +993,10 @@ export function buildListeningCorner() {
       colAttr.setX(i, i)
       cellAttr.setXY(i, (i % CCOLS) * (CELL / facesCanvas.width), 1 - (Math.floor(i / CCOLS) + 1) * (CELL / facesCanvas.height))
       drawFace(i, color, null)
-      const r = { album, index: i, color, out: 0, hidden: false,
+      const r = { album, index: i, color, out: 0, hidden: false, comp, end: off + THICK,
+        dz: rnd(album.uri + 'z') < 0.2 ? 0.006 + rnd(album.uri + 'zz') * 0.016 : 0, yaw: (rnd(album.uri + 'y') - 0.5) * 0.05, lean: (rnd(album.uri + 'l') - 0.5) * 0.04,
         home: new THREE.Vector3(cab.x0 + 0.006 + THICK / 2 + off, cab.y + SLEEVE / 2 + 0.001, FRONT_Z - SLEEVE / 2 - 0.012) }
+      ;(lastOf.get(comp) || lastOf.set(comp, []).get(comp)).push(r)
       writeInstance(r)
       // the cover (300 px) loads in the background: it goes on the spine, colours it if the album has no colour yet, and is
       // kept as a texture so that a record pulled out of the shelf already has its cover on it
@@ -920,7 +1010,7 @@ export function buildListeningCorner() {
             if (col) {
               r.color = col
               const l = loose.get(album.uri)
-              if (l) l.mesh.material[1].color.set(col)
+              if (l) l.tint?.(col)
             }
           }
           drawSpine(i, album, r.color)
@@ -937,6 +1027,16 @@ export function buildListeningCorner() {
       }
       return r
     })
+    // the last records in a row have room to lean: the very last one a lot, the one before it a little
+    for (const [c, list] of lastOf) {
+      const free = room[c] - list[list.length - 1].end
+      if (free < 0.03) continue
+      const n = list.length
+      list[n - 1].lean = -Math.min(0.42, 0.14 + free * 1.6 + rnd(list[n - 1].album.uri + 'e') * 0.1)
+      if (n > 1) list[n - 2].lean = list[n - 1].lean * 0.45
+      if (n > 2 && rnd(list[n - 2].album.uri + 'f') < 0.5) list[n - 3].lean = list[n - 1].lean * 0.2
+      for (const r of list.slice(-3)) writeInstance(r)
+    }
     setTimeout(pumpCovers, 500) // after the first picture is up
     colAttr.needsUpdate = true
     cellAttr.needsUpdate = true
@@ -958,17 +1058,48 @@ export function buildListeningCorner() {
       loader.load(src, (t) => {
         t.colorSpace = THREE.SRGBColorSpace
         t.anisotropy = 16 // stays crisp at a distance and at an angle (clamped to what the GPU allows)
-        if (ownMap) coverMat.map?.dispose() // (never the shared one)
+        if (ownMap && !paintCover) coverMat.map?.dispose() // (never the shared one)
         ownMap = true
-        coverMat.map = t
-        coverMat.emissiveMap = t
-        coverMat.needsUpdate = true
+        paintLabelFn?.(t.image)
+        if (paintCover) { paintCover(t.image); t.dispose() } else {
+          coverMat.map = t
+          coverMat.emissiveMap = t
+          coverMat.needsUpdate = true
+        }
       }, undefined, () => {})
     }
     const backMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(r.color), roughness: 0.6 })
     const spineMat = new THREE.MeshStandardMaterial({ map: spineTex(r.album, r.color), roughness: 0.6 })
-    // faces: +x front cover, -x back, +y/-y edges, +z spine, -z back edge
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(SLEEVE_T, SLEEVE, SLEEVE), [coverMat, backMat, pageMat, pageMat, spineMat, pageMat])
+    // the sleeve: the model (rounded corners, an opening) – its texture is made here: the back on the left half, the cover on the right half –
+    // or a plain box (faces: +x front cover, -x back, +y/-y edges, +z spine, -z back edge) until the model has loaded
+    let mesh, tint = (col) => backMat.color.set(col), paintCover = null, paintLabelFn = null
+    if (sleeveTpl) {
+      const cv = document.createElement('canvas')
+      cv.width = 2048; cv.height = 1024
+      const tex = new THREE.CanvasTexture(cv)
+      tex.colorSpace = THREE.SRGBColorSpace
+      tex.anisotropy = 16
+      let backCol = r.color, coverImg = cached?.image || null
+      const draw = () => {
+        const x = cv.getContext('2d')
+        const g = x.createLinearGradient(0, 0, 1024, 1024)
+        g.addColorStop(0, backCol); g.addColorStop(1, '#14161c')
+        x.fillStyle = g; x.fillRect(0, 0, 1024, 1024) // the back
+        x.fillStyle = 'rgba(255,255,255,0.88)'; x.font = '700 58px Inter, sans-serif'; x.textAlign = 'center'
+        x.fillText(String(r.album.name || '').slice(0, 26), 512, 480); x.font = '600 38px Inter, sans-serif'; x.fillText(String(r.album.artist || '').slice(0, 30), 512, 540)
+        x.fillStyle = backCol; x.fillRect(1024, 0, 1024, 1024)
+        if (coverImg) x.drawImage(coverImg, 1024, 0, 1024, 1024) // the front
+        tex.needsUpdate = true
+      }
+      draw()
+      tint = (col) => { backCol = col; draw() }
+      paintCover = (img) => { coverImg = img; draw() }
+      coverMat.map = tex; coverMat.emissiveMap = tex; coverMat.needsUpdate = true
+      mesh = new THREE.Group()
+      const body = sleeveTpl.clone(true)
+      body.traverse((o) => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; if (/^cover/.test(o.material.name)) o.material = coverMat } })
+      mesh.add(body)
+    } else mesh = new THREE.Mesh(new THREE.BoxGeometry(SLEEVE_T, SLEEVE, SLEEVE), [coverMat, backMat, pageMat, pageMat, spineMat, pageMat])
     // the vinyl itself, inside the sleeve: it slides a little way out of the top when the record is held, browsed or playing
     const labelCol = r.color || '#c9553a'
     const discTex = canvasTex(512, 512, (x, w, h) => {
@@ -982,8 +1113,31 @@ export function buildListeningCorner() {
     })
     const discMat = new THREE.MeshStandardMaterial({ map: discTex, roughness: 0.32, metalness: 0.15 })
     const discEdge = new THREE.MeshStandardMaterial({ color: 0x0c0c0e, roughness: 0.4 })
-    const disc = new THREE.Mesh(new THREE.CylinderGeometry(DISC_R, DISC_R, 0.0016, 72), [discEdge, discMat, discMat])
+    let disc = new THREE.Mesh(new THREE.CylinderGeometry(DISC_R, DISC_R, 0.0016, 72), [discEdge, discMat, discMat])
     disc.rotation.z = Math.PI / 2 // the disc's axis points the same way as the cover's
+    if (recTpl) { // the record model: the label shows the cover
+      const dc = document.createElement('canvas')
+      dc.width = dc.height = 512
+      const dt = new THREE.CanvasTexture(dc)
+      dt.flipY = false; dt.colorSpace = THREE.SRGBColorSpace; dt.anisotropy = 8
+      const paintLabel = (img) => {
+        const x = dc.getContext('2d')
+        x.fillStyle = '#0a0a0c'; x.fillRect(0, 0, 512, 512)
+        for (const c of [148, 362]) { x.save(); x.beginPath(); x.arc(c, c, 48, 0, Math.PI * 2); x.clip(); if (img) x.drawImage(img, c - 48, c - 48, 96, 96); else { x.fillStyle = labelCol; x.fillRect(c - 48, c - 48, 96, 96) } x.restore(); x.fillStyle = '#0a0a0c'; x.beginPath(); x.arc(c, c, 3.5, 0, Math.PI * 2); x.fill() }
+        dt.needsUpdate = true
+      }
+      paintLabel(cached?.image || null)
+      const dm = recTpl.material.clone()
+      dm.map = dt; dm.metalness = 0.15
+      const model = new THREE.Mesh(recTpl.geometry, dm)
+      model.applyMatrix4(recTpl.matrix)
+      model.castShadow = true
+      disc = new THREE.Group()
+      model.rotation.z += 0
+      disc.add(model)
+      disc.rotation.z = Math.PI / 2
+      paintLabelFn = paintLabel
+    }
     disc.castShadow = true
     const discHolder = new THREE.Group()
     discHolder.add(disc)
@@ -997,11 +1151,11 @@ export function buildListeningCorner() {
     if (r.guest) {
       // tumbling in from the window
       mesh.quaternion.setFromEuler(new THREE.Euler(0.8, -1.2, 0.5))
-      return { mesh, rec: r, disc: discHolder, vel: new THREE.Vector3(0, 0.4, 0), returning: false }
+      return { mesh, rec: r, disc: discHolder, tint, vel: new THREE.Vector3(0, 0.4, 0), returning: false }
     }
     r.hidden = true
     writeInstance(r)
-    return { mesh, rec: r, disc: discHolder, vel: new THREE.Vector3(), returning: false }
+    return { mesh, rec: r, disc: discHolder, tint, vel: new THREE.Vector3(), returning: false }
   }
   function dropLoose(uri) {
     const l = loose.get(uri)
@@ -1044,7 +1198,7 @@ export function buildListeningCorner() {
   let recUri = null // the album whose record is (about to be) on the turntable
   let recOn = false // settled on the platter
   let recFlight = null // { t, wait } while it travels (wait: until the sleeve has arrived by the turntable)
-  const recEnd = new THREE.Vector3(-0.46, TOP_Y + 0.105, 0.24) // the platter's centre (group-local)
+  const recEnd = new THREE.Vector3(-0.38 + TT_C.x, TOP_Y + 0.111, 0.24 + TT_C.z) // the platter's centre (group-local)
   const vA = new THREE.Vector3(), vB = new THREE.Vector3()
   const qStart = new THREE.Quaternion(), qId = new THREE.Quaternion()
   const qZ90 = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2))
@@ -1086,6 +1240,8 @@ export function buildListeningCorner() {
       loader.load(vNow.image_large || vNow.image, (t) => {
         t.anisotropy = 16
         t.colorSpace = THREE.SRGBColorSpace
+        discLabel = t.image
+        paintDisc()
         labelMat.map?.dispose()
         labelMat.map = t
         labelMat.color.set(0xffffff)
@@ -1108,7 +1264,7 @@ export function buildListeningCorner() {
   const groupQ = new THREE.Quaternion()
   const basis = new THREE.Matrix4()
   const ax = new THREE.Vector3(), ay = new THREE.Vector3(), az = new THREE.Vector3()
-  let armAngle = 0
+  let armAngle = 0.45
   // the record turns once per bar (4 beats): a 120 BPM song gives 30 rpm. Unknown tempo = 33⅓ rpm.
   let tempo = 0
   let calm = false // calm mode: the record doesn't turn, nothing drifts or pulses
@@ -1137,7 +1293,7 @@ export function buildListeningCorner() {
     shadeMat.color.setRGB(1, 0.86, 0.68).multiplyScalar(0.8 + 0.25 * beat)
     flame.scale.y = 1.7 + Math.sin(t * 9) * 0.18 + Math.sin(t * 23) * 0.1
     candleLight.intensity = 0.045 + Math.sin(t * 7) * 0.008 + Math.sin(t * 19) * 0.005
-    armAngle += ((playing ? -0.42 : 0) - armAngle) * Math.min(1, dt * 2)
+    armAngle += ((playing ? 0 : 0.45) - armAngle) * Math.min(1, dt * 2) // 0 = the needle on the record, 0.45 = back on its rest
     arm.rotation.y = armAngle
     // the iPod's progress bar moves on once a second while something plays
     if (screenNow?.playing && performance.now() - screenDrawn > 1000) redrawScreen()

@@ -172,7 +172,7 @@ onBeforeUnmount(() => {
   </div>
 
   <!-- the 3D click wheel: shuffle (top), ⏮ / ⏭ previous / next track, ⏯ play / pause, centre = choose -->
-  <div v-if="rect" class="wheel" :style="{ left: `${rect.x + rect.w / 2}px`, top: `${rect.y + rect.h * 1.51}px`, width: `${rect.h * 1.04}px`, height: `${rect.h * 1.04}px` }">
+  <div v-if="rect" class="wheel" :style="{ left: `${rect.x + rect.w / 2}px`, top: `${rect.y + rect.h * 1.9}px`, width: `${rect.h * 1.574}px`, height: `${rect.h * 1.574}px` }">
     <button class="w-menu" :aria-label="spotify.now?.shuffle ? 'Shuffle av' : 'Shuffle på'" title="Shuffle" @click="wheel('shuffle')"></button>
     <button class="w-prev" aria-label="Forrige låt" title="Forrige låt" @click="wheel('previous')"></button>
     <button class="w-next" aria-label="Neste låt" title="Neste låt" @click="wheel('next')"></button>
@@ -275,7 +275,7 @@ header span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .w-play { left: 32%; right: 32%; bottom: 2%; height: 30%; }
 .w-prev { top: 32%; bottom: 32%; left: 2%; width: 30%; }
 .w-next { top: 32%; bottom: 32%; right: 2%; width: 30%; }
-.w-center { left: 33%; top: 33%; width: 34%; height: 34%; }
+.w-center { left: 36%; top: 36%; width: 28%; height: 28%; }
 .putdown {
   position: fixed;
   z-index: 25;
