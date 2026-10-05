@@ -85,12 +85,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 /* the library opens right under the little player */
 .gm-drawer { top: 78px !important; bottom: auto !important; right: 16px !important; max-height: calc(100dvh - 100px); }
 
-/* phones: just above the menu, full width like everything else */
+/* phones: just the album cover, up in the top bar next to the other little buttons – tap it for the player + library */
 @media (max-width: 720px) {
-  .gm { top: auto; left: 16px; right: 16px; width: auto; max-width: none; bottom: calc(76px + env(safe-area-inset-bottom)); transition: bottom 0.35s var(--ease, ease); }
-  .gm-drawer { top: calc(66px + env(safe-area-inset-top)) !important; left: 16px !important; right: 16px !important; width: auto !important; max-height: none; bottom: calc(136px + env(safe-area-inset-bottom)) !important; }
+  .gm { z-index: 45; top: calc(10px + env(safe-area-inset-top)); right: 196px; left: auto; bottom: auto; width: 40px; height: 40px; max-width: none; padding: 0; gap: 0; border-radius: 12px; }
+  .gm .txt, .gm .ctl, .gm .lk, .gm .chev, .gm .prog { display: none; }
+  .gm .cover { width: 40px; height: 40px; border-radius: 12px; }
+  .gm.playing .cover { box-shadow: 0 0 0 2px #1db954; }
+  .gm-drawer { z-index: 50; top: calc(62px + env(safe-area-inset-top)) !important; left: 12px !important; right: 12px !important; width: auto !important; max-height: none; bottom: calc(84px + env(safe-area-inset-bottom)) !important; }
 }
-</style>
-<style>
-@media (max-width: 720px) { html.nav-hidden .gm { bottom: calc(14px + env(safe-area-inset-bottom)) !important; } }
 </style>

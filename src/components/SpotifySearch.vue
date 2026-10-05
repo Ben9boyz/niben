@@ -8,6 +8,8 @@ import { admin } from '../composables/useAdmin'
 import MusicDetail from './MusicDetail.vue'
 import AddMenu from './AddMenu.vue'
 import { startTrackDrag, endDrag } from '../composables/useDrag'
+import { showMenu, longPress } from '../composables/useContextMenu'
+import { trackMenu } from '../lib/menus'
 import { openAlbumPage, openArtistPage, albumOfTrack, firstArtist } from '../composables/useBrowse'
 
 // Search results. 'all' (the flat grid): my playlists, albums and songs. 'player' (the turntable):
@@ -163,7 +165,7 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
       <section v-if="found.tracks.length">
         <h4>Låter</h4>
         <div v-for="t in found.tracks" :key="t.uri" class="trk">
-          <div class="row wrap" :draggable="admin.loggedIn || undefined" @dragstart="startTrackDrag($event, t)" @dragend="endDrag">
+          <div class="row wrap" :draggable="admin.loggedIn || undefined" @dragstart="startTrackDrag($event, t)" @dragend="endDrag" @contextmenu="showMenu($event, t.name, trackMenu(t, { onPlay: () => playTrack(t) }))" v-on="longPress((e) => showMenu(e, t.name, trackMenu(t, { onPlay: () => playTrack(t) })))">
             <div class="main songrow" :class="{ dim: locked && spotify.now?.uri !== t.uri }">
               <button class="plain" :disabled="!!busy" :title="locked ? `Låst ${fmtClock(lockLeft)}` : 'Spill låta i albumet'" :aria-label="`Spill ${t.name}`" @click="playTrack(t)">
                 <img v-if="t.album_image" crossorigin="anonymous" :src="t.album_image" alt="" class="art" />

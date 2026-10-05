@@ -8,6 +8,7 @@ import DropTray from './components/DropTray.vue'
 import GlobalMini from './components/GlobalMini.vue'
 import ShortcutsHelp from './components/ShortcutsHelp.vue'
 import LangSuggest from './components/LangSuggest.vue'
+import ContextMenu from './components/ContextMenu.vue'
 import { useRoute } from 'vue-router'
 // three.js and the whole room are only fetched when the 3D version is used
 const RoomLayout = defineAsyncComponent(() => import('./components/RoomLayout.vue'))
@@ -46,6 +47,7 @@ const toTop = () => window.scrollTo(0, 0)
   <DropTray />
   <ShortcutsHelp />
   <LangSuggest />
+  <ContextMenu />
   <GlobalMini v-if="mode !== 'rom'" :show="route.name !== 'lytte' && route.name !== 'admin'" />
   <NavBar v-if="shell !== 'player'" />
   <template v-else>

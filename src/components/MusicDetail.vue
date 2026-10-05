@@ -5,6 +5,8 @@ import AddMenu from './AddMenu.vue'
 import { startTrackDrag, endDrag } from '../composables/useDrag'
 import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote, control, addToPlaylist, enqueue, enqueueAlbum } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
+import { showMenu, longPress } from '../composables/useContextMenu'
+import { trackMenu } from '../lib/menus'
 import { openAlbumPage, openArtistPage, albumOfTrack, firstArtist } from '../composables/useBrowse'
 
 // Spotify-style page for one album or playlist: big cover, colour from the cover, tracks.
@@ -88,6 +90,7 @@ watch(() => props.item?.uri, async () => {
   if (props.item === it) tracks.value = t
 }, { immediate: true })
 
+const rowMenu = (e, t) => showMenu(e, t.name, trackMenu(t, { onPlay: () => onPlay(t), albumUri: props.kind === 'album' ? props.item.uri : null }))
 async function onPlay(track = null) {
   if (busy.value) return
   // what's already playing can always be paused / resumed – the lock only stops switching to something else
@@ -156,6 +159,8 @@ async function onPlay(track = null) {
         <li
           :class="{ current: spotify.now?.uri === t.uri, clickable: admin.loggedIn && (!locked || spotify.now?.uri === t.uri), withadd: admin.loggedIn }"
           @click="admin.loggedIn && onPlay(t)"
+          @contextmenu="rowMenu($event, t)"
+          v-on="longPress((e) => rowMenu(e, t))"
           @mouseenter="hoverUri = t.uri"
           @mouseleave="hoverUri = null"
           :draggable="admin.loggedIn || undefined"

@@ -1,18 +1,16 @@
 <script setup>
 import { Music, Play, Pause } from 'lucide-vue-next'
-import { spotify, play, control, lockLeft, fmtClock, lockNote } from '../composables/useSpotify'
+import { spotify } from '../composables/useSpotify'
+import { playItem, itemMenu } from '../lib/menus'
+import { showMenu, longPress } from '../composables/useContextMenu'
 import { admin } from '../composables/useAdmin'
 
 // the little play button on a cover: starts the album from its first song (albums always play in order),
-// a playlist the way it is set up. What's already playing just pauses / resumes.
-async function go(it) {
-  const here = spotify.now?.context === it.uri
-  const say = (o) => { spotify.notice = { ...o, t: Date.now() } }
-  if (here) { const r = await control(spotify.now.playing ? 'pause' : 'resume'); if (!r.ok) say({ error: true, text: r.error }); return }
-  if (lockLeft.value > 0) return say({ error: true, text: `Låst – hør ferdig (${fmtClock(lockLeft.value)} igjen)` })
-  const r = await play(it.uri)
-  say(r.ok ? { text: `Spiller «${it.name}»${lockNote()}` } : { error: true, text: r.error })
-}
+// a playlist the way it is set up. What's already playing just pauses / resumes. Right-click (long press on a
+// phone) opens the menu with queue, artist, folder …
+const go = playItem
+const menu = (e, it) => showMenu(e, it.name, itemMenu(it, () => emit('pick', it)))
+const holds = (it) => longPress((e) => menu(e, it))
 const playable = (it) => admin.loggedIn && /^spotify:(album|playlist):/.test(it.uri || '')
 // Grid of square covers (records and playlists). The name shows on hover.
 defineProps({
@@ -34,7 +32,7 @@ const emit = defineEmits(['pick', 'hover', 'move', 'dragitem'])
 <template>
   <div class="cgrid">
     <slot name="lead" />
-    <div v-for="it in items" :key="it.uri" class="cell" :data-uri="it.uri" :draggable="draggable || undefined">
+    <div v-for="it in items" :key="it.uri" class="cell" :data-uri="it.uri" :draggable="draggable || undefined" @contextmenu="menu($event, it)" v-on="holds(it)">
       <button
         class="tile"
         :class="{ on: it.uri === selectedUri, playing: it.uri === playingUri, cursor: it.uri === cursorUri }"
