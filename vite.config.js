@@ -15,6 +15,9 @@ export default defineConfig({
     // build stamp in the name so browsers never reuse an older copy
     rollupOptions: {
       output: {
+        // one bundle: the host's upload filter refuses (451) some of the small split-off chunks no matter
+        // their name or how they're uploaded, and a missing chunk leaves the whole site blank
+        codeSplitting: false,
         entryFileNames: `index-[hash]-${Date.now().toString(36)}.js`,
         // the host's upload filter answers 451 for a file called "_plugin-vue_export-helper-…" (it looks like a
         // WordPress plugin to it) – give shared chunks plain names
