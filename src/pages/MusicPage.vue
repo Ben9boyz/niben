@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { Disc3, ListMusic, Search, X, ChevronRight } from 'lucide-vue-next'
 import { room } from '../composables/useRoom'
 import { spotify, useSpotify } from '../composables/useSpotify'
@@ -26,8 +26,13 @@ const sheet = ref(false) // phones: the full "now playing" card
 const LIB = [{ id: 'vinyl', label: 'Album', icon: Disc3 }, { id: 'ipod', label: 'Spillelister', icon: ListMusic }]
 const libView = computed({ get: () => (ipod.value ? 'ipod' : 'vinyl'), set: (v) => { gq.value = ''; show(v) } })
 
-// the folders under each library entry (the one I'm looking at starts open)
-const treeOpen = ref({ vinyl: true, ipod: false })
+// the folders under each library entry
+const TREE_KEY = 'niben-lib-tree'
+function readTree() {
+  try { return { vinyl: true, ipod: true, ...JSON.parse(localStorage.getItem(TREE_KEY) || '{}') } } catch { return { vinyl: true, ipod: true } }
+}
+const treeOpen = ref(readTree()) // both lists show their folders until I fold one in (remembered)
+watch(treeOpen, (v) => { try { localStorage.setItem(TREE_KEY, JSON.stringify(v)) } catch {} }, { deep: true })
 const hasTree = (v) => groups.on && groups.loaded && (v === 'ipod' || groups.view !== 'artist')
 async function pickFolder(view, id) {
   gq.value = ''
