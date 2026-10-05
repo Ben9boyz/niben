@@ -1,5 +1,5 @@
 <script setup>
-import { Plane } from 'lucide-vue-next'
+import { Plane, X } from 'lucide-vue-next'
 import { ref, computed } from 'vue'
 import { useData } from '../composables/useData'
 import { atlasName, norskNavn } from '../three/countries'
@@ -64,7 +64,7 @@ function select(c) {
         <template v-if="selected">
           <div class="dhead">
             <h2>{{ norskNavn(selected) }}</h2>
-            <button class="btn small" @click="selected = null">Lukk</button>
+            <button class="xbtn" aria-label="Lukk" title="Lukk" @click="selected = null"><X :size="18" /></button>
           </div>
           <TripCards v-if="trips.length" :trips="trips" />
           <div v-else class="empty">Ikke vært her ennå – kanskje neste tur? <Plane :size="16" class="inline-ic" /></div>
@@ -95,6 +95,8 @@ aside h3 small { padding: 1px 8px; border-radius: 999px; background: var(--accen
 .detail-col { grid-area: detail; scroll-margin-top: 24px; min-height: 120px; }
 .detail-col.card { padding: 18px; }
 .dhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.xbtn { display: grid; place-items: center; width: 38px; height: 38px; flex: none; padding: 0; border: 0; border-radius: 50%; background: var(--glass-strong); color: var(--text-2); cursor: pointer; transition: color 0.15s, background 0.15s; }
+.xbtn:hover { color: var(--accent); background: var(--accent-soft); }
 .dhead h2 { font-size: 1.8rem; margin: 0; }
 .big { padding: 28px; text-align: center; }
 /* wide screens with a country chosen: map + countries on the left (the map stays put), the trips on the right */

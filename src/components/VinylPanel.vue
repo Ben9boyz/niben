@@ -84,7 +84,7 @@ async function disconnect() {
         <div v-else class="browse">
           <div v-if="spot" class="head">
             <input v-model="sq" type="search" class="search wide" placeholder="Søk album og låter på Spotify …" aria-label="Søk på Spotify" autofocus />
-            <button class="spot on" @click="spot = false; sq = ''"><CloseIcon :size="14" />Lukk</button>
+            <button class="spot on" aria-label="Lukk" title="Lukk" @click="spot = false; sq = ''"><CloseIcon :size="14" /></button>
           </div>
           <SpotifySearch v-if="spot" :q="sq" scope="player" />
           <template v-else>
