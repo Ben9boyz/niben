@@ -1,26 +1,19 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { groupOf, TAB_LABELS } from '../lib/nav'
+import { groupOf, TAB_LABELS, ROUTE_ICONS } from '../lib/nav'
+import SegSwitch from './SegSwitch.vue'
 
-// The pills for the sub-tabs of the current group (Lære: Japansk / Gitar-øving …). Nothing for single-page groups.
+// The sub-tabs of the current group (Lære: Japansk / Gitar-øving …) – the same switch as Album / Spillelister.
+// `floating` = over the 3D room, top-left; otherwise at the top of the page.
+defineProps({ floating: Boolean })
 const route = useRoute()
-const tabs = computed(() => {
+const items = computed(() => {
   const g = groupOf(route.name)
-  return g && g.routes.length > 1 ? g.routes : null
+  return g && g.routes.length > 1 ? g.routes.map((r) => ({ id: r, label: TAB_LABELS[r], icon: ROUTE_ICONS[r], to: { name: r } })) : null
 })
 </script>
 
 <template>
-  <nav v-if="tabs" class="subtabs glass" role="tablist" aria-label="Underfaner">
-    <router-link v-for="r in tabs" :key="r" :to="{ name: r }" role="tab" :aria-selected="route.name === r" :class="{ on: route.name === r }">{{ TAB_LABELS[r] }}</router-link>
-  </nav>
+  <SegSwitch v-if="items" :items="items" :model-value="route.name" :floating="floating" label="Underfaner" />
 </template>
-
-<style scoped>
-.subtabs { display: flex; gap: 2px; padding: 4px; border-radius: 999px; width: max-content; max-width: 100%; overflow-x: auto; scrollbar-width: none; pointer-events: auto; }
-.subtabs::-webkit-scrollbar { display: none; }
-.subtabs a { padding: 7px 16px; border-radius: 999px; color: var(--text-2); font: 600 0.88rem var(--font); white-space: nowrap; transition: background 0.2s, color 0.2s; }
-.subtabs a:hover { color: var(--text); }
-.subtabs a.on { background: var(--accent); color: #fff; box-shadow: 0 4px 14px var(--accent-glow); }
-</style>

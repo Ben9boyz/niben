@@ -43,7 +43,7 @@ function select(c) {
       <p>{{ countries.length }} land · {{ (data.reiser || []).length }} reiser. Trykk på et land på kartet, eller søk.</p>
     </header>
 
-    <div class="cols">
+    <div class="cols" :class="{ picked: !!selected }">
       <div class="glass card mapcard">
         <FlatMap :visited="visited" :selected="selected" @select="select" />
         <div class="search"><CountryPicker :highlight="visited" clear-on-pick placeholder="Søk etter et land …" @pick="select" /></div>
@@ -87,6 +87,13 @@ aside h3 { margin: 4px 8px 10px; font-size: 1rem; }
 .dhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .dhead h2 { font-size: 1.8rem; }
 .big { padding: 40px; }
+/* wide screens with a country chosen: list | map | trips side by side, the map stays put */
+@media (min-width: 1280px) {
+  .cpage { --page-max: 1700px; }
+  .cols.picked { grid-template-columns: 240px minmax(0, 1fr) minmax(0, 1.15fr); grid-template-areas: 'list map detail'; }
+  .cols.picked .mapcard { position: sticky; top: 24px; }
+  .cols.picked .detail-col { min-height: 0; }
+}
 @media (max-width: 860px) {
   .cols { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'map' 'list' 'detail'; gap: 12px; }
   .mapcard { padding: 8px; }

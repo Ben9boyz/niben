@@ -1,20 +1,31 @@
 <script setup>
+import PitchReading from './PitchReading.vue'
 import { ref, computed, watch, nextTick } from 'vue'
-import { GraduationCap, ArrowUpRight, Tv, Check } from 'lucide-vue-next'
-import { jp, loadJapanese, jpdbUrl, pitchMorae, ANIME_READY } from '../composables/useJapanese'
+import { GraduationCap, ArrowUpRight, Tv, Check, LayoutDashboard, ScanText, BookA } from 'lucide-vue-next'
+import { jp, loadJapanese, jpdbUrl, ANIME_READY } from '../composables/useJapanese'
 import { admin, checkLogin } from '../composables/useAdmin'
 import { room } from '../composables/useRoom'
 import JapanPractice from './JapanPractice.vue'
+import JapanReader from './JapanReader.vue'
+import SegSwitch from './SegSwitch.vue'
+import JapanWords from './JapanWords.vue'
+import KanjiPractice from './KanjiPractice.vue'
 
 // The Japanese corner's content (3D panel and plain page): progress from jpdb, the word of the day,
 // and – for the admin – flashcard practice.
 loadJapanese()
 checkLogin()
 
+const view = ref('home') // 'home' | 'les' | 'ord' | 'kanji'
+const TABS = [
+  { id: 'home', label: 'Oversikt', icon: LayoutDashboard },
+  { id: 'les', label: 'Les tekst', icon: ScanText },
+  { id: 'ord', label: 'Ordliste', icon: BookA },
+  { id: 'kanji', label: 'Kanji', icon: 'M5 4h14M12 4v16M7 9h10l-2 5H9zM4 20h16' },
+]
 const practicing = computed({ get: () => room.jpPractice, set: (v) => (room.jpPractice = v) })
 const total = computed(() => jp.count.due + jp.count.learning + jp.count.known + jp.count.new)
 const word = computed(() => jp.word)
-const morae = computed(() => (word.value ? pitchMorae(word.value.reading, word.value.pitch) : null))
 watch(() => admin.loggedIn, (on) => { if (!on) practicing.value = false })
 
 // anime: the shows in the decks; enough coverage = ready to watch. A DVD clicked in the room is
@@ -38,13 +49,20 @@ watch(() => room.jpAnime, async (i) => {
       <p v-else-if="jp.error" class="notice error">{{ jp.error }}</p>
 
       <template v-if="jp.configured && !jp.error">
+        <!-- what to do here: overview, read a text, browse my words -->
+        <SegSwitch v-model="view" :items="TABS" stretch small label="Japansk" />
+        <KanjiPractice v-if="view === 'kanji'" />
+        <JapanReader v-else-if="view === 'les'" />
+        <JapanWords v-else-if="view === 'ord'" />
+        <template v-else>
+        <div class="ov">
+        <div class="ov-col">
         <!-- word of the day -->
         <article v-if="word" class="wotd">
           <small>今日の言葉 · dagens ord</small>
           <div class="w" lang="ja">{{ word.spelling }}</div>
           <div class="r" lang="ja">
-            <template v-if="morae && word.reading !== word.spelling"><span v-for="(p, k) in morae" :key="k" class="mora" :class="{ high: p.high, drop: p.drop }">{{ p.m }}</span></template>
-            <template v-else-if="word.reading !== word.spelling">{{ word.reading }}</template>
+            <PitchReading v-if="word.reading !== word.spelling" :reading="word.reading" :pitch="word.pitch" />
           </div>
           <p class="m">{{ (word.meanings?.[0] || []).join('; ') }}</p>
           <a :href="jpdbUrl(word)" target="_blank" rel="noopener" class="jl">Se på jpdb <ArrowUpRight :size="13" /></a>
@@ -68,8 +86,10 @@ watch(() => room.jpAnime, async (i) => {
           <i class="learning" :style="{ width: `${((jp.count.learning + jp.count.due) / total) * 100}%` }"></i>
         </div>
 
+        </div>
+        <div class="ov-col">
         <section v-if="jp.anime.length" ref="animeEl" class="anime">
-          <b class="h"><Tv :size="14" /> Anime <small>{{ ready.length ? `${ready.length} klar til å se` : `klar ved ${ANIME_READY} % kjent` }}</small></b>
+          <b class="label-caps"><Tv :size="14" /> Anime <small>{{ ready.length ? `${ready.length} klar til å se` : `klar ved ${ANIME_READY} % kjent` }}</small></b>
           <div v-for="(a, i) in jp.anime" :key="a.anilist" :data-i="i" class="show" :class="{ on: room.jpAnime === i, ready: a.known >= ANIME_READY }" @click="pickAnime(i)">
             <img v-if="a.cover" :src="`${a.cover}?cors`" alt="" loading="lazy" crossorigin="anonymous" :style="{ background: a.color || undefined }" />
             <div class="si">
@@ -86,13 +106,16 @@ watch(() => room.jpAnime, async (i) => {
         </section>
 
         <section v-if="jp.decks.length" class="decks">
-          <b class="h">Kortstokker</b>
+          <b class="label-caps">Kortstokker</b>
           <div v-for="d in jp.decks" :key="d.id" class="deck">
             <div class="dn"><span>{{ d.name }}</span><small>{{ d.words }} ord</small></div>
             <div class="dbar"><i class="known" :style="{ width: `${d.known}%` }"></i><i class="learning" :style="{ width: `${Math.max(0, d.learning - d.known)}%` }"></i></div>
             <small class="dp">{{ d.known }} % kjent · {{ d.learning }} % påbegynt</small>
           </div>
         </section>
+        </div>
+        </div>
+        </template>
         <p class="src">Ordene og fremgangen kommer fra <a href="https://jpdb.io" target="_blank" rel="noopener">jpdb.io</a>.</p>
       </template>
     </template>
@@ -100,6 +123,10 @@ watch(() => room.jpAnime, async (i) => {
 </template>
 
 <style scoped>
+/* wide: two columns – today's word, practice and numbers | anime and decks */
+.ov { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.ov-col { display: grid; gap: 14px; align-content: start; min-width: 0; }
+@container (min-width: 860px) { .ov { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; } }
 .jpc { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .wotd {
   display: grid;
@@ -117,9 +144,6 @@ watch(() => room.jpAnime, async (i) => {
 .wotd small { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; color: #9b2c22; }
 .wotd .w { font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif; font-size: 2.6rem; font-weight: 700; line-height: 1.2; }
 .wotd .r { display: flex; gap: 1px; font-family: "Hiragino Sans", "Noto Sans JP", sans-serif; font-size: 1.05rem; color: #444; min-height: 1.2em; }
-.mora { position: relative; padding-top: 4px; border-top: 2px solid transparent; }
-.mora.high { border-top-color: #2b6fd6; }
-.mora.drop::after { content: ''; position: absolute; right: -1px; top: -2px; height: 10px; border-right: 2px solid #2b6fd6; }
 .wotd .m { margin: 2px 0 4px; font-size: 0.9rem; color: #333; max-width: 40ch; }
 .jl { display: inline-flex; align-items: center; gap: 2px; font-size: 0.75rem; font-weight: 600; color: #9b2c22; text-decoration: none; }
 
@@ -141,15 +165,14 @@ watch(() => room.jpAnime, async (i) => {
 .bar .known, .dbar .known { background: #3aa76d; }
 .bar .learning, .dbar .learning { background: #c9a227; }
 .decks { display: grid; gap: 10px; }
-.h { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
 .deck { display: grid; gap: 5px; padding: 12px 14px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--glass-border); }
 .dn { display: flex; justify-content: space-between; gap: 10px; font-size: 0.88rem; font-weight: 600; }
 .dn span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dn small { flex: none; color: var(--text-3); font-weight: 500; }
 .dp { font-size: 0.72rem; color: var(--text-3); }
 .anime { display: grid; gap: 8px; }
-.h { display: flex; align-items: center; gap: 6px; }
-.h small { margin-left: auto; font-size: 0.7rem; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.anime > .label-caps { display: flex; align-items: center; gap: 6px; }
+.anime > .label-caps small { margin-left: auto; font-size: 0.7rem; font-weight: 600; letter-spacing: 0; text-transform: none; }
 .show { display: flex; gap: 12px; padding: 10px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--glass-border); cursor: pointer; transition: border-color 0.2s, transform 0.2s; }
 .show:hover { transform: translateY(-1px); }
 .show.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }

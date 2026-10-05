@@ -1,5 +1,7 @@
 <script setup>
 import NavBar from './components/NavBar.vue'
+import MusicToast from './components/MusicToast.vue'
+import { useMediaSession } from './composables/useMediaSession'
 import { defineAsyncComponent } from 'vue'
 import SubTabs from './components/SubTabs.vue'
 // three.js and the whole room are only fetched when the 3D version is used
@@ -11,6 +13,7 @@ import PlayerTop from './components/PlayerTop.vue'
 import PlayerBar from './components/PlayerBar.vue'
 
 const data = useData()
+useMediaSession()
 const toTop = () => window.scrollTo(0, 0)
 
 </script>
@@ -34,6 +37,7 @@ const toTop = () => window.scrollTo(0, 0)
     </main>
   </template>
 
+  <MusicToast />
   <NavBar v-if="shell !== 'player'" />
   <template v-else>
     <PlayerTop />
@@ -53,5 +57,8 @@ const toTop = () => window.scrollTo(0, 0)
 @keyframes drift3 { to { transform: translate(-10vw, -12vh) scale(1.2); } }
 .data-error { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); padding: 12px 20px; border-radius: 999px; z-index: 50; color: #d33; font-size: 0.9rem; }
 .flat-tabs { margin: 24px auto -14px; }
-@media (max-width: 720px) { .flat-tabs { margin: 76px 16px -60px; } }
+@media (max-width: 720px) {
+  /* under the top bar, and it stays there while the page scrolls */
+  .flat-tabs { position: sticky; top: calc(68px + env(safe-area-inset-top)); z-index: 30; margin: calc(68px + env(safe-area-inset-top)) auto 0; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08); }
+}
 </style>

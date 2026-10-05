@@ -3,8 +3,9 @@ import { ref, reactive, computed } from 'vue'
 import { ChevronLeft, ArrowUpRight, Plus } from 'lucide-vue-next'
 import { useData, reloadData } from '../../composables/useData'
 import { api } from '../../composables/useAdmin'
-import { parseProgression, findChord } from '../../lib/chords'
+import { parseProgression, findChord, importSheet } from '../../lib/chords'
 import ChordDiagram from '../ChordDiagram.vue'
+import StrumEditor from '../StrumEditor.vue'
 
 // Songs to practise in the practice corner: chords, tempo, capo and a link to Ultimate Guitar.
 const data = useData()
@@ -16,8 +17,8 @@ const busy = ref(false)
 function edit(s) {
   msg.value = null
   editing.value = reactive(s
-    ? { id: s.id, title: s.tittel, artist: s.artist || '', chords: s.akkorder, bpm: s.bpm || '', beats: s.slag || 4, capo: s.capo || 0, ug_url: s.ug || '', notes: s.notat || '', sheet: s.ark || '', practising: !!s.ovrer }
-    : { id: null, title: '', artist: '', chords: '', bpm: 80, beats: 4, capo: 0, ug_url: '', notes: '', sheet: '', practising: false })
+    ? { id: s.id, title: s.tittel, artist: s.artist || '', chords: s.akkorder, bpm: s.bpm || '', beats: s.slag || 4, capo: s.capo || 0, ug_url: s.ug || '', notes: s.notat || '', sheet: s.ark || '', practising: !!s.ovrer, strum: s.slagmonster || 'D-DU-UDU' }
+    : { id: null, title: '', artist: '', chords: '', bpm: 80, beats: 4, capo: 0, ug_url: '', notes: '', sheet: '', practising: false, strum: 'D-DU-UDU' })
 }
 const chordList = computed(() => [...new Set(parseProgression(editing.value?.chords))])
 const ugSearch = computed(() => {
@@ -25,6 +26,21 @@ const ugSearch = computed(() => {
   return `https://www.ultimate-guitar.com/search.php?search_type=title&value=${encodeURIComponent(`${e?.artist || ''} ${e?.title || ''}`.trim())}`
 })
 
+// a sheet pasted from Ultimate Guitar (or similar): tidy it and fill in what's missing
+const pasteNote = ref('')
+function onSheetPaste(e) {
+  const txt = e.clipboardData?.getData('text') || ''
+  if (txt.length < 20) return
+  e.preventDefault()
+  const r = importSheet(txt)
+  const ed = editing.value
+  ed.sheet = r.sheet
+  if (!ed.title && r.title) ed.title = r.title
+  if (!ed.artist && r.artist) ed.artist = r.artist
+  if (r.capo !== null) ed.capo = r.capo
+  if (r.chords.length && !ed.chords.trim()) ed.chords = r.chords.join(' ')
+  pasteNote.value = `Ryddet arket: ${r.chords.length} akkorder${r.capo !== null ? `, capo ${r.capo}` : ''}${r.title ? `, «${r.title}»` : ''}.`
+}
 async function save() {
   busy.value = true
   msg.value = null
@@ -80,6 +96,7 @@ async function remove() {
       <div v-if="chordList.length" class="preview">
         <ChordDiagram v-for="c in chordList" :key="c" :name="c" :size="64" :class="{ missing: !findChord(c) }" />
       </div>
+      <div class="field"><span>Slagmønster <small>trykk på et felt: ned → opp → demp → pause</small></span><StrumEditor v-model="editing.strum" /></div>
       <div class="form-row three">
         <label class="field"><span>Tempo (BPM)</span><input v-model.number="editing.bpm" type="number" min="30" max="260" /></label>
         <label class="field"><span>Slag per akkord</span><input v-model.number="editing.beats" type="number" min="1" max="16" /></label>
@@ -92,8 +109,9 @@ async function remove() {
       </label>
       <label class="field">
         <span>Akkordark <small>for deg selv – vises bare når du er innlogget</small></span>
-        <textarea v-model="editing.sheet" placeholder="[Vers]&#10;Am  F  C  G&#10;(tekst under, hvis du vil)&#10;&#10;[Refreng]&#10;F  C  G  Am" style="min-height: 180px; font-family: ui-monospace, Menlo, monospace"></textarea>
-        <small>Ei linje med bare akkorder blir uthevet og kan transponeres. «[Vers]» på egen linje starter en ny del.</small>
+        <textarea v-model="editing.sheet" @paste="onSheetPaste" placeholder="[Vers]&#10;Am  F  C  G&#10;(tekst under, hvis du vil)&#10;&#10;[Refreng]&#10;F  C  G  Am" style="min-height: 180px; font-family: ui-monospace, Menlo, monospace"></textarea>
+        <small v-if="pasteNote" class="pasted">{{ pasteNote }}</small>
+        <small>Kopier akkordene fra Ultimate Guitar og lim dem inn her – arket ryddes, og tittel, capo og akkorder fylles ut. Ei linje med bare akkorder blir uthevet og kan transponeres. «[Vers]» på egen linje starter en ny del.</small>
       </label>
       <label class="check"><input v-model="editing.practising" type="checkbox" /> Øver på denne nå <small>(vises på «Nå»-siden)</small></label>
       <label class="field"><span>Notat</span><textarea v-model="editing.notes" placeholder="Slagmønster, hva du øver på …" style="min-height: 70px"></textarea></label>
@@ -120,6 +138,7 @@ async function remove() {
 .field small a { color: var(--accent); display: inline-flex; align-items: center; gap: 2px; }
 .preview { display: flex; flex-wrap: wrap; gap: 8px; }
 .preview .missing { opacity: 0.6; }
+.pasted { color: #3aa76d !important; font-weight: 600; }
 .three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .check { display: flex; align-items: center; gap: 8px; font-weight: 600; }
 .check small { color: var(--text-3); font-weight: 500; }

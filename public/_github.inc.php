@@ -41,7 +41,43 @@ function gh_repos(): ?array {
     });
 }
 
+/** Every file in one of my public repositories (path, size), for the code reader. Cached for an hour. */
+function gh_tree(string $repo): ?array {
+    global $config;
+    $user = preg_replace('~[^A-Za-z0-9-]~', '', (string)($config['github_user'] ?? GH_USER));
+    return sp_cached('cache_ghtree_' . $user . '_' . $repo, 3600, function () use ($user, $repo) {
+        $h = ['User-Agent: niben.no', 'Accept: application/vnd.github+json'];
+        [$s, $res] = http_req('GET', "https://api.github.com/repos/$user/$repo", $h);
+        $info = $s === 200 ? json_decode((string)$res, true) : null;
+        if (!$info || !empty($info['private'])) return null;
+        $branch = $info['default_branch'] ?? 'main';
+        [$s, $res] = http_req('GET', "https://api.github.com/repos/$user/$repo/git/trees/" . rawurlencode($branch) . '?recursive=1', $h);
+        $tree = $s === 200 ? json_decode((string)$res, true) : null;
+        if (!$tree) return null;
+        $files = [];
+        foreach ($tree['tree'] ?? [] as $t) {
+            if (($t['type'] ?? '') !== 'blob') continue;
+            $files[] = ['path' => $t['path'], 'size' => (int)($t['size'] ?? 0)];
+        }
+        return [
+            'owner' => $user, 'repo' => $repo, 'branch' => $branch,
+            'url' => $info['html_url'] ?? null, 'description' => $info['description'] ?? null,
+            'pushed' => $info['pushed_at'] ?? null, 'truncated' => !empty($tree['truncated']),
+            'files' => array_slice($files, 0, 3000),
+        ];
+    });
+}
+
 function gh_handle(string $action): void {
+    if ($action === 'github_tree') {
+        $repo = (string)($_GET['repo'] ?? '');
+        if (!preg_match('~^[A-Za-z0-9._-]{1,100}$~', $repo)) fail('Ugyldig repo.');
+        // only my own listed repositories – random names would each cost a call to GitHub
+        if (!in_array($repo, array_column(gh_repos() ?? [], 'name'), true)) fail('Fant ikke repoet.', 404);
+        $t = gh_tree($repo);
+        if ($t === null) fail('Fant ikke repoet på GitHub.', 404);
+        out($t);
+    }
     if ($action !== 'github_repos') return;
     $repos = gh_repos();
     if ($repos === null) fail('Fikk ikke kontakt med GitHub.', 502);

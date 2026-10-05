@@ -105,3 +105,23 @@ export function parseSheet(text, by = 0) {
   }
   return sections
 }
+
+/**
+ * Tidies a chord sheet pasted from a site like Ultimate Guitar (copied by me): drops [tab]/[ch] tags,
+ * and picks out what it can – title/artist ("Wonderwall Chords by Oasis"), capo, and the chords in the
+ * order they first appear. Returns { sheet, title, artist, capo, chords }.
+ */
+export function importSheet(raw) {
+  let text = String(raw || '').replace(/\r/g, '')
+  text = text.replace(/\[\/?tab\]/gi, '').replace(/\[ch\](.*?)\[\/ch\]/gi, '$1')
+  const head = /^\s*(.+?)\s+(?:Chords|Tabs?|Ukulele Chords|Bass Tabs?)\s+by\s+(.+?)\s*$/im.exec(text)
+  const capoM = /capo\s*[:\-]?\s*(?:on\s*)?(\d{1,2})/i.exec(text)
+  const lines = text.split('\n')
+  // drop the site's own clutter around the sheet
+  const junk = /^\s*(capo|tuning|key|difficulty|author|strumming|chords|tab|print|transpose|autoscroll|font|x$)\b.*$/i
+  const kept = lines.filter((l, i) => !(i < 12 && junk.test(l)) && !(head && l.trim() === head[0].trim()))
+  const sheet = kept.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+  const order = []
+  for (const s of parseSheet(sheet)) for (const l of s.lines) for (const t of l) if (t.chord && !order.includes(t.t)) order.push(t.t)
+  return { sheet, title: head?.[1] || '', artist: head?.[2] || '', capo: capoM ? +capoM[1] : null, chords: order }
+}

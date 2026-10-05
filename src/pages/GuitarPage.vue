@@ -55,13 +55,6 @@ const g = computed(() => data.gitarer?.[idx.value])
 h2 { font-size: 2rem; margin: 4px 0 8px; }
 h3 { margin-bottom: 10px; }
 .body { color: var(--text-2); margin-bottom: 14px; }
-.rec { padding: 12px 0; border-top: 1px solid var(--glass-border); }
-.rec:first-of-type { border-top: 0; }
-.rec-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-.video { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #000; }
-.video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-audio { width: 100%; }
-.note { margin-top: 6px; }
 .credit { font-size: 0.75rem; color: var(--text-3); }
 .credit a { color: var(--text-2); text-decoration: underline; }
 @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } .stage { position: relative; top: 0; height: 56vh; } }

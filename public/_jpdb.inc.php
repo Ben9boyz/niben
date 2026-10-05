@@ -50,7 +50,10 @@ function jp_all_cards(): ?array {
         $decks[] = ['id' => $id, 'name' => $name, 'words' => $count, 'known' => round((float)$known, 1), 'learning' => round((float)$prog, 1), 'occ' => (int)$occ, 'builtin' => (bool)$builtIn];
         [$ds, $dj] = jp_api('deck/list-vocabulary', ['id' => $id]);
         if ($ds !== 200) continue;
-        foreach ($dj['vocabulary'] ?? [] as $p) $pairs[$p[0] . ':' . $p[1]] = $p;
+        foreach ($dj['vocabulary'] ?? [] as $p) {
+            $pairs[$p[0] . ':' . $p[1]] = $p;
+            if (!$builtIn) $GLOBALS['jp_in_deck'][$p[0] . ':' . $p[1]][] = $id; // which of my own decks a word is in
+        }
     }
     $cards = [];
     foreach (array_chunk(array_values($pairs), 500) as $chunk) {
@@ -193,5 +196,140 @@ function jp_handle(string $action, bool $post): void {
         $info = $lj['vocabulary_info'][0] ?? null;
         out(['ok' => true, 'state' => $info[0] ?? null, 'due' => $info[1] ?? null]);
     }
+
+    case 'jpdb_parse': {
+        // a Japanese text split into words, each with reading, meanings, pitch and my card state
+        if (!$post) fail('Bruk POST.', 405);
+        $text = trim((string)(body()['text'] ?? ''));
+        $max = is_admin() ? 6000 : 800; // visitors try it on a short text
+        // every new text costs a call to jpdb on my key: visitors get a handful, and all of them together a few hundred an hour
+        if (!is_admin()) {
+            rl_or_fail('jpparse:' . client_ip(), 20, 600, 'Du har lest mange tekster nå – prøv igjen om litt.');
+            rl_or_fail('jpparse:all', 300, 3600, 'Tekstleseren er mye brukt akkurat nå – prøv igjen senere.');
+        }
+        if ($text === '') fail('Skriv eller lim inn en japansk tekst.');
+        if (mb_strlen($text) > $max) fail("Teksten er for lang (maks $max tegn).");
+        $data = sp_cached('jp_parse2_' . md5($text), 600, function () use ($text) {
+            [$s, $j] = jp_api('parse', [
+                'text' => $text,
+                'position_length_encoding' => 'utf16', // positions that match JavaScript strings
+                'token_fields' => ['vocabulary_index', 'position', 'length', 'furigana'],
+                'vocabulary_fields' => ['vid', 'sid', 'spelling', 'reading', 'frequency_rank', 'meanings', 'card_state', 'part_of_speech', 'pitch_accent', 'alt_spellings'],
+            ]);
+            if ($s !== 200) return null;
+            $vocab = [];
+            foreach ($j['vocabulary'] ?? [] as $v) {
+                [$vid, $sid, $spelling, $reading, $freq, $meanings, $state, $pos, $pitch, $alt] = $v;
+                $vocab[] = ['vid' => $vid, 'sid' => $sid, 'spelling' => $spelling, 'reading' => $reading, 'freq' => $freq,
+                    'meanings' => array_slice($meanings ?? [], 0, 5), 'state' => $state ?? [], 'pos' => $pos ?? [], 'pitch' => $pitch[0] ?? null,
+                    'alt' => array_values(array_diff($alt ?? [], [$spelling]))];
+            }
+            $tokens = array_map(fn($t) => ['v' => $t[0], 'pos' => $t[1], 'len' => $t[2], 'furi' => $t[3]], $j['tokens'] ?? []);
+            return ['tokens' => $tokens, 'vocab' => $vocab];
+        });
+        if (!$data) fail('jpdb klarte ikke å lese teksten.', 502);
+        out($data);
     }
+
+    case 'jpdb_words': {
+        // every word in my decks, for the word list (cached for 10 minutes)
+        $words = sp_cached('jp_words2', 600, function () {
+            $all = jp_all_cards();
+            if (!$all) return null;
+            $out = [];
+            foreach ($all['cards'] as $c) {
+                if (jp_is($c, 'redundant')) continue;
+                $out[] = ['vid' => $c['vid'], 'sid' => $c['sid'], 'spelling' => $c['spelling'], 'reading' => $c['reading'],
+                    'meaning' => implode('; ', array_slice($c['meanings'][0] ?? [], 0, 3)), 'state' => $c['state'], 'freq' => $c['freq'], 'pitch' => $c['pitch'],
+                    'decks' => $GLOBALS['jp_in_deck'][$c['vid'] . ':' . $c['sid']] ?? []];
+            }
+            return $out;
+        });
+        if ($words === null) fail('Fikk ikke kontakt med jpdb.', 502);
+        $all = jp_all_cards_decks_cached();
+        out(['words' => $words, 'decks' => $all]);
+    }
+
+    case 'jpdb_card': {
+        // what jpdb lets me do with one word (admin): take it out of a deck, mark it as known forever,
+        // ignore it (blacklist), or give its card my own example sentence
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $b = body();
+        $vid = (int)($b['vid'] ?? 0);
+        $sid = (int)($b['sid'] ?? 0);
+        if ($vid <= 0 || $sid <= 0) fail('Ugyldig ord.');
+        $op = (string)($b['op'] ?? '');
+        $special = ['never-forget' => 1879048193, 'blacklist' => 1879048194];
+        if ($op === 'remove') {
+            $deck = (int)($b['deck'] ?? 0);
+            if ($deck <= 0) fail('Velg en kortstokk.');
+            [$s, $j] = jp_api('deck/remove-vocabulary', ['id' => $deck, 'vocabulary' => [[$vid, $sid]]]);
+        } elseif (isset($special[$op])) {
+            [$s, $j] = jp_api('deck/add-vocabulary', ['id' => $special[$op], 'vocabulary' => [[$vid, $sid]]]);
+        } elseif ($op === 'unmark') {
+            foreach ($special as $id) [$s, $j] = jp_api('deck/remove-vocabulary', ['id' => $id, 'vocabulary' => [[$vid, $sid]]]);
+        } elseif ($op === 'sentence') {
+            $sentence = mb_substr(trim((string)($b['sentence'] ?? '')), 0, 300);
+            $req = ['vid' => $vid, 'sid' => $sid, 'sentence' => $sentence];
+            $tr = mb_substr(trim((string)($b['translation'] ?? '')), 0, 300);
+            if ($tr !== '') $req['translation'] = $tr;
+            [$s, $j] = jp_api('set-card-sentence', $req);
+        } else fail('Ukjent handling.');
+        if ($s !== 200) fail('jpdb svarte: ' . ($j['error_message'] ?? $s), 502);
+        kv_del('jp_public_v2', 'jp_words2');
+        out(['ok' => true]);
+    }
+
+    case 'jpdb_deck': {
+        // my own decks (admin): make one, rename, empty or delete it
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $b = body();
+        $op = (string)($b['op'] ?? '');
+        $id = (int)($b['id'] ?? 0);
+        $name = mb_substr(trim((string)($b['name'] ?? '')), 0, 80);
+        if ($op === 'create') { if ($name === '') fail('Gi kortstokken et navn.'); [$s, $j] = jp_api('deck/create-empty', ['name' => $name]); }
+        elseif ($op === 'rename') { if ($id <= 0 || $name === '') fail('Mangler navn.'); [$s, $j] = jp_api('deck/rename', ['id' => $id, 'name' => $name]); }
+        elseif ($op === 'clear') { if ($id <= 0) fail('Velg en kortstokk.'); [$s, $j] = jp_api('deck/clear', ['id' => $id]); }
+        elseif ($op === 'delete') { if ($id <= 0) fail('Velg en kortstokk.'); [$s, $j] = jp_api('deck/delete', ['id' => $id]); }
+        else fail('Ukjent handling.');
+        if ($s !== 200) fail('jpdb svarte: ' . ($j['error_message'] ?? $s), 502);
+        kv_del('jp_public_v2', 'jp_words2', 'jp_decks_own2');
+        out(['ok' => true, 'id' => $j['id'] ?? $id]);
+    }
+
+    case 'jpdb_add': {
+        // put a word into one of my own decks (or a new "niben.no" deck)
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $b = body();
+        $vid = (int)($b['vid'] ?? 0);
+        $sid = (int)($b['sid'] ?? 0);
+        if ($vid <= 0 || $sid <= 0) fail('Ugyldig ord.');
+        $deck = $b['deck'] ?? null;
+        if ($deck === 'new') {
+            [$s, $j] = jp_api('deck/create-empty', ['name' => 'niben.no']);
+            if ($s !== 200 || empty($j['id'])) fail('Klarte ikke å lage en ny kortstokk på jpdb.', 502);
+            $deck = (int)$j['id'];
+        }
+        $deck = (int)$deck;
+        if ($deck <= 0) fail('Velg en kortstokk.');
+        [$s, $j] = jp_api('deck/add-vocabulary', ['id' => $deck, 'vocabulary' => [[$vid, $sid]]]);
+        if ($s !== 200) fail('jpdb svarte: ' . ($j['error_message'] ?? $s), 502);
+        kv_del('jp_public_v2', 'jp_words2', 'jp_decks_own2');
+        out(['ok' => true, 'deck' => $deck]);
+    }
+    }
+}
+
+/** My own (not built-in) decks – the ones words can be added to. Cached for 10 minutes. */
+function jp_all_cards_decks_cached(): array {
+    return sp_cached('jp_decks_own2', 600, function () {
+        [$s, $j] = jp_api('list-user-decks', ['fields' => ['id', 'name', 'is_built_in', 'vocabulary_count', 'vocabulary_known_coverage']]);
+        if ($s !== 200) return null;
+        $out = [];
+        foreach ($j['decks'] ?? [] as [$id, $name, $builtIn, $count, $known]) if (!$builtIn) $out[] = ['id' => $id, 'name' => $name, 'words' => $count, 'known' => round((float)$known, 1)];
+        return $out;
+    }) ?? [];
 }

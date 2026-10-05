@@ -14,5 +14,5 @@ import GamingContent from '../components/GamingContent.vue'
 </template>
 
 <style scoped>
-.gaming { width: min(760px, 100%); }
+.gaming { width: min(1240px, 100%); }
 </style>

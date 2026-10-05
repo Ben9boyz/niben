@@ -14,6 +14,6 @@ import JapanContent from '../components/JapanContent.vue'
 </template>
 
 <style scoped>
-.japan { width: min(720px, 100%); }
+.japan { width: min(1240px, 100%); }
 .jp-card { container-type: inline-size; }
 </style>

@@ -90,6 +90,7 @@ export function mockApi() {
               books: [...db.books].reverse(),
               recordings: [...db.recordings].reverse(),
               songs: db.songs,
+              about: db.about || null,
             })
           case 'song_save': {
             if (!needAdmin()) return
@@ -195,6 +196,14 @@ export function mockApi() {
             })
           case 'spotify_now':
             return send(res, 200, { configured: true, connected: true, now: sp.now, lock_until: sp.lock, lock_seconds: sp.lockSeconds, server_time: Math.floor(Date.now() / 1000) })
+          case 'github_tree': {
+            // dev: ask GitHub directly (the real server caches this for an hour)
+            const repo = url.searchParams.get('repo')
+            const h = { 'User-Agent': 'niben-dev', Accept: 'application/vnd.github+json' }
+            const info = await (await fetch(`https://api.github.com/repos/Ben9boyz/${repo}`, { headers: h })).json()
+            const tree = await (await fetch(`https://api.github.com/repos/Ben9boyz/${repo}/git/trees/${info.default_branch || 'main'}?recursive=1`, { headers: h })).json()
+            return send(res, 200, { owner: 'Ben9boyz', repo, branch: info.default_branch || 'main', url: info.html_url, description: info.description, pushed: info.pushed_at, truncated: !!tree.truncated, files: (tree.tree || []).filter((t) => t.type === 'blob').map((t) => ({ path: t.path, size: t.size || 0 })) })
+          }
           case 'github_repos':
             return send(res, 200, { repos: [
               { name: 'niben', description: 'Min personlige nettside – et 3D-rom med Vue og Three.js.', language: 'Vue', topics: ['threejs', 'vite'], stars: 3, url: 'https://github.com/Ben9boyz/niben', homepage: 'https://niben.no', created: '2026', pushed: '2026-10-04T12:00:00Z' },
@@ -207,8 +216,28 @@ export function mockApi() {
             if (q.length < 2) return send(res, 200, { albums: [], tracks: [] })
             const albums = [0, 1, 2].map((i) => ({ id: `s${i}`, uri: `spotify:album:searchalbum${String(i).padStart(10, '0')}`, name: `${q} (album ${i + 1})`, artist: 'Søkeartist', year: String(2000 + i * 7), image: mockCover(i * 70 + 10), image_large: mockCover(i * 70 + 10), thumb: mockCover(i * 70 + 10), url: null, tracks: 9 + i }))
             const tracks = [0, 1, 2, 3].map((i) => ({ uri: `spotify:track:searchtrack${String(i).padStart(10, '0')}`, name: `${q} – låt ${i + 1}`, artist: 'Søkeartist', ms: 180000 + i * 20000, n: i + 1, img: mockCover(i * 50), album: albums[i % 3].name, album_uri: albums[i % 3].uri, album_artist: 'Søkeartist', album_image: albums[i % 3].image, album_image_large: albums[i % 3].image, album_url: null }))
-            return send(res, 200, { albums, tracks })
+            const playlists = [0, 1].map((i) => ({ id: `sp${i}`, uri: `spotify:playlist:searchlist${String(i).padStart(10, '0')}`, name: `${q} mix ${i + 1}`, owner: 'Spotify-bruker', image: mockCover(i * 90 + 40), thumb: mockCover(i * 90 + 40), count: 30 + i * 12, url: null }))
+            return send(res, 200, { albums, tracks, playlists })
           }
+          case 'spotify_queue':
+            return send(res, 200, { tracks: ['Golden Hour', 'Slow Down', 'Northern Sky', 'Paper Hearts'].map((name, i) => ({ uri: `spotify:track:q${i}`, name, artist: 'Mock Artist', img: mockCover(i * 40), ms: 180000 + i * 9000 })) })
+          case 'spotify_devices':
+            if (!needAdmin()) return
+            return send(res, 200, { devices: [{ id: 'dev00000000000000000001', name: 'niben.no', type: 'Computer', active: true, volume: 70 }, { id: 'dev00000000000000000002', name: 'iPhone', type: 'Smartphone', active: false, volume: 50 }] })
+          case 'spotify_transfer': case 'spotify_volume': case 'spotify_enqueue':
+            if (!needAdmin()) return
+            return send(res, 200, { ok: true })
+          case 'spotify_repeat':
+            if (!needAdmin()) return
+            sp.now.repeat = b.state
+            return send(res, 200, { ok: true })
+          case 'spotify_liked':
+            if (!needAdmin()) return
+            if (isPost) { sp.liked = !!b.on; return send(res, 200, { ok: true, liked: sp.liked }) }
+            return send(res, 200, { liked: !!sp.liked })
+          case 'spotify_follow':
+            if (!needAdmin()) return
+            return send(res, 200, { ok: true })
           case 'spotify_save':
             if (!needAdmin()) return
             return send(res, 200, { ok: true })
@@ -245,6 +274,19 @@ export function mockApi() {
           case 'spotify_token':
             if (!needAdmin()) return
             return send(res, 200, { token: 'mock', expires: 0, streaming: false }) // no real Spotify in dev
+          case 'about_get':
+            return send(res, 200, { about: db.about || null })
+          case 'about_photo': {
+            if (!needAdmin()) return
+            if (!file) return send(res, 400, { error: 'Mangler fil.' })
+            const path = await store('photos', file)
+            db.about = { ...(db.about || {}), bilde: path }
+            return send(res, 200, { ok: true, bilde: path })
+          }
+          case 'about_save':
+            if (!needAdmin()) return
+            db.about = { bilde: db.about?.bilde || null, tagline: b.tagline || '', tekst: b.tekst || '', lenker: (b.lenker || []).filter((l) => l.navn && /^https?:\/\//.test(l.url || '')) }
+            return send(res, 200, { ok: true, about: db.about })
           case 'steam_public': {
             const now = Math.floor(Date.now() / 1000)
             const G = [[1245620, 'ELDEN RING', 214.5, 6.2, 1, [31, 42]], [413150, 'Stardew Valley', 160.1, 0, 9, [24, 49]], [1086940, "Baldur's Gate 3", 132, 11.4, 0, [18, 54]], [367520, 'Hollow Knight', 88.3, 0, 30, [40, 63]], [730, 'Counter-Strike 2', 76, 1.5, 3, [1, 1]], [1145360, 'Hades', 61.2, 0, 60, [33, 49]], [620, 'Portal 2', 24.8, 0, 200, [51, 51]], [105600, 'Terraria', 22, 0, 400, null], [892970, 'Valheim', 19.5, 0, 120, null], [1794680, 'Vampire Survivors', 12, 0, 75, [120, 230]], [753640, 'Outer Wilds', 18.4, 0, 500, [20, 31]], [4000, "Garry's Mod", 9, 0, 900, null]]
@@ -257,6 +299,26 @@ export function mockApi() {
               at: now,
             })
           }
+          case 'jpdb_parse': {
+            // dev: the real jpdb (read only) with the key from public/_jpdb.php, if it's there
+            const fs = await import('node:fs')
+            const key = (fs.existsSync('public/_jpdb.php') ? fs.readFileSync('public/_jpdb.php', 'utf8') : '').match(/'api_key'\s*=>\s*'([^']+)'/)?.[1]
+            if (!key) return send(res, 502, { error: 'Ingen jpdb-nøkkel lokalt.' })
+            const r = await fetch('https://jpdb.io/api/v1/parse', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text: b.text, position_length_encoding: 'utf16', token_fields: ['vocabulary_index', 'position', 'length', 'furigana'], vocabulary_fields: ['vid', 'sid', 'spelling', 'reading', 'frequency_rank', 'meanings', 'card_state', 'part_of_speech', 'pitch_accent'] }) })
+            const j = await r.json()
+            if (!r.ok) return send(res, 502, { error: j.error_message || 'jpdb-feil' })
+            return send(res, 200, {
+              tokens: j.tokens.map((t) => ({ v: t[0], pos: t[1], len: t[2], furi: t[3] })),
+              vocab: j.vocabulary.map(([vid, sid, spelling, reading, freq, meanings, state, pos, pitch]) => ({ vid, sid, spelling, reading, freq, meanings: (meanings || []).slice(0, 5), state: state || [], pos: pos || [], pitch: pitch?.[0] || null })),
+            })
+          }
+          case 'jpdb_words': {
+            const W = [['可愛い', 'かわいい', 'cute; adorable', ['known'], 1400, 'LHHLL'], ['猫', 'ねこ', 'cat', ['learning'], 1600, 'HLL'], ['今日', 'きょう', 'today', ['due'], 200, 'HHLL'], ['服', 'ふく', 'clothes', ['new'], 1200, 'LH'], ['人形', 'にんぎょう', 'doll', ['new'], 3200, 'LHHH'], ['作る', 'つくる', 'to make', ['known'], 300, 'LHL'], ['学校', 'がっこう', 'school', ['learning'], 400, 'LHHH'], ['恋', 'こい', 'love', ['failed'], 2100, 'HL'], ['衣装', 'いしょう', 'costume', ['new'], 5000, 'LHHH'], ['写真', 'しゃしん', 'photograph', ['known'], 900, 'LHH']]
+            return send(res, 200, { words: W.map(([spelling, reading, meaning, state, freq, pitch], i) => ({ vid: 1000 + i, sid: 2000 + i, spelling, reading, meaning, state, freq, pitch })), decks: [{ id: 7, name: 'Egne ord' }] })
+          }
+          case 'jpdb_add':
+            if (!needAdmin()) return
+            return send(res, 200, { ok: true, deck: b.deck === 'new' ? 8 : b.deck })
           case 'jpdb_public':
             return send(res, 200, { configured: true, decks: [{ id: 1, name: 'Sono Bisque Doll wa Koi wo Suru - Episode 1', words: 448, known: 2.8, learning: 4.5 }], anime: [
               { title: 'Yuru Camp△', parts: 12, known: 91.4, learning: 94, anilist: 98444, url: 'https://anilist.co/anime/98444', en: 'Laid-Back Camp', native: 'ゆるキャン△', year: 2018, cover: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx98444-Vzysp1EsrzgD.jpg', color: '#f1ae5d' },

@@ -25,6 +25,8 @@ const { theme, toggle } = useTheme()
 // sub-tab you were last on.
 const links = computed(() => GROUPS.map((g) => ({ name: g.id, label: g.label, icon: g.icon, to: groupTarget(g) })))
 const activeGroup = computed(() => groupOf(route.name)?.id)
+// phones (plain version): a top bar with the page's name – the group (its sub-tabs sit just below)
+const barTitle = computed(() => (route.name === 'hjem' ? '' : route.name === 'admin' ? 'Admin' : groupOf(route.name)?.label || route.meta?.title || ''))
 
 const track = ref(null)
 const itemEls = ref([])
@@ -63,6 +65,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <!-- phones, plain version: the bar behind the page name and the buttons on the right -->
+  <div class="mtop" :class="{ scrolled }" aria-hidden="true">
+    <router-link to="/" class="mtop-brand" tabindex="-1" @dblclick.prevent="toAdmin" @pointerdown="pressStart" @pointerup="pressEnd" @pointerleave="pressEnd"><BrandLogo :mark="!!barTitle" /></router-link>
+    <b v-if="barTitle">{{ barTitle }}</b>
+  </div>
   <header class="nav-wrap" :class="{ scrolled }">
     <router-link
       to="/"
@@ -99,6 +106,10 @@ onBeforeUnmount(() => {
     </nav>
 
     <span class="spacer" aria-hidden="true"></span>
+    <!-- the music player on its own (same as the "niben musikk" app) – small, at the bottom of the rail -->
+    <a href="#/musicplayer" class="player-link" title="Åpne musikkspilleren" aria-label="Åpne musikkspilleren">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v-2a9 9 0 0 1 18 0v2" /><path d="M21 16a2 2 0 0 1-2 2h-1a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h3zM3 16a2 2 0 0 0 2 2h1a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1H3z" /></svg>
+    </a>
     <!-- only when logged in; the way in is a double-click (or long-press) on the logo -->
     <router-link v-if="admin.loggedIn" to="/admin" class="admin-chip glass on" title="Admin (innlogget)" aria-label="Admin">
       <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
@@ -362,5 +373,17 @@ onBeforeUnmount(() => {
   .item { padding: 11px 0; }
   .item:hover .tip { opacity: 1; transform: translate(0, -50%); }
   .nav { overflow: visible; }
+}
+
+/* phones: labels under the icons, so the tabs say what they are (the top bar of the plain version is in style.css) */
+.mtop { display: none; }
+.player-link { display: none; }
+@media (min-width: 721px) {
+  .player-link { display: grid; place-items: center; align-self: center; width: 40px; height: 40px; border-radius: 14px; color: var(--text-3); opacity: 0.6; transition: opacity 0.2s, color 0.2s, background 0.2s; }
+  .player-link:hover { opacity: 1; color: var(--accent); background: var(--accent-soft); }
+}
+@media (max-width: 720px) {
+  .item { flex-direction: column; gap: 2px; padding: 7px 0 6px; }
+  .item .label { display: block; font-size: 0.6rem; font-weight: 600; line-height: 1; }
 }
 </style>

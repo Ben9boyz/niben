@@ -1,10 +1,11 @@
 import { reactive } from 'vue'
+import { reloadData } from './useData'
 
 export const admin = reactive({ checked: false, loggedIn: false })
 
 /** Calls api.php. `body` may be a plain object (sent as JSON) or FormData (for uploads). */
-export async function api(action, body, { onProgress } = {}) {
-  const url = `api.php?action=${encodeURIComponent(action)}`
+export async function api(action, body, { onProgress, query = '' } = {}) {
+  const url = `api.php?action=${encodeURIComponent(action)}${query}`
   if (body instanceof FormData && onProgress) {
     // XHR gives upload progress for large audio files
     return new Promise((resolve, reject) => {
@@ -39,6 +40,7 @@ export async function api(action, body, { onProgress } = {}) {
     if (r.status === 401) admin.loggedIn = false
     const err = new Error(json.error || `Feil ${r.status}`)
     err.code = json.code
+    err.status = r.status
     throw err
   }
   return json
@@ -68,7 +70,7 @@ export async function logout() {
 
 // chord sheets are only sent to a logged-in admin, so reload the data when that changes
 function refreshSongs() {
-  import('./useData').then((m) => m.reloadData()).catch(() => {})
+  reloadData().catch(() => {})
 }
 
 /**

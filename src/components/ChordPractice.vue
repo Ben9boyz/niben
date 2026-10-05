@@ -1,4 +1,5 @@
 <script setup>
+import { tick as metronomeTick } from '../lib/strum'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Play, Square, ArrowUpRight, Search, Trophy, ArrowLeftRight, BookOpen } from 'lucide-vue-next'
 import ChordDiagram from './ChordDiagram.vue'
@@ -16,22 +17,8 @@ const names = Object.keys(CHORDS)
 const sheetId = ref(null) // the song whose chord sheet is open
 const sheetSong = computed(() => songs.value.find((x) => x.id === sheetId.value) || null)
 
-// ── sound: a short click from Web Audio (accent on beat 1) ──
-let ctx = null
-function click(accent) {
-  try {
-    ctx ||= new (window.AudioContext || window.webkitAudioContext)()
-    const t = ctx.currentTime
-    const o = ctx.createOscillator()
-    const g = ctx.createGain()
-    o.frequency.value = accent ? 1660 : 1100
-    g.gain.setValueAtTime(accent ? 0.5 : 0.3, t)
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.06)
-    o.connect(g).connect(ctx.destination)
-    o.start(t)
-    o.stop(t + 0.07)
-  } catch {}
-}
+// the metronome click is shared with the chord sheet (lib/strum)
+const click = (accent) => metronomeTick(accent)
 
 // ── one-minute changes ──
 const BEST_KEY = 'niben-chord-best'
@@ -190,7 +177,7 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); clearInter
           <p v-if="s.notat" class="note">{{ s.notat }}</p>
         </div>
         <div class="sa">
-          <button v-if="s.ark" class="btn small" @click="sheetId = s.id"><BookOpen :size="14" />Ark</button>
+          <button class="btn small" :title="s.ark ? 'Akkordarket – med slagmønster og avspilling' : 'Slagmønster og avspilling av akkordene'" @click="sheetId = s.id"><BookOpen :size="14" />{{ s.ark ? 'Ark' : 'Slag' }}</button>
           <button class="btn primary small" @click="practiseSong(s)"><Play :size="14" fill="currentColor" />Øv</button>
           <a class="btn small" :href="ugLink(s)" target="_blank" rel="noopener">Ultimate Guitar <ArrowUpRight :size="14" /></a>
         </div>

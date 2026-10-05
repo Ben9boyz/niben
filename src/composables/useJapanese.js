@@ -80,3 +80,45 @@ export function pitchMorae(reading, pitch) {
   if (pitch.length < morae.length) return null
   return morae.map((m, i) => ({ m, high: pitch[i] === 'H', drop: pitch[i] === 'H' && pitch[i + 1] === 'L' }))
 }
+
+// ── reader & word list ──
+/** A card state list from jpdb (["learning"], ["locked","new"], null …) → one state for colours/labels. */
+export function stateOf(state) {
+  const s = state || []
+  if (!s.length) return 'none' // not in any of my decks
+  for (const k of ['blacklisted', 'failed', 'due', 'known', 'never-forget', 'learning', 'new', 'suspended', 'locked', 'redundant']) if (s.includes(k)) return k === 'never-forget' ? 'known' : k === 'failed' ? 'due' : k
+  return 'none'
+}
+export const STATE_LABEL = { none: 'ikke i kortstokk', new: 'ny', learning: 'lærer', due: 'til repetisjon', known: 'kan', blacklisted: 'ignorert', suspended: 'pauset', locked: 'låst', redundant: 'overflødig' }
+
+/** jpdb splits a Japanese text into words (readings, meanings, my card state). */
+export async function parseText(text) {
+  return api('jpdb_parse', { text })
+}
+
+let wordsCache = null
+/** Every word in my decks + my own decks (that words can be added to). */
+export async function fetchWords(force = false) {
+  if (!wordsCache || force) wordsCache = fetch('api.php?action=jpdb_words', { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.error) throw new Error(j.error); return j })
+  try { return await wordsCache } catch (e) { wordsCache = null; throw e }
+}
+
+/** Add a word to one of my decks ('new' = a new "niben.no" deck). */
+export async function addWord(word, deck) {
+  const r = await api('jpdb_add', { vid: word.vid, sid: word.sid, deck })
+  wordsCache = null
+  return r
+}
+
+/** jpdb on one word (admin): 'remove' (from deck) | 'never-forget' | 'blacklist' | 'unmark' | 'sentence'. */
+export async function cardAction(word, op, extra = {}) {
+  const r = await api('jpdb_card', { vid: word.vid, sid: word.sid, op, ...extra })
+  wordsCache = null
+  return r
+}
+/** My decks on jpdb (admin): 'create' | 'rename' | 'clear' | 'delete'. */
+export async function deckAction(op, extra = {}) {
+  const r = await api('jpdb_deck', { op, ...extra })
+  wordsCache = null
+  return r
+}

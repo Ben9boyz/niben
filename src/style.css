@@ -156,7 +156,6 @@ button { font: inherit; color: inherit; }
   margin: 0 auto;
   padding: 120px 24px 120px;
 }
-.page-head { margin-bottom: 36px; }
 .eyebrow {
   display: inline-flex;
   align-items: center;
@@ -176,7 +175,6 @@ button { font: inherit; color: inherit; }
   background: linear-gradient(135deg, var(--accent-2), var(--accent));
   box-shadow: 0 0 12px var(--accent-glow);
 }
-.title { font-size: clamp(2.4rem, 6vw, 4.2rem); font-weight: 800; }
 .lead { font-size: 1.15rem; color: var(--text-2); max-width: 60ch; margin-top: 14px; }
 .grad {
   background: linear-gradient(100deg, var(--accent) 10%, var(--accent-2) 60%, var(--accent) 100%);
@@ -225,19 +223,6 @@ button { font: inherit; color: inherit; }
   color: var(--accent);
 }
 
-.icon-btn {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  color: var(--text-2);
-  transition: background 0.25s, color 0.25s, transform 0.4s var(--spring);
-}
-.icon-btn:hover { background: var(--accent-soft); color: var(--accent); transform: rotate(-12deg) scale(1.08); }
 
 /* ───────────────────────── Motion helpers ───────────────────────── */
 .rise {
@@ -263,15 +248,6 @@ button { font: inherit; color: inherit; }
 
 .canvas-host { position: relative; width: 100%; height: 100%; }
 .canvas-host canvas { display: block; width: 100% !important; height: 100% !important; outline: none; }
-.loading-dot {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: var(--text-3);
-  font-size: 0.9rem;
-  pointer-events: none;
-}
 
 .empty {
   padding: 18px;
@@ -380,20 +356,10 @@ button { font: inherit; color: inherit; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .actions .btn { padding: 10px 18px; font-size: 0.9rem; }
 
-.hint-line {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.82rem;
-  color: var(--text-3);
-  padding: 0 24px 14px;
-}
-.hint-line svg { flex: none; color: var(--accent); }
 
 @media (max-width: 900px) {
   .panel-head { padding: 16px 20px 8px; }
   .panel-head h2 { font-size: 1.45rem; }
-  .hint-line { display: none; }
 }
 
 html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
@@ -430,7 +396,7 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 /* ───────────────────────── Plain ("enkel") pages ───────────────────────── */
 /* plain version: the page scrolls normally (overflow left visible so position: sticky works) */
 html.classic, html.classic body { height: auto; overflow: visible; overflow-x: clip; overscroll-behavior: auto; }
-.cpage { width: min(1120px, 100%); margin: 0 auto; padding: 40px 24px 120px; }
+.cpage { width: min(var(--page-max, 1360px), 100%); margin: 0 auto; padding: 40px 32px 120px; }
 /* desktop: the nav is a rail on the left (see NavBar) – everything else keeps clear of it */
 :root { --rail: 0px; }
 @media (min-width: 721px) { :root { --rail: 92px; } }
@@ -441,7 +407,7 @@ html.player-shell { --rail: 0px; }
 .cpage-head p { color: var(--text-2); margin-top: 8px; font-size: 1.05rem; max-width: 60ch; }
 .card { border-radius: 24px; padding: 20px; }
 .grid { display: grid; gap: 16px; }
-@media (max-width: 720px) { .cpage { padding: 84px 16px 120px; } }
+@media (max-width: 720px) { .cpage { padding: calc(76px + env(safe-area-inset-top)) 16px 120px; } }
 
 /* panels grow when something is selected – let their content grow with them */
 .panel { container-type: inline-size; }
@@ -466,3 +432,46 @@ html.player-shell .cpage { padding-top: 80px; padding-bottom: 130px; }
   html.player-shell .dock:not(.focus) { top: auto !important; bottom: 132px !important; }
   html.player-shell .cpage { padding-bottom: 160px; }
 }
+
+/* phones: the page title takes too much room. With sub-tabs, the tabs are the title; otherwise a
+   smaller title without the eyebrow and intro line. In the 3D sheet: no eyebrow / intro line. */
+@media (max-width: 720px) {
+  .flat-tabs ~ .cpage .cpage-head { display: none; }
+  .cpage-head { margin-bottom: 14px; }
+  .cpage-head .eyebrow, .cpage-head p { display: none; }
+  .cpage-head h1 { font-size: 1.7rem; }
+  .dock .panel-head .eyebrow, .dock .panel-head p { display: none; }
+  .dock .panel-head { padding: 12px 18px 6px; }
+  .dock .panel-head h2 { font-size: 1.25rem; }
+}
+
+/* ── phones, plain version: an app-like top bar (NavBar's .mtop) with the page name and the buttons ── */
+@media (max-width: 720px) {
+  html.classic .mtop {
+    position: fixed; z-index: 39; top: 0; left: 0; right: 0;
+    display: flex; align-items: center; gap: 10px;
+    height: calc(60px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 120px 0 16px;
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%);
+    border-bottom: 1px solid transparent; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  html.classic .mtop.scrolled { border-bottom-color: var(--glass-border); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06); }
+  .mtop-brand { display: flex; align-items: center; height: 30px; pointer-events: auto; }
+  .mtop-brand svg { height: 30px; }
+  .mtop b { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* the buttons sit in the bar: smaller, flat */
+  html.classic .nav-wrap .theme, html.classic .nav-wrap .mode { top: calc(10px + env(safe-area-inset-top)); width: 40px; height: 40px; padding: 0; justify-content: center; box-shadow: none; }
+  html.classic .nav-wrap .theme { right: 12px; }
+  html.classic .nav-wrap .mode { right: 58px; }
+  html.classic .nav-wrap .mode span { display: none; }
+  html.classic .nav-wrap .admin-chip { top: calc(10px + env(safe-area-inset-top)); left: auto; right: 104px; width: 40px; height: 40px; }
+}
+@media (max-width: 720px) { .flat-tabs ~ .cpage { padding-top: 16px; } }
+
+/* ── shared bits (one look across the pages) ── */
+/* small capital label over a section ("NYLIG SPILT", "ANIME" …) */
+.label-caps { font-size: 0.76rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+/* "show more" under a list */
+.more-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px; border: 0; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font: 600 0.86rem var(--font); cursor: pointer; transition: filter 0.2s; }
+.more-btn:hover { filter: brightness(1.06); }
+.more-btn .up { transform: rotate(180deg); }
