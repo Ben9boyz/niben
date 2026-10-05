@@ -8,6 +8,7 @@ export interface Pick extends Partial<Album>, Partial<Track> {
   name: string
   note?: string
   kind?: string
+  why?: string
 }
 interface DiscoverReply { picks?: Pick[]; recs?: Pick[]; at?: number; hasKey?: boolean; error?: string }
 

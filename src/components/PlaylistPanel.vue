@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue'
 import { sorted } from '../composables/useSort'
 import { spotify, prefetchTracks } from '../composables/useSpotify'
@@ -11,15 +11,17 @@ import MusicDetail from './MusicDetail.vue'
 import { Plus } from 'lucide-vue-next'
 import { admin } from '../composables/useAdmin'
 import { showMenu } from '../composables/useContextMenu'
+import { targetEl } from '../lib/dom'
+import type { GridItem } from '../types'
 import { playlistsMenu, promptNewPlaylist } from '../lib/menus'
 
 // Panel twin of the iPod: same selected playlist, same highlighted row (room.ipod) – and the same
 // search text, so typing here filters the iPod's list too.
-defineProps({ search: { type: Boolean, default: true } }) // false: the page has its own search bar
+withDefaults(defineProps<{ search?: boolean /* false: the page has its own search bar */ }>(), { search: true })
 loadGroups()
-const q = computed({ get: () => room.ipod.q, set: (v) => { room.ipod.q = v; room.ipod.active = 0 } })
+const q = computed({ get: () => room.ipod.q, set: (v: string) => { room.ipod.q = v; room.ipod.active = 0 } })
 const playlist = computed(() => room.ipod.playlist)
-const items = computed(() => {
+const items = computed((): GridItem[] => {
   const n = q.value.trim().toLowerCase()
   const list = n ? spotify.playlists.filter((p) => p.name.toLowerCase().includes(n)) : spotify.playlists
   return sorted('playlist', list).map((p) => ({ uri: p.uri, name: p.name, sub: p.count ? `${p.count} låter` : p.owner, image: p.image || p.thumb }))
@@ -28,20 +30,20 @@ const items = computed(() => {
 const cursorUri = computed(() => { const r = ipodRows.value[room.ipod.active]; return r?.kind === 'playlist' ? r.item.uri : null })
 
 // right-click in the empty space: a new playlist
-function emptyMenu(e) { if (!admin.loggedIn || e.defaultPrevented || e.target.closest?.('.cell, input, button, a')) return; showMenu(e, 'Spillelister', playlistsMenu()) }
-function open(it) {
+function emptyMenu(e: MouseEvent) { if (!admin.loggedIn || e.defaultPrevented || targetEl(e).closest('.cell, input, button, a')) return; showMenu(e, 'Spillelister', playlistsMenu()) }
+function open(it: GridItem) {
   if (room.musicView === 'ipodDock') room.musicView = 'ipod' // lift the iPod up
-  room.ipod.playlist = spotify.playlists.find((p) => p.uri === it.uri)
+  room.ipod.playlist = spotify.playlists.find((p) => p.uri === it.uri) ?? null
   room.ipod.view = 'playlist'
   room.ipod.active = 0
 }
-function hover(it) {
+function hover(it: GridItem) {
   prefetchTracks(it.uri)
-  const i = ipodRows.value.findIndex((r) => r.item?.uri === it.uri)
+  const i = ipodRows.value.findIndex((r) => r.kind === 'playlist' && r.item.uri === it.uri)
   if (i >= 0) room.ipod.active = i
 }
 function back() {
-  room.ipod.active = Math.max(0, ipodRows.value.findIndex((r) => r.item?.uri === playlist.value?.uri))
+  room.ipod.active = Math.max(0, ipodRows.value.findIndex((r) => r.kind === 'playlist' && r.item.uri === playlist.value?.uri))
   room.ipod.view = 'menu'
   room.ipod.playlist = null
 }

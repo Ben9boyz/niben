@@ -1,43 +1,46 @@
-<script setup>
+<script setup lang="ts" generic="T extends GridItem">
 import { ref, computed } from 'vue'
 import { ChevronRight, ChevronLeft } from 'lucide-vue-next'
 import CoverGrid from './CoverGrid.vue'
 import FolderIcon from './FolderIcon.vue'
 import { User, Users } from 'lucide-vue-next'
-import { groups, sectionsOf, moveTo, groupOf, flatGroups, isCollapsed, toggleCollapsed, groupCover, topGroups, childrenOf, countIn, openFolder } from '../composables/useGroups'
+import { groups, sectionsOf, type Section, moveTo, groupOf, flatGroups, isCollapsed, toggleCollapsed, groupCover, topGroups, childrenOf, countIn, openFolder } from '../composables/useGroups'
 import { admin } from '../composables/useAdmin'
 import { drag, startItemDrag, endDrag } from '../composables/useDrag'
 import { notify } from '../composables/useSpotify'
+import { targetEl } from '../lib/dom'
+import type { Group, GridItem } from '../types'
 
 // The cover grid split into my groups (headings, in my order). With grouping off – or before the groups have
 // loaded – it is just the plain grid. In edit mode (admin) every tile has a group picker and can be dragged
 // onto another group.
-const props = defineProps({
-  items: { type: Array, required: true },
-  selectedUri: { type: String, default: null },
-  playingUri: { type: String, default: null },
-  cursorUri: { type: String, default: null },
-  flat: Boolean, // searching: just the matches, no folders
-  byArtist: Boolean, // albums: may be grouped by artist (the third view)
-})
-const emit = defineEmits(['pick', 'hover'])
+const props = withDefaults(defineProps<{
+  items: T[]
+  selectedUri?: string | null
+  playingUri?: string | null
+  cursorUri?: string | null
+  flat?: boolean // searching: just the matches, no folders
+  byArtist?: boolean // albums: may be grouped by artist (the third view)
+}>(), { selectedUri: null, playingUri: null, cursorUri: null })
+const emit = defineEmits<{ pick: [item: T]; hover: [item: T] }>()
 
 const grouped = computed(() => groups.on && groups.loaded && groups.list.length > 0)
 // which view: folders in the grid · sections · albums by artist (only for albums)
 const viewMode = computed(() => (groups.view === 'artist' ? (props.byArtist ? 'artist' : 'mapper') : groups.view))
 const plain = computed(() => !groups.on || props.flat || (viewMode.value !== 'artist' && !grouped.value))
-const artistSections = computed(() => {
-  const by = new Map()
-  if (groups.artist) { // one artist picked in the list on the left
-    const its = props.items.filter((i) => (i.sub || 'Ukjent artist') === groups.artist)
-    return its.length ? [{ group: { id: `artist:${groups.artist}`, name: groups.artist }, items: its, depth: 0, label: groups.artist }] : []
+const artistSections = computed<Section<T>[]>(() => {
+  const by = new Map<string, T[]>()
+  const picked = groups.artist
+  if (picked) { // one artist picked in the list on the left
+    const its = props.items.filter((i) => (i.sub || 'Ukjent artist') === picked)
+    return its.length ? [{ group: { id: `artist:${picked}`, name: picked }, items: its, depth: 0, label: picked }] : []
   }
-  for (const it of props.items) { const k = it.sub || 'Ukjent artist'; if (!by.has(k)) by.set(k, []); by.get(k).push(it) }
-  const nb = (a, b) => a.localeCompare(b, 'nb')
+  for (const it of props.items) { const k = it.sub || 'Ukjent artist'; const list = by.get(k); if (list) list.push(it); else by.set(k, [it]) }
+  const nb = (a: string, b: string) => a.localeCompare(b, 'nb')
   // artists with several albums get a section each (most first); the rest share one, A–Å
   const many = [...by.entries()].filter(([, v]) => v.length > 1).sort((a, b) => b[1].length - a[1].length || nb(a[0], b[0]))
-  const one = [...by.values()].filter((v) => v.length === 1).map((v) => v[0]).sort((a, b) => nb(a.sub || '', b.sub || ''))
-  const out = many.map(([name, its]) => ({ group: { id: `artist:${name}`, name }, items: its, depth: 0, label: name }))
+  const one = [...by.values()].filter((v) => v.length === 1).flatMap((v) => v).sort((a, b) => nb(a.sub || '', b.sub || ''))
+  const out: Section<T>[] = many.map(([name, its]) => ({ group: { id: `artist:${name}`, name }, items: its, depth: 0, label: name }))
   if (one.length) out.push({ group: { id: 'artist:_en', name: 'Én plate hver' }, items: one, depth: 0, label: 'Én plate hver' })
   return out
 })
@@ -50,31 +53,31 @@ const pickers = computed(() => flatGroups())
 const uris = computed(() => props.items.map((i) => i.uri))
 const cur = computed(() => (groups.list.some((g) => g.id === groups.sel) ? groups.sel : null)) // the folder I'm in
 const curGroup = computed(() => groups.list.find((g) => g.id === cur.value) || null)
-const parentOfCur = computed(() => (curGroup.value?.parent ? groups.list.find((g) => g.id === curGroup.value.parent) : null))
+const parentOfCur = computed(() => { const p = curGroup.value?.parent; return p ? groups.list.find((g) => g.id === p) : null })
 const folders = computed(() => (cur.value ? childrenOf(cur.value) : topGroups()).filter((g) => canDrag.value || countIn(g.id, uris.value) > 0))
 const itemsHere = computed(() => props.items.filter((it) => { const a = groups.assign[it.uri]; return cur.value ? a === cur.value : !groups.list.some((g) => g.id === a) }))
 // editing shows everything (so a tile can be dropped anywhere); otherwise a section can be folded in
-const folded = (s, i) => !movable.value && isCollapsed(s.group.id, i)
+const folded = (s: Section<T>, i: number) => !movable.value && isCollapsed(s.group.id, i)
 
-async function move(uri, id) {
+async function move(uri: string, id: string) {
   const r = await moveTo(uri, id)
-  if (!r.ok) notify(r.error, true)
+  if (!r.ok) notify(r.error ?? '', true)
 }
 
 // drag a tile onto another group's heading / area
-const over = ref(null)
-function onDragStart(e) {
-  const cell = e.target.closest?.('[data-uri]')
-  if (cell) startItemDrag(e, cell.dataset.uri)
+const over = ref<string | null>(null)
+function onDragStart(e: DragEvent) {
+  const cell = targetEl(e).closest<HTMLElement>('[data-uri]')
+  if (cell?.dataset.uri) startItemDrag(e, cell.dataset.uri)
 }
-function onDrop(e, id) {
+function onDrop(e: DragEvent, id: string) {
   e.preventDefault()
   const uri = drag.item
   over.value = null
   endDrag()
   if (uri && id !== '_' && groups.assign[uri] !== id) move(uri, id)
 }
-const allow = (e, id) => { if (canDrag.value && drag.item) { e.preventDefault(); over.value = id } }
+const allow = (e: DragEvent, id: string) => { if (canDrag.value && drag.item) { e.preventDefault(); over.value = id } }
 </script>
 
 <template>
@@ -83,7 +86,7 @@ const allow = (e, id) => { if (canDrag.value && drag.item) { e.preventDefault();
     <nav v-if="cur" class="crumbs" aria-label="Mappesti">
       <button @click="openFolder(null)"><ChevronLeft :size="14" aria-hidden="true" />Alle</button>
       <template v-if="parentOfCur"><ChevronRight :size="12" aria-hidden="true" /><button :class="{ over: over === parentOfCur.id }" @click="openFolder(parentOfCur.id)" @dragover="allow($event, parentOfCur.id)" @dragleave="over === parentOfCur.id && (over = null)" @drop="canDrag && onDrop($event, parentOfCur.id)">{{ parentOfCur.name }}</button></template>
-      <ChevronRight :size="12" aria-hidden="true" /><b>{{ curGroup.name }}</b>
+      <ChevronRight :size="12" aria-hidden="true" /><b>{{ curGroup?.name }}</b>
     </nav>
     <CoverGrid
       :items="itemsHere"

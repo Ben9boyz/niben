@@ -1,22 +1,25 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { Sun, Moon, Radio, Check } from 'lucide-vue-next'
-import { useTheme } from '../composables/useTheme'
+import { useTheme, type ThemeChoice } from '../composables/useTheme'
+import { targetEl } from '../lib/dom'
+import type { Component } from 'vue'
 import { calm, setCalm } from '../composables/useCalm'
 import { Wind } from 'lucide-vue-next'
 
 // Light / dark: a button with a small menu – "Live" (day and night where I live), "Lys" and "Mørk".
 const { theme, mode, setMode, live } = useTheme()
 const open = ref(false)
-const root = ref(null)
-const menuEl = ref(null)
-const pos = ref({})
+const root = ref<HTMLElement | null>(null)
+const menuEl = ref<HTMLElement | null>(null)
+const pos = ref<Record<string, string>>({})
 async function toggleMenu() {
   open.value = !open.value
   if (!open.value) return
   // the button sits in the rail at the left (phones too): the menu opens beside it, bottom edges lined up, and is
   // kept inside the screen – measured after it has been drawn so it never floats off somewhere
-  const r = root.value.getBoundingClientRect()
+  const r = root.value?.getBoundingClientRect()
+  if (!r) return
   pos.value = { left: `${r.right + 10}px`, top: `${Math.max(8, r.bottom - 300)}px`, visibility: 'hidden' }
   await nextTick()
   const h = menuEl.value?.offsetHeight || 260, w = menuEl.value?.offsetWidth || 250
@@ -24,17 +27,17 @@ async function toggleMenu() {
   const top = Math.max(8, Math.min(r.bottom - h, innerHeight - h - 8))
   pos.value = { left: `${left}px`, top: `${top}px` }
 }
-const choices = computed(() => [
-  ...(live.configured ? [['live', live.name ? `Live – ${live.name}` : 'Live', Radio, 'Lys om dagen, mørkt om natten der jeg bor']] : []),
+const choices = computed((): [ThemeChoice, string, Component, string][] => [
+  ...(live.configured ? [['live', live.name ? `Live – ${live.name}` : 'Live', Radio, 'Lys om dagen, mørkt om natten der jeg bor'] as [ThemeChoice, string, Component, string]] : []),
   ['light', 'Lys', Sun, ''],
   ['dark', 'Mørk', Moon, ''],
 ])
-const onDoc = (e) => { if (open.value && !root.value?.contains(e.target) && !menuEl.value?.contains(e.target)) open.value = false }
+const onDoc = (e: Event) => { if (open.value && !root.value?.contains(targetEl(e)) && !menuEl.value?.contains(targetEl(e))) open.value = false }
 const close = () => { open.value = false }
-const onKey = (e) => { if (e.key === 'Escape') open.value = false }
+const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') open.value = false }
 onMounted(() => { document.addEventListener('pointerdown', onDoc); window.addEventListener('keydown', onKey); window.addEventListener('resize', close) })
 onBeforeUnmount(() => { document.removeEventListener('pointerdown', onDoc); window.removeEventListener('keydown', onKey); window.removeEventListener('resize', close) })
-function pick(id) { setMode(id); open.value = false }
+function pick(id: ThemeChoice) { setMode(id); open.value = false }
 </script>
 
 <template>

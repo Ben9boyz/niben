@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ChevronRight, PanelRightOpen, ChevronDown, PanelBottomOpen } from 'lucide-vue-next'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -23,7 +23,7 @@ import { admin } from '../composables/useAdmin'
 const data = useData()
 const route = useRoute()
 const router = useRouter()
-const dock = ref(null)
+const dock = ref<HTMLElement | null>(null)
 const isHome = computed(() => route.name === 'hjem')
 const isFocus = computed(() => (route.name === 'ovelse' || route.name === 'admin') && !decor.editing) // (editing the room: the room itself must be sharp)
 const isWide = computed(() => route.name === 'admin' || (route.name === 'ovelse' && room.practiceTab === 'akkorder'))
@@ -47,8 +47,8 @@ const collapsed = ref(false)
 // desktop: the side panel can be slid away so the 3D view (e.g. the held iPod) gets the whole screen.
 // Only the listening corner remembers it – every other station opens with its panel showing.
 const HIDE_KEY = 'niben-panel-hidden'
-function hiddenSet() {
-  try { return new Set(JSON.parse(localStorage.getItem(HIDE_KEY) || '[]')) } catch { return new Set() }
+function hiddenSet(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(HIDE_KEY) || '[]') as string[]) } catch { return new Set() }
 }
 const canHide = computed(() => !mobile.value && !isHome.value && !isFocus.value)
 const hidden = computed(() => canHide.value && room.panelHidden)
@@ -60,7 +60,7 @@ const listenPhone = computed(() => mobile.value && isMusic.value)
 watch(listenPhone, (v) => document.documentElement.classList.toggle('listen-phone', v), { immediate: true })
 onBeforeUnmount(() => document.documentElement.classList.remove('listen-phone'))
 const belowMini = computed(() => miniOn.value && !mobile.value && !hidden.value && !isFocus.value && !isHome.value)
-function setHidden(v) {
+function setHidden(v: boolean) {
   room.panelHidden = v
   const set = hiddenSet()
   if (route.name === 'lytte') v ? set.add('lytte') : set.delete('lytte')
@@ -76,19 +76,19 @@ watch(() => route.name, (n) => (room.panelHidden = n === 'lytte' && hiddenSet().
 
 // Tell the 3D view how much of the screen the panel covers,
 // so the camera keeps its subject centred in the free space.
-let ro
+let ro: ResizeObserver | undefined
 // width of the nav rail on the left (desktop), from the --rail CSS variable
 const RAIL = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rail')) || 0
 const panelW = ref(0)
 // the hide / show button sits at the vertical middle of the panel that is actually showing (it is often shorter than the screen)
-const toggleTop = ref(null)
+const toggleTop = ref<number | null>(null)
 function placeToggle() {
   const el = dock.value?.querySelector(':scope > .panel, :scope > section, :scope > div:not(.grabber)')
   if (!el || hidden.value) { toggleTop.value = null; return }
   const r = el.getBoundingClientRect()
   toggleTop.value = r.height > 20 ? Math.round(r.top + r.height / 2) : null
 }
-let toggleTimer = 0
+let toggleTimer: ReturnType<typeof setInterval> | undefined
 function measure() {
   if (dock.value && !hidden.value) panelW.value = dock.value.offsetWidth
   if (!room.api) return
@@ -106,12 +106,12 @@ function measure() {
   else room.api.setInsets({ left: RAIL(), right: hidden.value ? 0 : window.innerWidth - r.left, bottom: shell.value === 'player' ? 90 : 0 })
 }
 const mq = window.matchMedia('(max-width: 900px)')
-const onMq = (e) => { mobile.value = e.matches; nextTick(measure) }
+const onMq = (e: MediaQueryListEvent) => { mobile.value = e.matches; nextTick(measure) }
 
 onMounted(() => {
   toggleTimer = setInterval(placeToggle, 250)
   ro = new ResizeObserver(measure)
-  ro.observe(dock.value)
+  if (dock.value) ro.observe(dock.value)
   window.addEventListener('resize', measure)
   mq.addEventListener('change', onMq)
 })
@@ -151,7 +151,7 @@ watch(() => route.name, () => (collapsed.value = false))
     ref="dock"
     class="dock"
     :class="{ home: isHome, focus: isFocus, wide: isWide, expanded: isExpanded, big: isExpanded && route.name !== 'lytte', collapsed: collapsed && mobile && !isFocus, hidden }"
-    :style="belowMini ? { top: '86px' } : null"
+    :style="belowMini ? { top: '86px' } : undefined"
     :inert="hidden || undefined"
     v-show="!decor.editing"
   >
@@ -182,7 +182,7 @@ watch(() => route.name, () => (collapsed.value = false))
     v-if="canHide && room.ready"
     class="hide-toggle glass"
     :class="{ out: hidden }"
-    :style="[hidden ? null : { right: `${panelW + 20 - 16}px` }, toggleTop != null ? { top: `${toggleTop}px` } : null]"
+    :style="[hidden ? null : { right: `${panelW + 20 - 16}px` }, toggleTop != null ? { top: `${toggleTop}px` } : undefined]"
     :aria-label="hidden ? 'Vis panelet' : 'Skjul panelet'"
     :title="hidden ? 'Vis panelet' : 'Skjul panelet'"
     @click="setHidden(!hidden)"

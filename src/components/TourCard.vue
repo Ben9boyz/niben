@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { room } from '../composables/useRoom'
@@ -15,7 +15,7 @@ const phone = window.matchMedia('(max-width: 900px)')
 const total = computed(() => steps.value.length)
 const last = computed(() => tour.step === total.value - 1)
 
-let timer = 0
+let timer: ReturnType<typeof setTimeout> | undefined
 function maybeStart() {
   clearTimeout(timer)
   if (tour.active || tourDone() || !room.ready || route.name !== 'hjem') return
@@ -41,7 +41,7 @@ function next() {
   if (last.value) { endTour(); if (!tour.phone && route.name !== 'hjem') router.push('/'); return }
   nextStep()
 }
-const onKey = (e) => { if (tour.active && e.key === 'Escape') skip() }
+const onKey = (e: KeyboardEvent) => { if (tour.active && e.key === 'Escape') skip() }
 onMounted(() => window.addEventListener('keydown', onKey))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>

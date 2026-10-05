@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import PlayerControls from './PlayerControls.vue'
 import ProgressBar from './ProgressBar.vue'
@@ -20,7 +20,7 @@ const now = computed(() => spotify.now)
 
 <template>
   <section class="now" :class="{ playing: now?.playing, admin: admin.loggedIn, stacked: props.stacked, dropping: queueOver }" v-on="queueDrop">
-    <div class="cover" :class="{ link: !!now?.name }" :role="now?.name ? 'button' : null" :tabindex="now?.name ? 0 : null" :title="now?.name ? 'Åpne albumet' : null" @click="openNowAlbum" @keydown.enter="openNowAlbum">
+    <div class="cover" :class="{ link: !!now?.name }" :role="now?.name ? 'button' : undefined" :tabindex="now?.name ? 0 : undefined" :title="now?.name ? 'Åpne albumet' : undefined" @click="openNowAlbum" @keydown.enter="openNowAlbum">
       <img crossorigin="anonymous" v-if="now?.image" :src="(props.stacked && now.image_large) || now.image" alt="" />
       <div v-else class="vinyl-ph"></div>
       <span v-if="now?.playing" class="eq" aria-hidden="true"><i></i><i></i><i></i></span>

@@ -1,25 +1,26 @@
-<script setup>
+<script setup lang="ts">
 import PitchReading from './PitchReading.vue'
 import { ref, computed, onMounted } from 'vue'
 import { ArrowUpRight, Plus, Check, X, Volume2, Infinity as Forever, EyeOff, Trash2, Quote } from 'lucide-vue-next'
-import { jpdbUrl, stateOf, STATE_LABEL, fetchWords, addWord, cardAction } from '../composables/useJapanese'
+import { jpdbUrl, stateOf, STATE_LABEL, fetchWords, addWord, cardAction, type JpWord, type WordList } from '../composables/useJapanese'
 import { speak, canSpeak } from '../lib/speak'
-import { admin } from '../composables/useAdmin'
+import { admin, errorMessage } from '../composables/useAdmin'
+import type { Flash } from '../types'
 
 // One word in detail (from the reader or the word list): spelling, reading with pitch accent,
 // meanings, frequency, my card state – and for me, "add to a deck".
-const props = defineProps({
-  word: { type: Object, required: true },
-  sentence: { type: String, default: '' }, // the sentence the word was found in (reader) – can go on its card
-})
-const emit = defineEmits(['close', 'added'])
+const props = withDefaults(defineProps<{
+  word: JpWord
+  sentence?: string // the sentence the word was found in (reader) – can go on its card
+}>(), { sentence: '' })
+const emit = defineEmits<{ close: []; added: [word: JpWord] }>()
 
 const st = computed(() => stateOf(props.word.state))
 const meanings = computed(() => (props.word.meanings || (props.word.meaning ? [props.word.meaning] : [])).map((m) => (Array.isArray(m) ? m.join('; ') : m)))
 
-const decks = ref([])
-const deck = ref('')
-const msg = ref(null)
+const decks = ref<NonNullable<WordList['decks']>>([])
+const deck = ref<string | number>('')
+const msg = ref<Flash | null>(null)
 const busy = ref(false)
 onMounted(async () => {
   if (!admin.loggedIn) return
@@ -30,14 +31,14 @@ onMounted(async () => {
 })
 // what jpdb lets me do with a word I already have
 const myDecks = computed(() => decks.value.filter((d) => (props.word.decks || []).includes(d.id)))
-async function act(op, extra = {}, done = 'Gjort.') {
+async function act(op: string, extra: Record<string, unknown> = {}, done = 'Gjort.') {
   busy.value = true
   msg.value = null
   try {
     await cardAction(props.word, op, extra)
     msg.value = { ok: done }
   } catch (e) {
-    msg.value = { error: e.message }
+    msg.value = { error: errorMessage(e) }
   } finally {
     busy.value = false
   }
@@ -50,7 +51,7 @@ async function add() {
     msg.value = { ok: 'Lagt til – du får det som nytt kort på jpdb.' }
     emit('added', props.word)
   } catch (e) {
-    msg.value = { error: e.message }
+    msg.value = { error: errorMessage(e) }
   } finally {
     busy.value = false
   }

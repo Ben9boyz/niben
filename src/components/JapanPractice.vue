@@ -1,17 +1,19 @@
-<script setup>
+<script setup lang="ts">
+import { errorMessage } from '../composables/useAdmin'
 import PitchReading from './PitchReading.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ArrowUpRight, RotateCcw, X, Volume2 } from 'lucide-vue-next'
 import { speak, canSpeak } from '../lib/speak'
-import { fetchQueue, gradeCard, GRADES, jpdbUrl, loadJapanese, newPerSession, setNewPerSession } from '../composables/useJapanese'
+import { targetEl, selectOf } from '../lib/dom'
+import { fetchQueue, gradeCard, GRADES, jpdbUrl, loadJapanese, newPerSession, setNewPerSession, type JpCard, type JpGrade } from '../composables/useJapanese'
 
 // Flashcard review against jpdb: word → (space) reading, pitch, meanings → grade 1–5.
 // Each grade is sent to jpdb right away. Cards you didn't remember come back at the end.
-const emit = defineEmits(['close'])
+const emit = defineEmits<{ close: [] }>()
 // phones: the practice takes the whole screen (nothing else to look at), the grades sit in the thumb zone at the bottom
 const phone = window.matchMedia('(max-width: 720px)').matches
 
-const queue = ref([])
+const queue = ref<JpCard[]>([])
 const i = ref(0)
 const revealed = ref(false)
 const loading = ref(true)
@@ -32,14 +34,14 @@ async function load() {
   try {
     queue.value = await fetchQueue(newCount.value)
   } catch (e) {
-    error.value = e.message
+    error.value = errorMessage(e)
     queue.value = []
   } finally {
     loading.value = false
   }
 }
 
-async function grade(g) {
+async function grade(g: JpGrade) {
   if (!card.value || !revealed.value || busy.value) return
   busy.value = true
   error.value = ''
@@ -54,18 +56,20 @@ async function grade(g) {
     i.value++
     revealed.value = false
   } catch (e) {
-    error.value = e.message
+    error.value = errorMessage(e)
   } finally {
     busy.value = false
   }
 }
 
-function onKey(e) {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return
+function onKey(e: KeyboardEvent) {
+  const tag = targetEl(e).tagName
+  if (tag === 'INPUT' || tag === 'SELECT') return
   if (e.code === 'Space' || e.key === 'Enter') {
     if (card.value && !revealed.value) { reveal(); e.preventDefault() }
   } else if (revealed.value && /^[1-5]$/.test(e.key)) {
-    grade(GRADES[+e.key - 1].id)
+    const g = GRADES[+e.key - 1]
+    if (g) grade(g.id)
     e.preventDefault()
   } else if ((e.key === 's' || e.key === 'S') && card.value) say()
   else if (e.key === 'Escape') emit('close')
@@ -78,7 +82,7 @@ function reveal() {
 }
 function say() { if (card.value) speak(card.value.reading || card.value.spelling) }
 
-function changeNew(n) {
+function changeNew(n: number) {
   newCount.value = n
   setNewPerSession(n)
 }
@@ -108,7 +112,7 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); loadJapane
       <p v-else>Ingen kort å øve på akkurat nå. Ta noen nye ord?</p>
       <label class="newsel">
         Nye ord per runde
-        <select :value="newCount" @change="changeNew(+$event.target.value)">
+        <select :value="newCount" @change="changeNew(+selectOf($event).value)">
           <option v-for="n in [0, 5, 10, 20, 30]" :key="n" :value="n">{{ n }}</option>
         </select>
       </label>
@@ -132,7 +136,7 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); loadJapane
           <li v-for="(m, k) in card.meanings" :key="k">{{ m.join('; ') }}</li>
         </ol>
         <div class="meta">
-          <span v-for="p in card.pos.slice(0, 4)" :key="p" class="tag">{{ p }}</span>
+          <span v-for="p in (card.pos ?? []).slice(0, 4)" :key="p" class="tag">{{ p }}</span>
           <span v-if="card.freq" class="tag freq">#{{ card.freq }}</span>
           <a :href="jpdbUrl(card)" target="_blank" rel="noopener" class="jl" @click.stop>jpdb <ArrowUpRight :size="13" /></a>
         </div>

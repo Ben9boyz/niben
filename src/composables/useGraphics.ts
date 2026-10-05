@@ -99,9 +99,18 @@ export function setPreset(name: string): void {
   save()
 }
 /** Change one option. From "Auto" the values start at what Auto currently uses, so only the one thing changes. */
-export function setOption<K extends GfxKey>(key: K, value: GfxValues[K], autoValues: Partial<GfxValues> | null = null): void {
+export function setOption<K extends GfxKey>(key: K, value: GfxValues[K], autoValues: Partial<Record<GfxKey, unknown>> | null = null): void {
   if (gfx.mode === 'auto' && autoValues) Object.assign(gfx, Object.fromEntries(Object.entries(autoValues).filter(([, v]: [string, unknown]) => v !== undefined && v !== 'auto')))
   setValue(key, value)
+  gfx.mode = 'custom'
+  gfx.preset = 'custom'
+  save()
+}
+/** Same as setOption, for a control that only knows the key and a raw value: a value of the wrong kind is ignored. */
+export function setOptionLoose(key: GfxKey, value: unknown, autoValues: Partial<Record<GfxKey, unknown>> | null = null): void {
+  if (typeof value !== typeof gfx[key]) return
+  if (gfx.mode === 'auto' && autoValues) Object.assign(gfx, Object.fromEntries(Object.entries(autoValues).filter(([, v]: [string, unknown]) => v !== undefined && v !== 'auto')))
+  Object.assign(gfx, { [key]: value })
   gfx.mode = 'custom'
   gfx.preset = 'custom'
   save()

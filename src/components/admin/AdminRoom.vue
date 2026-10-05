@@ -1,22 +1,25 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { Upload, Trash2, Eye, EyeOff, Move, Box } from 'lucide-vue-next'
-import { decor, loadDecor, uploadDecor, removeDecor, changed } from '../../composables/useDecor'
+import { decor, loadDecor, uploadDecor, removeDecor, changed, type DecorItem } from '../../composables/useDecor'
 import { mode } from '../../composables/useMode'
 import { useRouter } from 'vue-router'
+import { inputOf } from '../../lib/dom'
 
 // My own 3D models: upload a .glb here, then "Rediger rommet" to put it where it belongs.
 onMounted(loadDecor)
 const router = useRouter()
 const name = ref('')
-const file = ref(null)
+const file = ref<File | null>(null)
 async function add() {
   if (!file.value) return
   const it = await uploadDecor(file.value, name.value)
-  if (it) { file.value = null; name.value = ''; const i = document.getElementById('decor-file'); if (i) i.value = '' }
+  if (it) { file.value = null; name.value = ''; const i = document.getElementById('decor-file'); if (i instanceof HTMLInputElement) i.value = '' }
 }
-const toggle = (it) => { it.visible = it.visible === false; changed() }
+const toggle = (it: DecorItem) => { it.visible = it.visible === false; changed() }
 const rename = () => changed()
+const askRemove = (it: DecorItem) => { if (confirm(`Slette «${it.name}»?`)) void removeDecor(it.id) }
+const pickFile = (e: Event) => { file.value = inputOf(e).files?.[0] ?? null }
 function edit() { decor.editing = true; if (mode.value !== 'rom') router.push('/') }
 </script>
 
@@ -26,7 +29,7 @@ function edit() { decor.editing = true; if (mode.value !== 'rom') router.push('/
 
     <form class="up glass-in" @submit.prevent="add">
       <b class="label-caps"><Upload :size="13" aria-hidden="true" />Ny modell</b>
-      <input id="decor-file" type="file" accept=".glb,model/gltf-binary" aria-label="GLB-fil" @change="file = $event.target.files?.[0] || null" />
+      <input id="decor-file" type="file" accept=".glb,model/gltf-binary" aria-label="GLB-fil" @change="pickFile" />
       <input v-model="name" type="text" maxlength="50" placeholder="Navn (valgfritt)" aria-label="Navn" />
       <div class="btns"><button class="btn primary" :disabled="!file || decor.busy === 'upload'">{{ decor.busy === 'upload' ? 'Laster opp …' : 'Last opp' }}</button></div>
     </form>
@@ -42,7 +45,7 @@ function edit() { decor.editing = true; if (mode.value !== 'rom') router.push('/
         <Box :size="17" aria-hidden="true" />
         <input v-model="it.name" type="text" maxlength="50" aria-label="Navn" @change="rename" />
         <button class="ic" :title="it.visible === false ? 'Vis' : 'Skjul'" :aria-label="it.visible === false ? 'Vis' : 'Skjul'" @click="toggle(it)"><EyeOff v-if="it.visible !== false" :size="16" /><Eye v-else :size="16" /></button>
-        <button class="ic danger" title="Slett" aria-label="Slett" @click="confirm(`Slette «${it.name}»?`) && removeDecor(it.id)"><Trash2 :size="16" /></button>
+        <button class="ic danger" title="Slett" aria-label="Slett" @click="askRemove(it)"><Trash2 :size="16" /></button>
       </li>
     </ul>
     <p v-else-if="decor.loaded" class="muted">Ingen modeller ennå.</p>

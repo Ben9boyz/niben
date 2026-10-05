@@ -1,10 +1,11 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { ChevronLeft, ChevronRight, ArrowUpFromLine, Library, ScanEye, Smartphone, SkipBack, SkipForward, Play, Pause, RotateCw, X, Lock, Undo2 } from 'lucide-vue-next'
 import { room } from '../composables/useRoom'
 import { shelfAlbums } from '../composables/useGroups'
 import { spotify, lockLeft, play, control, findAlbum, fmtClock } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
+import { targetEl } from '../lib/dom'
 
 // Phones, the 3D listening corner: ONE small bar at the bottom with exactly what you can do where you are – no
 // side menus. At the turntable: down to the shelf · look from above · the iPod. From above: the buttons (back / play /
@@ -12,7 +13,7 @@ import { admin } from '../composables/useAdmin'
 // back · turn it over · play. Big, thumb-sized buttons that stay inside the safe area (nothing hides under the browser's bars).
 const busy = ref(false)
 const toast = ref('')
-const say = (t) => { toast.value = t; setTimeout(() => (toast.value = ''), 2600) }
+const say = (t: string) => { toast.value = t; setTimeout(() => (toast.value = ''), 2600) }
 
 const held = computed(() => (room.sel.musikk?.kind === 'album' ? findAlbum(room.sel.musikk.uri) : null))
 const shelfCount = computed(() => Math.min(shelfAlbums.value.length, 150))
@@ -33,7 +34,7 @@ const toIpod = () => { room.deckView = false; room.shelfView = false; room.sel.m
 const putIpodDown = () => { room.musicView = 'ipodDock' }
 const putBack = () => { room.sel.musikk = null; room.recordFlipped = false }
 const flip = () => { room.recordFlipped = !room.recordFlipped }
-function browse(d) {
+function browse(d: number) {
   const n = shelfCount.value
   if (n) room.peekIndex = (room.peekIndex + d + n) % n
 }
@@ -42,25 +43,29 @@ function takeOut() {
 }
 // a record in hand: ‹ › puts it back and takes its neighbour – flicking through the shelf with every record on the "screen"
 // (cover, name, play, turn over), the way "Ta ut" shows it
-function swap(d) {
+function swap(d: number) {
   const n = shelfCount.value
-  if (!n || !held.value) return
-  const i = shelfAlbums.value.findIndex((a) => a.uri === held.value.uri)
+  const cur = held.value
+  if (!n || !cur) return
+  const i = shelfAlbums.value.findIndex((a) => a.uri === cur.uri)
   const j = ((i < 0 ? room.peekIndex : i) + d + n) % n
   room.peekIndex = j
   room.recordFlipped = false
-  room.sel.musikk = { kind: 'album', uri: shelfAlbums.value[j].uri, t: Date.now() }
+  const next = shelfAlbums.value[j]
+  if (next) room.sel.musikk = { kind: 'album', uri: next.uri, t: Date.now() }
 }
 // a swipe sideways on the 3D view does the same as the arrows (not on the bar or the sheets)
 let sx = 0, sy = 0, sOn = false
-function onTouchStart(e) {
-  sOn = e.touches.length === 1 && !e.target.closest?.('.ld, .dock, .rback, .msw, .tour') && (state.value === 'held' || state.value === 'shelf')
-  if (sOn) { sx = e.touches[0].clientX; sy = e.touches[0].clientY }
+function onTouchStart(e: TouchEvent) {
+  const p = e.touches[0]
+  sOn = !!p && e.touches.length === 1 && !targetEl(e).closest('.ld, .dock, .rback, .msw, .tour') && (state.value === 'held' || state.value === 'shelf')
+  if (sOn && p) { sx = p.clientX; sy = p.clientY }
 }
-function onTouchEnd(e) {
+function onTouchEnd(e: TouchEvent) {
   if (!sOn) return
   sOn = false
   const t = e.changedTouches[0]
+  if (!t) return
   const dx = t.clientX - sx, dy = t.clientY - sy
   if (Math.abs(dx) < 56 || Math.abs(dy) > Math.abs(dx) * 0.6) return
   const d = dx < 0 ? 1 : -1
@@ -76,14 +81,14 @@ async function playHeld() {
   busy.value = true
   const r = isOn.value ? await control(playing.value ? 'pause' : 'resume') : await play(held.value.uri)
   busy.value = false
-  if (!r.ok) say(r.error)
+  if (!r.ok) say(r.error ?? '')
 }
-async function ctl(op) {
+async function ctl(op: 'next' | 'previous' | 'pause' | 'resume') {
   if (!admin.loggedIn || busy.value) return
   busy.value = true
   const r = await control(op)
   busy.value = false
-  if (!r.ok) say(r.error)
+  if (!r.ok) say(r.error ?? '')
 }
 const toggle = () => ctl(playing.value ? 'pause' : 'resume')
 </script>

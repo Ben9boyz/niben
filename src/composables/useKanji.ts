@@ -1,5 +1,7 @@
 // Kanji practice: the kanji in my jpdb words, details from kanjiapi.dev, stroke order from KanjiVG,
 // and a small spaced-repetition schedule kept in this browser.
+import type { JpWord } from './useJapanese'
+
 const INFO_KEY = 'niben-kanji-info2'
 const SRS_KEY = 'niben-kanji-srs'
 // days until the next review per box (box 0 = again in this session)
@@ -8,7 +10,7 @@ const BOX_DAYS = [0, 1, 3, 7, 16, 35, 90]
 const isKanji = (ch: string): boolean => /[一-龯㐀-䶿]/.test(ch)
 
 /** A word from my decks, as far as the kanji practice cares. */
-export interface KanjiWord { spelling: string; freq?: number | null; [key: string]: unknown }
+export type KanjiWord = JpWord
 export interface KanjiEntry { kanji: string; words: KanjiWord[] }
 export type KanjiGrade = 'again' | 'hard' | 'good' | 'easy'
 export interface KanjiInfo { keyword: string; meanings: string[]; on: string[]; kun: string[]; strokes?: number; jlpt?: number | null; grade?: number | null }

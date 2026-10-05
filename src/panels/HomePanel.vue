@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { tx } from '../composables/useTexts'
 import BrandLogo from '../components/BrandLogo.vue'
 import NowContent from '../components/NowContent.vue'

@@ -1,25 +1,27 @@
-<script setup>
+<script setup lang="ts">
+import { errorMessage } from '../composables/useAdmin'
 import { ref, watch } from 'vue'
 import { ChevronLeft, ArrowUpRight, User } from 'lucide-vue-next'
 import CoverGrid from './CoverGrid.vue'
-import { fetchArtist, openAlbumPage } from '../composables/useBrowse'
+import { fetchArtist, openAlbumPage, type ArtistInfo, type ArtistRef } from '../composables/useBrowse'
+import type { Album } from '../types'
 import { spotify } from '../composables/useSpotify'
 
 // An artist: picture, genres and all their albums. Tap an album to open it.
-const props = defineProps({ artist: { type: Object, required: true }, backLabel: { type: String, default: 'Tilbake' } })
-const emit = defineEmits(['back'])
-const data = ref(null)
+const props = withDefaults(defineProps<{ artist: ArtistRef; backLabel?: string }>(), { backLabel: 'Tilbake' })
+const emit = defineEmits<{ back: [] }>()
+const data = ref<ArtistInfo | null>(null)
 const error = ref('')
 watch(() => props.artist, async (a) => {
   data.value = null; error.value = ''
-  try { data.value = await fetchArtist(a) } catch (e) { error.value = e.message }
+  try { data.value = await fetchArtist(a) } catch (e) { error.value = errorMessage(e) }
 }, { immediate: true })
 
-const have = (uri) => spotify.albums.some((x) => x.uri === uri)
-const tiles = (list) => list.map((a) => ({ ...a, sub: [a.year, have(a.uri) ? 'i biblioteket' : null].filter(Boolean).join(' · '), image: a.image || a.thumb }))
-const kinds = (d) => [
-  { title: 'Album', list: d.albums.filter((a) => a.type !== 'single') },
-  { title: 'Singler og EP-er', list: d.albums.filter((a) => a.type === 'single') },
+const have = (uri: string) => spotify.albums.some((x) => x.uri === uri)
+const tiles = (list: Album[]) => list.map((a) => ({ ...a, sub: [a.year, have(a.uri) ? 'i biblioteket' : null].filter(Boolean).join(' · '), image: a.image || a.thumb }))
+const kinds = (d: ArtistInfo) => [
+  { title: 'Album', list: (d.albums ?? []).filter((a) => a.type !== 'single') },
+  { title: 'Singler og EP-er', list: (d.albums ?? []).filter((a) => a.type === 'single') },
 ].filter((k) => k.list.length)
 </script>
 
@@ -28,7 +30,7 @@ const kinds = (d) => [
     <header class="hero">
       <button class="back" @click="emit('back')"><ChevronLeft :size="16" />{{ backLabel }}</button>
       <div class="row">
-        <img v-if="data?.image_large || data?.image" crossorigin="anonymous" class="pic" :src="data.image_large || data.image" alt="" />
+        <img v-if="data?.image_large || data?.image" crossorigin="anonymous" class="pic" :src="data.image_large || data.image || undefined" alt="" />
         <div v-else class="pic ph"><User :size="40" /></div>
         <div class="info">
           <small>Artist</small>
@@ -45,7 +47,7 @@ const kinds = (d) => [
         <h4>{{ k.title }}</h4>
         <CoverGrid :items="tiles(k.list)" :playing-uri="spotify.now?.context" @pick="openAlbumPage($event)" />
       </section>
-      <p v-if="!data.albums.length" class="note">Fant ingen album.</p>
+      <p v-if="!data.albums?.length" class="note">Fant ingen album.</p>
     </template>
   </article>
 </template>

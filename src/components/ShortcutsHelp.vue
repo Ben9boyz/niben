@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { X, Keyboard } from 'lucide-vue-next'
 import { shortcuts, SHORTCUT_GROUPS } from '../composables/useShortcuts'
 </script>

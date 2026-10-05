@@ -1,18 +1,19 @@
-<script setup>
+<script setup lang="ts">
+import { errorMessage } from '../composables/useAdmin'
 import { ref, computed } from 'vue'
 import { ScanText, Eye, EyeOff } from 'lucide-vue-next'
-import { parseText, stateOf } from '../composables/useJapanese'
+import { parseText, stateOf, type ParsedText, type JpWord, type CardState } from '../composables/useJapanese'
 import JapanWord from './JapanWord.vue'
 
 // Paste Japanese text: jpdb splits it into words. Each word is coloured by how well I know it,
 // with furigana over the kanji; tap a word for its meaning (and to add it to a deck).
 const EXAMPLE = '今日は友達と一緒に東京の新しいカフェに行きました。コーヒーがとても美味しかったです。'
 const text = ref('')
-const result = ref(null)
+const result = ref<(ParsedText & { text: string }) | null>(null)
 const busy = ref(false)
 const error = ref('')
 const furigana = ref(true)
-const picked = ref(null)
+const picked = ref<JpWord | null>(null)
 const pickedAt = ref(0) // position of the picked word in the text
 // the sentence around the picked word (for "use the sentence on the card")
 const sentence = computed(() => {
@@ -34,23 +35,24 @@ async function read() {
     const r = await parseText(t)
     result.value = { text: t, ...r }
   } catch (e) {
-    error.value = e.message
+    error.value = errorMessage(e)
   } finally {
     busy.value = false
   }
 }
 
 // the text as runs: plain text between words, and words (with furigana parts)
-const runs = computed(() => {
+interface Run { plain?: string; word?: JpWord; state?: CardState; parts?: { base: string; rt?: string }[]; key?: number }
+const runs = computed<Run[]>(() => {
   const r = result.value
   if (!r) return []
-  const out = []
+  const out: Run[] = []
   let at = 0
   for (const t of [...r.tokens].sort((a, b) => a.pos - b.pos)) {
     if (t.pos > at) out.push({ plain: r.text.slice(at, t.pos) })
     const v = r.vocab[t.v]
     const surface = r.text.slice(t.pos, t.pos + t.len)
-    const parts = (t.furi || [surface]).map((f) => (Array.isArray(f) ? { base: f[0], rt: f[1] } : { base: f }))
+    const parts = (t.furi || [surface]).map((f): { base: string; rt?: string } => (Array.isArray(f) ? { base: f[0], rt: f[1] } : { base: f }))
     out.push({ word: v, state: stateOf(v?.state), parts, key: t.pos })
     at = t.pos + t.len
   }
@@ -86,7 +88,7 @@ const coverage = computed(() => {
       <p class="out" lang="ja" :class="{ nofuri: !furigana }">
         <template v-for="(r, i) in runs" :key="i">
           <span v-if="r.plain">{{ r.plain }}</span>
-          <button v-else class="tok" :class="[r.state, { on: picked === r.word }]" @click="picked = picked === r.word ? null : r.word; pickedAt = r.key">
+          <button v-else class="tok" :class="[r.state, { on: picked === r.word }]" @click="picked = picked === r.word ? null : r.word ?? null; pickedAt = r.key ?? 0">
             <template v-for="(p, k) in r.parts" :key="k"><ruby v-if="p.rt">{{ p.base }}<rt>{{ p.rt }}</rt></ruby><template v-else>{{ p.base }}</template></template>
           </button>
         </template>

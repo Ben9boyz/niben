@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { spotify, useSpotify, prefetchTracks, findAlbum } from '../composables/useSpotify'
@@ -12,21 +12,22 @@ import { sorted } from '../composables/useSort'
 import MusicDetail from './MusicDetail.vue'
 import SpotifySearch from './SpotifySearch.vue'
 import { Search as SearchIcon, X as CloseIcon } from 'lucide-vue-next'
+import type { Flash, GridItem } from '../types'
 
 // The record shelf: a grid of covers, or one record opened (mirrors the record picked in the 3D room).
-const props = defineProps({ search: { type: Boolean, default: true } }) // false: the page has its own search bar
+withDefaults(defineProps<{ search?: boolean /* false: the page has its own search bar */ }>(), { search: true })
 useSpotify()
 checkLogin()
 loadGroups()
 const route = useRoute()
-const msg = ref(null)
+const msg = ref<Flash | null>(null)
 if (route.query.spotify === 'ok') msg.value = { ok: 'Spotify er koblet til.' }
 if (route.query.spotify === 'feil') msg.value = { error: 'Klarte ikke å koble til Spotify. Prøv igjen.' }
 
 const q = ref('')
 const spot = ref(false) // searching all of Spotify (albums + songs) instead of just the shelf
 const sq = ref('')
-const rootEl = ref(null)
+const rootEl = ref<HTMLElement | null>(null)
 // in the room, the shelf search also pulls the matching records out of the shelf – and the camera goes there
 watch(q, (v) => {
   room.shelfQ = v
@@ -36,13 +37,13 @@ onBeforeUnmount(() => { room.shelfQ = '' })
 
 const selectedUri = computed(() => (room.sel.musikk?.kind === 'album' ? room.sel.musikk.uri : null))
 const album = computed(() => findAlbum(selectedUri.value))
-const items = computed(() => {
+const items = computed((): GridItem[] => {
   const n = q.value.trim().toLowerCase()
   const list = n ? spotify.albums.filter((a) => `${a.name} ${a.artist}`.toLowerCase().includes(n)) : spotify.albums
   return sorted('album', list).map((a) => ({ uri: a.uri, name: a.name, sub: a.artist, image: a.image || a.thumb }))
 })
 
-function pick(it) {
+function pick(it: GridItem) {
   room.sel.musikk = { kind: 'album', uri: it.uri, t: Date.now() }
 }
 function back() {

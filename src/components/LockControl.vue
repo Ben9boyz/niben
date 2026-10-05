@@ -1,20 +1,22 @@
-<script setup>
+<script setup lang="ts">
+import { errorMessage } from '../composables/useAdmin'
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Lock, LockOpen } from 'lucide-vue-next'
 import { spotify, lockLeft, fmtClock, fmtLock, setLockSeconds } from '../composables/useSpotify'
+import { targetEl } from '../lib/dom'
 
 // The lock length setting (admin): a pill with the length / countdown, or – `tiny` – just a small
 // round icon for the 3D views (the held record, the iPod). The menu floats above everything.
-const props = defineProps({ tiny: Boolean })
+defineProps<{ tiny?: boolean }>()
 
 const CHOICES = [0, 5, 10, 15, 30, 60].map((m) => m * 60)
 const open = ref(false)
 const msg = ref('')
 const locked = computed(() => lockLeft.value > 0)
 const label = computed(() => (spotify.lockSeconds > 0 ? fmtLock(spotify.lockSeconds) : 'Av'))
-const btn = ref(null)
-const menu = ref(null)
-const pos = ref({})
+const btn = ref<HTMLElement | null>(null)
+const menu = ref<HTMLElement | null>(null)
+const pos = ref<Record<string, string>>({})
 
 async function toggle() {
   msg.value = ''
@@ -22,24 +24,25 @@ async function toggle() {
   if (!open.value) return
   await nextTick()
   // below the button, kept on screen (above it if there's no room)
-  const r = btn.value.getBoundingClientRect()
+  const r = btn.value?.getBoundingClientRect()
+  if (!r) return
   const w = 220
   const h = menu.value?.offsetHeight || 150
   const left = Math.min(Math.max(8, r.right - w), window.innerWidth - w - 8)
   const top = r.bottom + 6 + h > window.innerHeight - 8 ? Math.max(8, r.top - 6 - h) : r.bottom + 6
   pos.value = { left: `${left}px`, top: `${top}px` }
 }
-async function choose(sec) {
+async function choose(sec: number) {
   if (locked.value) return
   try {
     await setLockSeconds(sec)
     open.value = false
   } catch (e) {
-    msg.value = e.message
+    msg.value = errorMessage(e)
   }
 }
-function onDocDown(e) {
-  if (open.value && !btn.value?.contains(e.target) && !menu.value?.contains(e.target)) open.value = false
+function onDocDown(e: Event) {
+  if (open.value && !btn.value?.contains(targetEl(e)) && !menu.value?.contains(targetEl(e))) open.value = false
 }
 onMounted(() => document.addEventListener('pointerdown', onDocDown))
 onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocDown))

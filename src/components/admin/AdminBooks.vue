@@ -1,21 +1,28 @@
-<script setup>
+<script setup lang="ts">
 import { ChevronLeft, Star } from 'lucide-vue-next'
 import { ref, reactive, computed, watch } from 'vue'
-import { useData, reloadData } from '../../composables/useData'
-import { api } from '../../composables/useAdmin'
+import { useData, reloadData, type Book } from '../../composables/useData'
+import { api, errorMessage } from '../../composables/useAdmin'
+import type { Flash } from '../../types'
 
 const data = useData()
 const books = computed(() => data.boker || [])
-const editing = ref(null)
-const msg = ref(null)
+interface BookForm {
+  id: number | null; title: string; author: string; isbn: string; ol_key: string; cover_url: string
+  published_year: number | string; pages: number | string; read_on: string; rating: number; thoughts: string; quote: string; reading: boolean
+}
+interface OpenLibraryDoc { key: string; title: string; author_name?: string[]; first_publish_year?: number; isbn?: string[]; cover_i?: number; number_of_pages_median?: number }
+interface BookHit { key: string; title: string; author: string; year?: number; pages?: number; isbn: string; cover: string | null; thumb: string | null }
+const editing = ref<BookForm | null>(null)
+const msg = ref<Flash | null>(null)
 const busy = ref(false)
 
 // ── Open Library lookup ──
 const q = ref('')
-const results = ref([])
+const results = ref<BookHit[]>([])
 const searching = ref(false)
 const searchError = ref('')
-let timer = 0
+let timer: ReturnType<typeof setTimeout> | undefined
 let seq = 0
 
 watch(q, (v) => {
@@ -24,7 +31,7 @@ watch(q, (v) => {
   timer = setTimeout(() => search(v.trim()), 350)
 })
 
-async function search(term) {
+async function search(term: string) {
   const my = ++seq
   searching.value = true
   searchError.value = ''
@@ -36,9 +43,9 @@ async function search(term) {
       limit: '16',
     })
     const r = await fetch(`https://openlibrary.org/search.json?${params}`)
-    const json = await r.json()
+    const json = (await r.json()) as { docs?: OpenLibraryDoc[] }
     if (my !== seq) return
-    results.value = (json.docs || []).map((d) => ({
+    results.value = (json.docs || []).map((d): BookHit => ({
       key: d.key,
       title: d.title,
       author: (d.author_name || []).slice(0, 2).join(', '),
@@ -55,20 +62,24 @@ async function search(term) {
   }
 }
 
-function blank() {
-  return reactive({ id: null, title: '', author: '', isbn: '', ol_key: '', cover_url: '', published_year: '', pages: '', read_on: '', rating: 0, thoughts: '', quote: '', reading: false })
+function blank(): BookForm {
+  return reactive<BookForm>({ id: null, title: '', author: '', isbn: '', ol_key: '', cover_url: '', published_year: '', pages: '', read_on: '', rating: 0, thoughts: '', quote: '', reading: false })
 }
-function pickResult(r) {
+function manual() {
+  edit(null)
+  if (editing.value) editing.value.title = q.value
+}
+function pickResult(r: BookHit) {
   const f = blank()
   Object.assign(f, { title: r.title, author: r.author, isbn: r.isbn, ol_key: r.key, cover_url: r.cover || '', published_year: r.year || '', pages: r.pages || '', read_on: new Date().toISOString().slice(0, 10) })
   editing.value = f
   msg.value = null
 }
-function edit(b) {
+function edit(b?: Book | null) {
   msg.value = null
   editing.value = b
-    ? reactive({
-        id: b.id, title: b.tittel, author: b.forfatter || '', isbn: b.isbn || '', ol_key: b.ol_key || '',
+    ? reactive<BookForm>({
+        id: b.id ?? null, title: b.tittel, author: b.forfatter || '', isbn: b.isbn || '', ol_key: b.ol_key || '',
         cover_url: b.omslag || '', published_year: b.utgitt || '', pages: b.sider || '', read_on: b.lest || '', reading: !!b.leser,
         rating: b.vurdering || 0, thoughts: b.tanker || '', quote: b.sitat || '',
       })
@@ -77,29 +88,29 @@ function edit(b) {
 
 async function save() {
   const f = editing.value
-  if (!f.title.trim()) { msg.value = { error: 'Boka mangler tittel.' }; return }
+  if (!f || !f.title.trim()) { msg.value = { error: 'Boka mangler tittel.' }; return }
   busy.value = true
   try {
-    const r = await api('book_save', { ...f, rating: f.rating || null })
+    const r = await api<{ id: number }>('book_save', { ...f, rating: f.rating || null })
     f.id = r.id
     await reloadData()
     msg.value = { ok: 'Lagret – boka står nå i hylla.' }
   } catch (e) {
-    msg.value = { error: e.message }
+    msg.value = { error: errorMessage(e) }
   } finally {
     busy.value = false
   }
 }
 async function remove() {
   const f = editing.value
-  if (!f.id || !confirm(`Fjerne «${f.title}» fra hylla?`)) return
+  if (!f?.id || !confirm(`Fjerne «${f.title}» fra hylla?`)) return
   try {
     await api('book_delete', { id: f.id })
     await reloadData()
     editing.value = null
     q.value = ''
   } catch (e) {
-    msg.value = { error: e.message }
+    msg.value = { error: errorMessage(e) }
   }
 }
 </script>
@@ -126,7 +137,7 @@ async function remove() {
         </button>
       </div>
       <p v-else-if="q.trim().length >= 2 && !searching" class="muted pad">
-        Ingen treff. <button class="link" @click="edit(null); editing.title = q">Legg inn manuelt</button>
+        Ingen treff. <button class="link" @click="manual">Legg inn manuelt</button>
       </p>
 
       <div class="section-label">I hylla ({{ books.length }})</div>

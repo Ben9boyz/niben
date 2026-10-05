@@ -1,27 +1,32 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { X, Gauge, RotateCcw } from 'lucide-vue-next'
-import { gfx, gfxUi, GROUPS, PRESET_LABELS, setPreset, setOption, setShowFps } from '../composables/useGraphics'
+import { gfx, gfxUi, GROUPS, PRESET_LABELS, setPreset, setOptionLoose, setShowFps, type GfxKey, type GfxItem } from '../composables/useGraphics'
 import { room } from '../composables/useRoom'
+import { inputOf, selectOf } from '../lib/dom'
 
 // Innstillinger → Grafikk. "Auto" = the room picks what suits this device and keeps the frame rate up on its own.
 // Everything else is up to you: pick a preset, or change single things (that makes it "Egen").
-const info = ref(null)
-let timer = 0
+type Info = NonNullable<typeof room.api>['gfxInfo']
+const info = ref<Info | null>(null)
+let timer: ReturnType<typeof setInterval> | undefined
 watch(() => gfxUi.open, (o) => {
   clearInterval(timer)
   if (o) { const poll = () => { info.value = room.api?.gfxInfo || null }; poll(); timer = setInterval(poll, 600) }
 }, { immediate: true })
-const onKey = (e) => { if (gfxUi.open && e.key === 'Escape') gfxUi.open = false }
+const onKey = (e: KeyboardEvent) => { if (gfxUi.open && e.key === 'Escape') gfxUi.open = false }
 onMounted(() => window.addEventListener('keydown', onKey))
 onBeforeUnmount(() => { clearInterval(timer); window.removeEventListener('keydown', onKey) })
 const auto = computed(() => gfx.mode === 'auto')
 // what is shown in the controls: my choices – or, in Auto, what the device is using
-const val = (k) => (auto.value && info.value?.auto && info.value.auto[k] !== undefined && info.value.auto[k] !== 'auto' ? info.value.auto[k] : gfx[k])
-const shown = (k) => (k === 'res' && auto.value ? (info.value?.pixelRatio ? Math.round(info.value.pixelRatio * 100) / 100 : gfx.res) : val(k))
-const classLabel = { low: 'Lav', high: 'Høy', ultra: 'Ultra' }
-const pick = (item, v) => setOption(item.key, item.options?.some((o) => typeof o[0] === 'number') ? Number(v) : v, info.value?.auto)
-const options = (item) => (item.key === 'res' && auto.value && info.value && !item.options.some((o) => o[0] === shown('res')) ? [[shown('res'), `${String(shown('res')).replace('.', ',')}× (auto)`], ...item.options] : item.options)
+const val = (k: GfxKey): string | number | boolean => {
+  const a = auto.value ? info.value?.auto?.[k] : undefined
+  return a !== undefined && a !== 'auto' ? a : gfx[k]
+}
+const shown = (k: GfxKey) => (k === 'res' && auto.value ? (info.value?.pixelRatio ? Math.round(info.value.pixelRatio * 100) / 100 : gfx.res) : val(k))
+const classLabel: Record<string, string> = { low: 'Lav', high: 'Høy', ultra: 'Ultra' }
+const pick = (item: Extract<GfxItem, { type: 'select' }>, v: string) => setOptionLoose(item.key, item.options.some((o) => typeof o[0] === 'number') ? Number(v) : v, info.value?.auto)
+const options = (item: Extract<GfxItem, { type: 'select' }>): [string | number, string][] => (item.key === 'res' && auto.value && info.value && !item.options.some((o) => o[0] === shown('res')) ? [[Number(shown('res')), `${String(shown('res')).replace('.', ',')}× (auto)`], ...item.options] : item.options)
 const close = () => { gfxUi.open = false }
 </script>
 
@@ -55,11 +60,11 @@ const close = () => { gfxUi.open = false }
               <h4>{{ g.title }}</h4>
               <div v-for="it in g.items" :key="it.key" class="opt">
                 <span class="t"><b>{{ it.label }}</b><small v-if="it.hint">{{ it.hint }}</small></span>
-                <select v-if="it.type === 'select'" :value="shown(it.key)" :aria-label="it.label" @change="pick(it, $event.target.value)">
+                <select v-if="it.type === 'select'" :value="shown(it.key)" :aria-label="it.label" @change="pick(it, selectOf($event).value)">
                   <option v-for="o in options(it)" :key="o[0]" :value="o[0]">{{ o[1] }}</option>
                 </select>
-                <button v-else-if="it.type === 'toggle'" class="tg" :class="{ on: !!val(it.key) }" role="switch" :aria-checked="!!val(it.key)" :aria-label="it.label" @click="setOption(it.key, !val(it.key), info?.auto)"><i></i></button>
-                <span v-else class="rng"><input type="range" :min="it.min" :max="it.max" :step="it.step" :value="val(it.key)" :aria-label="it.label" @input="setOption(it.key, +$event.target.value, info?.auto)" /><em>{{ it.fmt(+val(it.key)) }}</em></span>
+                <button v-else-if="it.type === 'toggle'" class="tg" :class="{ on: !!val(it.key) }" role="switch" :aria-checked="!!val(it.key)" :aria-label="it.label" @click="setOptionLoose(it.key, !val(it.key), info?.auto)"><i></i></button>
+                <span v-else class="rng"><input type="range" :min="it.min" :max="it.max" :step="it.step" :value="val(it.key)" :aria-label="it.label" @input="setOptionLoose(it.key, +inputOf($event).value, info?.auto)" /><em>{{ it.fmt(+val(it.key)) }}</em></span>
               </div>
             </section>
             <section class="grp">

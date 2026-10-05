@@ -8,7 +8,7 @@ const hash = (s: string): number => { let h = 2166136261; for (const c of s) { h
 const dayKey = (): string => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}` }
 
 /** A suggestion (an album I don't have yet) from the server. */
-export interface DailyRec extends Partial<Album> { uri: string; name: string }
+export interface DailyRec extends Partial<Album> { uri: string; name: string; why?: string }
 
 // The server picks it once a day (so every device agrees, and it doesn't jump when the library changes) – the date-based
 // pick is only the fallback while the server hasn't answered / has nothing.

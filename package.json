@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.sw.json && tsc -p tsconfig.node.json && tsc -p desktop/tsconfig.json",
+    "typecheck": "vue-tsc --noEmit && tsc -p tsconfig.sw.json && tsc -p tsconfig.node.json && tsc -p desktop/tsconfig.json",
     "check:any": "! grep -rnE '(: |as |<|[|] )any\\b|any\\[\\]' src server vite.config.ts desktop/src --include=*.ts --include=*.vue",
     "check": "npm run typecheck && npm run check:any"
   },
@@ -31,13 +31,14 @@
     "world-atlas": "^2.0.2"
   },
   "devDependencies": {
+    "@types/d3-geo": "^3.1.1",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^26.6.4",
     "@types/three": "^0.186.0",
     "@types/topojson-client": "^3.1.5",
     "@vitejs/plugin-vue": "^6.0.9",
     "bcryptjs": "^3.0.3",
-    "typescript": "^7.0.2",
+    "typescript": "^6.0.3",
     "vite": "^8.3.2",
     "vite-plugin-css-injected-by-js": "^5.0.2",
     "vue-tsc": "^3.3.12"

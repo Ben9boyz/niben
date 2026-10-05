@@ -1,29 +1,25 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { findChord } from '../lib/chords'
 
 // A chord box: six strings, the frets, dots with finger numbers, barres, x / o above the nut.
-const props = defineProps({
-  name: { type: String, required: true },
-  size: { type: Number, default: 120 }, // width in px
-  showName: { type: Boolean, default: true },
-})
+const props = withDefaults(defineProps<{ name: string; size?: number /* width in px */; showName?: boolean }>(), { size: 120, showName: true })
 
 const chord = computed(() => findChord(props.name))
 const W = 100, H = 118, LEFT = 14, RIGHT = 86, TOP = 26, ROWS = 4, ROW_H = 19
-const sx = (i) => LEFT + (i * (RIGHT - LEFT)) / 5
+const sx = (i: number) => LEFT + (i * (RIGHT - LEFT)) / 5
 
 const view = computed(() => {
   const c = chord.value
   if (!c) return null
-  const fretted = c.frets.filter((f) => f > 0)
+  const fretted = c.frets.filter((f): f is number => f !== null && f > 0)
   const max = Math.max(0, ...fretted)
   const base = max > ROWS ? Math.min(...fretted) : 1 // first fret shown
-  const dots = []
-  const barres = []
-  const byFinger = {}
+  const dots: { x: number; y: number; finger: number; key: string }[] = []
+  const barres: { x1: number; x2: number; y: number; finger: number; fret: number }[] = []
+  const byFinger: Record<string, number[]> = {}
   c.frets.forEach((f, i) => {
-    if (!(f > 0)) return
+    if (f === null || !(f > 0)) return
     const finger = c.fingers[i] || 0
     const key = `${finger}:${f}`
     if (finger) (byFinger[key] ||= []).push(i)
@@ -31,7 +27,7 @@ const view = computed(() => {
   })
   // a finger on 3+ strings at one fret (or the index on 2+) is a barre
   for (const [key, strings] of Object.entries(byFinger)) {
-    const [finger, fret] = key.split(':').map(Number)
+    const [finger = 0, fret = 0] = key.split(':').map(Number)
     if (strings.length >= (finger === 1 ? 2 : 3)) {
       barres.push({ x1: sx(Math.min(...strings)), x2: sx(Math.max(...strings)), y: TOP + (fret - base + 0.5) * ROW_H, finger, fret })
     }

@@ -45,3 +45,6 @@ interface Window { webkitAudioContext?: typeof AudioContext }
 
 // Chromium only
 interface Navigator { deviceMemory?: number }
+
+// the 3D room, reachable from the console in dev builds (see Room.vue)
+interface Window { __room?: ReturnType<typeof import('./src/three/room').createRoom> }

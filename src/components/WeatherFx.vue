@@ -1,12 +1,15 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { weather } from '../composables/useLive'
 import { calm } from '../composables/useCalm'
 
 // The weather at home over the plain version: rain, snow or fog drifting over the background (never over the text –
 // it is behind the content, in front of the backdrop). Off with "reduce motion". One small canvas, ~30 frames a second.
-const cv = ref(null)
-let raf = 0, last = 0, drops = [], w = 0, h = 0, ctx = null, kind = 'clear'
+interface Drop { x: number; y: number; v: number; l: number; s: number }
+const cv = ref<HTMLCanvasElement | null>(null)
+let raf = 0, last = 0, w = 0, h = 0, kind = 'clear'
+let drops: Drop[] = []
+let ctx: CanvasRenderingContext2D | null = null
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 function size() {
@@ -18,9 +21,9 @@ function make() {
   const n = kind === 'drizzle' ? 70 : kind === 'rain' ? 150 : kind === 'thunder' ? 210 : kind === 'snow' ? 90 : 0
   drops = Array.from({ length: n }, () => ({ x: Math.random() * w, y: Math.random() * h, v: 0.6 + Math.random() * 0.8, l: 6 + Math.random() * 8, s: 1 + Math.random() * 2 }))
 }
-function frame(t) {
+function frame(t: number) {
   raf = requestAnimationFrame(frame)
-  if (t - last < 33 || document.hidden) return
+  if (!ctx || t - last < 33 || document.hidden) return
   const dt = Math.min(2, (t - last) / 16); last = t
   ctx.clearRect(0, 0, w, h)
   const dark = document.documentElement.dataset.theme === 'dark'
@@ -47,13 +50,13 @@ function start() {
   size(); make()
   raf = requestAnimationFrame(frame)
 }
-onMounted(() => { ctx = cv.value.getContext('2d'); window.addEventListener('resize', start); start() })
+onMounted(() => { ctx = cv.value?.getContext('2d') ?? null; window.addEventListener('resize', start); start() })
 onBeforeUnmount(() => { cancelAnimationFrame(raf); window.removeEventListener('resize', start) })
 watch(() => [weather.value?.kind, calm.value], start)
 </script>
 
 <template>
-  <div class="wfx" :class="[weather?.kind, { fog: weather?.kind === 'fog', gloom: ['rain', 'drizzle', 'thunder', 'cloud'].includes(weather?.kind) }]" aria-hidden="true">
+  <div class="wfx" :class="[weather?.kind, { fog: weather?.kind === 'fog', gloom: ['rain', 'drizzle', 'thunder', 'cloud'].includes(weather?.kind ?? '') }]" aria-hidden="true">
     <canvas ref="cv"></canvas>
     <i class="flash" :style="{ opacity: flashing }"></i>
   </div>

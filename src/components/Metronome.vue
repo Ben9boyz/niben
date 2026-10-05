@@ -1,6 +1,8 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Play, Pause } from 'lucide-vue-next'
+import { newAudioContext } from '../lib/audio'
+import { targetEl, inputOf } from '../lib/dom'
 
 // A metronome (Web Audio with look-ahead scheduling, so it doesn't drift): tempo, beats per bar (the first one is accented),
 // tap tempo, and a speed trainer that adds a few BPM every few bars up to a goal – for practising something slowly until it's clean.
@@ -13,28 +15,32 @@ const stepBpm = ref(5)
 const everyBars = ref(4)
 const goal = ref(140)
 const BEATS = [2, 3, 4, 5, 6, 7]
-const clamp = (v) => Math.max(30, Math.min(260, Math.round(v)))
-const setBpm = (v) => { bpm.value = clamp(Number(v) || 100) }
+const clamp = (v: number) => Math.max(30, Math.min(260, Math.round(v)))
+const setBpm = (v: unknown) => { bpm.value = clamp(Number(v) || 100) }
 const word = computed(() => (bpm.value < 60 ? 'Largo' : bpm.value < 76 ? 'Adagio' : bpm.value < 108 ? 'Andante' : bpm.value < 120 ? 'Moderato' : bpm.value < 156 ? 'Allegro' : bpm.value < 176 ? 'Vivace' : 'Presto'))
 
-let ctx = null, timer = 0, nextTime = 0, count = 0, bars = 0
-const queue = [] // [{ time, i }] for the lights
+let ctx: AudioContext | null = null
+let timer: ReturnType<typeof setInterval> | undefined
+let nextTime = 0, count = 0, bars = 0
+const queue: { time: number; i: number }[] = [] // for the lights
 let raf = 0
 
-function click(time, accent) {
-  const o = ctx.createOscillator(), g = ctx.createGain()
+function click(ac: AudioContext, time: number, accent: boolean) {
+  const o = ac.createOscillator(), g = ac.createGain()
   o.frequency.value = accent ? 1500 : 1000
   o.type = 'square'
   g.gain.setValueAtTime(0.0001, time)
   g.gain.exponentialRampToValueAtTime(accent ? 0.5 : 0.28, time + 0.002)
   g.gain.exponentialRampToValueAtTime(0.0001, time + 0.05)
-  o.connect(g); g.connect(ctx.destination)
+  o.connect(g); g.connect(ac.destination)
   o.start(time); o.stop(time + 0.06)
 }
 function schedule() {
-  while (nextTime < ctx.currentTime + 0.14) {
+  const ac = ctx
+  if (!ac) return
+  while (nextTime < ac.currentTime + 0.14) {
     const i = count % beats.value
-    click(nextTime, i === 0)
+    click(ac, nextTime, i === 0)
     queue.push({ time: nextTime, i })
     nextTime += 60 / bpm.value
     count++
@@ -46,13 +52,15 @@ function schedule() {
 }
 function lights() {
   raf = requestAnimationFrame(lights)
-  while (queue.length && queue[0].time <= ctx.currentTime) beat.value = queue.shift().i
+  const ac = ctx
+  if (!ac) return
+  for (let next = queue[0]; next && next.time <= ac.currentTime; next = queue[0]) { beat.value = next.i; queue.shift() }
 }
 async function start() {
-  ctx = ctx || new (window.AudioContext || window.webkitAudioContext)()
-  if (ctx.state === 'suspended') await ctx.resume()
+  const ac = ctx ?? (ctx = newAudioContext())
+  if (ac.state === 'suspended') await ac.resume()
   count = 0; bars = 0; queue.length = 0
-  nextTime = ctx.currentTime + 0.06
+  nextTime = ac.currentTime + 0.06
   running.value = true
   schedule()
   timer = setInterval(schedule, 25)
@@ -66,8 +74,8 @@ function stop() {
 }
 const toggle = () => (running.value ? stop() : start())
 // space starts / stops, the arrow keys nudge the tempo
-function onKey(e) {
-  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return
+function onKey(e: KeyboardEvent) {
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(targetEl(e).tagName)) return
   if (e.code === 'Space') { e.preventDefault(); toggle() }
   else if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { e.preventDefault(); setBpm(bpm.value + 1) }
   else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { e.preventDefault(); setBpm(bpm.value - 1) }
@@ -76,13 +84,15 @@ onMounted(() => window.addEventListener('keydown', onKey))
 onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); stop(); ctx?.close().catch(() => {}) })
 
 // tap tempo: the average of the last taps
-let taps = []
+let taps: number[] = []
 function tap() {
   const now = performance.now()
-  if (taps.length && now - taps[taps.length - 1] > 2200) taps = []
+  const lastTap = taps[taps.length - 1]
+  if (lastTap !== undefined && now - lastTap > 2200) taps = []
   taps.push(now)
   if (taps.length > 6) taps.shift()
-  if (taps.length >= 2) setBpm(60000 / ((taps[taps.length - 1] - taps[0]) / (taps.length - 1)))
+  const first = taps[0], last = taps[taps.length - 1]
+  if (taps.length >= 2 && first !== undefined && last !== undefined) setBpm(60000 / ((last - first) / (taps.length - 1)))
 }
 watch(beats, () => { count = 0 })
 </script>
@@ -97,7 +107,7 @@ watch(beats, () => { count = 0 })
       <div class="big"><b>{{ bpm }}</b><small>BPM · {{ word }}</small></div>
       <button class="pm" aria-label="Raskere" @click="setBpm(bpm + 1)">+</button>
     </div>
-    <input class="slider" type="range" min="30" max="260" :value="bpm" aria-label="Tempo" @input="setBpm($event.target.value)" />
+    <input class="slider" type="range" min="30" max="260" :value="bpm" aria-label="Tempo" @input="setBpm(inputOf($event).value)" />
     <div class="ctrl">
       <button class="go" :class="{ on: running }" :aria-label="running ? 'Stopp' : 'Start'" @click="toggle"><Pause v-if="running" :size="22" fill="currentColor" /><Play v-else :size="22" fill="currentColor" /></button>
       <button class="btn tap" @click="tap">Tapp tempo</button>

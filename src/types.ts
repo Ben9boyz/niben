@@ -15,6 +15,7 @@ export interface Album {
   tracks?: number | null
   added?: number | null
   color?: string | null
+  type?: string // 'album' | 'single' (artist pages)
 }
 
 export interface Playlist {
@@ -100,3 +101,9 @@ export interface Group {
 }
 
 export interface Result { ok: boolean; error?: string }
+
+/** A short status line under a form: saved / failed. */
+export interface Flash { ok?: string; error?: string }
+
+/** A tile in the cover grids (an album, a playlist, a search hit…). */
+export interface GridItem { uri: string; name: string; sub?: string | null; image?: string | null; thumb?: string | null; artist_id?: string | null }

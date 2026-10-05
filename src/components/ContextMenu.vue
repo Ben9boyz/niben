@@ -1,16 +1,17 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { ChevronRight } from 'lucide-vue-next'
-import { ctx, closeMenu } from '../composables/useContextMenu'
+import { ctx, closeMenu, type MenuEntry } from '../composables/useContextMenu'
+import { targetEl } from '../lib/dom'
 
-const el = ref(null)
+const el = ref<HTMLElement | null>(null)
 const pos = ref({ left: 0, top: 0 })
-const subAt = ref(null) // index of the open submenu
+const subAt = ref<string | null>(null) // the open submenu (its label)
 const subLeft = ref(false)
 const subQ = ref('') // search inside a long submenu (the playlists)
-const subEl = ref(null)
-const subItems = (it) => { const q = subQ.value.trim().toLowerCase(); return q ? it.sub.filter((x) => x.label.toLowerCase().includes(q)) : it.sub }
-watch(subAt, async (v) => { subQ.value = ''; if (v == null) return; await nextTick(); subEl.value?.[0]?.querySelector?.('input')?.focus({ preventScroll: true }) })
+const subEl = ref<HTMLElement[] | null>(null)
+const subItems = (it: MenuEntry) => { const q = subQ.value.trim().toLowerCase(); return q ? (it.sub ?? []).filter((x) => (x.label ?? '').toLowerCase().includes(q)) : (it.sub ?? []) }
+watch(subAt, async (v) => { subQ.value = ''; if (v == null) return; await nextTick(); subEl.value?.[0]?.querySelector('input')?.focus({ preventScroll: true }) })
 watch(() => ctx.open, async (o) => {
   subAt.value = null
   if (!o) return
@@ -25,14 +26,14 @@ watch(() => ctx.open, async (o) => {
   subLeft.value = left + r.width + 230 > innerWidth
   el.value?.focus({ preventScroll: true })
 })
-function run(it) {
-  if (it.sub) { subAt.value = subAt.value === it.label ? null : it.label; return }
+function run(it: MenuEntry) {
+  if (it.sub) { subAt.value = subAt.value === it.label ? null : it.label ?? null; return }
   closeMenu()
   it.run?.()
 }
-const onDown = (e) => { if (ctx.open && !el.value?.contains(e.target)) closeMenu() }
-const onScroll = (e) => { if (!el.value?.contains(e.target)) closeMenu() } // scrolling the list inside the menu must not close it
-const onKey = (e) => { if (ctx.open && e.key === 'Escape') { e.preventDefault(); closeMenu() } }
+const onDown = (e: Event) => { if (ctx.open && !el.value?.contains(targetEl(e))) closeMenu() }
+const onScroll = (e: Event) => { if (!(e.target instanceof Node) || !el.value?.contains(e.target)) closeMenu() } // scrolling the list inside the menu must not close it
+const onKey = (e: KeyboardEvent) => { if (ctx.open && e.key === 'Escape') { e.preventDefault(); closeMenu() } }
 onMounted(() => { document.addEventListener('pointerdown', onDown, true); window.addEventListener('keydown', onKey); window.addEventListener('scroll', onScroll, true); window.addEventListener('resize', closeMenu) })
 onBeforeUnmount(() => { document.removeEventListener('pointerdown', onDown, true); window.removeEventListener('keydown', onKey); window.removeEventListener('scroll', onScroll, true); window.removeEventListener('resize', closeMenu) })
 </script>

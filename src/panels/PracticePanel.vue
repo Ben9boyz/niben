@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { timer, timerState, formatTime, toggle, reset, setIntervalSeconds, setSound } from '../composables/useTimer'
 import { room } from '../composables/useRoom'
@@ -6,6 +6,7 @@ import ChordPractice from '../components/ChordPractice.vue'
 import GuitarTuner from '../components/GuitarTuner.vue'
 import Metronome from '../components/Metronome.vue'
 import SegSwitch from '../components/SegSwitch.vue'
+import { targetEl, inputOf } from '../lib/dom'
 
 // The practice corner: the interval timer, chords, a tuner (with half-step-down / up tunings) and a metronome.
 const TABS = [{ id: 'timer', label: 'Timer' }, { id: 'akkorder', label: 'Akkorder' }, { id: 'stemmer', label: 'Stemmer' }, { id: 'metronom', label: 'Metronom' }]
@@ -19,16 +20,16 @@ const R = 46
 const C = 2 * Math.PI * R
 const dash = computed(() => C * (1 - (st.value.go ? 1 : st.value.progress)))
 
-function onKey(e) {
-  if (e.target.tagName === 'INPUT' || room.practiceTab !== 'timer') return
+function onKey(e: KeyboardEvent) {
+  if (targetEl(e).tagName === 'INPUT' || room.practiceTab !== 'timer') return
   if (e.code === 'Space') { e.preventDefault(); toggle() }
   else if (e.key === 'r' || e.key === 'R') reset()
 }
 
 // keep the screen awake while practising (the timer running, or the tuner / metronome open – the phone shouldn't go dark mid-song)
 const awake = computed(() => timer.running || room.practiceTab === 'stemmer' || room.practiceTab === 'metronom')
-let lock = null
-async function wake(on) {
+let lock: WakeLockSentinel | null = null
+async function wake(on: boolean) {
   try {
     if (on && !lock && 'wakeLock' in navigator) lock = await navigator.wakeLock.request('screen')
     if (!on && lock) { await lock.release(); lock = null }
@@ -80,12 +81,12 @@ onBeforeUnmount(() => {
       <div class="presets pills" role="group" aria-label="Intervall">
         <button v-for="p in presets" :key="p" :class="{ on: timer.interval === p }" @click="setIntervalSeconds(p)">{{ p }}s</button>
         <label class="custom">
-          <input type="number" min="1" max="3600" :value="timer.interval" @change="(e) => setIntervalSeconds(e.target.value)" aria-label="Eget intervall i sekunder" />
+          <input type="number" min="1" max="3600" :value="timer.interval" @change="(e: Event) => setIntervalSeconds(inputOf(e).value)" aria-label="Eget intervall i sekunder" />
           <span>s</span>
         </label>
       </div>
       <label class="toggle">
-        <input type="checkbox" :checked="timer.sound" @change="(e) => setSound(e.target.checked)" />
+        <input type="checkbox" :checked="timer.sound" @change="(e: Event) => setSound(inputOf(e).checked)" />
         <span class="sw"></span>
         Pip
       </label>

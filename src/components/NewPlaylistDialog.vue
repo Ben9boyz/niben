@@ -1,17 +1,18 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { ImagePlus, X } from 'lucide-vue-next'
 import { plDialog, finishPlaylistDialog } from '../composables/usePlaylistDialog'
 import { createPlaylist } from '../composables/useSpotify'
+import { inputOf } from '../lib/dom'
 
 // A small sheet for making a playlist: the name, and – if I like – a picture (Spotify takes it as the playlist's cover).
 const name = ref('')
-const file = ref(null)
+const file = ref<File | null>(null)
 const preview = ref('')
 const busy = ref(false)
 const error = ref('')
-const nameEl = ref(null)
-const fileEl = ref(null)
+const nameEl = ref<HTMLInputElement | null>(null)
+const fileEl = ref<HTMLInputElement | null>(null)
 
 watch(() => plDialog.open, (open) => {
   if (!open) return
@@ -24,8 +25,8 @@ function clearImage() {
   file.value = null; preview.value = ''
   if (fileEl.value) fileEl.value.value = ''
 }
-function pick(e) {
-  const f = e.target.files?.[0]
+function pick(e: Event) {
+  const f = inputOf(e).files?.[0]
   if (!f) return
   if (!f.type.startsWith('image/')) { error.value = 'Velg et bilde.'; return }
   error.value = ''
@@ -44,7 +45,7 @@ async function save() {
   finishPlaylistDialog({ uri: r.uri, name: n }) // (a picture that failed is reported by the toast; the list itself was made)
 }
 const cancel = () => finishPlaylistDialog(null)
-function onKey(e) { if (plDialog.open && e.key === 'Escape') cancel() }
+function onKey(e: KeyboardEvent) { if (plDialog.open && e.key === 'Escape') cancel() }
 window.addEventListener('keydown', onKey)
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
@@ -58,7 +59,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <button type="button" class="x" aria-label="Lukk" @click="cancel"><X :size="18" /></button>
         </header>
         <div class="body">
-          <button type="button" class="pic" :class="{ has: preview }" :aria-label="preview ? 'Bytt bilde' : 'Velg bilde'" @click="fileEl.click()">
+          <button type="button" class="pic" :class="{ has: preview }" :aria-label="preview ? 'Bytt bilde' : 'Velg bilde'" @click="fileEl?.click()">
             <img v-if="preview" :src="preview" alt="" />
             <span v-else><ImagePlus :size="26" /><small>Bilde</small></span>
           </button>

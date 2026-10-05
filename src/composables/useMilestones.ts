@@ -2,9 +2,10 @@ import { reactive } from 'vue'
 
 // Milestones (a new recording, a finished book, an anime I can follow, a song I've learned) – from the server.
 export interface Milestone {
-  id?: string
-  kind: string
+  key: string
+  type: string
   title: string
+  url?: string | null
   sub?: string
   image?: string | null
   t: number

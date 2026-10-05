@@ -1,12 +1,13 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onBeforeUnmount } from 'vue'
 import { Mic, MicOff, Volume2 } from 'lucide-vue-next'
+import { newAudioContext } from '../lib/audio'
 
 // A tuner for the guitar: listens through the microphone, finds the pitch (autocorrelation) and shows which string it is
 // closest to and how many cents off. The tuning can be changed (standard, half a step down, a whole step down, Drop D, DADGAD …)
 // and shifted up / down by half steps; tapping a string plays its note as a reference.
 const NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-const midiName = (m) => NAMES[((m % 12) + 12) % 12]
+const midiName = (m: number) => NAMES[((m % 12) + 12) % 12] ?? ''
 // the strings from low to high, as MIDI note numbers
 const TUNINGS = [
   { id: 'std', label: 'Standard', notes: [40, 45, 50, 55, 59, 64] },
@@ -20,7 +21,7 @@ const tuning = ref('std')
 const shift = ref(0) // half steps: −1 = half a step down (Eb), −2 = a whole step down (D) …
 const a4 = ref(440)
 const strings = computed(() => (TUNINGS.find((t) => t.id === tuning.value)?.notes || []).map((m) => m + shift.value))
-const freqOf = (m) => a4.value * Math.pow(2, (m - 69) / 12)
+const freqOf = (m: number) => a4.value * Math.pow(2, (m - 69) / 12)
 const shiftLabel = computed(() => (shift.value === 0 ? 'Vanlig' : shift.value < 0 ? `${-shift.value === 1 ? 'Halvt' : -shift.value === 2 ? 'Helt' : -shift.value / 2 + ' hele'} steg ned` : `${shift.value === 1 ? 'Halvt' : shift.value === 2 ? 'Helt' : shift.value / 2 + ' hele'} steg opp`))
 
 // ── listening ──
@@ -29,8 +30,12 @@ const error = ref('')
 const freq = ref(0) // the smoothed pitch, 0 = nothing heard
 const auto = ref(true) // follow the string that is closest; false = the string I tapped
 const picked = ref(0)
-let ctx = null, stream = null, analyser = null, raf = 0, buf = null
-const recent = []
+let ctx: AudioContext | null = null
+let stream: MediaStream | null = null
+let analyser: AnalyserNode | null = null
+let buf: Float32Array<ArrayBuffer> | null = null
+let raf = 0
+const recent: number[] = []
 
 async function start() {
   error.value = ''
@@ -40,12 +45,12 @@ async function start() {
     error.value = 'Fikk ikke tilgang til mikrofonen. Tillat den i nettleseren – tuneren lytter bare, den tar ikke opp noe.'
     return
   }
-  ctx = new (window.AudioContext || window.webkitAudioContext)()
-  const src = ctx.createMediaStreamSource(stream)
-  analyser = ctx.createAnalyser()
-  analyser.fftSize = 4096
-  buf = new Float32Array(analyser.fftSize)
-  src.connect(analyser)
+  const ac = ctx = newAudioContext()
+  const src = ac.createMediaStreamSource(stream)
+  const an = analyser = ac.createAnalyser()
+  an.fftSize = 4096
+  buf = new Float32Array(an.fftSize)
+  src.connect(an)
   on.value = true
   loop()
 }
@@ -53,39 +58,42 @@ function stop() {
   cancelAnimationFrame(raf)
   stream?.getTracks().forEach((t) => t.stop())
   ctx?.close().catch(() => {})
-  ctx = stream = analyser = null
+  ctx = null
+  stream = null
+  analyser = null
   on.value = false
   freq.value = 0
   recent.length = 0
 }
-onBeforeUnmount(() => { stop(); tone?.stop?.(); })
+onBeforeUnmount(() => { stop(); try { tone?.stop() } catch { /* already stopped */ } })
 
 // pitch by autocorrelation (the lag with the strongest self-similarity inside the guitar range), refined between samples
-function detect(b, sr) {
+function detect(b: Float32Array, sr: number): number {
   const n = b.length
   let rms = 0
-  for (let i = 0; i < n; i++) rms += b[i] * b[i]
+  for (let i = 0; i < n; i++) { const v = b[i] ?? 0; rms += v * v }
   rms = Math.sqrt(rms / n)
   if (rms < 0.008) return 0
   const minLag = Math.floor(sr / 1200), maxLag = Math.floor(sr / 40)
   const half = n >> 1
-  let best = -1, bestLag = 0
+  let bestLag = 0
   const corr = new Float32Array(maxLag + 2)
   for (let lag = minLag; lag <= maxLag; lag++) {
     let s = 0, e1 = 0, e2 = 0
-    for (let i = 0; i < half; i++) { const x = b[i], y = b[i + lag]; s += x * y; e1 += x * x; e2 += y * y }
+    for (let i = 0; i < half; i++) { const x = b[i] ?? 0, y = b[i + lag] ?? 0; s += x * y; e1 += x * x; e2 += y * y }
     const c = s / (Math.sqrt(e1 * e2) + 1e-9)
     corr[lag] = c
   }
   // the first strong peak (not the highest: that could be an octave below)
   let top = -1
-  for (let lag = minLag; lag <= maxLag; lag++) if (corr[lag] > top) top = corr[lag]
+  for (let lag = minLag; lag <= maxLag; lag++) { const c = corr[lag] ?? 0; if (c > top) top = c }
   if (top < 0.6) return 0
   for (let lag = minLag + 1; lag < maxLag; lag++) {
-    if (corr[lag] > top * 0.9 && corr[lag] >= corr[lag - 1] && corr[lag] >= corr[lag + 1]) { best = corr[lag]; bestLag = lag; break }
+    const c = corr[lag] ?? 0
+    if (c > top * 0.9 && c >= (corr[lag - 1] ?? 0) && c >= (corr[lag + 1] ?? 0)) { bestLag = lag; break }
   }
   if (bestLag === 0) return 0
-  const a = corr[bestLag - 1], c0 = corr[bestLag], d = corr[bestLag + 1]
+  const a = corr[bestLag - 1] ?? 0, c0 = corr[bestLag] ?? 0, d = corr[bestLag + 1] ?? 0
   const shiftLag = (a - d) / (2 * (a - 2 * c0 + d) || 1)
   return sr / (bestLag + (Number.isFinite(shiftLag) ? shiftLag : 0))
 }
@@ -93,39 +101,41 @@ let tick = 0
 function loop() {
   raf = requestAnimationFrame(loop)
   if (++tick % 2) return // ~30 times a second
+  if (!analyser || !buf || !ctx) return
   analyser.getFloatTimeDomainData(buf)
   const f = detect(buf, ctx.sampleRate)
   if (f) { recent.push(f); if (recent.length > 5) recent.shift() } else if (recent.length) recent.shift()
   if (!recent.length) { freq.value = 0; return }
   const sorted = [...recent].sort((x, y) => x - y)
-  freq.value = sorted[sorted.length >> 1] // the middle value: one wrong reading doesn't jump the needle
+  freq.value = sorted[sorted.length >> 1] ?? 0 // the middle value: one wrong reading doesn't jump the needle
 }
 
 // which string is it, and how far off?
 const target = computed(() => {
   const list = strings.value
   if (!list.length) return null
-  if (!auto.value) return { i: picked.value, m: list[picked.value] }
-  if (!freq.value) return { i: picked.value, m: list[picked.value] }
+  const fixed = { i: picked.value, m: list[picked.value] ?? list[0] ?? 0 }
+  if (!auto.value || !freq.value) return fixed
   let bi = 0, bd = Infinity
   list.forEach((m, i) => { const d = Math.abs(1200 * Math.log2(freq.value / freqOf(m))); if (d < bd) { bd = d; bi = i } })
-  return { i: bi, m: list[bi] }
+  return { i: bi, m: list[bi] ?? 0 }
 })
 const cents = computed(() => (freq.value && target.value ? Math.round(1200 * Math.log2(freq.value / freqOf(target.value.m))) : 0))
 const clamped = computed(() => Math.max(-50, Math.min(50, cents.value)))
 const inTune = computed(() => !!freq.value && Math.abs(cents.value) <= 5)
 const hint = computed(() => (!on.value ? 'Trykk på mikrofonen og spill en streng' : !freq.value ? 'Spill en streng …' : inTune.value ? 'Stemt!' : cents.value < 0 ? 'For lavt – stram opp' : 'For høyt – slakk ned'))
-function pick(i) {
+function pick(i: number) {
   picked.value = i
   auto.value = false
-  playTone(freqOf(strings.value[i]))
+  const m = strings.value[i]
+  if (m !== undefined) playTone(freqOf(m))
 }
 
 // a reference tone for a string (a soft, plucked-sounding oscillator)
-let tone = null
-function playTone(f) {
+let tone: OscillatorNode | null = null
+function playTone(f: number) {
   try {
-    const c = ctx || new (window.AudioContext || window.webkitAudioContext)()
+    const c = ctx || newAudioContext()
     if (!ctx) ctx = c
     const t = c.currentTime
     const g = c.createGain()

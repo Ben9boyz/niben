@@ -13,7 +13,9 @@ export interface JpWord {
   pos?: string[]
   freq?: number | null
   state?: string[] | null
-  [key: string]: unknown
+  meaning?: string
+  decks?: (number | string)[]
+  alt?: string[]
 }
 export interface JpCard extends JpWord { kind: 'due' | 'new' | 'again' }
 export interface JpDeck { id: number | string; name: string; words: number; known: number; learning: number }
@@ -125,11 +127,13 @@ export function stateOf(state: string[] | null | undefined): CardState {
 export const STATE_LABEL: Record<CardState, string> = { none: 'ikke i kortstokk', new: 'ny', learning: 'lærer', due: 'til repetisjon', known: 'kan', blacklisted: 'ignorert', suspended: 'pauset', locked: 'låst', redundant: 'overflødig' }
 
 /** jpdb splits a Japanese text into words (readings, meanings, my card state). */
-export async function parseText(text: string): Promise<{ tokens?: object[]; [key: string]: unknown }> {
-  return api('jpdb_parse', { text })
+export interface ParsedToken { v: number; pos: number; len: number; furi: (string | [string, string])[] | null }
+export interface ParsedText { tokens: ParsedToken[]; vocab: JpWord[] }
+export async function parseText(text: string): Promise<ParsedText> {
+  return api<ParsedText>('jpdb_parse', { text })
 }
 
-export interface WordList { words: JpWord[]; decks?: { id: number | string; name: string; own?: boolean }[]; [key: string]: unknown }
+export interface WordList { words: JpWord[]; decks?: { id: number | string; name: string; own?: boolean; words?: number; known?: number; learning?: number }[]; [key: string]: unknown }
 let wordsCache: Promise<WordList> | null = null
 /** Every word in my decks + my own decks (that words can be added to). */
 export async function fetchWords(force = false): Promise<WordList> {

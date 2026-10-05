@@ -1,13 +1,13 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { room } from '../composables/useRoom'
 
 // Draws a glowing line from the selected country on the 3D globe to the info panel.
-const props = defineProps({ active: { type: Boolean, default: false } })
+const props = withDefaults(defineProps<{ active?: boolean }>(), { active: false })
 
 const d = ref('')
-const a = ref(null) // start point (country)
-const b = ref(null) // end point (panel)
+const a = ref<{ x: number; y: number } | null>(null) // start point (country)
+const b = ref<{ x: number; y: number } | null>(null) // end point (panel)
 const visible = ref(false)
 const drawKey = ref(0)
 let raf = 0

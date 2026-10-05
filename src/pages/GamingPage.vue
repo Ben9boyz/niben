@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { tx } from '../composables/useTexts'
 import GamingContent from '../components/GamingContent.vue'
 </script>

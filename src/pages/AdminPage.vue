@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import AdminPanel from '../panels/AdminPanel.vue'
 </script>
 

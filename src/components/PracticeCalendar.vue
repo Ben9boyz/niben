@@ -1,11 +1,12 @@
-<script setup>
+<script setup lang="ts">
 import { tx } from '../composables/useTexts'
 import { ref, computed, onMounted } from 'vue'
 import { Flame } from 'lucide-vue-next'
 
 // The days I have practised Japanese on the site, as a grid like GitHub's activity (last 26 weeks) + the streak.
-const d = ref(null)
-onMounted(async () => { try { d.value = await (await fetch('api.php?action=practice_calendar', { cache: 'no-store' })).json() } catch {} })
+interface Calendar { days: Record<string, number>; streak: number; best: number; total: number; active: number }
+const d = ref<Calendar | null>(null)
+onMounted(async () => { try { d.value = (await (await fetch('api.php?action=practice_calendar', { cache: 'no-store' })).json()) as Calendar } catch {} })
 const WEEKS = 26
 const cells = computed(() => {
   const days = d.value?.days || {}
@@ -14,9 +15,10 @@ const cells = computed(() => {
   const end = new Date(today)
   const dow = (end.getDay() + 6) % 7 // Monday = 0
   const start = new Date(end); start.setDate(end.getDate() - dow - (WEEKS - 1) * 7)
-  const out = []
+  type Cell = { key: string; n: number; label: string } | null
+  const out: Cell[][] = []
   for (let w = 0; w < WEEKS; w++) {
-    const col = []
+    const col: Cell[] = []
     for (let i = 0; i < 7; i++) {
       const day = new Date(start); day.setDate(start.getDate() + w * 7 + i)
       const key = day.toISOString().slice(0, 10)
@@ -26,7 +28,7 @@ const cells = computed(() => {
   }
   return out
 })
-const level = (n) => (n === 0 ? 0 : n < 5 ? 1 : n < 15 ? 2 : n < 30 ? 3 : 4)
+const level = (n: number) => (n === 0 ? 0 : n < 5 ? 1 : n < 15 ? 2 : n < 30 ? 3 : 4)
 const months = computed(() => cells.value.map((col, i) => { const f = col.find(Boolean); const m = f ? new Date(f.key).toLocaleDateString('nb-NO', { month: 'short' }) : ''; const prev = i ? cells.value[i - 1].find(Boolean) : null; return !prev || (f && new Date(prev.key).getMonth() !== new Date(f.key).getMonth()) ? m : '' }))
 </script>
 

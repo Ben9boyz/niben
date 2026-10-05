@@ -1,29 +1,32 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { ListMusic, Music, ChevronRight, Pencil, Check, X, ArrowUp, ArrowDown, GripVertical, Trash2, Shuffle, Lock } from 'lucide-vue-next'
 import { spotify, fetchQueue, fetchTracks, fmtClock } from '../composables/useSpotify'
 import { queueDrop, queueOver, drag } from '../composables/useDrag'
 import { admin } from '../composables/useAdmin'
+import type { Track, QueueItem } from '../types'
 import { openAlbumPage, openArtistPage, firstArtist } from '../composables/useBrowse'
 import { myQueue, loadMyQueue, removeAt, moveRange, clearMine, shuffleMine, locked } from '../composables/useQueue'
 
 // Under "now playing": what comes next. "Min kø" is MY list (admin): drag albums / songs around, move them with the
 // arrows, delete, or shuffle – Spotify only gets the next song, a moment before it's needed (see useQueue.js).
 // Below it: what Spotify itself plays after that (the rest of the album / playlist), read-only.
-const queue = ref(null) // Spotify's queue
-const pos = ref(null) // { n, of, next } while an album plays
-let timer = 0
-let soon = 0
-const props = defineProps({ flat: Boolean, collapsible: Boolean, always: Boolean }) // playlists: always the plain song list · collapsible: the list can be folded away (3D panel, mini player)
+const queue = ref<Track[] | null>(null) // Spotify's queue
+const pos = ref<{ n: number; of: number; next: string | null } | null>(null) // while an album plays
+let timer: ReturnType<typeof setInterval> | undefined
+let soon: ReturnType<typeof setTimeout> | undefined
+const props = defineProps<{ flat?: boolean; collapsible?: boolean; always?: boolean }>() // playlists: always the plain song list · collapsible: the list can be folded away (3D panel, mini player)
 const KEY = 'niben-queue-open'
 const shut = ref(props.collapsible && (() => { try { return localStorage.getItem(KEY) !== '1' } catch { return true } })()) // folded away until I open it
 function toggleShut() { if (!props.collapsible) return; shut.value = !shut.value; try { localStorage.setItem(KEY, shut.value ? '0' : '1') } catch {} }
-const open = ref(new Set()) // groups that are unfolded (by key)
+const open = ref(new Set<string>()) // groups that are unfolded (by key)
 const editing = ref(false)
 
 // songs that directly follow each other on the same album (in the album's order) are one tile
-function group(list, flat) {
-  const out = []
+type Song = Track | QueueItem
+interface Tile { key: string; uri: string | null | undefined; name: string; image: string | null | undefined; start: number; tracks: { t: Song; idx: number }[] }
+function group(list: Song[], flat?: boolean): Tile[] {
+  const out: Tile[] = []
   list.forEach((t, idx) => {
     const last = out[out.length - 1]
     const prev = last?.tracks[last.tracks.length - 1]?.t
@@ -43,48 +46,48 @@ const spotQueue = computed(() => {
 })
 const groups = computed(() => group(spotQueue.value, props.flat))
 const asAlbums = computed(() => !props.flat && groups.value.length > 0)
-const isAlbum = (g) => g.tracks.length > 1
-const single = (g) => g.tracks.length === 1
-const minutes = (g) => {
+const isAlbum = (g: Tile) => g.tracks.length > 1
+const single = (g: Tile) => g.tracks.length === 1
+const minutes = (g: Tile) => {
   const m = Math.round(g.tracks.reduce((a, x) => a + (x.t.ms || 0), 0) / 60000)
   return m >= 60 ? `${Math.floor(m / 60)} t ${m % 60} min` : `${m} min`
 }
 // Spotify plays what I queued BEFORE the rest of the playing album: the rest is the tile that starts with the song after this one
-const rest = (g) => !!g.uri && g.uri === spotify.now?.context && !!pos.value?.next && g.tracks[0].t.uri === pos.value.next
-const lockedG = (g) => g.tracks.some((x) => locked(x.idx))
+const rest = (g: Tile) => !!g.uri && g.uri === spotify.now?.context && !!pos.value?.next && g.tracks[0]?.t.uri === pos.value.next
+const lockedG = (g: Tile) => g.tracks.some((x) => locked(x.idx))
 const mineCount = computed(() => myQueue.items.length)
 const totalCount = computed(() => mineCount.value + spotQueue.value.length)
 // the name of an album tile opens the album, the artist of a song opens the artist
-const openGroupAlbum = (g) => { const t = g.tracks[0].t; if (g.uri) openAlbumPage({ uri: g.uri, name: g.name, artist: t.album_artist || t.artist, image: g.image, image_large: g.image }) }
-const openArtistOf = (t) => { if (t?.artist) openArtistPage({ name: firstArtist(t.artist) }) }
-function toggle(k) { const o = new Set(open.value); o.has(k) ? o.delete(k) : o.add(k); open.value = o }
+const openGroupAlbum = (g: Tile) => { const t = g.tracks[0]?.t; if (t && g.uri) openAlbumPage({ uri: g.uri, name: g.name, artist: ('album_artist' in t ? t.album_artist : '') || t.artist || '', image: g.image, image_large: g.image }) }
+const openArtistOf = (t?: Song | null) => { if (t?.artist) openArtistPage({ name: firstArtist(t.artist) }) }
+function toggle(k: string) { const o = new Set(open.value); o.has(k) ? o.delete(k) : o.add(k); open.value = o }
 
 // ── editing my list ──
-function moveGroup(g, d) {
+function moveGroup(g: Tile, d: number) {
   const gi = mine.value.indexOf(g)
   const n = mine.value[gi + d]
   if (!n || lockedG(g)) return
   moveRange(g.start, g.tracks.length, d < 0 ? n.start : n.start + n.tracks.length - g.tracks.length)
 }
-function removeGroup(g) {
+function removeGroup(g: Tile) {
   if (lockedG(g)) { for (let i = g.start + g.tracks.length - 1; i > g.start; i--) removeAt(i); return }
   for (let i = g.start + g.tracks.length - 1; i >= g.start; i--) removeAt(i)
 }
-function moveTrack(idx, d) { if (!locked(idx) && idx + d >= 0 && idx + d < myQueue.items.length) moveRange(idx, 1, idx + d) }
+function moveTrack(idx: number, d: number) { if (!locked(idx) && idx + d >= 0 && idx + d < myQueue.items.length) moveRange(idx, 1, idx + d) }
 function clearAll() { if (confirm('Tømme hele køen din?')) clearMine() }
 // drag & drop (PC): drop a tile on another to put it there; the arrows do the same on touch screens
-const dragging = ref(null)
-const overKey = ref(null)
-function onDragStart(e, g) { dragging.value = g; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', g.key) }
-function onDragOver(e, key) { if (!dragging.value) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; overKey.value = key }
-function onDrop(e, target) {
+const dragging = ref<Tile | null>(null)
+const overKey = ref<string | null>(null)
+function onDragStart(e: DragEvent, g: Tile) { dragging.value = g; if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', g.key) } }
+function onDragOver(e: DragEvent, key: string) { if (!dragging.value) return; e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'; overKey.value = key }
+function onDrop(e: DragEvent, target: Tile) {
   e.preventDefault()
   const g = dragging.value
-  dragging.value = overKey.value = null
+  dragging.value = null; overKey.value = null
   if (!g || g === target || lockedG(g)) return
   moveRange(g.start, g.tracks.length, g.start > target.start ? target.start : target.start + target.tracks.length - g.tracks.length)
 }
-const onDragEnd = () => { dragging.value = overKey.value = null }
+const onDragEnd = () => { dragging.value = null; overKey.value = null }
 
 async function load() { queue.value = await fetchQueue() }
 async function where() {
@@ -95,7 +98,7 @@ async function where() {
   pos.value = i >= 0 ? { n: i + 1, of: list.length, next: list[i + 1]?.uri || null } : null
 }
 // a new song: look again (a moment later, once Spotify has caught up)
-watch(() => spotify.now?.uri, () => { open.value = new Set(); clearTimeout(soon); soon = setTimeout(() => { load(); where() }, 700) }, { immediate: true })
+watch(() => spotify.now?.uri, () => { open.value = new Set(); clearTimeout(soon); soon = setTimeout(() => { void load(); void where() }, 700) }, { immediate: true })
 watch(() => spotify.queueV, () => { clearTimeout(soon); soon = setTimeout(load, 400) })
 watch(() => admin.loggedIn, (v) => { if (v) loadMyQueue() }, { immediate: true })
 onMounted(() => { timer = setInterval(() => { if (!document.hidden && spotify.now?.playing && !editing.value) load() }, 15000) })
@@ -104,7 +107,7 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
 
 <template>
   <section v-if="spotify.now?.name || mineCount || always" class="qp" :class="{ over: queueOver, armed: drag.track || drag.item, editing }" v-on="queueDrop">
-    <header :class="{ tap: collapsible }" :role="collapsible ? 'button' : null" :tabindex="collapsible ? 0 : null" :aria-expanded="collapsible ? !shut : null" @click="toggleShut" @keydown.enter="toggleShut">
+    <header :class="{ tap: collapsible }" :role="collapsible ? 'button' : undefined" :tabindex="collapsible ? 0 : undefined" :aria-expanded="collapsible ? !shut : undefined" @click="toggleShut" @keydown.enter="toggleShut">
       <b class="label-caps"><ListMusic :size="13" aria-hidden="true" />Neste i køen<small v-if="totalCount" class="cnt">{{ totalCount }}</small></b>
       <small v-if="pos" class="pos">Låt {{ pos.n }} av {{ pos.of }}</small>
       <ChevronRight v-if="collapsible" :size="15" class="fold" :class="{ open: !shut }" aria-hidden="true" />
@@ -161,12 +164,12 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
               <ChevronRight :size="15" class="chev" :class="{ on: open.has('s' + i) }" aria-hidden="true" />
             </div>
             <div v-else class="gh single">
-              <img v-if="g.tracks[0].t.img || g.image" crossorigin="anonymous" :src="g.tracks[0].t.img || g.image" alt="" /><span v-else class="ph"><Music :size="13" /></span>
+              <img v-if="g.tracks[0].t.img || g.image" crossorigin="anonymous" :src="g.tracks[0].t.img || g.image || undefined" alt="" /><span v-else class="ph"><Music :size="13" /></span>
               <span class="t" translate="no"><b>{{ g.tracks[0].t.name }}</b><small><i class="tag pl">Spilleliste</i><a v-if="g.tracks[0].t.artist" class="lnk" href="#" title="Åpne artisten" @click.prevent="openArtistOf(g.tracks[0].t)">{{ g.tracks[0].t.artist }}</a></small></span>
-              <small class="d">{{ fmtClock(g.tracks[0].t.ms / 1000) }}</small>
+              <small class="d">{{ fmtClock((g.tracks[0].t.ms ?? 0) / 1000) }}</small>
             </div>
             <ol v-if="isAlbum(g) && open.has('s' + i)" class="songs">
-              <li v-for="(x, j) in g.tracks" :key="x.t.uri + j"><span class="n">{{ j + 1 }}</span><span class="t" translate="no"><b>{{ x.t.name }}</b></span><small class="d">{{ fmtClock(x.t.ms / 1000) }}</small></li>
+              <li v-for="(x, j) in g.tracks" :key="x.t.uri + j"><span class="n">{{ j + 1 }}</span><span class="t" translate="no"><b>{{ x.t.name }}</b></span><small class="d">{{ fmtClock((x.t.ms ?? 0) / 1000) }}</small></li>
             </ol>
           </li>
         </ol>
@@ -174,7 +177,7 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
           <li v-for="(t, i) in spotQueue.slice(0, 12)" :key="t.uri + i">
             <img v-if="t.img" crossorigin="anonymous" :src="t.img" alt="" /><span v-else class="ph"><Music :size="13" /></span>
             <span class="t" translate="no"><b>{{ t.name }}</b><small><a v-if="t.artist" class="lnk" href="#" title="Åpne artisten" @click.prevent="openArtistOf(t)">{{ t.artist }}</a></small></span>
-            <small class="d">{{ fmtClock(t.ms / 1000) }}</small>
+            <small class="d">{{ fmtClock((t.ms ?? 0) / 1000) }}</small>
           </li>
         </ol>
       </template>

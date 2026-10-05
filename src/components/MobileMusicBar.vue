@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { Library, Search, Play, Pause, SkipBack, SkipForward, Disc3 } from 'lucide-vue-next'
 import { spotify, progressMs, control } from '../composables/useSpotify'
@@ -6,23 +6,23 @@ import { admin } from '../composables/useAdmin'
 
 // Phones, the plain music page: like Spotify's – ONE unit at the bottom: the player on top (cover, name, the buttons you need,
 // a thin progress line; tap it for the whole player) and the two tabs under it: Bibliotek and Søk.
-defineProps({ tab: { type: String, default: 'library' } })
-const emit = defineEmits(['tab', 'open'])
+withDefaults(defineProps<{ tab?: 'library' | 'search' }>(), { tab: 'library' })
+const emit = defineEmits<{ tab: [tab: 'library' | 'search']; open: [] }>()
 const now = computed(() => spotify.now)
 const playing = computed(() => !!now.value?.name)
-const pct = computed(() => (now.value?.duration_ms ? (progressMs.value / now.value.duration_ms) * 100 : 0))
+const pct = computed(() => (now.value?.duration_ms ? (progressMs.value / now.value?.duration_ms) * 100 : 0))
 const toggle = () => control(now.value?.playing ? 'pause' : 'resume')
 </script>
 
 <template>
   <div class="mmb glass">
     <div v-if="playing" class="np" role="button" tabindex="0" aria-label="Åpne spilleren" @click="emit('open')" @keydown.enter="emit('open')">
-      <img v-if="now.image" crossorigin="anonymous" :src="now.image" alt="" />
+      <img v-if="now?.image" crossorigin="anonymous" :src="now?.image || undefined" alt="" />
       <span v-else class="ph"><Disc3 :size="20" /></span>
-      <span class="tx"><b translate="no">{{ now.name }}</b><small translate="no">{{ now.artist }}</small></span>
+      <span class="tx"><b translate="no">{{ now?.name }}</b><small translate="no">{{ now?.artist }}</small></span>
       <span v-if="admin.loggedIn" class="ctl" @click.stop>
         <button aria-label="Forrige låt" @click="control('previous')"><SkipBack :size="20" fill="currentColor" /></button>
-        <button class="pp" :aria-label="now.playing ? 'Pause' : 'Spill'" @click="toggle"><Pause v-if="now.playing" :size="22" fill="currentColor" /><Play v-else :size="22" fill="currentColor" /></button>
+        <button class="pp" :aria-label="now?.playing ? 'Pause' : 'Spill'" @click="toggle"><Pause v-if="now?.playing" :size="22" fill="currentColor" /><Play v-else :size="22" fill="currentColor" /></button>
         <button aria-label="Neste låt" @click="control('next')"><SkipForward :size="20" fill="currentColor" /></button>
       </span>
       <i class="prog" :style="{ width: `${pct}%` }"></i>

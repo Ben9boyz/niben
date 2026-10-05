@@ -1,16 +1,17 @@
-<script setup>
+<script setup lang="ts">
+import { hideImg } from '../lib/dom'
 import { tx } from '../composables/useTexts'
 import { X } from 'lucide-vue-next'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { useData } from '../composables/useData'
+import { useData, type Book } from '../composables/useData'
 import Stars from '../components/Stars.vue'
 
 const data = useData()
 const books = computed(() => data.boker || [])
-const open = ref(null)
-const cover = (b) => b.omslag || (b.isbn ? `https://covers.openlibrary.org/b/isbn/${String(b.isbn).replace(/[^0-9X]/gi, '')}-L.jpg` : null)
-const fmt = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') ? new Date(d).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' }) : d)
-const onKey = (e) => e.key === 'Escape' && (open.value = null)
+const open = ref<Book | null>(null)
+const cover = (b: Book) => b.omslag || (b.isbn ? `https://covers.openlibrary.org/b/isbn/${String(b.isbn).replace(/[^0-9X]/gi, '')}-L.jpg` : null)
+const fmt = (d: string | null | undefined) => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') ? new Date(d ?? '').toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' }) : d)
+const onKey = (e: KeyboardEvent) => e.key === 'Escape' && (open.value = null)
 onMounted(() => window.addEventListener('keydown', onKey))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
@@ -25,7 +26,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <div class="shelf">
       <button v-for="(b, i) in books" :key="b.id || b.tittel" class="book rise" :style="{ '--i': Math.min(i, 12) }" @click="open = b">
         <span class="cov">
-          <img v-if="cover(b)" :src="cover(b)" alt="" loading="lazy" @error="(e) => (e.target.style.display = 'none')" />
+          <img v-if="cover(b)" :src="cover(b) || undefined" alt="" loading="lazy" @error="hideImg" />
           <span class="fallback">{{ b.tittel }}</span>
         </span>
         <b>{{ b.tittel }}</b>
@@ -40,7 +41,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <div v-if="open" class="modal-bg" @click.self="open = null">
           <article class="modal glass">
             <button class="x" @click="open = null" aria-label="Lukk"><X :size="18" /></button>
-            <img v-if="cover(open)" :src="cover(open)" alt="" />
+            <img v-if="cover(open)" :src="cover(open) || undefined" alt="" />
             <div>
               <h2>{{ open.tittel }}</h2>
               <p class="muted">{{ open.forfatter }}<template v-if="open.lest"> · lest {{ fmt(open.lest) }}</template></p>

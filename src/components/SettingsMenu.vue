@@ -1,16 +1,17 @@
-<script setup>
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+<script setup lang="ts">
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, type Component } from 'vue'
 import { useRoute } from 'vue-router'
 import { Gauge, Settings, Globe, Sun, Moon, Radio, Check, Wind, Keyboard, Box, LayoutList, ShieldCheck, ChevronDown, Search } from 'lucide-vue-next'
 import { LANGS } from '../lib/languages'
 import { i18n, setLang } from '../composables/useLang'
-import { useTheme } from '../composables/useTheme'
+import { useTheme, type ThemeChoice } from '../composables/useTheme'
 import { calm, setCalm } from '../composables/useCalm'
 import { mode as viewMode, toggleMode } from '../composables/useMode'
 import { shortcuts } from '../composables/useShortcuts'
 import { admin } from '../composables/useAdmin'
 import { useData } from '../composables/useData'
 import { gfxUi } from '../composables/useGraphics'
+import { targetEl } from '../lib/dom'
 
 // One button for everything about how the site looks: my photo (with the green dot) when I'm logged in, a cog for
 // everybody else. It opens a small menu: admin (me only), 3D room / plain version, theme, calm mode, language, shortcuts.
@@ -21,16 +22,17 @@ const photo = computed(() => data.om?.bilde || null)
 const open = ref(false)
 const langOpen = ref(false)
 const q = ref('')
-const root = ref(null)
-const menuEl = ref(null)
-const pos = ref({})
+const root = ref<HTMLElement | null>(null)
+const menuEl = ref<HTMLElement | null>(null)
+const pos = ref<Record<string, string>>({})
 const touch = window.matchMedia('(hover: none)').matches
 
 async function toggle() {
   open.value = !open.value
   langOpen.value = false
   if (!open.value) return
-  const r = root.value.getBoundingClientRect()
+  const r = root.value?.getBoundingClientRect()
+  if (!r) return
   const phone = innerWidth <= 720
   pos.value = { visibility: 'hidden', left: '0px', top: '0px' }
   await nextTick()
@@ -42,14 +44,14 @@ async function toggle() {
   pos.value = { left: `${left}px`, top: `${Math.max(8, top)}px` }
 }
 const close = () => { open.value = false; langOpen.value = false }
-const onDoc = (e) => { if (open.value && !root.value?.contains(e.target) && !menuEl.value?.contains(e.target)) close() }
-const onKey = (e) => { if (e.key === 'Escape') close() }
+const onDoc = (e: Event) => { if (open.value && !root.value?.contains(targetEl(e)) && !menuEl.value?.contains(targetEl(e))) close() }
+const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
 onMounted(() => { document.addEventListener('pointerdown', onDoc); window.addEventListener('keydown', onKey); window.addEventListener('resize', close) })
 onBeforeUnmount(() => { document.removeEventListener('pointerdown', onDoc); window.removeEventListener('keydown', onKey); window.removeEventListener('resize', close) })
 watch(() => route.fullPath, close)
 
-const themes = computed(() => [
-  ...(live.configured ? [['live', 'Live', Radio]] : []),
+const themes = computed((): [ThemeChoice, string, Component][] => [
+  ...(live.configured ? [['live', 'Live', Radio] as [ThemeChoice, string, Component]] : []),
   ['light', 'Lys', Sun],
   ['dark', 'Mørk', Moon],
 ])
@@ -58,8 +60,8 @@ const langs = computed(() => {
   return n ? LANGS.filter((l) => l.name.toLowerCase().includes(n) || l.en.toLowerCase().includes(n) || l.code.toLowerCase() === n) : LANGS
 })
 const langName = computed(() => (i18n.lang === 'zh-TW' ? 'TW' : i18n.lang.toUpperCase()))
-function pickLang(code) { setLang(code); q.value = ''; langOpen.value = false }
-const setView = (v) => { if (viewMode.value !== v) toggleMode() }
+function pickLang(code: string) { setLang(code); q.value = ''; langOpen.value = false }
+const setView = (v: string) => { if (viewMode.value !== v) toggleMode() }
 </script>
 
 <template>

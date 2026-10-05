@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import NavBar from './components/NavBar.vue'
 import MusicToast from './components/MusicToast.vue'
 import { useMediaSession } from './composables/useMediaSession'

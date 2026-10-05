@@ -88,7 +88,7 @@ export interface RoomCallbacks {
   onDecorSelect?: (id: string | null) => void
 }
 /** What the room needs to know about the site's data. */
-export interface RoomData { gitarer?: Guitar[]; boker?: Book[]; reiser?: Trip[]; prosjekter?: Project[]; om?: { bilde?: string }; site?: { navn?: string } }
+export interface RoomData { gitarer?: Guitar[]; boker?: Book[]; reiser?: Trip[]; prosjekter?: Project[]; om?: { bilde?: string | null }; site?: { navn?: string } }
 /** The graphics settings as the room is told them (see useGraphics). */
 export type GfxInput = Partial<Omit<GfxValues, 'res' | 'ao'>> & { mode?: GfxMode; res?: number | 'auto'; ao?: GfxValues['ao'] | 'auto'; showFps?: boolean }
 interface Eff extends Omit<GfxValues, 'res' | 'ao'> { res: number | 'auto'; ao: GfxValues['ao'] | 'auto'; showFps: boolean }

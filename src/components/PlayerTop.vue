@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import BrandLogo from './BrandLogo.vue'
 import LangSwitch from './LangSwitch.vue'
 import ThemeSwitch from './ThemeSwitch.vue'
@@ -8,7 +8,7 @@ import { shortcuts } from '../composables/useShortcuts'
 import { ref } from 'vue'
 import { Sun, Moon, LogIn, ArrowUpRight } from 'lucide-vue-next'
 import { useTheme } from '../composables/useTheme'
-import { admin, checkLogin, login } from '../composables/useAdmin'
+import { admin, checkLogin, login, errorMessage } from '../composables/useAdmin'
 import { leavePlayer } from '../composables/useShell'
 
 // Top bar of the music player: name, light / dark, and logging in (needed to play).
@@ -28,7 +28,7 @@ async function doLogin() {
     pw.value = ''
     showLogin.value = false
   } catch (e) {
-    err.value = e.message
+    err.value = errorMessage(e)
   } finally {
     busy.value = false
   }

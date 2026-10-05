@@ -1,18 +1,19 @@
-<script setup>
-import { computed } from 'vue'
+<script setup lang="ts" generic="T extends string | number">
+import { computed, type Component } from 'vue'
+import type { RouteLocationRaw } from 'vue-router'
 
 // The site's one tab switch: a glass pill with a marker that slides to the chosen tab.
 // items: [{ id, label, icon? (SVG path or a component), to? (route → a link), count? }]
 // Used for the sub-tabs, Album / Spillelister, and the tabs inside the Japanese corner.
-const props = defineProps({
-  items: { type: Array, required: true },
-  modelValue: { type: [String, Number], default: null },
-  floating: Boolean, // over the 3D room, top-left
-  small: Boolean,
-  stretch: Boolean, // fill the width (inside a card)
-  label: { type: String, default: 'Faner' },
-})
-const emit = defineEmits(['update:modelValue'])
+const props = withDefaults(defineProps<{
+  items: { id: T; label: string; icon?: string | Component; to?: RouteLocationRaw; count?: number | string }[]
+  modelValue?: T | null
+  floating?: boolean // over the 3D room, top-left
+  small?: boolean
+  stretch?: boolean // fill the width (inside a card)
+  label?: string
+}>(), { modelValue: null, label: 'Faner' })
+const emit = defineEmits<{ 'update:modelValue': [id: T] }>()
 const index = computed(() => Math.max(0, props.items.findIndex((x) => x.id === props.modelValue)))
 </script>
 

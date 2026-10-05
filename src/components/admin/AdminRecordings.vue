@@ -1,16 +1,19 @@
-<script setup>
+<script setup lang="ts">
 import { ChevronLeft, Play, Music } from 'lucide-vue-next'
 import { ref, reactive, computed } from 'vue'
-import { useData, reloadData } from '../../composables/useData'
-import { api } from '../../composables/useAdmin'
+import { useData, reloadData, type Recording } from '../../composables/useData'
+import { api, errorMessage } from '../../composables/useAdmin'
 import { recordingDate, needsMp3, toMp3 } from '../../lib/media'
+import { inputOf } from '../../lib/dom'
+import type { Flash } from '../../types'
 
 const data = useData()
 const guitars = computed(() => data.gitarer || [])
 const guitarId = ref(guitars.value[0]?.id)
 const guitar = computed(() => guitars.value.find((g) => g.id === guitarId.value))
-const editing = ref(null)
-const msg = ref(null)
+interface RecordingForm { id: number | null; title: string; recorded_on: string; youtube: string; notes: string; file: File | null; existingAudio: string | null }
+const editing = ref<RecordingForm | null>(null)
+const msg = ref<Flash | null>(null)
 const busy = ref(false)
 const progress = ref(0)
 const stage = ref('') // shown while converting / uploading
@@ -18,24 +21,26 @@ const dateNote = ref('')
 
 // the server's upload limit (e.g. "64M"), checked before uploading
 let maxBytes = Infinity
-fetch('api.php?action=limits').then((r) => r.json()).then((l) => {
-  const toBytes = (v) => { const m = String(v || '').match(/^(\d+)\s*([KMG]?)/i); return m ? +m[1] * ({ K: 1024, M: 1024 ** 2, G: 1024 ** 3 }[m[2].toUpperCase()] || 1) : Infinity }
+fetch('api.php?action=limits').then((r) => r.json() as Promise<{ upload_max_filesize?: string; post_max_size?: string }>).then((l) => {
+  const toBytes = (v: unknown): number => { const m = String(v || '').match(/^(\d+)\s*([KMG]?)/i); return m ? Number(m[1]) * ({ K: 1024, M: 1024 ** 2, G: 1024 ** 3 }[(m[2] ?? '').toUpperCase()] || 1) : Infinity }
   maxBytes = Math.min(toBytes(l.upload_max_filesize), toBytes(l.post_max_size))
 }).catch(() => {})
 
-function blank() {
+function blank(): RecordingForm {
   dateNote.value = ''
-  return reactive({ id: null, title: '', recorded_on: '', youtube: '', notes: '', file: null, existingAudio: null })
+  return reactive<RecordingForm>({ id: null, title: '', recorded_on: '', youtube: '', notes: '', file: null, existingAudio: null })
 }
-function edit(r) {
+function edit(r?: Recording | null) {
   msg.value = null
   editing.value = r
-    ? reactive({ id: r.id, title: r.tittel, recorded_on: r.dato || '', youtube: r.youtube ? `https://youtu.be/${r.youtube}` : '', notes: r.notat || '', file: null, existingAudio: r.lyd })
+    ? reactive<RecordingForm>({ id: r.id, title: r.tittel, recorded_on: r.dato || '', youtube: r.youtube ? `https://youtu.be/${r.youtube}` : '', notes: r.notat || '', file: null, existingAudio: r.lyd })
     : blank()
 }
 
 async function save() {
   const f = editing.value
+  const gid = guitarId.value
+  if (!f || !gid) return
   if (!f.title.trim()) { msg.value = { error: 'Skriv en tittel.' }; return }
   if (!f.id && !f.file && !f.youtube.trim()) { msg.value = { error: 'Velg en lydfil eller lim inn en YouTube-lenke.' }; return }
   busy.value = true
@@ -55,21 +60,21 @@ async function save() {
     stage.value = file ? 'Laster opp' : ''
     progress.value = 0
     const fd = new FormData()
-    if (f.id) fd.append('id', f.id)
-    fd.append('guitar', guitarId.value)
+    if (f.id) fd.append('id', String(f.id))
+    fd.append('guitar', gid)
     fd.append('title', f.title)
     fd.append('recorded_on', f.recorded_on || '')
     fd.append('youtube', f.youtube || '')
     fd.append('notes', f.notes || '')
     if (file) fd.append('file', file)
-    const r = await api('recording_save', fd, { onProgress: (p) => (progress.value = p) })
+    const r = await api<{ id: number }>('recording_save', fd, { onProgress: (p) => (progress.value = p) })
     f.id = r.id
     f.file = null
     await reloadData()
     editing.value = null
     msg.value = { ok: 'Opptaket er lagt til.' }
   } catch (e) {
-    msg.value = { error: e.message }
+    msg.value = { error: errorMessage(e) }
   } finally {
     busy.value = false
     stage.value = ''
@@ -77,20 +82,20 @@ async function save() {
 }
 async function remove() {
   const f = editing.value
-  if (!f.id || !confirm(`Slette «${f.title}»?`)) return
+  if (!f?.id || !confirm(`Slette «${f.title}»?`)) return
   try {
     await api('recording_delete', { id: f.id })
     await reloadData()
     editing.value = null
   } catch (e) {
-    msg.value = { error: e.message }
+    msg.value = { error: errorMessage(e) }
   }
 }
-async function onFile(e) {
-  const file = e.target.files?.[0]
-  if (!file) return
-  msg.value = null
+async function onFile(e: Event) {
+  const file = inputOf(e).files?.[0]
   const f = editing.value
+  if (!file || !f) return
+  msg.value = null
   if (!needsMp3(file) && file.size > 60 * 1024 * 1024) { msg.value = { error: 'Filen er over 60 MB. Bruk heller en YouTube-lenke.' }; return }
   if (file.size > 1.5 * 1024 * 1024 * 1024) { msg.value = { error: 'Videoen er for stor til å gjøres om i nettleseren (over 1,5 GB).' }; return }
   f.file = file
@@ -103,7 +108,7 @@ async function onFile(e) {
     dateNote.value = source === 'video' ? 'Datoen er hentet fra filen.' : 'Datoen er hentet fra når filen sist ble endret – sjekk at den stemmer.'
   }
 }
-const mb = (n) => (n / 1024 / 1024).toFixed(1)
+const mb = (n: number) => (n / 1024 / 1024).toFixed(1)
 </script>
 
 <template>

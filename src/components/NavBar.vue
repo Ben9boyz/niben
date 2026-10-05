@@ -1,19 +1,20 @@
-<script setup>
+<script setup lang="ts">
 import SettingsMenu from './SettingsMenu.vue'
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, type ComponentPublicInstance } from 'vue'
 import { GROUPS, groupOf, groupTarget } from '../lib/nav'
 import { useRoute, useRouter } from 'vue-router'
 import { admin, checkLogin } from '../composables/useAdmin'
 import BrandLogo from './BrandLogo.vue'
 import { Menu, X } from 'lucide-vue-next'
+import { targetEl } from '../lib/dom'
 
 const route = useRoute()
 const router = useRouter()
 
 // Hidden way into the admin page: double-click (or long-press) the logo
-let pressTimer = 0
+let pressTimer: ReturnType<typeof setTimeout> | undefined
 function toAdmin() { router.push('/admin') }
-function pressStart(e) {
+function pressStart(e: PointerEvent) {
   if (e.pointerType !== 'touch') return
   pressTimer = setTimeout(toAdmin, 600)
 }
@@ -26,8 +27,12 @@ const activeGroup = computed(() => groupOf(route.name)?.id)
 // phones (plain version): a top bar with the page's name – the group (its sub-tabs sit just below)
 const barTitle = computed(() => (route.name === 'hjem' ? '' : route.name === 'admin' ? 'Admin' : groupOf(route.name)?.label || route.meta?.title || ''))
 
-const track = ref(null)
-const itemEls = ref([])
+const track = ref<HTMLElement | null>(null)
+const itemEls = ref<HTMLElement[]>([])
+function setItem(i: number, el: Element | ComponentPublicInstance | null) {
+  const node = el instanceof Element ? el : el?.$el
+  if (node instanceof HTMLElement) itemEls.value[i] = node
+}
 const drop = ref({ x: 0, y: 0, w: 0, h: 0, ready: false })
 const rail = window.matchMedia('(min-width: 721px)')
 const stretching = ref(false)
@@ -38,8 +43,8 @@ const onPhoneMq = () => { isPhone.value = phoneMq.matches }
 const navOpen = ref(false)
 const activeIcon = computed(() => links.value.find((l) => l.name === activeGroup.value)?.icon || 'M4 6h16M4 12h16M4 18h16')
 const closeNav = () => { navOpen.value = false }
-const onNavDoc = (e) => { if (navOpen.value && !e.target.closest?.('.nav-wrap')) closeNav() }
-const onNavKey = (e) => { if (e.key === 'Escape') closeNav() }
+const onNavDoc = (e: Event) => { if (navOpen.value && !targetEl(e).closest('.nav-wrap')) closeNav() }
+const onNavKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeNav() }
 const scrolled = ref(false)
 
 function place() {
@@ -60,7 +65,7 @@ watch(activeGroup, () => nextTick(place))
 watch(() => route.fullPath, () => { setHidden(false); closeNav() })
 const phone = window.matchMedia('(max-width: 720px)')
 let lastY = 0
-function setHidden(v) { document.documentElement.classList.toggle('nav-hidden', v) }
+function setHidden(v: boolean) { document.documentElement.classList.toggle('nav-hidden', v) }
 function onScroll() {
   const y = window.scrollY
   scrolled.value = y > 12
@@ -114,7 +119,7 @@ onBeforeUnmount(() => {
       <span
         class="drop"
         :class="{ ready: drop.ready, stretch: stretching }"
-        :style="{ transform: `translate(${drop.x}px, ${drop.y}px)`, width: `${drop.w}px`, height: drop.h ? `${drop.h}px` : null }"
+        :style="{ transform: `translate(${drop.x}px, ${drop.y}px)`, width: `${drop.w}px`, height: drop.h ? `${drop.h}px` : undefined }"
       ></span>
       <router-link
         v-for="(l, i) in links"
@@ -122,7 +127,7 @@ onBeforeUnmount(() => {
         :to="l.to"
         class="item"
         :class="{ active: activeGroup === l.name }"
-        :ref="(el) => (itemEls[i] = el?.$el ?? el)"
+        :ref="(el) => setItem(i, el)"
       >
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path :d="l.icon" /></svg>
         <span class="label">{{ l.label }}</span>

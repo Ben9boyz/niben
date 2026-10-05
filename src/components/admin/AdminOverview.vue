@@ -1,60 +1,72 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { MessageCircle, Check as CheckIcon, Archive as ArchiveIcon, MapPin, Trophy, Download, Users, Music2, Gamepad2, Languages, Globe2, BookOpen, Plane, Mic, RefreshCw, Unplug, Plug, Trash2, Check, AlertTriangle } from 'lucide-vue-next'
-import { api } from '../../composables/useAdmin'
+import { api, errorMessage } from '../../composables/useAdmin'
 import { spotify, setLockSeconds, refreshSpotify, fmtLock, notify } from '../../composables/useSpotify'
 import { byCode } from '../../lib/languages'
 import { pwa, install, desktopApp } from '../../composables/usePwa'
 import { live, loadLive } from '../../composables/useLive'
-import { milestones, loadMilestones, setMilestones } from '../../composables/useMilestones'
+import { milestones, loadMilestones, setMilestones, type Milestone } from '../../composables/useMilestones'
 
 // The first admin tab: what is connected and how things are set up, in plain words – with the buttons to fix it.
-const emit = defineEmits(['goto'])
-const st = ref(null)
-const vis = ref(null)
+const emit = defineEmits<{ goto: [tab: string] }>()
+interface Status {
+  counts: { trips: number; books: number; recordings: number; photos: number }
+  spotify: { connected: boolean; lock_seconds: number; can_save: boolean; can_playlists: boolean; [key: string]: unknown }
+  steam: boolean
+  jpdb: boolean
+  translate: { configured: boolean; provider?: string; total: number; languages: { lang: string; n: number }[] }
+  [key: string]: unknown
+}
+interface Visits { days: { day: string; u: number; h: number }[]; today: number; week: number; month: number; total: number; returning: number; hits_today: number }
+interface GuestbookEntry { id: number; name: string; msg: string; t: number; status: string }
+interface HomePlace { name: string; [key: string]: unknown }
+interface PlaceHit { name: string; region?: string; country?: string; lat: number; lon: number }
+const st = ref<Status | null>(null)
+const vis = ref<Visits | null>(null)
 const err = ref('')
 const busy = ref('')
 const msg = ref('')
 async function load() {
-  try { st.value = await api('admin_status') ; err.value = '' } catch (e) { err.value = e.message }
-  try { vis.value = await api('admin_visits') } catch {}
+  try { st.value = await api<Status>('admin_status') ; err.value = '' } catch (e) { err.value = errorMessage(e) }
+  try { vis.value = await api<Visits>('admin_visits') } catch {}
 }
 onMounted(load)
-const flash = (t) => { msg.value = t; setTimeout(() => { if (msg.value === t) msg.value = '' }, 3500) }
+const flash = (t: string) => { msg.value = t; setTimeout(() => { if (msg.value === t) msg.value = '' }, 3500) }
 
 const LOCKS = [0, 300, 600, 900, 1800, 3600]
 const lockSec = computed(() => spotify.lockSeconds)
 const locked = computed(() => spotify.lockUntil > Date.now() / 1000 + spotify.offset)
-async function setLock(s) {
+async function setLock(s: number) {
   busy.value = 'lock'
-  try { await setLockSeconds(s); flash(s ? `Låsen er nå ${fmtLock(s)}.` : 'Låsen er slått av.') } catch (e) { err.value = e.message }
+  try { await setLockSeconds(s); flash(s ? `Låsen er nå ${fmtLock(s)}.` : 'Låsen er slått av.') } catch (e) { err.value = errorMessage(e) }
   busy.value = ''
 }
 async function refresh() {
   busy.value = 'refresh'
-  try { await api('spotify_refresh', {}); await refreshSpotify(); flash('Hentet på nytt fra Spotify.') } catch (e) { err.value = e.message }
+  try { await api('spotify_refresh', {}); await refreshSpotify(); flash('Hentet på nytt fra Spotify.') } catch (e) { err.value = errorMessage(e) }
   busy.value = ''
 }
 async function disconnect() {
   if (!confirm('Koble fra Spotify? Du kan koble til igjen når som helst.')) return
   busy.value = 'disc'
-  try { await api('spotify_disconnect', {}); await refreshSpotify(); await load(); flash('Spotify er koblet fra.') } catch (e) { err.value = e.message }
+  try { await api('spotify_disconnect', {}); await refreshSpotify(); await load(); flash('Spotify er koblet fra.') } catch (e) { err.value = errorMessage(e) }
   busy.value = ''
 }
-async function clearLang(lang) {
+async function clearLang(lang: string) {
   if (!confirm(lang ? `Slette oversettelsene til ${byCode[lang]?.en || lang}? De lages på nytt neste gang noen velger språket.` : 'Slette ALLE oversettelser? De lages på nytt etter hvert.')) return
   busy.value = 'tr'
-  try { await api('admin_translate_clear', { lang }); await load(); flash('Slettet.') } catch (e) { err.value = e.message }
+  try { await api('admin_translate_clear', { lang }); await load(); flash('Slettet.') } catch (e) { err.value = errorMessage(e) }
   busy.value = ''
 }
 const maxDay = computed(() => Math.max(1, ...(vis.value?.days || []).map((d) => d.u)))
-const dayLabel = (d) => new Date(d + 'T12:00:00').toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })
+const dayLabel = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })
 // guestbook: greetings wait here until I have read and approved them
-const gb = ref([])
-async function loadGb() { try { gb.value = (await api('admin_guestbook')).items } catch {} }
+const gb = ref<GuestbookEntry[]>([])
+async function loadGb() { try { gb.value = (await api<{ items: GuestbookEntry[] }>('admin_guestbook')).items } catch {} }
 onMounted(loadGb)
 const pendingGb = computed(() => gb.value.filter((g) => g.status === 'pending'))
-async function gbDo(id, what) { try { await api('admin_guestbook_set', { id, do: what }); await loadGb() } catch (e) { err.value = e.message } }
+async function gbDo(id: number, what: string) { try { await api('admin_guestbook_set', { id, do: what }); await loadGb() } catch (e) { err.value = errorMessage(e) } }
 // backup: everything as one file
 async function backup() {
   busy.value = 'bk'
@@ -65,52 +77,52 @@ async function backup() {
     const a = document.createElement('a'); a.href = url; a.download = `niben-backup-${new Date().toISOString().slice(0, 10)}.json`; a.click()
     setTimeout(() => URL.revokeObjectURL(url), 5000)
     flash('Sikkerhetskopien er lastet ned.')
-  } catch (e) { err.value = e.message }
+  } catch (e) { err.value = errorMessage(e) }
   busy.value = ''
 }
-const home = ref(null)
+const home = ref<HomePlace | null>(null)
 const hq = ref('')
-const hres = ref([])
-let hTimer = 0
-async function loadHome() { try { home.value = (await api('home_get')).place } catch {} }
+const hres = ref<PlaceHit[]>([])
+let hTimer: ReturnType<typeof setTimeout> | undefined
+async function loadHome() { try { home.value = (await api<{ place: HomePlace | null }>('home_get')).place } catch {} }
 onMounted(loadHome)
 function searchHome() {
   clearTimeout(hTimer)
   if (hq.value.trim().length < 2) { hres.value = []; return }
-  hTimer = setTimeout(async () => { try { hres.value = (await api('home_search', null, { query: `&q=${encodeURIComponent(hq.value.trim())}` })).results } catch (e) { err.value = e.message } }, 300)
+  hTimer = setTimeout(async () => { try { hres.value = (await api<{ results: PlaceHit[] }>('home_search', null, { query: `&q=${encodeURIComponent(hq.value.trim())}` })).results } catch (e) { err.value = errorMessage(e) } }, 300)
 }
-async function setHome(r) {
+async function setHome(r: PlaceHit) {
   busy.value = 'home'
-  try { await api('home_set', { name: r.name + (r.region ? `, ${r.region}` : ''), lat: r.lat, lon: r.lon }); hq.value = ''; hres.value = []; await loadHome(); await loadLive(); flash('Bostedet er lagret – siden følger nå været og dag/natt der.') } catch (e) { err.value = e.message }
+  try { await api('home_set', { name: r.name + (r.region ? `, ${r.region}` : ''), lat: r.lat, lon: r.lon }); hq.value = ''; hres.value = []; await loadHome(); await loadLive(); flash('Bostedet er lagret – siden følger nå været og dag/natt der.') } catch (e) { err.value = errorMessage(e) }
   busy.value = ''
 }
 async function clearHome() {
   busy.value = 'home'
-  try { await api('home_set', { clear: true }); await loadHome(); await loadLive(); flash('Bostedet er fjernet.') } catch (e) { err.value = e.message }
+  try { await api('home_set', { clear: true }); await loadHome(); await loadLive(); flash('Bostedet er fjernet.') } catch (e) { err.value = errorMessage(e) }
   busy.value = ''
 }
-const KIND = { clear: 'klart', cloud: 'skyet', fog: 'tåke', drizzle: 'yr', rain: 'regn', thunder: 'torden', snow: 'snø' }
+const KIND: Record<string, string> = { clear: 'klart', cloud: 'skyet', fog: 'tåke', drizzle: 'yr', rain: 'regn', thunder: 'torden', snow: 'snø' }
 const bf = ref('')
-async function loadBf() { try { bf.value = (await api('admin_best_friend')).id || '' } catch {} }
+async function loadBf() { try { bf.value = (await api<{ id?: string }>('admin_best_friend')).id || '' } catch {} }
 onMounted(loadBf)
 onMounted(() => loadMilestones(true))
-const MS_TYPES = [['song', 'Sang jeg har lært'], ['anime', 'Anime jeg klarer'], ['book', 'Bok jeg har lest'], ['recording', 'Opptak'], ['trip', 'Reise'], ['other', 'Annet']]
+const MS_TYPES: [string, string][] = [['song', 'Sang jeg har lært'], ['anime', 'Anime jeg klarer'], ['book', 'Bok jeg har lest'], ['recording', 'Opptak'], ['trip', 'Reise'], ['other', 'Annet']]
 const ms = ref({ type: 'song', title: '', sub: '' })
 async function addMs() {
   if (!ms.value.title.trim()) return
   busy.value = 'ms'
-  try { const r = await api('milestone_add', { ...ms.value }); setMilestones(r.items); ms.value.title = ''; ms.value.sub = ''; flash('Lagt til – vises nå på hjem-siden.') } catch (e) { err.value = e.message }
+  try { const r = await api<{ items: Milestone[] }>('milestone_add', { ...ms.value }); setMilestones(r.items); ms.value.title = ''; ms.value.sub = ''; flash('Lagt til – vises nå på hjem-siden.') } catch (e) { err.value = errorMessage(e) }
   busy.value = ''
 }
-async function delMs(key) {
-  try { setMilestones((await api('milestone_delete', { key })).items) } catch (e) { err.value = e.message }
+async function delMs(key: string) {
+  try { setMilestones((await api<{ items: Milestone[] }>('milestone_delete', { key })).items) } catch (e) { err.value = errorMessage(e) }
 }
 async function saveBf() {
   busy.value = 'bf'
-  try { const r = await api('admin_best_friend', { id: bf.value }); bf.value = r.id; flash('Bestevennen er lagret – vises på Spill-siden om litt.') } catch (e) { err.value = e.message }
+  try { const r = await api<{ id: string }>('admin_best_friend', { id: bf.value }); bf.value = r.id; flash('Bestevennen er lagret – vises på Spill-siden om litt.') } catch (e) { err.value = errorMessage(e) }
   busy.value = ''
 }
-const langName = (c) => byCode[c]?.en || c
+const langName = (c: string) => byCode[c]?.en || c
 </script>
 
 <template>

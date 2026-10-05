@@ -1,10 +1,6 @@
-<script setup>
+<script setup lang="ts">
 // A folder with a picture lying on it (the cover of something in it) – or a plain folder when there is none.
-defineProps({
-  image: { type: String, default: null },
-  size: { type: Number, default: 18 }, // height in px
-  open: Boolean,
-})
+withDefaults(defineProps<{ image?: string | null; size?: number /* height in px */; open?: boolean }>(), { image: null, size: 18 })
 </script>
 
 <template>

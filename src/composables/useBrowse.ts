@@ -37,7 +37,7 @@ export const albumOfTrack = (t: Track): Album => ({ uri: t.album_uri ?? '', name
 export const firstArtist = (s: string | null | undefined): string => String(s ?? '').split(',')[0]?.trim() ?? ''
 
 /** An artist page: who they are and their albums. */
-export interface ArtistInfo { id?: string; name?: string; image?: string | null; genres?: string[]; albums?: Album[]; _empty?: boolean; error?: string }
+export interface ArtistInfo { id?: string; name?: string; image?: string | null; image_large?: string | null; url?: string | null; genres?: string[]; albums?: Album[]; _empty?: boolean; error?: string }
 export async function fetchArtist({ id, name }: ArtistRef): Promise<ArtistInfo> {
   const key = `artist:${id || name.toLowerCase()}`
   const saved = await pget<ArtistInfo>(key, 24 * 3600000) // an artist page is fetched once a day at most

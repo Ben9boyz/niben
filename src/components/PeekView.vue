@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import MusicDetail from './MusicDetail.vue'
 import ArtistPage from './ArtistPage.vue'

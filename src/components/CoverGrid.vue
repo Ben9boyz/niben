@@ -1,35 +1,37 @@
-<script setup>
+<script setup lang="ts" generic="T extends GridItem">
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { Music, Play, Pause } from 'lucide-vue-next'
 import { libView } from '../composables/useLibView'
 import { spotify } from '../composables/useSpotify'
 import { playItem, itemMenu } from '../lib/menus'
-import { showMenu, longPress } from '../composables/useContextMenu'
+import { showMenu, longPress, type MenuPoint } from '../composables/useContextMenu'
 import { admin } from '../composables/useAdmin'
+import { selectOf } from '../lib/dom'
+import type { GridItem } from '../types'
+
+// Grid of square covers (records and playlists). The name shows on hover.
+const props = withDefaults(defineProps<{
+  items: T[]
+  selectedUri?: string | null
+  playingUri?: string | null
+  cursorUri?: string | null // the iPod's highlighted row
+  // groups: tiles can be dragged to a folder (PC); with `movable` each also gets a group picker (touch screens)
+  draggable?: boolean
+  movable?: boolean
+  groups?: { id: string; name: string; depth?: number }[]
+  groupOf?: ((uri: string) => string | null) | null // uri -> group id
+  guessed?: string[] // uris whose group is only a guess
+  why?: Record<string, string> // uri -> what the guess was based on
+}>(), { selectedUri: null, playingUri: null, cursorUri: null, groups: () => [], groupOf: null, guessed: () => [], why: () => ({}) })
+const emit = defineEmits<{ pick: [item: T]; hover: [item: T]; move: [uri: string, group: string]; dragitem: [item: T] }>()
 
 // the little play button on a cover: starts the album from its first song (albums always play in order),
 // a playlist the way it is set up. What's already playing just pauses / resumes. Right-click (long press on a
 // phone) opens the menu with queue, artist, folder …
 const go = playItem
-const menu = (e, it) => showMenu(e, it.name, itemMenu(it, () => emit('pick', it)))
-const holds = (it) => longPress((e) => menu(e, it))
-const playable = (it) => admin.loggedIn && /^spotify:(album|playlist):/.test(it.uri || '')
-// Grid of square covers (records and playlists). The name shows on hover.
-const props = defineProps({
-  items: { type: Array, required: true }, // [{ uri, name, sub, image }]
-  selectedUri: { type: String, default: null },
-  playingUri: { type: String, default: null },
-  cursorUri: { type: String, default: null }, // the iPod's highlighted row
-  // groups: tiles can be dragged to a folder (PC); with `movable` each also gets a group picker (touch screens)
-  draggable: Boolean,
-
-  movable: Boolean,
-  groups: { type: Array, default: () => [] }, // [{ id, name }]
-  groupOf: { type: Function, default: null }, // uri -> group id
-  guessed: { type: Array, default: () => [] }, // uris whose group is only a guess
-  why: { type: Object, default: () => ({}) }, // uri -> what the guess was based on
-})
-const emit = defineEmits(['pick', 'hover', 'move', 'dragitem'])
+const menu = (e: MenuPoint, it: T) => showMenu(e, it.name, itemMenu(it, () => emit('pick', it)))
+const holds = (it: T) => longPress((e) => menu(e, it))
+const playable = (it: T) => admin.loggedIn && /^spotify:(album|playlist):/.test(it.uri || '')
 // phones can show the library as a list (see useLibView)
 const mq = window.matchMedia('(max-width: 820px)')
 const small = ref(mq.matches)
@@ -61,7 +63,7 @@ const asList = computed(() => libView.list && small.value && !props.movable)
       </button>
       <template v-if="movable">
         <span v-if="guessed.includes(it.uri)" class="guess" :title="why[it.uri] ? `Gjettet ut fra: ${why[it.uri]}` : 'Gruppen er et gjett – flytt eller bekreft'">gjettet</span>
-        <select class="mv" :value="groupOf?.(it.uri) || ''" :aria-label="`Gruppe for ${it.name}`" @change="emit('move', it.uri, $event.target.value)" @click.stop>
+        <select class="mv" :value="groupOf?.(it.uri) || ''" :aria-label="`Gruppe for ${it.name}`" @change="emit('move', it.uri, selectOf($event).value)" @click.stop>
           <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.depth ? '↳ ' : '' }}{{ g.name }}</option>
         </select>
       </template>

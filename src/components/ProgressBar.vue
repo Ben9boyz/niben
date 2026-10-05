@@ -1,20 +1,21 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { spotify, lockLeft, progressMs, fmtClock, control, notify } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 
 // The progress bar with the times – shared by the "now playing" card and the player bar. Click to jump
 // (admin; locked like switching). 'below': times under the bar · 'sides': times left and right of it.
-defineProps({ layout: { type: String, default: 'below' } })
+withDefaults(defineProps<{ layout?: 'below' | 'sides' }>(), { layout: 'below' })
 const now = computed(() => spotify.now)
 const locked = computed(() => lockLeft.value > 0)
-const pct = computed(() => (now.value?.duration_ms ? (progressMs.value / now.value.duration_ms) * 100 : 0))
+const pct = computed(() => (now.value?.duration_ms ? (progressMs.value / now.value?.duration_ms) * 100 : 0))
 const canSeek = computed(() => admin.loggedIn && !!now.value?.duration_ms && !locked.value)
 
-async function seek(e) {
-  if (!canSeek.value) return
-  const r = e.currentTarget.getBoundingClientRect()
-  const res = await control('seek', Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * now.value.duration_ms)
+async function seek(e: MouseEvent) {
+  const dur = now.value?.duration_ms
+  if (!canSeek.value || !dur) return
+  const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  const res = await control('seek', Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * dur)
   if (!res.ok && res.error) notify(res.error, true)
 }
 </script>
@@ -22,7 +23,7 @@ async function seek(e) {
 <template>
   <div v-if="now?.duration_ms" class="pb" :class="layout">
     <span class="t0">{{ fmtClock(progressMs / 1000) }}</span>
-    <div class="bar" :class="{ seekable: canSeek }" :title="admin.loggedIn && locked ? 'Låst – hør ferdig' : null" @click="seek"><i :style="{ width: `${pct}%` }"></i></div>
+    <div class="bar" :class="{ seekable: canSeek }" :title="admin.loggedIn && locked ? 'Låst – hør ferdig' : undefined" @click="seek"><i :style="{ width: `${pct}%` }"></i></div>
     <span class="t1">{{ fmtClock(now.duration_ms / 1000) }}</span>
   </div>
 </template>

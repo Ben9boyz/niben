@@ -1,4 +1,5 @@
-<script setup>
+<script setup lang="ts">
+import { errorMessage } from '../composables/useAdmin'
 import { ref } from 'vue'
 import { Mail, Rss, Check } from 'lucide-vue-next'
 import { tx } from '../composables/useTexts'
@@ -19,7 +20,7 @@ async function send() {
     const j = await r.json().catch(() => ({}))
     if (!r.ok || j.error) throw new Error(j.error || 'Noe gikk galt – prøv igjen.')
     done.value = true
-  } catch (e) { error.value = e.message } finally { busy.value = false }
+  } catch (e) { error.value = errorMessage(e) } finally { busy.value = false }
 }
 </script>
 

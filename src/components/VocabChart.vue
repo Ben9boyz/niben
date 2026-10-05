@@ -1,6 +1,6 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue'
-import { jpHistory, loadJapaneseHistory } from '../composables/useJapanese'
+import { jpHistory, loadJapaneseHistory, type JpSnapshot } from '../composables/useJapanese'
 
 // Vocabulary over time: "Kan" (area + line) and "Lærer" (thin line) from the daily jpdb snapshots.
 loadJapaneseHistory()
@@ -8,7 +8,7 @@ loadJapaneseHistory()
 const RANGES = [{ k: 30, l: '30 d' }, { k: 90, l: '90 d' }, { k: 365, l: '1 år' }, { k: 0, l: 'Alt' }]
 const range = ref(90)
 const table = ref(false)
-const hover = ref(null)
+const hover = ref<number | null>(null)
 
 const pts = computed(() => {
   const all = jpHistory.points.filter((p) => p && p.d)
@@ -21,21 +21,21 @@ const ymax = computed(() => {
   const step = m > 800 ? 200 : m > 300 ? 100 : m > 100 ? 50 : 10
   return Math.ceil(m / step) * step
 })
-const x = (i) => PL + (pts.value.length < 2 ? 0 : (i / (pts.value.length - 1)) * (W - PL - PR))
-const y = (v) => PT + (1 - v / ymax.value) * (H - PT - PB)
-const line = (key) => pts.value.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p[key] || 0).toFixed(1)}`).join(' ')
+const x = (i: number) => PL + (pts.value.length < 2 ? 0 : (i / (pts.value.length - 1)) * (W - PL - PR))
+const y = (v: number) => PT + (1 - v / ymax.value) * (H - PT - PB)
+const line = (key: 'known' | 'learning') => pts.value.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p[key] || 0).toFixed(1)}`).join(' ')
 const area = computed(() => `${line('known')} L${x(pts.value.length - 1).toFixed(1)},${y(0)} L${x(0)},${y(0)} Z`)
 const ticks = computed(() => [0, 0.5, 1].map((f) => Math.round(ymax.value * f)))
-const last = computed(() => pts.value[pts.value.length - 1])
-const delta = computed(() => (pts.value.length > 1 ? (last.value.known || 0) - (pts.value[0].known || 0) : 0))
-const fmt = (d) => new Date(d).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })
+const last = computed<JpSnapshot>(() => pts.value[pts.value.length - 1] ?? { d: '', known: 0, learning: 0, new: 0, due: 0 })
+const delta = computed(() => (pts.value.length > 1 ? (last.value.known || 0) - (pts.value[0]?.known || 0) : 0))
+const fmt = (d: string) => new Date(d).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })
 const xLabels = computed(() => {
   const n = pts.value.length
-  return n < 2 ? [] : [0, Math.floor((n - 1) / 2), n - 1].map((i) => ({ i, t: fmt(pts.value[i].d) }))
+  return n < 2 ? [] : [0, Math.floor((n - 1) / 2), n - 1].map((i) => ({ i, t: fmt(pts.value[i]?.d ?? '') }))
 })
 
-function move(e) {
-  const r = e.currentTarget.getBoundingClientRect()
+function move(e: MouseEvent | PointerEvent) {
+  const r = (e.currentTarget as SVGElement).getBoundingClientRect()
   const px = ((e.clientX - r.left) / r.width) * W
   const n = pts.value.length
   hover.value = Math.max(0, Math.min(n - 1, Math.round(((px - PL) / (W - PL - PR)) * (n - 1))))
@@ -79,13 +79,13 @@ const hp = computed(() => (hover.value == null ? null : pts.value[hover.value]))
         <text :x="W - PR + 6" :y="y(last.known || 0) + 3" class="end">Kan {{ last.known }}</text>
         <text :x="W - PR + 6" :y="y(last.learning || 0) + (Math.abs(y(last.known || 0) - y(last.learning || 0)) < 12 ? 15 : 3)" class="end">Lærer {{ last.learning }}</text>
         <template v-if="hp">
-          <line :x1="x(hover)" :x2="x(hover)" :y1="PT" :y2="H - PB" class="cross" />
-          <circle :cx="x(hover)" :cy="y(hp.known || 0)" r="4" class="dot known" />
-          <circle :cx="x(hover)" :cy="y(hp.learning || 0)" r="4" class="dot learning" />
+          <line :x1="x(hover ?? 0)" :x2="x(hover ?? 0)" :y1="PT" :y2="H - PB" class="cross" />
+          <circle :cx="x(hover ?? 0)" :cy="y(hp.known || 0)" r="4" class="dot known" />
+          <circle :cx="x(hover ?? 0)" :cy="y(hp.learning || 0)" r="4" class="dot learning" />
         </template>
         <rect :x="PL" :y="0" :width="W - PL - PR" :height="H" fill="transparent" />
       </svg>
-      <div v-if="hp" class="tip" :style="{ left: `${(x(hover) / W) * 100}%` }">
+      <div v-if="hp" class="tip" :style="{ left: `${(x(hover ?? 0) / W) * 100}%` }">
         <b>{{ fmt(hp.d) }}</b>
         <span><i class="sw known"></i>Kan {{ hp.known }}</span>
         <span><i class="sw learning"></i>Lærer {{ hp.learning }}</span>

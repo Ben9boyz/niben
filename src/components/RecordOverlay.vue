@@ -1,15 +1,17 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Play, Pause, Lock, RotateCw, X, ChevronLeft, ChevronRight, ArrowUpFromLine } from 'lucide-vue-next'
 import { room } from '../composables/useRoom'
 import { shelfAlbums } from '../composables/useGroups'
 import { spotify, lockLeft, fmtClock, play, lockNote, control, fetchTracks, findAlbum } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
+import { targetEl } from '../lib/dom'
+import type { Track, TrackList } from '../types'
 
 // Sits on the record held up in the 3D room: a play button in its corner, its name underneath, a button
 // to turn it over – the back shows the track list (scrolls if it's long) – and one to put it back.
 // In front of the shelf there's a way back up to the turntable.
-const rect = ref(null)
+const rect = ref<{ x: number; y: number; w: number; h: number } | null>(null)
 const busy = ref(false)
 const toast = ref('')
 let raf = 0
@@ -23,7 +25,8 @@ function frame() {
   const r = album.value ? room.api?.recordScreenRect() : null
   const next = r && r.w > 60 ? r : null
   // only touch reactive state when it moved
-  if (!next !== !rect.value || (next && (Math.abs(next.x - rect.value.x) > 0.5 || Math.abs(next.y - rect.value.y) > 0.5 || Math.abs(next.w - rect.value.w) > 0.5))) rect.value = next
+  const cur = rect.value
+  if (!next !== !cur || (next && cur && (Math.abs(next.x - cur.x) > 0.5 || Math.abs(next.y - cur.y) > 0.5 || Math.abs(next.w - cur.w) > 0.5))) rect.value = next
 }
 
 // this record is the one on: the button pauses / resumes (always allowed, even while locked)
@@ -34,23 +37,23 @@ async function onPlay() {
   if (!album.value || busy.value) return
   if (isOn.value) {
     busy.value = true
-    const r = await control(spotify.now.playing ? 'pause' : 'resume')
+    const r = await control(spotify.now?.playing ? 'pause' : 'resume')
     busy.value = false
-    if (!r.ok) { toast.value = r.error; setTimeout(() => (toast.value = ''), 3000) }
+    if (!r.ok) { toast.value = r.error ?? ''; setTimeout(() => (toast.value = ''), 3000) }
     return
   }
   if (locked.value) return
   busy.value = true
   const r = await play(album.value.uri)
   busy.value = false
-  toast.value = r.ok ? `Spiller «${album.value.name}»${lockNote()}` : r.error
+  toast.value = r.ok ? `Spiller «${album.value.name}»${lockNote()}` : r.error ?? ''
   setTimeout(() => (toast.value = ''), 3000)
 }
 
 // ── the back of the sleeve: the track list, shown once the record has turned ──
-const tracks = ref(null)
+const tracks = ref<TrackList | null>(null)
 const backReady = ref(false)
-let flipTimer = 0
+let flipTimer: ReturnType<typeof setTimeout> | undefined
 watch(() => room.recordFlipped, (on) => {
   clearTimeout(flipTimer)
   backReady.value = false
@@ -60,14 +63,15 @@ watch(album, async (a) => {
   tracks.value = null
   if (a) tracks.value = await fetchTracks(a.uri)
 }, { immediate: true })
-async function playTrack(t) {
-  if (!admin.loggedIn || busy.value) return
+async function playTrack(t: Track) {
+  const a = album.value
+  if (!a || !admin.loggedIn || busy.value) return
   if (isOn.value && spotify.now?.uri === t.uri) return onPlay() // already on: pause / resume
   if (locked.value) { toast.value = `Låst – hør ferdig (${fmtClock(lockLeft.value)})`; setTimeout(() => (toast.value = ''), 3000); return }
   busy.value = true
-  const r = await play(album.value.uri, t.uri)
+  const r = await play(a.uri, t.uri)
   busy.value = false
-  toast.value = r.ok ? `Spiller «${t.name}»${lockNote()}` : r.error
+  toast.value = r.ok ? `Spiller «${t.name}»${lockNote()}` : r.error ?? ''
   setTimeout(() => (toast.value = ''), 3000)
 }
 const flip = () => (room.recordFlipped = !room.recordFlipped)
@@ -77,7 +81,7 @@ function toTurntable() { room.sel.musikk = null; room.shelfView = false }
 // ── browsing the shelf: one record pulled out at a time, ← / → to move along, Enter to take it ──
 const shelfCount = computed(() => Math.min(shelfAlbums.value.length, 150))
 const peeked = computed(() => (room.shelfView && !room.sel.musikk ? shelfAlbums.value[room.peekIndex] : null))
-function browse(d) {
+function browse(d: number) {
   const n = shelfCount.value
   if (n) room.peekIndex = (room.peekIndex + d + n) % n
 }
@@ -86,8 +90,8 @@ function takeOut() {
 }
 
 // Esc: turn back → put the record back → leave the shelf
-function onKey(e) {
-  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return
+function onKey(e: KeyboardEvent) {
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(targetEl(e).tagName)) return
   if (peeked.value) {
     if (e.key === 'ArrowLeft') { browse(-1); e.preventDefault(); return }
     if (e.key === 'ArrowRight') { browse(1); e.preventDefault(); return }
@@ -104,11 +108,11 @@ function onKey(e) {
 // The mouse wheel / trackpad over the 3D view: turned-over record → scrolls its song list · browsing the shelf (or
 // holding a record from it) → moves along the shelf, one record per notch
 let acc = 0, wheelAt = 0
-function onWheel(e) {
+function onWheel(e: WheelEvent) {
   if (!room.shelfView && !room.sel.musikk) return
-  if (e.target.closest?.('.dock, .rback, .smenu, .gwin, .ctx, .cm, .pk')) return // panels and lists scroll themselves
+  if (targetEl(e).closest('.dock, .rback, .smenu, .gwin, .ctx, .cm, .pk')) return // panels and lists scroll themselves
   if (room.recordFlipped && backReady.value) {
-    const tl = document.querySelector('.rback .tl')
+    const tl = document.querySelector<HTMLElement>('.rback .tl')
     if (tl) { tl.scrollBy({ top: e.deltaY }); e.preventDefault() }
     return
   }
@@ -124,10 +128,12 @@ function onWheel(e) {
   if (!n) return
   if (peeked.value) browse(d)
   else if (album.value) { // a record in my hand: put it back and take the neighbour
-    const i = shelfAlbums.value.findIndex((a) => a.uri === album.value.uri)
+    const cur = album.value.uri
+    const i = shelfAlbums.value.findIndex((a) => a.uri === cur)
     const j = ((i < 0 ? room.peekIndex : i) + d + n) % n
     room.peekIndex = j
-    room.sel.musikk = { kind: 'album', uri: shelfAlbums.value[j].uri, t: Date.now() }
+    const next = shelfAlbums.value[j]
+    if (next) room.sel.musikk = { kind: 'album', uri: next.uri, t: Date.now() }
   }
 }
 
@@ -151,7 +157,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); clearTimeout(flipTimer); wind
           >
             <span class="n">{{ t.n || i + 1 }}</span>
             <span class="t">{{ t.name }}</span>
-            <span class="d">{{ fmtClock(t.ms / 1000) }}</span>
+            <span class="d">{{ fmtClock((t.ms ?? 0) / 1000) }}</span>
           </li>
         </ol>
       </div>
@@ -171,17 +177,17 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); clearTimeout(flipTimer); wind
       :class="{ locked: blocked }"
       :disabled="blocked || busy"
       :style="{ left: `${rect.x + rect.w - 18}px`, top: `${rect.y + rect.h - 18}px` }"
-      :title="blocked ? `Låst ${fmtClock(lockLeft)}` : isOn ? (spotify.now.playing ? 'Pause' : 'Fortsett') : `Spill av «${album.name}»`"
-      :aria-label="blocked ? 'Låst' : isOn && spotify.now.playing ? 'Pause' : 'Spill av'"
+      :title="blocked ? `Låst ${fmtClock(lockLeft)}` : isOn ? (spotify.now?.playing ? 'Pause' : 'Fortsett') : `Spill av «${album.name}»`"
+      :aria-label="blocked ? 'Låst' : isOn && spotify.now?.playing ? 'Pause' : 'Spill av'"
       @click="onPlay"
     >
       <Lock v-if="blocked" :size="22" />
-      <Pause v-else-if="isOn && spotify.now.playing" :size="24" fill="currentColor" />
+      <Pause v-else-if="isOn && spotify.now?.playing" :size="24" fill="currentColor" />
       <Play v-else :size="24" fill="currentColor" />
     </button>
     <div class="rcap glass" :style="{ left: `${rect.x + rect.w / 2}px`, top: `${rect.y + rect.h + 14}px`, maxWidth: `${Math.max(rect.w, 260)}px` }">
       <b>{{ album.name }}</b>
-      <span>{{ album.artist }}<template v-if="album.year"> · {{ album.year }}</template><template v-if="isOn"> · <em :class="{ paused: !spotify.now.playing }">{{ spotify.now.playing ? 'spilles nå' : 'på pause' }}</em></template></span>
+      <span>{{ album.artist }}<template v-if="album.year"> · {{ album.year }}</template><template v-if="isOn"> · <em :class="{ paused: !spotify.now?.playing }">{{ spotify.now?.playing ? 'spilles nå' : 'på pause' }}</em></template></span>
     </div>
     <transition name="fade">
       <div v-if="toast" class="rtoast glass" :style="{ left: `${rect.x + rect.w / 2}px`, top: `${rect.y - 14}px` }">{{ toast }}</div>

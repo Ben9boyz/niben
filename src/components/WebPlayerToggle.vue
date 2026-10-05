@@ -1,12 +1,13 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { spotify } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 import { web, setEnabled, setVolume } from '../composables/useWebPlayer'
+import { inputOf } from '../lib/dom'
 
 // niben.no as a Spotify speaker (admin): the switch, where it plays, "connect again", and the volume.
 // `compact` leaves out the text (the player bar).
-defineProps({ compact: Boolean })
+defineProps<{ compact?: boolean }>()
 const label = computed(() => ({
   off: 'Annen enhet',
   loading: 'Kobler til …',
@@ -20,12 +21,12 @@ const label = computed(() => ({
 <template>
   <div v-if="admin.loggedIn && spotify.connected" class="wpt" :class="[web.status, { compact }]">
     <label v-if="!web.unavailable" class="switch" :title="`La niben.no være en Spotify-høyttaler – ${label}`">
-      <input type="checkbox" :checked="web.enabled && web.status !== 'reconnect'" @change="setEnabled($event.target.checked)" />
+      <input type="checkbox" :checked="web.enabled && web.status !== 'reconnect'" @change="setEnabled(inputOf($event).checked)" />
       <span class="track"><span class="knob"></span></span>
     </label>
     <span v-if="!compact" class="wl">{{ label }}</span>
     <a v-if="web.status === 'reconnect'" class="btn small primary" href="api.php?action=spotify_login">Koble til</a>
-    <input v-if="web.status === 'ready'" class="vol" type="range" min="0" max="1" step="0.05" :value="web.volume" aria-label="Volum" @input="setVolume(+$event.target.value)" />
+    <input v-if="web.status === 'ready'" class="vol" type="range" min="0" max="1" step="0.05" :value="web.volume" aria-label="Volum" @input="setVolume(+inputOf($event).value)" />
   </div>
 </template>
 

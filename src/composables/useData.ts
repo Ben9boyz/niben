@@ -73,6 +73,9 @@ export interface Project {
   stjerner?: number
   github?: boolean
 }
+export interface AboutLink { navn: string; url: string }
+/** "Om meg": the text written in the admin page (or the placeholder in data.json). */
+export interface About { bilde?: string | null; tagline?: string; tekst?: string; lenker?: AboutLink[] }
 export interface SiteData {
   loaded: boolean
   error: string | null
@@ -85,7 +88,7 @@ export interface SiteData {
   reiser: Trip[]
   prosjekter: Project[]
   sanger: Song[]
-  om: { bilde?: string; [key: string]: unknown }
+  om: About
 }
 
 // the raw rows as the server sends them

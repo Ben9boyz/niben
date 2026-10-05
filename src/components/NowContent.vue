@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { tx } from '../composables/useTexts'
 import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { Music, BookOpen, Languages, Guitar, Gamepad2, Plane, ArrowRight, Radio, PartyPopper, Mic, Tv, Trophy, Disc3 } from 'lucide-vue-next'
@@ -13,28 +13,31 @@ import { room } from '../composables/useRoom'
 import { dailyAlbum, dailyRec, loadDaily } from '../composables/useDaily'
 import { hideRec } from '../composables/useDiscover'
 import { admin } from '../composables/useAdmin'
+import type { Song, Trip } from '../composables/useData'
+import type { Component } from 'vue'
 
 // "Nå": what I'm doing right now – listening, reading, Japanese, a song on the guitar, games and
 // travel. Everything comes from the places that already hold it, so there is nothing extra to keep up.
 const router = useRouter()
 const data = useData()
 const spotify = useSpotify()
-let stopSteam
+let stopSteam: (() => void) | undefined
 onMounted(() => { stopSteam = watchSteam(); loadJapanese(); loadMilestones() })
 onBeforeUnmount(() => stopSteam?.())
 
 // ── milestones: what I just managed (new recording, finished book, anime, song) – kept for 30 days ──
-const MS_ICON = { recording: Mic, book: BookOpen, anime: Tv, song: Guitar, trip: Plane, album: Disc3, other: Trophy }
-const MS_LABEL = { recording: 'Nytt opptak', book: 'Ferdig lest', anime: 'Klarer anime', song: 'Sang lært', trip: 'På reise', album: 'Nytt album', other: 'Klart' }
-const MS_TO = { recording: '/gitar', book: '/boker', anime: '/japansk', song: '/ovelse', trip: '/reiser', album: '/lytte', other: '/' }
+const MS_ICON: Record<string, Component> = { recording: Mic, book: BookOpen, anime: Tv, song: Guitar, trip: Plane, album: Disc3, other: Trophy }
+const MS_LABEL: Record<string, string> = { recording: 'Nytt opptak', book: 'Ferdig lest', anime: 'Klarer anime', song: 'Sang lært', trip: 'På reise', album: 'Nytt album', other: 'Klart' }
+const MS_TO: Record<string, string> = { recording: '/gitar', book: '/boker', anime: '/japansk', song: '/ovelse', trip: '/reiser', album: '/lytte', other: '/' }
 // the timeline: milestones (30 days) + albums I saved in the last week
-const recent = computed(() => {
+interface Entry { key: string; type: string; title: string; sub?: string; image?: string | null; url?: string | null; t: number }
+const recent = computed<Entry[]>(() => {
   const now = Date.now() / 1000
-  const albums = (spotify.albums || []).filter((a) => a.added && now - a.added < 7 * 86400).slice(0, 4).map((a) => ({ key: 'alb:' + a.uri, type: 'album', title: a.name, sub: a.artist, image: a.thumb || a.image, t: a.added }))
+  const albums = (spotify.albums || []).filter((a) => a.added && now - a.added < 7 * 86400).slice(0, 4).map((a): Entry => ({ key: 'alb:' + a.uri, type: 'album', title: a.name, sub: a.artist, image: a.thumb || a.image, t: a.added ?? 0 }))
   return [...(milestones.items || []).filter((m) => now - m.t < 30 * 86400), ...albums].sort((a, b) => b.t - a.t).slice(0, 7)
 })
-const fresh = computed(() => recent.value.length && Date.now() / 1000 - recent.value[0].t < 4 * 86400)
-const msAgo = (t) => {
+const fresh = computed(() => { const first = recent.value[0]; return !!first && Date.now() / 1000 - first.t < 4 * 86400 })
+const msAgo = (t: number) => {
   const d = Math.floor((Date.now() / 1000 - t) / 86400)
   return d <= 0 ? 'i dag' : d === 1 ? 'i går' : d < 7 ? `for ${d} dager siden` : `for ${Math.round(d / 7)} uker siden`
 }
@@ -65,7 +68,7 @@ const word = computed(() => jp.word)
 
 // ── guitar ──
 const songs = computed(() => (data.sanger || []).filter((s) => s.ovrer))
-function practise(s) {
+function practise(_s: Song) {
   room.chordMode = 'sanger'
   router.push('/ovelse')
 }
@@ -77,12 +80,12 @@ const topGames = computed(() => (steam.library?.top || []).slice(0, 3))
 
 // ── travel: the latest past trip and the next one coming up ──
 const today = new Date().toISOString().slice(0, 10)
-const startOf = (t) => t.dato || (t.aar ? `${t.aar}-01-01` : '')
+const startOf = (t: Trip) => t.dato || (t.aar ? `${t.aar}-01-01` : '')
 const lastTrip = computed(() => [...(data.reiser || [])].filter((t) => startOf(t) && startOf(t) <= today).sort((a, b) => startOf(b).localeCompare(startOf(a)))[0] || null)
 const nextTrip = computed(() => [...(data.reiser || [])].filter((t) => startOf(t) > today).sort((a, b) => startOf(a).localeCompare(startOf(b)))[0] || null)
-const fmt = (d) => (d ? new Date(d).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' }) : '')
-const inDays = (t) => {
-  const d = Math.ceil((new Date(startOf(t)) - new Date(today)) / 86400000)
+const fmt = (d: string | null | undefined) => (d ? new Date(d).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' }) : '')
+const inDays = (t: Trip) => {
+  const d = Math.ceil((new Date(startOf(t)).getTime() - new Date(today).getTime()) / 86400000)
   return d <= 1 ? 'i morgen' : d < 60 ? `om ${d} dager` : `om ${Math.round(d / 30)} mnd.`
 }
 </script>
@@ -118,12 +121,12 @@ const inDays = (t) => {
     <section v-if="dailyAlbum" class="card">
       <h3><Disc3 :size="15" />{{ tx('now.daily') }}</h3>
       <button class="row daily" @click="openDaily">
-        <img v-if="dailyAlbum.thumb || dailyAlbum.image" :src="dailyAlbum.thumb || dailyAlbum.image" alt="" class="art" crossorigin="anonymous" />
+        <img v-if="dailyAlbum.thumb || dailyAlbum.image" :src="dailyAlbum.thumb || dailyAlbum.image || undefined" alt="" class="art" crossorigin="anonymous" />
         <span class="txt"><b>{{ dailyAlbum.name }}</b><small>{{ dailyAlbum.artist }}<template v-if="dailyAlbum.year"> · {{ dailyAlbum.year }}</template></small></span>
       </button>
       <div v-if="dailyRec" class="recrow">
       <button class="row daily rec" @click="openRec">
-        <img v-if="dailyRec.thumb || dailyRec.image" :src="dailyRec.thumb || dailyRec.image" alt="" class="art" crossorigin="anonymous" />
+        <img v-if="dailyRec.thumb || dailyRec.image" :src="dailyRec.thumb || dailyRec.image || undefined" alt="" class="art" crossorigin="anonymous" />
         <span class="txt"><small class="lbl">Anbefalt i dag</small><b>{{ dailyRec.name }}</b><small>{{ dailyRec.artist }}<template v-if="dailyRec.why"> · {{ dailyRec.why }}</template></small></span>
       </button>
       <button v-if="admin.loggedIn" class="hide" title="Skjul dette forslaget" aria-label="Skjul dette forslaget" @click="hideRec(dailyRec.uri).then(() => loadDaily(true))">✕</button>
@@ -170,8 +173,8 @@ const inDays = (t) => {
     <section class="card wide">
       <h3><Gamepad2 :size="15" />{{ tx('now.games') }}</h3>
       <router-link v-if="playing || lastGame" to="/gaming" class="row">
-        <img :src="headerImg((playing || lastGame).appid)" alt="" class="art wideimg" />
-        <span class="txt"><b>{{ playing ? playing.name : lastGame.name }}</b><small>{{ playing ? 'Spiller nå' : 'Sist spilt' }}</small></span>
+        <img :src="headerImg((playing || lastGame)?.appid ?? 0)" alt="" class="art wideimg" />
+        <span class="txt"><b>{{ playing ? playing.name : lastGame?.name }}</b><small>{{ playing ? 'Spiller nå' : 'Sist spilt' }}</small></span>
         <span v-if="playing" class="live"><Radio :size="12" />live</span>
       </router-link>
       <div v-if="topGames.length" class="top">

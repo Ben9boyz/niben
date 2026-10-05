@@ -1,23 +1,24 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { Globe, Check, Search, Loader } from 'lucide-vue-next'
 import { LANGS } from '../lib/languages'
 import { i18n, setLang } from '../composables/useLang'
 import { admin } from '../composables/useAdmin'
+import { targetEl } from '../lib/dom'
 
 // The globe: pick the language of the site. Everything except the language names themselves gets translated.
 const q = ref('')
-const input = ref(null)
-const root = ref(null)
+const input = ref<HTMLInputElement | null>(null)
+const root = ref<HTMLElement | null>(null)
 const list = computed(() => {
   const n = q.value.trim().toLowerCase()
   return n ? LANGS.filter((l) => l.name.toLowerCase().includes(n) || l.en.toLowerCase().includes(n) || l.code.toLowerCase() === n) : LANGS
 })
 const noService = computed(() => i18n.unavailable.includes(i18n.lang))
-function pick(code) { setLang(code); i18n.menu = false; q.value = '' }
+function pick(code: string) { setLang(code); i18n.menu = false; q.value = '' }
 watch(() => i18n.menu, async (o) => { if (o) { await nextTick(); input.value?.focus({ preventScroll: true }) } })
-const onDoc = (e) => { if (i18n.menu && !root.value?.contains(e.target)) i18n.menu = false }
-const onKey = (e) => { if (e.key === 'Escape') i18n.menu = false }
+const onDoc = (e: Event) => { if (i18n.menu && !root.value?.contains(targetEl(e))) i18n.menu = false }
+const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') i18n.menu = false }
 onMounted(() => { document.addEventListener('pointerdown', onDoc); window.addEventListener('keydown', onKey) })
 onBeforeUnmount(() => { document.removeEventListener('pointerdown', onDoc); window.removeEventListener('keydown', onKey) })
 </script>

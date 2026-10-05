@@ -1,28 +1,61 @@
 import { reactive } from 'vue'
 
 // Gaming corner (Steam via the server): profile, what's being played right now, the library.
-export interface SteamGame { appid: number; name: string; hours: number; recent?: number; ach?: { done: number; total: number } | null }
+export interface SteamGame {
+  appid: number
+  name: string
+  hours: number
+  recent?: number
+  last?: number
+  ach?: { done: number; total: number } | null
+}
 export interface SteamProfile {
   name: string
   avatar?: string | null
   url?: string | null
-  created?: number | null
+  state?: string
   online?: boolean
   playing?: { appid: number; name: string; since?: number | null } | null
+  last_online?: number | null
+  since?: number | null
 }
 export interface SteamLibrary {
   count: number
   hours: number
   played?: number
-  twoWeeks?: number
+  level?: number
+  backlog?: number
+  two_weeks?: number
   hidden?: boolean
   recent: SteamGame[]
   top: SteamGame[]
-  longest?: SteamGame | null
+  longest?: { name: string; hours: number } | null
   genres?: { name: string; hours: number }[]
+  platform?: { win: number; mac: number; linux: number }
 }
-export interface SteamLive { info?: { appid?: number; name?: string; [key: string]: unknown }; [key: string]: unknown }
-export interface SteamFriends { best?: object | null; online?: number; count?: number; hidden?: boolean }
+export interface SteamAchievement { name: string; text?: string; icon?: string | null; at?: number | null; rarity?: number | null }
+export interface SteamLive {
+  players?: number | null
+  info?: { genres?: string[]; score?: number | null; dev?: string; year?: string; text?: string } | null
+  news?: { title: string; text?: string; url?: string } | null
+  ach?: SteamAchievement[]
+}
+export interface SteamFriend {
+  id: string
+  name: string
+  avatar?: string | null
+  url?: string | null
+  online?: boolean
+  state?: string
+  playing?: string | null
+  since?: number | null
+  last?: number | null
+}
+export interface SteamBestFriend extends SteamFriend {
+  shared?: { appid: number; name: string; mine: number; theirs: number }[]
+  shared_count?: number
+}
+export interface SteamFriends { best?: SteamBestFriend | null; list?: SteamFriend[]; online?: number; count?: number; hidden?: boolean }
 interface SteamReply { configured?: boolean; error?: string; profile?: SteamProfile | null; library?: SteamLibrary | null; live?: SteamLive | null; friends?: SteamFriends | null }
 
 export const steam = reactive({

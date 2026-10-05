@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { Lock } from 'lucide-vue-next'
 import { useData } from '../composables/useData'

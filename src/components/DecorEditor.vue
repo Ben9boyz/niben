@@ -1,17 +1,18 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { RotateCcw, RotateCw, Minus, Plus, ArrowUp, ArrowDown, Eye, EyeOff, Trash2, Check, Upload, Move } from 'lucide-vue-next'
 import { decor, uploadDecor, removeDecor, changed } from '../composables/useDecor'
 import { room } from '../composables/useRoom'
 import { admin } from '../composables/useAdmin'
+import { pickedFile } from '../lib/dom'
+import type { DecorItem } from '../composables/useDecor'
 
 // "Rediger rommet": drag a model on the floor to move it. The buttons turn it, resize it, lift it, hide it or delete it.
 const sel = computed(() => decor.items.find((i) => i.id === decor.selected) || null)
-const adj = (patch) => room.api?.adjustDecor(decor.selected, patch)
-const pick = (id) => room.api?.selectDecor(id)
-async function onFile(e) {
-  const f = e.target.files?.[0]
-  e.target.value = ''
+const adj = (patch: Partial<DecorItem>) => { if (decor.selected) room.api?.adjustDecor(decor.selected, patch) }
+const pick = (id: string | null) => room.api?.selectDecor(id)
+async function onFile(e: Event) {
+  const f = pickedFile(e)
   if (!f) return
   const it = await uploadDecor(f, f.name.replace(/\.glb$/i, ''))
   if (it) setTimeout(() => room.api?.selectDecor(it.id), 400)

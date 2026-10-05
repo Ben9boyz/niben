@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { Sparkles, Library, ScanEye } from 'lucide-vue-next'
 import { toggleMode } from '../composables/useMode'

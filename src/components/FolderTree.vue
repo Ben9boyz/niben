@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { ChevronRight } from 'lucide-vue-next'
 import FolderIcon from './FolderIcon.vue'
@@ -7,30 +7,31 @@ import { ref } from 'vue'
 import { groups, topGroups, childrenOf, countIn, groupCover, moveTo } from '../composables/useGroups'
 import { admin } from '../composables/useAdmin'
 import { drag, endDrag } from '../composables/useDrag'
+import type { SortKind } from '../composables/useSort'
 import { notify } from '../composables/useSpotify'
 
 // The folders under the library (PC): click one to show just that folder in the grid, click it again for all.
 // A folder with folders inside folds in and out.
-const props = defineProps({
-  kind: { type: String, default: 'album' }, // which list the numbers count: 'album' | 'playlist' | 'all'
-  active: { type: Boolean, default: true }, // is this the list I'm looking at (only then is a folder lit)
-})
-const emit = defineEmits(['pick'])
+const props = withDefaults(defineProps<{
+  kind?: SortKind // which list the numbers count
+  active?: boolean // is this the list I'm looking at (only then is a folder lit)
+}>(), { kind: 'album', active: true })
+const emit = defineEmits<{ pick: [id: string] }>()
 const uris = computed(() => (props.kind === 'playlist' ? spotify.playlists : props.kind === 'all' ? [...spotify.albums, ...spotify.playlists] : spotify.albums).map((x) => x.uri))
 // drop an album / playlist tile on a folder to move it there
-const over = ref(null)
-const allow = (e, id) => { if (admin.loggedIn && drag.item) { e.preventDefault(); over.value = id } }
-async function drop(e, id) {
+const over = ref<string | null>(null)
+const allow = (e: DragEvent, id: string) => { if (admin.loggedIn && drag.item) { e.preventDefault(); over.value = id } }
+async function drop(e: DragEvent, id: string) {
   e.preventDefault()
   const uri = drag.item
   over.value = null
   endDrag()
   if (!uri || groups.assign[uri] === id) return
   const r = await moveTo(uri, id)
-  if (!r.ok) notify(r.error, true)
+  if (!r.ok) notify(r.error ?? '', true)
 }
-const isOpen = (id) => groups.treeOpen[id] !== false
-const toggle = (id) => { groups.treeOpen = { ...groups.treeOpen, [id]: !isOpen(id) } }
+const isOpen = (id: string) => groups.treeOpen[id] !== false
+const toggle = (id: string) => { groups.treeOpen = { ...groups.treeOpen, [id]: !isOpen(id) } }
 </script>
 
 <template>

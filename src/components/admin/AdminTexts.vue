@@ -1,37 +1,38 @@
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { Search, Save, RotateCcw } from 'lucide-vue-next'
-import { api } from '../../composables/useAdmin'
+import { api, errorMessage } from '../../composables/useAdmin'
 import { siteTexts, setTexts } from '../../composables/useTexts'
 import { TEXT_GROUPS, TEXT_DEFAULTS } from '../../lib/textDefs'
+import type { Flash } from '../../types'
 
 // All the wording on the site that isn't data (headings, hints, the empty-state lines …). A box left empty = the
 // standard text. Saved texts reach everybody with the next page load.
-const draft = reactive({ ...siteTexts })
+const draft = reactive<Record<string, string>>({ ...siteTexts })
 const q = ref('')
 const busy = ref(false)
-const msg = ref(null)
-const open = reactive({})
+const msg = ref<Flash | null>(null)
+const open = reactive<Record<string, boolean>>({})
 const changed = computed(() => TEXT_GROUPS.some((g) => g.items.some((i) => (draft[i.k] || '') !== (siteTexts[i.k] || ''))))
 const groups = computed(() => {
   const n = q.value.trim().toLowerCase()
   if (!n) return TEXT_GROUPS
   return TEXT_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => `${i.label} ${i.d} ${draft[i.k] || ''}`.toLowerCase().includes(n)) })).filter((g) => g.items.length)
 })
-const isCustom = (k) => !!(draft[k] || '').trim()
+const isCustom = (k: string) => !!(draft[k] || '').trim()
 
 async function save() {
   busy.value = true
   msg.value = null
   try {
     const texts = Object.fromEntries(Object.entries(draft).filter(([k, v]) => TEXT_DEFAULTS[k] !== undefined && String(v || '').trim()))
-    const r = await api('texts_save', { texts })
+    const r = await api<{ texts: Record<string, string> }>('texts_save', { texts })
     setTexts(r.texts)
     for (const k of Object.keys(draft)) delete draft[k]
     Object.assign(draft, r.texts)
     msg.value = { ok: 'Lagret – siden bruker de nye tekstene nå.' }
   } catch (e) {
-    msg.value = { error: e.message }
+    msg.value = { error: errorMessage(e) }
   } finally {
     busy.value = false
   }

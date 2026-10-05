@@ -1,47 +1,51 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Shuffle, SkipBack, SkipForward, Play, Pause, Repeat, Repeat1, MonitorSpeaker, Smartphone, Speaker, Laptop, Volume2 } from 'lucide-vue-next'
 import WebPlayerToggle from './WebPlayerToggle.vue'
 import { playPref, setPlayPref } from '../composables/usePlayOn'
 import { vinyl, setVinyl, setVinylLevel } from '../composables/useVinylNoise'
 import { mode } from '../composables/useMode'
-import { spotify, control, setShuffle, cycleRepeat, fetchDevices, transferTo, setDeviceVolume, lockLeft, fmtClock, notify } from '../composables/useSpotify'
+import { targetEl, inputOf } from '../lib/dom'
+import type { Result } from '../types'
+import type { Component } from 'vue'
+import { spotify, control, type SpotifyDevice, setShuffle, cycleRepeat, fetchDevices, transferTo, setDeviceVolume, lockLeft, fmtClock, notify } from '../composables/useSpotify'
 
 // The player's buttons (admin): shuffle · back · play/pause · next · repeat, the heart (liked songs),
 // what's up next, and which device plays (with its volume). Everything answers at once on screen and
 // the request goes to Spotify behind it.
-const props = defineProps({ compact: Boolean })
+defineProps<{ compact?: boolean }>()
 const now = computed(() => spotify.now)
 const locked = computed(() => lockLeft.value > 0)
 
-async function run(p) {
+async function run(p: Promise<Result>) {
   const r = await p
   if (r && !r.ok && r.error) notify(r.error, true)
 }
 const toggle = () => {
-  if (!now.value) return
-  const was = now.value.playing
-  now.value.playing = !was // instantly; the poll confirms
+  const n = spotify.now
+  if (!n) return
+  const was = n.playing
+  n.playing = !was // instantly; the poll confirms
   run(control(was ? 'pause' : 'resume'))
 }
-const skip = (op) => (locked.value ? notify(`Låst – hør ferdig (${fmtClock(lockLeft.value)} igjen)`, true) : run(control(op)))
+const skip = (op: 'next' | 'previous') => (locked.value ? notify(`Låst – hør ferdig (${fmtClock(lockLeft.value)} igjen)`, true) : run(control(op)))
 const shuffle = () => run(setShuffle(!now.value?.shuffle))
 
 // ── popover: devices ──
-const open = ref(null) // 'devices'
-const devices = ref(null)
-async function show(which) {
+const open = ref<'devices' | null>(null)
+const devices = ref<SpotifyDevice[] | null>(null)
+async function show(which: 'devices') {
   open.value = open.value === which ? null : which
   if (open.value === 'devices') { devices.value = null; devices.value = await fetchDevices() }
 }
-async function pick(d) {
+async function pick(d: SpotifyDevice) {
   if (d.active) return
   const r = await transferTo(d.id, !!now.value?.playing)
-  if (r.ok) { notify(`Spiller på «${d.name}».`); open.value = null } else notify(r.error, true)
+  if (r.ok) { notify(`Spiller på «${d.name}».`); open.value = null } else notify(r.error ?? '', true)
 }
-const DEV_ICON = { Computer: Laptop, Smartphone, Speaker, TV: MonitorSpeaker }
-const root = ref(null)
-const onDoc = (e) => { if (open.value && !root.value?.contains(e.target)) open.value = null }
+const DEV_ICON: Record<string, Component> = { Computer: Laptop, Smartphone, Speaker, TV: MonitorSpeaker }
+const root = ref<HTMLElement | null>(null)
+const onDoc = (e: Event) => { if (open.value && !root.value?.contains(targetEl(e))) open.value = null }
 onMounted(() => document.addEventListener('pointerdown', onDoc))
 onBeforeUnmount(() => document.removeEventListener('pointerdown', onDoc))
 </script>
@@ -69,14 +73,14 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDoc))
         <button :class="{ on: playPref.v === 'ipod' }" @click="setPlayPref('ipod')">iPod</button>
         <button :class="{ on: playPref.v === 'vinyl' }" @click="setPlayPref('vinyl')">Plate</button>
       </div>
-      <label v-if="mode === 'rom'" class="vin" title="Svak vinylknitring over musikken i 3D-rommet"><input type="checkbox" :checked="vinyl.on" @change="setVinyl($event.target.checked)" /><span class="sw"><i></i></span>Vinylknitring</label>
-      <label v-if="mode === 'rom' && vinyl.on" class="vol vlv" title="Hvor sterk vinylknitringen er"><span class="vt">Knitring</span><input type="range" min="0" max="100" :value="vinyl.level" aria-label="Styrke på vinylknitring" @input="setVinylLevel(+$event.target.value)" /></label>
+      <label v-if="mode === 'rom'" class="vin" title="Svak vinylknitring over musikken i 3D-rommet"><input type="checkbox" :checked="vinyl.on" @change="setVinyl(inputOf($event).checked)" /><span class="sw"><i></i></span>Vinylknitring</label>
+      <label v-if="mode === 'rom' && vinyl.on" class="vol vlv" title="Hvor sterk vinylknitringen er"><span class="vt">Knitring</span><input type="range" min="0" max="100" :value="vinyl.level" aria-label="Styrke på vinylknitring" @input="setVinylLevel(+inputOf($event).value)" /></label>
       <p v-if="!devices" class="muted">Henter enheter …</p>
       <p v-else-if="!devices.length" class="muted">Ingen Spotify-enheter er åpne.</p>
       <button v-for="d in devices || []" :key="d.id" class="dv" :class="{ active: d.active }" :disabled="d.restricted" @click="pick(d)">
         <component :is="DEV_ICON[d.type] || Speaker" :size="16" /><span>{{ d.name }}</span><small v-if="d.active">spiller her</small>
       </button>
-      <label v-if="now?.volume != null" class="vol"><Volume2 :size="15" /><input type="range" min="0" max="100" :value="now.volume" aria-label="Volum" @input="setDeviceVolume(+$event.target.value)" /></label>
+      <label v-if="now?.volume != null" class="vol"><Volume2 :size="15" /><input type="range" min="0" max="100" :value="now.volume" aria-label="Volum" @input="setDeviceVolume(+inputOf($event).value)" /></label>
     </div>
   </div>
 </template>

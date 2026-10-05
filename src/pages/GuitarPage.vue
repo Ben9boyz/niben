@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { tx } from '../composables/useTexts'
 import RecordingList from '../components/RecordingList.vue'
 import NewsletterSignup from '../components/NewsletterSignup.vue'

@@ -1,36 +1,38 @@
-<script setup>
+<script setup lang="ts">
 import { tx } from '../composables/useTexts'
 import { Plane, X } from 'lucide-vue-next'
 import { ref, computed } from 'vue'
-import { useData } from '../composables/useData'
+import { useData, type Trip } from '../composables/useData'
 import { atlasName, norskNavn } from '../three/countries'
 import FlatMap from '../components/FlatMap.vue'
 import CountryPicker from '../components/CountryPicker.vue'
 import TripCards from '../components/TripCards.vue'
 
 const data = useData()
-const selected = ref(null)
-const detail = ref(null)
+const selected = ref<string | null>(null)
+const detail = ref<HTMLElement | null>(null)
 
 const byCountry = computed(() => {
-  const m = new Map()
+  const m = new Map<string, Trip[]>()
   for (const r of data.reiser || []) {
     const k = atlasName(r.land)
-    if (!m.has(k)) m.set(k, [])
-    m.get(k).push(r)
+    if (!k) continue
+    const list = m.get(k)
+    if (list) list.push(r)
+    else m.set(k, [r])
   }
   for (const l of m.values()) l.sort((a, b) => String(b.dato || b.aar || '').localeCompare(String(a.dato || a.aar || '')))
   return m
 })
 const visited = computed(() => new Set(byCountry.value.keys()))
-const year = (t) => t.aar || (t.dato ? Number(String(t.dato).slice(0, 4)) : null)
+const year = (t: Trip) => t.aar || (t.dato ? Number(String(t.dato).slice(0, 4)) : null)
 const countries = computed(() =>
   [...byCountry.value.entries()]
-    .map(([en, trips]) => ({ en, no: norskNavn(en), trips, years: [...new Set(trips.map(year).filter(Boolean))].sort() }))
+    .map(([en, trips]) => ({ en, no: norskNavn(en), trips, years: [...new Set(trips.map(year).filter((y): y is number => !!y))].sort() }))
     .sort((a, b) => (b.years.at(-1) || 0) - (a.years.at(-1) || 0) || a.no.localeCompare(b.no, 'nb')),
 )
-const trips = computed(() => byCountry.value.get(selected.value) || [])
-function select(c) {
+const trips = computed(() => (selected.value ? byCountry.value.get(selected.value) : undefined) || [])
+function select(c: string | null) {
   selected.value = c
   if (c) setTimeout(() => detail.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
 }

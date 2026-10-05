@@ -115,7 +115,7 @@ export function toggleCollapsed(id: string, index = 0): void {
   try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(groups.collapsed)) } catch { /* private mode */ }
 }
 export function select(id: string): void { groups.sel = groups.sel === id ? null : id }
-export function openFolder(id: string): void { groups.sel = id }
+export function openFolder(id: string | null): void { groups.sel = id }
 
 /** Move one album / playlist to a group (admin). Shows at once, saved behind it. */
 export async function moveTo(uri: string, id: string): Promise<Result> {

@@ -1,48 +1,50 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Search, Plus, Pencil, Eraser, Trash2, Volume2 } from 'lucide-vue-next'
-import { fetchWords, stateOf, STATE_LABEL, deckAction } from '../composables/useJapanese'
-import { admin } from '../composables/useAdmin'
+import { fetchWords, stateOf, STATE_LABEL, deckAction, type JpWord, type WordList } from '../composables/useJapanese'
+import { admin, errorMessage } from '../composables/useAdmin'
 import { speak, canSpeak } from '../lib/speak'
 import JapanWord from './JapanWord.vue'
+import type { Flash } from '../types'
 
 // Every word in my decks: search (kanji, kana or English), filter by how well I know it, sort.
-const words = ref(null)
+const words = ref<JpWord[] | null>(null)
 const error = ref('')
 const q = ref('')
 const filter = ref('all')
 const sort = ref('freq')
-const picked = ref(null)
+const picked = ref<JpWord | null>(null)
 const shown = ref(60)
-const decks = ref([])
+const decks = ref<NonNullable<WordList['decks']>>([])
 async function reload(force = false) {
-  try { const r = await fetchWords(force); words.value = r.words; decks.value = r.decks || [] } catch (e) { error.value = e.message }
+  try { const r = await fetchWords(force); words.value = r.words; decks.value = r.decks || [] } catch (e) { error.value = errorMessage(e) }
 }
 onMounted(() => reload())
 
 // my own decks on jpdb (admin): new / rename / empty / delete
-const deckMsg = ref(null)
-async function deck(op, d) {
-  let extra = {}
+const deckMsg = ref<Flash | null>(null)
+type DeckOp = 'create' | 'rename' | 'clear' | 'delete'
+async function deck(op: DeckOp, d?: { id: number | string; name: string }) {
+  let extra: Record<string, unknown> = {}
   if (op === 'create' || op === 'rename') {
     const name = prompt(op === 'create' ? 'Navn på den nye kortstokken:' : 'Nytt navn:', d?.name || '')
     if (!name) return
     extra = { name }
-  } else if (!confirm(op === 'clear' ? `Tømme «${d.name}» for alle ord?` : `Slette kortstokken «${d.name}» på jpdb?`)) return
+  } else if (!confirm(op === 'clear' ? `Tømme «${d?.name}» for alle ord?` : `Slette kortstokken «${d?.name}» på jpdb?`)) return
   if (d) extra.id = d.id
   try {
     await deckAction(op, extra)
     deckMsg.value = { ok: { create: 'Kortstokken er laget.', rename: 'Navnet er endret.', clear: 'Kortstokken er tømt.', delete: 'Kortstokken er slettet.' }[op] }
     await reload(true)
   } catch (e) {
-    deckMsg.value = { error: e.message }
+    deckMsg.value = { error: errorMessage(e) }
   }
 }
 
-const FILTERS = [['all', 'Alle'], ['due', 'Repetisjon'], ['learning', 'Lærer'], ['known', 'Kan'], ['new', 'Nye']]
+const FILTERS: [string, string][] = [['all', 'Alle'], ['due', 'Repetisjon'], ['learning', 'Lærer'], ['known', 'Kan'], ['new', 'Nye']]
 const counts = computed(() => {
-  const c = { all: 0, due: 0, learning: 0, known: 0, new: 0 }
-  for (const w of words.value || []) { const s = stateOf(w.state); c.all++; if (c[s] !== undefined) c[s]++ }
+  const c: Record<string, number> = { all: 0, due: 0, learning: 0, known: 0, new: 0 }
+  for (const w of words.value || []) { const s = stateOf(w.state); c.all++; if (c[s] !== undefined) c[s] = (c[s] ?? 0) + 1 }
   return c
 })
 const list = computed(() => {

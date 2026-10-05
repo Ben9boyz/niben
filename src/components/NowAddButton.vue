@@ -1,21 +1,25 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { CirclePlus } from 'lucide-vue-next'
 import AddMenu from './AddMenu.vue'
 import { spotify, enqueue, addToPlaylist, notify } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
+import { targetEl } from '../lib/dom'
+import type { Playlist } from '../types'
 
 // The + on the song that's playing now (admin): put it in the queue or in one of my playlists.
 const now = computed(() => spotify.now)
 const open = ref(false)
-const root = ref(null)
-async function pick(p) {
+const root = ref<HTMLElement | null>(null)
+async function pick(p: Playlist) {
   open.value = false
-  const r = await addToPlaylist(p.uri, now.value.uri)
-  notify(r.ok ? `«${now.value.name}» er lagt til i «${p.name}».` : r.error, !r.ok)
+  const uri = now.value?.uri
+  if (!uri) return
+  const r = await addToPlaylist(p.uri, uri)
+  notify(r.ok ? `«${now.value?.name}» er lagt til i «${p.name}».` : r.error ?? '', !r.ok)
 }
-function queue() { open.value = false; enqueue(now.value.uri) }
-const onDoc = (e) => { if (open.value && !root.value?.contains(e.target)) open.value = false }
+function queue() { open.value = false; const uri = now.value?.uri; if (uri) void enqueue(uri) }
+const onDoc = (e: Event) => { if (open.value && !root.value?.contains(targetEl(e))) open.value = false }
 onMounted(() => document.addEventListener('pointerdown', onDoc))
 onBeforeUnmount(() => document.removeEventListener('pointerdown', onDoc))
 </script>

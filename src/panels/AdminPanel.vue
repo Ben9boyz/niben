@@ -1,7 +1,7 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { LayoutDashboard, Plane, BookOpen, Mic, Music, Type, Box, Mail, Eye, EyeOff, LogOut, Lock } from 'lucide-vue-next'
-import { admin, checkLogin, login, logout } from '../composables/useAdmin'
+import { admin, checkLogin, login, logout, errorMessage } from '../composables/useAdmin'
 import AdminTrips from '../components/admin/AdminTrips.vue'
 import AdminBooks from '../components/admin/AdminBooks.vue'
 import AdminRecordings from '../components/admin/AdminRecordings.vue'
@@ -23,7 +23,7 @@ const TABS = [
 ]
 const KEY = 'niben-admin-tab'
 const saved = (() => { try { return localStorage.getItem(KEY) } catch { return null } })()
-const tab = ref(TABS.some((t) => t.id === saved) ? saved : 'oversikt') // remembers where I was
+const tab = ref(TABS.find((t) => t.id === saved)?.id ?? 'oversikt') // remembers where I was
 watch(tab, (v) => { try { localStorage.setItem(KEY, v) } catch {} })
 const show = ref(false)
 const password = ref('')
@@ -39,7 +39,7 @@ async function submit() {
     await login(password.value)
     password.value = ''
   } catch (e) {
-    error.value = e.message
+    error.value = errorMessage(e)
   } finally {
     busy.value = false
   }

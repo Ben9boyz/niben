@@ -1,27 +1,29 @@
-<script setup>
+<script setup lang="ts">
+import { errorMessage } from '../composables/useAdmin'
 import { tx } from '../composables/useTexts'
 import { ref, onMounted } from 'vue'
 import { MessageCircle, Send } from 'lucide-vue-next'
 
 // Guestbook: anyone can leave a greeting; it shows up here only after I have read and approved it.
-const items = ref([])
+interface Greeting { id: number; name: string; msg: string; t: number }
+const items = ref<Greeting[]>([])
 const name = ref('')
 const message = ref('')
 const website = ref('') // hidden field: only bots fill it in
-const state = ref('idle') // idle | sending | sent
+const state = ref<'idle' | 'sending' | 'sent'>('idle')
 const err = ref('')
-async function load() { try { items.value = (await (await fetch('api.php?action=guestbook_list', { cache: 'no-store' })).json()).items || [] } catch {} }
+async function load() { try { items.value = ((await (await fetch('api.php?action=guestbook_list', { cache: 'no-store' })).json()) as { items?: Greeting[] }).items || [] } catch {} }
 onMounted(load)
 async function send() {
   err.value = ''; state.value = 'sending'
   try {
     const r = await fetch('api.php?action=guestbook_add', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Niben': '1' }, body: JSON.stringify({ name: name.value, message: message.value, website: website.value }) })
-    const j = await r.json().catch(() => ({}))
+    const j = (await r.json().catch(() => ({}))) as { error?: string }
     if (!r.ok || j.error) throw new Error(j.error || 'Noe gikk galt.')
     state.value = 'sent'; name.value = ''; message.value = ''
-  } catch (e) { err.value = e.message; state.value = 'idle' }
+  } catch (e) { err.value = errorMessage(e); state.value = 'idle' }
 }
-const when = (t) => new Date(t * 1000).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })
+const when = (t: number) => new Date(t * 1000).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })
 </script>
 
 <template>

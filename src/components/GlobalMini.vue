@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Play, Pause, SkipBack, SkipForward, ChevronDown, Music } from 'lucide-vue-next'
 import { spotify, progressMs, control, lockLeft, fmtClock, notify, useSpotify } from '../composables/useSpotify'
@@ -11,18 +11,18 @@ import MusicDrawer from './MusicDrawer.vue'
 // while practising Japanese: play / pause / skip right there, and the arrow opens the library (albums and
 // playlists) in a floating panel. Left out on the music page itself (it has the full player) and in the player app.
 // On phones it sits just above the menu instead.
-const props = defineProps({ show: { type: Boolean, default: true } })
+const props = withDefaults(defineProps<{ show?: boolean }>(), { show: true })
 useSpotify()
 const open = ref(false)
 const now = computed(() => spotify.now)
 const visible = computed(() => props.show && shell.value !== 'player' && spotify.connected && (!!now.value?.name || admin.loggedIn))
-const pct = computed(() => (now.value?.duration_ms ? (progressMs.value / now.value.duration_ms) * 100 : 0))
+const pct = computed(() => (now.value?.duration_ms ? (progressMs.value / now.value?.duration_ms) * 100 : 0))
 const locked = computed(() => lockLeft.value > 0)
-const toggle = () => { if (!now.value) return; const was = now.value.playing; now.value.playing = !was; control(was ? 'pause' : 'resume') }
-const skip = (op) => (locked.value ? notify(`Låst – hør ferdig (${fmtClock(lockLeft.value)} igjen)`, true) : control(op))
+const toggle = () => { const n = spotify.now; if (!n) return; const was = n.playing; n.playing = !was; void control(was ? 'pause' : 'resume') }
+const skip = (op: 'next' | 'previous') => (locked.value ? notify(`Låst – hør ferdig (${fmtClock(lockLeft.value)} igjen)`, true) : control(op))
 watch(visible, (v) => { if (!v) open.value = false; document.documentElement.classList.toggle('has-mini', v) }, { immediate: true })
 onBeforeUnmount(() => document.documentElement.classList.remove('has-mini'))
-const onKey = (e) => { if (e.key === 'Escape') open.value = false }
+const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') open.value = false }
 onMounted(() => window.addEventListener('keydown', onKey))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
@@ -38,7 +38,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </button>
       </transition>
       <transition name="swap" mode="out-in">
-        <button :key="'t' + (now?.uri || 'none')" class="txt" :translate="now?.name ? 'no' : null" :title="now?.name ? `${now.name} – ${now.artist}` : 'Velg musikk'" @click="open = !open">
+        <button :key="'t' + (now?.uri || 'none')" class="txt" :translate="now?.name ? 'no' : undefined" :title="now?.name ? `${now.name} – ${now.artist}` : 'Velg musikk'" @click="open = !open">
           <b>{{ now?.name || 'Ingenting spilles' }}</b>
           <span>{{ now?.name ? now.artist : 'Trykk for å velge' }}</span>
         </button>

@@ -1,20 +1,23 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Send, Trash2, MailCheck } from 'lucide-vue-next'
-import { api } from '../../composables/useAdmin'
+import { api, errorMessage } from '../../composables/useAdmin'
 import { useData } from '../../composables/useData'
+import type { Flash } from '../../types'
 
 // Newsletter: who is signed up, and a small composer. Pick a recording to fill in the mail, test it on yourself, send.
 const data = useData()
-const info = ref({ confirmed: 0, pending: 0, list: [], last: null })
+interface Subscriber { id: number; email: string; confirmed: number | string; created: number }
+interface NewsInfo { confirmed: number; pending: number; list: Subscriber[]; last: { t: number; subject: string; sent: number; failed: number } | null }
+const info = ref<NewsInfo>({ confirmed: 0, pending: 0, list: [], last: null })
 const subject = ref('')
 const body = ref('')
 const testTo = ref((() => { try { return localStorage.getItem('niben-news-test') || '' } catch { return '' } })())
 const busy = ref('')
-const msg = ref(null)
+const msg = ref<Flash | null>(null)
 const recs = computed(() => (data.gitarer || []).flatMap((g) => (g.opptak || []).map((o) => ({ ...o, gitar: g.navn }))).slice(0, 30))
 const picked = ref('')
-async function load() { try { info.value = await api('news_admin') } catch (e) { msg.value = { error: e.message } } }
+async function load() { try { info.value = await api<NewsInfo>('news_admin') } catch (e) { msg.value = { error: errorMessage(e) } } }
 onMounted(load)
 function fill() {
   const r = recs.value.find((x) => String(x.id) === String(picked.value))
@@ -23,7 +26,7 @@ function fill() {
   subject.value = `Nytt opptak: ${r.tittel}`
   body.value = `Hei!\n\nJeg har lagt ut et nytt gitaropptak: «${r.tittel}»${r.gitar ? ` (${r.gitar})` : ''}.\n${r.notat ? `\n${r.notat}\n` : ''}\nHør det her: ${site}#/gitar\n\nHilsen Benjamin`
 }
-async function send(test) {
+async function send(test: boolean) {
   if (!subject.value.trim() || !body.value.trim()) { msg.value = { error: 'Skriv både emne og tekst.' }; return }
   if (test && !testTo.value.trim()) { msg.value = { error: 'Skriv en e-postadresse å sende testen til.' }; return }
   if (!test && !confirm(`Sende til ${info.value.confirmed} abonnenter?`)) return
@@ -31,13 +34,13 @@ async function send(test) {
   msg.value = null
   try {
     if (test) try { localStorage.setItem('niben-news-test', testTo.value.trim()) } catch {}
-    const r = await api('news_send', { subject: subject.value, body: body.value, to: test ? testTo.value.trim() : '' })
+    const r = await api<{ sent: number; failed?: number }>('news_send', { subject: subject.value, body: body.value, to: test ? testTo.value.trim() : '' })
     msg.value = { ok: test ? `Testen er sendt til ${testTo.value.trim()}.` : `Sendt til ${r.sent}${r.failed ? ` (${r.failed} feilet)` : ''}.` }
     if (!test) load()
-  } catch (e) { msg.value = { error: e.message } } finally { busy.value = '' }
+  } catch (e) { msg.value = { error: errorMessage(e) } } finally { busy.value = '' }
 }
-async function remove(id) { if (!confirm('Fjerne denne adressen?')) return; await api('news_remove', { id }); load() }
-const date = (t) => new Date(t * 1000).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', year: 'numeric' })
+async function remove(id: number) { if (!confirm('Fjerne denne adressen?')) return; await api('news_remove', { id }); load() }
+const date = (t: number) => new Date(t * 1000).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', year: 'numeric' })
 </script>
 
 <template>

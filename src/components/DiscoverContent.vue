@@ -1,13 +1,13 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Plus, RefreshCw, Trash2, ArrowUpRight, Play, KeyRound, Sparkles } from 'lucide-vue-next'
 import { tx } from '../composables/useTexts'
 import { admin } from '../composables/useAdmin'
-import { discover, loadDiscover, addPick, delPick, saveKey, refreshRecs, hideRec } from '../composables/useDiscover'
+import { discover, loadDiscover, addPick, delPick, saveKey, refreshRecs, hideRec, type Pick } from '../composables/useDiscover'
 import { openAlbumPage, openArtistPage, peek } from '../composables/useBrowse'
 import { play, notify } from '../composables/useSpotify'
 import { itemMenu, playItem } from '../lib/menus'
-import { showMenu, longPress } from '../composables/useContextMenu'
+import { showMenu, longPress, type MenuPoint } from '../composables/useContextMenu'
 import CoverGrid from './CoverGrid.vue'
 import PeekView from './PeekView.vue'
 
@@ -18,24 +18,24 @@ const url = ref('')
 const note = ref('')
 const key = ref('')
 const showKey = ref(false)
-const albums = (list) => list.filter((p) => p.type !== 'track').map((p) => ({ ...p, sub: p.artist + (p.year ? ` · ${p.year}` : '') }))
+const albums = (list: Pick[]) => list.filter((p) => p.type !== 'track').map((p) => ({ ...p, sub: p.artist + (p.year ? ` · ${p.year}` : '') }))
 const pickAlbums = computed(() => albums(discover.picks))
 const pickTracks = computed(() => discover.picks.filter((p) => p.type === 'track'))
-const recs = computed(() => albums(discover.recs).map((p) => ({ ...p, onHide: admin.loggedIn ? () => hideRec(p.uri) : null })))
-const noteOf = (it) => discover.picks.find((p) => p.uri === it.uri)?.note || ''
-const whyOf = (it) => discover.recs.find((p) => p.uri === it.uri)?.why || ''
-const open = (it) => openAlbumPage({ ...it, image_large: it.image_large || it.image })
+const recs = computed(() => albums(discover.recs).map((p) => ({ ...p, onHide: admin.loggedIn ? () => hideRec(p.uri) : undefined })))
+const noteOf = (it: { uri: string }) => discover.picks.find((p) => p.uri === it.uri)?.note || ''
+const whyOf = (it: { uri: string }) => discover.recs.find((p) => p.uri === it.uri)?.why || ''
+const open = (it: Pick) => openAlbumPage({ ...it, artist: it.artist ?? '', image_large: it.image_large || it.image })
 async function add() {
   if (!url.value.trim()) return
   const r = await addPick(url.value.trim(), note.value)
-  if (r) { url.value = ''; note.value = ''; notify?.(`«${r.name}» er lagt til.`) }
+  if (r) { url.value = ''; note.value = ''; notify(`«${r.name}» er lagt til.`) }
 }
-async function playTrack(t) { const r = await play(t.uri); if (!r.ok) notify?.(r.error, true) }
-const trackMenu = (e, t) => showMenu(e, t.name, [
+async function playTrack(t: Pick) { const r = await play(t.uri); if (!r.ok) notify(r.error ?? '', true) }
+const trackMenu = (e: MenuPoint, t: Pick) => showMenu(e, t.name, [
   admin.loggedIn && { label: 'Spill', run: () => playTrack(t) },
-  t.album_uri && { label: 'Gå til album', run: () => openAlbumPage({ uri: t.album_uri, name: t.album, artist: t.artist, image: t.image, image_large: t.image_large }) },
-  t.artist && { label: 'Gå til artist', run: () => openArtistPage({ id: t.artist_id, name: String(t.artist).split(',')[0] }) },
-  { label: 'Åpne i Spotify', run: () => window.open(t.url, '_blank', 'noopener') },
+  t.album_uri ? { label: 'Gå til album', run: () => openAlbumPage({ uri: t.album_uri ?? '', name: t.album ?? '', artist: t.artist ?? '', image: t.image, image_large: t.image_large }) } : null,
+  t.artist ? { label: 'Gå til artist', run: () => openArtistPage({ id: t.artist_id, name: String(t.artist).split(',')[0] ?? '' }) } : null,
+  { label: 'Åpne i Spotify', run: () => { window.open(t.url ?? undefined, '_blank', 'noopener') } },
 ])
 const when = computed(() => (discover.at ? new Date(discover.at * 1000).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long' }) : ''))
 </script>
@@ -69,10 +69,10 @@ const when = computed(() => (discover.at ? new Date(discover.at * 1000).toLocale
         </div>
         <ul v-if="pickTracks.length" class="tl">
           <li v-for="t in pickTracks" :key="t.uri" v-on="longPress((e) => trackMenu(e, t))" @contextmenu.prevent="trackMenu($event, t)">
-            <img v-if="t.thumb || t.image" :src="t.thumb || t.image" alt="" crossorigin="anonymous" />
+            <img v-if="t.thumb || t.image" :src="t.thumb || t.image || undefined" alt="" crossorigin="anonymous" />
             <span class="x"><b>{{ t.name }}</b><small>{{ t.artist }}<template v-if="t.album"> · {{ t.album }}</template></small><em v-if="t.note">{{ t.note }}</em></span>
             <button v-if="admin.loggedIn" class="ic" title="Spill" aria-label="Spill" @click="playTrack(t)"><Play :size="15" fill="currentColor" /></button>
-            <a class="ic" :href="t.url" target="_blank" rel="noopener" title="Åpne i Spotify" aria-label="Åpne i Spotify"><ArrowUpRight :size="16" /></a>
+            <a class="ic" :href="t.url || undefined" target="_blank" rel="noopener" title="Åpne i Spotify" aria-label="Åpne i Spotify"><ArrowUpRight :size="16" /></a>
             <button v-if="admin.loggedIn" class="ic" title="Fjern" aria-label="Fjern" @click="delPick(t.uri)"><Trash2 :size="14" /></button>
           </li>
         </ul>

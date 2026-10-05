@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { Disc3, ListMusic, X, ArrowUpRight } from 'lucide-vue-next'
@@ -11,11 +11,11 @@ import PlaylistPanel from './PlaylistPanel.vue'
 
 // The music panel on its own, opened from the mini player: floats over whatever station you're at
 // so you can change what's playing without leaving it. A small link goes to the listening corner.
-const emit = defineEmits(['close'])
+const emit = defineEmits<{ close: [] }>()
 const router = useRouter()
 const ipod = () => room.musicView.startsWith('ipod')
 
-function show(view) {
+function show(view: 'vinyl' | 'ipod') {
   room.musicView = view
   if (view === 'vinyl') room.sel.musikk = null
   else { room.ipod.playlist = null; room.ipod.view = 'menu' }
@@ -24,7 +24,7 @@ function toCorner() {
   emit('close')
   router.push('/lytte')
 }
-const onKey = (e) => { if (e.key === 'Escape') emit('close') }
+const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') emit('close') }
 onMounted(() => window.addEventListener('keydown', onKey))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>

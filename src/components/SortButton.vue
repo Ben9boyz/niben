@@ -1,17 +1,18 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ArrowUpDown, Check } from 'lucide-vue-next'
-import { sort, OPTIONS } from '../composables/useSort'
+import { sort, OPTIONS, type SortKind } from '../composables/useSort'
+import { targetEl } from '../lib/dom'
 
 // The sort button in the library: pick how albums / playlists are ordered.
-const props = defineProps({ kind: { type: String, default: 'album' } }) // 'album' | 'playlist'
+const props = withDefaults(defineProps<{ kind?: SortKind }>(), { kind: 'album' })
 const open = ref(false)
-const root = ref(null)
+const root = ref<HTMLElement | null>(null)
 const opts = computed(() => OPTIONS[props.kind])
 const label = computed(() => opts.value.find((o) => o[0] === sort[props.kind])?.[1] || '')
-const pick = (id) => { sort[props.kind] = id; open.value = false }
-const onDoc = (e) => { if (open.value && !root.value?.contains(e.target)) open.value = false }
-const onKey = (e) => { if (e.key === 'Escape') open.value = false }
+const pick = (id: string) => { sort[props.kind] = id; open.value = false }
+const onDoc = (e: Event) => { if (open.value && !root.value?.contains(targetEl(e))) open.value = false }
+const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') open.value = false }
 onMounted(() => { document.addEventListener('pointerdown', onDoc); window.addEventListener('keydown', onKey) })
 onBeforeUnmount(() => { document.removeEventListener('pointerdown', onDoc); window.removeEventListener('keydown', onKey) })
 </script>

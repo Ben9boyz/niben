@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { Disc3, ListMusic, Library, Search, X, Sparkles } from 'lucide-vue-next'
@@ -34,15 +34,15 @@ const phone = ref(phoneMq.matches)
 const onMq = () => { phone.value = phoneMq.matches }
 onMounted(() => phoneMq.addEventListener('change', onMq))
 onBeforeUnmount(() => phoneMq.removeEventListener('change', onMq))
-const tab = ref('library') // 'library' | 'search'
+const tab = ref<'library' | 'search'>('library')
 const ipod = computed(() => room.musicView.startsWith('ipod'))
 const playing = computed(() => !!spotify.now?.name)
 const sheet = ref(false) // phones: the full "now playing" card
 const LIB = [{ id: 'vinyl', label: 'Album', icon: Disc3 }, { id: 'ipod', label: 'Spillelister', icon: ListMusic }]
 // "Alt": playlists and albums together (remembered)
 const allMode = ref((() => { try { return localStorage.getItem('niben-lib-all') === '1' } catch { return false } })())
-const setAll = (v) => { allMode.value = v; try { localStorage.setItem('niben-lib-all', v ? '1' : '0') } catch {} }
-const libView = computed({ get: () => (allMode.value ? 'all' : ipod.value ? 'ipod' : 'vinyl'), set: (v) => { gq.value = ''; if (v === 'all') { setAll(true); peekClear(); room.sel.musikk = null; room.ipod.playlist = null; room.ipod.view = 'menu' } else { setAll(false); show(v) } } })
+const setAll = (v: boolean) => { allMode.value = v; try { localStorage.setItem('niben-lib-all', v ? '1' : '0') } catch {} }
+const libView = computed<'all' | 'ipod' | 'vinyl'>({ get: () => (allMode.value ? 'all' : ipod.value ? 'ipod' : 'vinyl'), set: (v) => { gq.value = ''; if (v === 'all') { setAll(true); peekClear(); room.sel.musikk = null; room.ipod.playlist = null; room.ipod.view = 'menu' } else { setAll(false); show(v) } } })
 const showAll = computed(() => allMode.value && !room.sel.musikk && !room.ipod.playlist)
 const top = computed(() => peek.stack[peek.stack.length - 1] || null)
 const backLabel = computed(() => (peek.stack.length > 1 ? 'Tilbake' : gq.value.trim() ? 'Tilbake til søket' : 'Tilbake'))
@@ -50,7 +50,7 @@ const backLabel = computed(() => (peek.stack.length > 1 ? 'Tilbake' : gq.value.t
 const byArtist = computed(() => !ipod.value && !showAll.value && !room.discover && groups.on && groups.view === 'artist')
 const hasTree = computed(() => groups.on && groups.loaded && !byArtist.value && !room.discover) // ("Alt" has its folders too: they work across albums and playlists)
 
-function setTab(t) {
+function setTab(t: 'library' | 'search') {
   if (t === tab.value && !top.value && !room.sel.musikk && !room.ipod.playlist) return
   tab.value = t
   peekClear()
@@ -60,16 +60,16 @@ function setTab(t) {
   if (t === 'library') gq.value = ''
 }
 const chip = computed(() => (room.discover ? 'discover' : libView.value))
-function pickChip(id) {
+function pickChip(id: string) {
   peekClear()
   room.sel.musikk = null
   if (id === 'discover') { room.discover = true; return }
   room.discover = false
-  libView.value = id
+  if (id === 'all' || id === 'ipod' || id === 'vinyl') libView.value = id
 }
 const CHIPS = [{ id: 'vinyl', label: 'Album' }, { id: 'ipod', label: 'Spillelister' }, { id: 'all', label: 'Alt' }, { id: 'discover', label: 'Oppdag' }]
 
-function show(view) {
+function show(view: 'vinyl' | 'ipod') {
   peekClear()
   room.musicView = view
   // tapping the tab you're on goes back to the grid

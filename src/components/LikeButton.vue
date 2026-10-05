@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { Bookmark } from 'lucide-vue-next'
 import { spotify, isSaved, toggleAlbumSaved, findAlbum } from '../composables/useSpotify'
@@ -12,7 +12,7 @@ const isAlbum = computed(() => ctx.value.startsWith('spotify:album:'))
 const album = computed(() => findAlbum(ctx.value) || { uri: ctx.value, name: now.value?.album || 'Albumet', artist: now.value?.artist, image: now.value?.image, image_large: now.value?.image_large, url: null })
 const on = computed(() => isSaved(ctx.value))
 const title = computed(() => (on.value ? 'Fjern albumet fra biblioteket' : 'Lagre albumet i biblioteket'))
-const save = () => toggleAlbumSaved(album.value)
+const save = () => toggleAlbumSaved({ ...album.value, artist: album.value.artist ?? '' })
 </script>
 
 <template>

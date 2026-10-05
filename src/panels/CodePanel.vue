@@ -1,15 +1,15 @@
-<script setup>
+<script setup lang="ts">
 import { tx } from '../composables/useTexts'
 import { ArrowUpRight, BookOpenText } from 'lucide-vue-next'
 import RepoBrowser from '../components/RepoBrowser.vue'
 import { computed, ref } from 'vue'
-import { useData } from '../composables/useData'
+import { useData, type Project } from '../composables/useData'
 import { room } from '../composables/useRoom'
 
 const data = useData()
 // a project on my GitHub can be read right here (RepoBrowser)
-const repoOf = (p) => (/github\.com\/Ben9boyz\/([\w.-]+)/i.exec(p?.kode || '') || [])[1] || null
-const reading = ref(null)
+const repoOf = (p: Project | undefined) => (/github\.com\/Ben9boyz\/([\w.-]+)/i.exec(p?.kode || '') || [])[1] || null
+const reading = ref<string | null>(null)
 const list = computed(() => data.prosjekter || [])
 const p = computed(() => list.value[room.sel.prosjekt])
 </script>

@@ -1,61 +1,64 @@
-<script setup>
+<script setup lang="ts">
 import { Bookmark, ChevronLeft, Music, Lock, Play, Pause, ArrowUpRight, CirclePlus, ListEnd, Camera } from 'lucide-vue-next'
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import AddMenu from './AddMenu.vue'
 import { startTrackDrag, endDrag } from '../composables/useDrag'
 import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote, control, addToPlaylist, enqueue, enqueueAlbum, isSaved, toggleAlbumSaved, setPlaylistImage } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
-import { showMenu, longPress } from '../composables/useContextMenu'
+import { pickedFile, targetEl } from '../lib/dom'
+import type { Album, Playlist, Track, TrackList, Flash } from '../types'
+import { showMenu, longPress, type MenuPoint } from '../composables/useContextMenu'
 import { trackMenu } from '../lib/menus'
 import { openAlbumPage, openArtistPage, albumOfTrack, firstArtist } from '../composables/useBrowse'
 
 // Spotify-style page for one album or playlist: big cover, colour from the cover, tracks.
-const props = defineProps({
-  item: { type: Object, required: true },
-  kind: { type: String, default: 'album' }, // 'album' | 'playlist'
-  backLabel: { type: String, default: 'Tilbake' },
+type Item = Partial<Album> & Partial<Playlist> & { uri: string; name: string } // an album or a playlist
+const props = withDefaults(defineProps<{
+  item: Item
+  kind?: 'album' | 'playlist'
+  backLabel?: string
   // 3D room: the record itself is held up in the room (with its own play button and name),
   // so the panel shows just the way back, the Spotify link and the tracks
-  compact: Boolean,
-})
-const emit = defineEmits(['back'])
+  compact?: boolean
+}>(), { kind: 'album', backLabel: 'Tilbake' })
+const emit = defineEmits<{ back: [] }>()
 
-const tracks = ref(null)
-const msg = ref(null)
+const tracks = ref<TrackList | null>(null)
+const msg = ref<Flash | null>(null)
 // my own playlists: tap the cover to change the picture (Spotify keeps it as the playlist's cover)
-const coverFile = ref(null)
+const asAlbum = (): Album => ({ ...props.item, artist: props.item.artist ?? '' })
+const coverFile = ref<HTMLInputElement | null>(null)
 const canChangeCover = computed(() => admin.loggedIn && props.kind === 'playlist' && props.item.editable !== false && spotify.playlists.some((p) => p.uri === props.item.uri))
 const coverBusy = ref(false)
-async function changeCover(e) {
-  const f = e.target.files?.[0]
-  e.target.value = ''
+async function changeCover(e: Event) {
+  const f = pickedFile(e)
   if (!f || !f.type.startsWith('image/')) return
   coverBusy.value = true
   await setPlaylistImage(props.item.uri, f)
   coverBusy.value = false
 }
 // "add to playlist" for a song (admin): the list of my own playlists opens under the song
-const menuFor = ref(null)
-async function addTo(t, pl) {
+const menuFor = ref<string | null>(null)
+async function addTo(t: Track, pl: Playlist) {
   menuFor.value = null
   const r = await addToPlaylist(pl.uri, t.uri)
   msg.value = r.ok ? { ok: `«${t.name}» er lagt til i «${pl.name}».` } : { error: r.error }
 }
 // Q over a song puts it next in the queue
 const multiDisc = computed(() => (tracks.value?.tracks || []).some((t) => (t.disc || 1) > 1))
-const hoverT = ref(null)
+const hoverT = ref<Track | null>(null)
 // a song for my queue: album tracks don't say which album they're on, so add that
-const qt = (t) => (t.album_uri || props.kind !== 'album' ? t : { ...t, album_uri: props.item.uri, album: props.item.name, album_image: props.item.image || props.item.thumb || '', img: props.item.thumb || props.item.image || '' })
-function onKey(e) {
+const qt = (t: Track): Track => (t.album_uri || props.kind !== 'album' ? t : { ...t, album_uri: props.item.uri, album: props.item.name, album_image: props.item.image || props.item.thumb || '', img: props.item.thumb || props.item.image || '' })
+function onKey(e: KeyboardEvent) {
   if (e.key.toLowerCase() !== 'q' || e.metaKey || e.ctrlKey || e.altKey || !hoverT.value || !admin.loggedIn) return
-  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(targetEl(e).tagName)) return
   e.preventDefault()
   enqueue(qt(hoverT.value))
 }
 onMounted(() => window.addEventListener('keydown', onKey))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
-const busy = ref(null)
-const tint = ref(null)
+const busy = ref<string | null>(null)
+const tint = ref<string | null>(null)
 const locked = computed(() => lockLeft.value > 0)
 const isPlayingHere = computed(() => spotify.now?.context === props.item.uri)
 
@@ -65,6 +68,7 @@ const stats = computed(() => {
   const n = tracks.value?.tracks?.length || it.tracks || it.count
   const total = tracks.value?.tracks?.reduce((s, t) => s + (t.ms || 0), 0) || 0
   return [
+
     n ? `${n} låter` : null,
     total ? (total >= 3600000 ? `${Math.floor(total / 3600000)} t ${Math.round((total % 3600000) / 60000)} min` : `${Math.round(total / 60000)} min`) : null,
   ].filter(Boolean)
@@ -72,7 +76,7 @@ const stats = computed(() => {
 const meta = computed(() => [props.kind === 'album' ? props.item.artist : props.item.owner, props.item.year, ...stats.value].filter(Boolean))
 
 // average colour of the cover, for the header
-function coverColor(src) {
+function coverColor(src: string): Promise<string | null> {
   return new Promise((resolve) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
@@ -81,10 +85,11 @@ function coverColor(src) {
         const c = document.createElement('canvas')
         c.width = c.height = 12
         const x = c.getContext('2d')
+        if (!x) return resolve(null)
         x.drawImage(img, 0, 0, 12, 12)
         const d = x.getImageData(0, 0, 12, 12).data
         let r = 0, g = 0, b = 0
-        for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2] }
+        for (let i = 0; i < d.length; i += 4) { r += d[i] ?? 0; g += d[i + 1] ?? 0; b += d[i + 2] ?? 0 }
         const n = d.length / 4
         resolve(`rgb(${Math.round(r / n)}, ${Math.round(g / n)}, ${Math.round(b / n)})`)
       } catch { resolve(null) }
@@ -100,13 +105,13 @@ watch(() => props.item?.uri, async () => {
   tint.value = null
   const it = props.item
   if (!it) return
-  if (it.thumb || it.image) coverColor(it.thumb || it.image).then((c) => { if (props.item === it) tint.value = c })
+  if (it.thumb || it.image) coverColor((it.thumb || it.image) ?? '').then((c) => { if (props.item === it) tint.value = c })
   const t = await fetchTracks(it.uri)
   if (props.item === it) tracks.value = t
 }, { immediate: true })
 
-const rowMenu = (e, t) => showMenu(e, t.name, trackMenu(t, { onPlay: () => onPlay(t), albumUri: props.kind === 'album' ? props.item.uri : null }))
-async function onPlay(track = null) {
+const rowMenu = (e: MenuPoint, t: Track) => showMenu(e, t.name, trackMenu(t, { onPlay: () => onPlay(t), albumUri: props.kind === 'album' ? props.item.uri : undefined }))
+async function onPlay(track: Track | null = null) {
   if (busy.value) return
   // what's already playing can always be paused / resumed – the lock only stops switching to something else
   if (track ? spotify.now?.uri === track.uri : isPlayingHere.value) {
@@ -118,14 +123,14 @@ async function onPlay(track = null) {
   }
   if (locked.value) { msg.value = { error: `Låst – hør ferdig (${fmtClock(lockLeft.value)} igjen)` }; return }
   busy.value = track?.uri || props.item.uri
-  const r = await play(props.item.uri, track?.uri)
+  const r = await play(props.item.uri, track?.uri ?? null)
   busy.value = null
   msg.value = r.ok ? { ok: `Spiller «${track ? track.name : props.item.name}»${lockNote()}` } : { error: r.error }
 }
 </script>
 
 <template>
-  <article class="detail" :style="tint ? { '--tint': tint } : null">
+  <article class="detail" :style="tint ? { '--tint': tint } : undefined">
     <header v-if="compact" class="bar">
       <button class="back" @click="emit('back')"><ChevronLeft :size="16" />{{ backLabel }}</button>
       <span class="bar-meta">{{ stats.join(' · ') }}</span>
@@ -138,8 +143,8 @@ async function onPlay(track = null) {
     <header v-else class="hero">
       <button class="back" @click="emit('back')"><ChevronLeft :size="16" />{{ backLabel }}</button>
       <div class="hero-row">
-        <component :is="canChangeCover ? 'button' : 'div'" class="coverbox" :class="{ edit: canChangeCover, busy: coverBusy }" v-bind="canChangeCover ? { type: 'button', 'aria-label': 'Bytt bilde på spillelisten', title: 'Bytt bilde' } : {}" @click="canChangeCover && coverFile.click()">
-          <img crossorigin="anonymous" v-if="item.image_large || item.image" :src="item.image_large || item.image" alt="" class="cover" />
+        <component :is="canChangeCover ? 'button' : 'div'" class="coverbox" :class="{ edit: canChangeCover, busy: coverBusy }" v-bind="canChangeCover ? { type: 'button', 'aria-label': 'Bytt bilde på spillelisten', title: 'Bytt bilde' } : {}" @click="canChangeCover && coverFile?.click()">
+          <img crossorigin="anonymous" v-if="item.image_large || item.image" :src="item.image_large || item.image || undefined" alt="" class="cover" />
           <div v-else class="cover ph"><Music :size="40" /></div>
           <span v-if="canChangeCover" class="cam"><Camera :size="16" /><i>Bytt bilde</i></span>
         </component>
@@ -162,7 +167,7 @@ async function onPlay(track = null) {
         </button>
         <span v-if="admin.loggedIn && locked && !isPlayingHere" class="lockt">Låst {{ fmtClock(lockLeft) }}</span>
         <span v-if="isPlayingHere" class="now-tag">Spilles nå</span>
-        <button v-if="admin.loggedIn && kind === 'album'" class="hbtn" :class="{ on: isSaved(item.uri) }" :title="isSaved(item.uri) ? 'Fjern fra biblioteket' : 'Lagre i biblioteket'" :aria-label="isSaved(item.uri) ? 'Fjern fra biblioteket' : 'Lagre i biblioteket'" @click="toggleAlbumSaved(item)"><Bookmark :size="22" :fill="isSaved(item.uri) ? 'currentColor' : 'none'" /></button>
+        <button v-if="admin.loggedIn && kind === 'album'" class="hbtn" :class="{ on: isSaved(item.uri) }" :title="isSaved(item.uri) ? 'Fjern fra biblioteket' : 'Lagre i biblioteket'" :aria-label="isSaved(item.uri) ? 'Fjern fra biblioteket' : 'Lagre i biblioteket'" @click="toggleAlbumSaved(asAlbum())"><Bookmark :size="22" :fill="isSaved(item.uri) ? 'currentColor' : 'none'" /></button>
         <button v-if="admin.loggedIn && kind === 'album'" class="qalbum" title="Legg hele albumet sist i køen" @click="enqueueAlbum(item.uri, item.name)"><ListEnd :size="16" />Legg i kø</button>
         <span class="spacer"></span>
         <a v-if="item.url" class="open" :href="item.url" target="_blank" rel="noopener">Åpne i Spotify <ArrowUpRight :size="15" /></a>
@@ -176,7 +181,7 @@ async function onPlay(track = null) {
       <li v-else-if="tracks.hidden" class="note">Spotify viser bare låtene i spillelister du har laget selv. Du kan fortsatt spille av hele lista.</li>
       <li v-else-if="!tracks.tracks.length" class="note">Fant ingen låter.</li>
       <template v-for="(t, i) in tracks?.tracks || []" :key="t.uri + i">
-        <li v-if="kind === 'album' && multiDisc && t.disc && t.disc !== tracks.tracks[i - 1]?.disc" class="disc">Plate {{ t.disc }}</li>
+        <li v-if="kind === 'album' && multiDisc && t.disc && t.disc !== tracks?.tracks[i - 1]?.disc" class="disc">Plate {{ t.disc }}</li>
         <li
           :class="{ current: spotify.now?.uri === t.uri, clickable: admin.loggedIn && (!locked || spotify.now?.uri === t.uri), withadd: admin.loggedIn }"
           @click="admin.loggedIn && onPlay(t)"
@@ -198,7 +203,7 @@ async function onPlay(track = null) {
             </small></span>
           <button v-if="admin.loggedIn" class="add" title="Spill etterpå – i køen (Q)" aria-label="Spill etterpå" @click.stop="enqueue(qt(t))"><ListEnd :size="15" /></button>
           <button v-if="admin.loggedIn" class="add" :class="{ on: menuFor === t.uri }" title="Legg i en spilleliste" aria-label="Legg i en spilleliste" @click.stop="menuFor = menuFor === t.uri ? null : t.uri"><CirclePlus :size="18" /></button>
-          <span class="d">{{ busy === t.uri ? '…' : fmtClock(t.ms / 1000) }}</span>
+          <span class="d">{{ busy === t.uri ? '…' : fmtClock((t.ms ?? 0) / 1000) }}</span>
         </li>
         <li v-if="menuFor === t.uri" class="plmenu">
           <AddMenu :exclude="item.uri" @queue="menuFor = null; enqueue(qt(t))" @pick="(p) => addTo(t, p)" @close="menuFor = null" />

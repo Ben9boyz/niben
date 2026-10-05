@@ -35,7 +35,7 @@ const COMPARTMENT = FLOORS.flatMap((y) => COLS.map(([a, b]) => ({ x0: a, x1: b, 
 /** An album as the room draws it: the shelf's colour can be known in advance. */
 type ShelfAlbum = Album & { color?: string | null }
 /** One entry in the stack of records on the table (the queue first, then what I listened to last). */
-export interface StackEntry { uri: string; name?: string; image?: string | null; image_large?: string | null; queued?: boolean }
+export interface StackEntry { uri: string; name?: string; artist?: string; image?: string | null; image_large?: string | null; queued?: boolean }
 /** A record on the shelf (or a guest from the search): where it rests and how it sticks out. */
 interface ShelfRecord {
   album: ShelfAlbum

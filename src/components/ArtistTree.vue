@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { User } from 'lucide-vue-next'
 import { spotify } from '../composables/useSpotify'
@@ -6,20 +6,20 @@ import { groups } from '../composables/useGroups'
 
 // The list on the left when the albums are grouped by artist: one row per artist with their picture
 // (the cover of their first album). Click one to show only their albums, click again for all.
-const emit = defineEmits(['pick'])
-const nb = (a, b) => a.localeCompare(b, 'nb')
+const emit = defineEmits<{ pick: [] }>()
+const nb = (a: string, b: string) => a.localeCompare(b, 'nb')
 const artists = computed(() => {
-  const by = new Map()
+  const by = new Map<string, { name: string; n: number; img: string | null | undefined }>()
   for (const a of spotify.albums) {
     const k = a.artist || 'Ukjent artist'
-    const e = by.get(k) || { name: k, n: 0, img: null }
+    const e = by.get(k) || { name: k, n: 0, img: null as string | null | undefined }
     e.n++
     e.img ||= a.thumb || a.image
     by.set(k, e)
   }
   return [...by.values()].sort((a, b) => b.n - a.n || nb(a.name, b.name))
 })
-const pick = (name) => { groups.artist = groups.artist === name ? null : name; emit('pick') }
+const pick = (name: string) => { groups.artist = groups.artist === name ? null : name; emit('pick') }
 </script>
 
 <template>

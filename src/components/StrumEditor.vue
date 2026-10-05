@@ -1,25 +1,21 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { PATTERNS } from '../lib/strum'
 
 // The strumming pattern for one bar: tap a slot to cycle down → up → muted → nothing, or pick a common
 // pattern. `active` lights up the slot being played.
-const props = defineProps({
-  modelValue: { type: String, default: '' },
-  active: { type: Number, default: -1 },
-  readonly: Boolean,
-})
-const emit = defineEmits(['update:modelValue'])
+const props = withDefaults(defineProps<{ modelValue?: string; active?: number; readonly?: boolean }>(), { modelValue: '', active: -1 })
+const emit = defineEmits<{ 'update:modelValue': [pattern: string] }>()
 const slots = computed(() => (props.modelValue || 'D-D-D-D-').toUpperCase().padEnd(8, '-').split(''))
-const NEXT = { D: 'U', U: 'X', X: '-', '-': 'D' }
-const ARROW = { D: '↓', U: '↑', X: '×', '-': '' }
-function cycle(i) {
+const NEXT: Record<string, string> = { D: 'U', U: 'X', X: '-', '-': 'D' }
+const ARROW: Record<string, string> = { D: '↓', U: '↑', X: '×', '-': '' }
+function cycle(i: number) {
   if (props.readonly) return
   const s = [...slots.value]
   s[i] = NEXT[s[i]] || 'D'
   emit('update:modelValue', s.join(''))
 }
-const label = (i) => (i % 2 ? '&' : String(i / 2 + 1))
+const label = (i: number) => (i % 2 ? '&' : String(i / 2 + 1))
 </script>
 
 <template>

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { Layers, Pencil, Plus, ArrowUp, ArrowDown, X, Check } from 'lucide-vue-next'
 import FolderIcon from './FolderIcon.vue'
@@ -6,39 +6,40 @@ import SortButton from './SortButton.vue'
 import { groups, setGrouping, setView, saveGroups, groupCover, itemsIn, coverOfUri, uploadGroupImage } from '../composables/useGroups'
 import { admin } from '../composables/useAdmin'
 import { notify } from '../composables/useSpotify'
+import { pickedFile } from '../lib/dom'
+import type { Group } from '../types'
 
 // Above the albums / playlists: a switch for grouping, and (admin) "Rediger" – moving things between groups
 // and adding / renaming / reordering / deleting the groups themselves.
-const props = defineProps({ artist: Boolean, all: Boolean }) // all: the "Alt" pot – albums + playlists, no Artist view // albums: the "Artist" view is offered (and no "Lister")
+const props = defineProps<{ artist?: boolean; all?: boolean }>() // all: the "Alt" pot – albums + playlists, no Artist view // albums: the "Artist" view is offered (and no "Lister")
 const view = computed(() => (!props.artist && groups.view === 'artist' ? 'mapper' : groups.view))
-const draft = ref([])
+const draft = ref<Group[]>([])
 const open = computed(() => admin.loggedIn && groups.editing)
 watch(open, (on) => { if (on) draft.value = groups.list.map((g) => ({ ...g })) }, { immediate: true })
 
-const move = (i, d) => { const a = draft.value, j = i + d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]] }
+const move = (i: number, d: number) => { const a = draft.value, j = i + d; const x = a[i], y = a[j]; if (!x || !y) return; a[i] = y; a[j] = x }
 // a group can be put inside one that is on its own (one level of folders)
-const parents = (g) => (g.parent || draft.value.some((x) => x.parent === g.id) ? draft.value.filter((o) => o.id === g.parent) : draft.value.filter((o) => o.id && o.id !== g.id && !o.parent))
+const parents = (g: Group) => (g.parent || draft.value.some((x) => x.parent === g.id) ? draft.value.filter((o) => o.id === g.parent) : draft.value.filter((o) => o.id && o.id !== g.id && !o.parent))
 // the picture on a folder: pick one of the covers in it, "Automatisk" (the first) or none
-const picking = ref(null)
-const choices = (g) => (g.id ? itemsIn(g.id).map((u) => ({ uri: u, img: coverOfUri(u) })).filter((c) => c.img).slice(0, 16) : [])
-function setCover(g, v) { delete g.img; if (v) g.cover = v; else delete g.cover; picking.value = null; save() }
+const picking = ref<number | null>(null)
+const choices = (g: Group) => (g.id ? itemsIn(g.id).map((u) => ({ uri: u, img: coverOfUri(u) })).filter((c) => c.img).slice(0, 16) : [])
+function setCover(g: Group, v: string | null) { delete g.img; if (v) g.cover = v; else delete g.cover; picking.value = null; save() }
 // my own picture on the folder
 const busyImg = ref(false)
-async function pickImage(g, e) {
-  const f = e.target.files?.[0]
-  e.target.value = ''
+async function pickImage(g: Group, e: Event) {
+  const f = pickedFile(e)
   if (!f || !g.id) return
   busyImg.value = true
   const r = await uploadGroupImage(g.id, f)
   busyImg.value = false
-  if (r.ok) { draft.value = groups.list.map((x) => ({ ...x })); picking.value = null } else notify(r.error, true)
+  if (r.ok) { draft.value = groups.list.map((x) => ({ ...x })); picking.value = null } else notify(r.error ?? '', true)
 }
 const add = () => draft.value.push({ id: '', name: '' })
-const remove = (i) => { if (draft.value.length > 1) draft.value.splice(i, 1) }
+const remove = (i: number) => { if (draft.value.length > 1) draft.value.splice(i, 1) }
 async function save() {
   const r = await saveGroups(draft.value.filter((g) => g.name.trim()))
   if (r.ok) draft.value = groups.list.map((g) => ({ ...g }))
-  else notify(r.error, true)
+  else notify(r.error ?? '', true)
 }
 </script>
 
@@ -61,7 +62,7 @@ async function save() {
       <p class="hint">Lyddata fra Spotify: {{ groups.audio === 'yes' ? 'brukes til å gjette' : groups.audio === 'no' ? 'ikke tilgjengelig for appen din (Spotify stengte det for nye apper)' : 'ikke prøvd ennå' }}.</p>
       <template v-for="(g, i) in draft" :key="g.id || i">
       <div class="g">
-        <button class="pic" :title="'Bilde på mappa'" :aria-label="`Bilde på mappa ${g.name}`" @click="picking = picking === i ? null : i"><FolderIcon :image="g.id ? groupCover(g.id) : null" :size="18" /></button>
+        <button class="pic" title="Bilde på mappa" :aria-label="`Bilde på mappa ${g.name}`" @click="picking = picking === i ? null : i"><FolderIcon :image="g.id ? groupCover(g.id) : null" :size="18" /></button>
         <input v-model="g.name" maxlength="40" placeholder="Navn på gruppe" :aria-label="`Gruppe ${i + 1}`" @change="save" />
         <select v-model="g.parent" class="par" :aria-label="`Mappe i … for ${g.name || 'gruppen'}`" title="Legg som mappe inni en annen gruppe" @change="save">
           <option :value="undefined">Egen gruppe</option>
@@ -75,7 +76,7 @@ async function save() {
         <label v-if="g.id" class="c0 up" :class="{ on: !!g.img }"><input type="file" accept="image/*" hidden :disabled="busyImg" @change="pickImage(g, $event)" />{{ busyImg ? 'Laster opp …' : g.img ? 'Bytt eget bilde' : 'Last opp eget bilde' }}</label>
         <button class="c0" :class="{ on: !g.cover && !g.img }" @click="setCover(g, '')">Automatisk</button>
         <button class="c0" :class="{ on: g.cover === 'none' && !g.img }" @click="setCover(g, 'none')">Ingen</button>
-        <button v-for="c in choices(g)" :key="c.uri" class="ci" :class="{ on: g.cover === c.uri && !g.img }" :aria-label="'Bruk dette bildet'" @click="setCover(g, c.uri)"><img crossorigin="anonymous" :src="c.img" alt="" /></button>
+        <button v-for="c in choices(g)" :key="c.uri" class="ci" :class="{ on: g.cover === c.uri && !g.img }" :aria-label="'Bruk dette bildet'" @click="setCover(g, c.uri)"><img crossorigin="anonymous" :src="c.img || undefined" alt="" /></button>
         <small v-if="!choices(g).length">Legg noe i mappa for å velge et bilde.</small>
       </div>
       </template>

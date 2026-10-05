@@ -1,12 +1,12 @@
-<script setup>
+<script setup lang="ts">
 import { tx } from '../composables/useTexts'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Gamepad2, Clock, Trophy, Library, ArrowUpRight, ChevronDown, Radio, Users, Newspaper, Heart, Flame, Archive, Monitor } from 'lucide-vue-next'
-import { steam, watchSteam, headerImg, coverImg, storeUrl, ago, fmtHours, sessionLen, fmtDate, fmtYears } from '../composables/useSteam'
+import { steam, watchSteam, type SteamGame, headerImg, coverImg, storeUrl, ago, fmtHours, sessionLen, fmtDate, fmtYears } from '../composables/useSteam'
 
 // The gaming corner's content (3D panel and plain page): Steam profile, what's on right now,
 // recently played (with achievements) and the most-played games.
-let stop
+let stop: (() => void) | undefined
 onMounted(() => { stop = watchSteam() })
 onBeforeUnmount(() => stop?.())
 
@@ -15,9 +15,10 @@ const lib = computed(() => steam.library)
 const playing = computed(() => p.value?.playing || null)
 // the big card: the game being played now, otherwise the last one played
 const hero = computed(() => {
-  if (playing.value) {
-    const g = lib.value?.recent?.find((x) => x.appid === playing.value.appid) || lib.value?.top?.find((x) => x.appid === playing.value.appid)
-    return { ...playing.value, ...g, live: true }
+  const now = playing.value
+  if (now) {
+    const g = lib.value?.recent?.find((x) => x.appid === now.appid) || lib.value?.top?.find((x) => x.appid === now.appid)
+    return { ...now, ...g, live: true }
   }
   const g = lib.value?.recent?.[0]
   return g ? { ...g, live: false } : null
@@ -30,16 +31,17 @@ const plat = computed(() => {
   const x = lib.value?.platform
   if (!x) return []
   const tot = (x.win + x.mac + x.linux) || 1
-  return [['Windows', x.win], ['Mac', x.mac], ['Linux', x.linux]].filter((r) => r[1] > 0).map(([n, h]) => ({ n, h, pct: Math.round((h / tot) * 100) }))
+  const rows: [string, number][] = [['Windows', x.win], ['Mac', x.mac], ['Linux', x.linux]]
+  return rows.filter((r) => r[1] > 0).map(([n, h]) => ({ n, h, pct: Math.round((h / tot) * 100) }))
 })
 const all = ref(false)
 const top = computed(() => (lib.value?.top || []).slice(0, all.value ? 60 : 8))
 const maxHours = computed(() => lib.value?.top?.[0]?.hours || 1)
 
 // some older games have no tall cover – show the banner instead
-const noCover = ref(new Set())
-const cover = (g) => (noCover.value.has(g.appid) ? headerImg(g.appid) : coverImg(g.appid))
-const coverFailed = (g) => { noCover.value = new Set(noCover.value).add(g.appid) }
+const noCover = ref(new Set<number>())
+const cover = (g: Pick<SteamGame, 'appid'>) => (noCover.value.has(g.appid) ? headerImg(g.appid) : coverImg(g.appid))
+const coverFailed = (g: Pick<SteamGame, 'appid'>) => { noCover.value = new Set(noCover.value).add(g.appid) }
 </script>
 
 <template>
@@ -51,8 +53,8 @@ const coverFailed = (g) => { noCover.value = new Set(noCover.value).add(g.appid)
       <div class="gl">
       <div class="gl-col">
       <!-- profile -->
-      <a class="profile" :href="p.url" target="_blank" rel="noopener">
-        <span class="av" :class="{ on: p.online, game: !!playing }"><img :src="p.avatar" alt="" /></span>
+      <a class="profile" :href="p.url || undefined" target="_blank" rel="noopener">
+        <span class="av" :class="{ on: p.online, game: !!playing }"><img :src="p.avatar || undefined" alt="" /></span>
         <span class="who">
           <b>{{ p.name }}</b>
           <small :class="{ game: !!playing, on: p.online && !playing }">{{ playing ? `Spiller ${playing.name}` : p.state }}</small>
@@ -101,7 +103,7 @@ const coverFailed = (g) => { noCover.value = new Set(noCover.value).add(g.appid)
       <div v-if="lib && !lib.hidden" class="stats">
         <div><Library :size="16" /><b>{{ lib.count }}</b><span>spill</span></div>
         <div><Clock :size="16" /><b>{{ lib.hours.toLocaleString('nb-NO') }}</b><span>timer</span></div>
-        <div><Gamepad2 :size="16" /><b>{{ lib.count ? Math.round((lib.played / lib.count) * 100) : 0 }} %</b><span>spilt</span></div>
+        <div><Gamepad2 :size="16" /><b>{{ lib.count ? Math.round(((lib.played ?? 0) / lib.count) * 100) : 0 }} %</b><span>spilt</span></div>
         <div><Flame :size="16" /><b>{{ lib.two_weeks != null ? fmtHours(lib.two_weeks) : '–' }}</b><span>siste 2 uker</span></div>
         <div><Archive :size="16" /><b>{{ lib.backlog ?? '–' }}</b><span>ikke startet</span></div>
         <div><Clock :size="16" /><b>{{ fmtYears(p.since) || '–' }}</b><span>på Steam</span></div>
@@ -148,16 +150,16 @@ const coverFailed = (g) => { noCover.value = new Set(noCover.value).add(g.appid)
             </a>
           </li>
         </ol>
-        <button v-if="(lib.top || []).length > 8" class="more-btn" @click="all = !all">
-          <ChevronDown :size="16" :class="{ up: all }" />{{ all ? 'Vis færre' : `Vis ${Math.min(60, lib.top.length)} mest spilte` }}
+        <button v-if="(lib?.top || []).length > 8" class="more-btn" @click="all = !all">
+          <ChevronDown :size="16" :class="{ up: all }" />{{ all ? 'Vis færre' : `Vis ${Math.min(60, lib?.top.length ?? 0)} mest spilte` }}
         </button>
       </section>
 
       <!-- friends -->
       <section v-if="fr && fr.best" class="sec">
         <b class="label-caps"><Heart :size="12" /> Bestevenn</b>
-        <a class="best" :href="fr.best.url" target="_blank" rel="noopener">
-          <span class="av" :class="{ on: fr.best.online, game: !!fr.best.playing }"><img :src="fr.best.avatar" alt="" /></span>
+        <a class="best" :href="fr.best.url || undefined" target="_blank" rel="noopener">
+          <span class="av" :class="{ on: fr.best.online, game: !!fr.best.playing }"><img :src="fr.best.avatar || undefined" alt="" /></span>
           <span class="who">
             <b>{{ fr.best.name }}</b>
             <small :class="{ game: !!fr.best.playing, on: fr.best.online && !fr.best.playing }">{{ fr.best.playing ? `Spiller ${fr.best.playing}` : fr.best.online ? fr.best.state : fr.best.last ? `Sist pålogget ${ago(fr.best.last)}` : 'Frakoblet' }}</small>
@@ -171,7 +173,7 @@ const coverFailed = (g) => { noCover.value = new Set(noCover.value).add(g.appid)
       </section>
       </div>
       </div>
-      <p class="src">Fra <a :href="p.url" target="_blank" rel="noopener">Steam</a> · oppdateres hvert minutt.</p>
+      <p class="src">Fra <a :href="p.url || undefined" target="_blank" rel="noopener">Steam</a> · oppdateres hvert minutt.</p>
     </template>
   </div>
 </template>

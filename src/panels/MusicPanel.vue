@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, watch } from 'vue'
 import { spotify } from '../composables/useSpotify'
 import { mode } from '../composables/useMode'

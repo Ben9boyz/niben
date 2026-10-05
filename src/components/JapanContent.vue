@@ -1,8 +1,8 @@
-<script setup>
+<script setup lang="ts">
 import PracticeCalendar from './PracticeCalendar.vue'
 import VocabChart from './VocabChart.vue'
 import PitchReading from './PitchReading.vue'
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, type Component } from 'vue'
 import { GraduationCap, ArrowUpRight, Tv, Check, LayoutDashboard, ScanText, BookA } from 'lucide-vue-next'
 import { jp, loadJapanese, jpdbUrl, ANIME_READY } from '../composables/useJapanese'
 import { admin, checkLogin } from '../composables/useAdmin'
@@ -19,8 +19,9 @@ import Fold from './Fold.vue'
 loadJapanese()
 checkLogin()
 
-const view = ref('home') // 'home' | 'les' | 'ord' | 'kanji'
-const TABS = [
+type View = 'home' | 'les' | 'ord' | 'kanji'
+const view = ref<View>('home')
+const TABS: { id: View; label: string; icon: Component | string }[] = [
   { id: 'home', label: 'Oversikt', icon: LayoutDashboard },
   { id: 'les', label: 'Les tekst', icon: ScanText },
   { id: 'ord', label: 'Ordliste', icon: BookA },
@@ -30,7 +31,7 @@ const TABS = [
 const phoneMq = window.matchMedia('(max-width: 720px)')
 const phone = ref(phoneMq.matches)
 phoneMq.addEventListener('change', () => { phone.value = phoneMq.matches })
-const practicing = computed({ get: () => room.jpPractice, set: (v) => (room.jpPractice = v) })
+const practicing = computed({ get: () => room.jpPractice, set: (v: boolean) => (room.jpPractice = v) })
 const total = computed(() => jp.count.due + jp.count.learning + jp.count.known + jp.count.new)
 const word = computed(() => jp.word)
 watch(() => admin.loggedIn, (on) => { if (!on) practicing.value = false })
@@ -38,8 +39,8 @@ watch(() => admin.loggedIn, (on) => { if (!on) practicing.value = false })
 // anime: the shows in the decks; enough coverage = ready to watch. A DVD clicked in the room is
 // highlighted here (and the other way round).
 const ready = computed(() => jp.anime.filter((a) => a.known >= ANIME_READY))
-const animeEl = ref(null)
-const pickAnime = (i) => { room.jpAnime = room.jpAnime === i ? -1 : i }
+const animeEl = ref<HTMLElement | null>(null)
+const pickAnime = (i: number) => { room.jpAnime = room.jpAnime === i ? -1 : i }
 watch(() => room.jpAnime, async (i) => {
   if (i < 0) return
   await nextTick()
@@ -106,7 +107,7 @@ watch(() => room.jpAnime, async (i) => {
             <img v-if="a.cover" :src="`${a.cover}?cors`" alt="" loading="lazy" crossorigin="anonymous" :style="{ background: a.color || undefined }" />
             <div class="si">
               <span class="st-t" translate="no">{{ a.en || a.title }}</span>
-              <small lang="ja">{{ a.native }}<template v-if="a.year"> · {{ a.year }}</template><template v-if="a.parts > 1"> · {{ a.parts }} deler</template></small>
+              <small lang="ja">{{ a.native }}<template v-if="a.year"> · {{ a.year }}</template><template v-if="(a.parts ?? 0) > 1"> · {{ a.parts }} deler</template></small>
               <div class="dbar"><i class="known" :style="{ width: `${a.known}%` }"></i><i class="learning" :style="{ width: `${Math.max(0, a.learning - a.known)}%` }"></i><b class="goal" :style="{ left: `${ANIME_READY}%` }"></b></div>
               <small class="sp">
                 <span v-if="a.known >= ANIME_READY" class="ok"><Check :size="12" /> Klar til å se</span>

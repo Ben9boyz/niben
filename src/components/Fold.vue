@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ChevronDown } from 'lucide-vue-next'
 
 // A section that can be folded away – used on phones, where the overview would otherwise be a very long scroll. Where there

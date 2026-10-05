@@ -1,16 +1,17 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue'
 import { ListEnd, ListMusic } from 'lucide-vue-next'
 import { spotify, enqueue, addToPlaylist, notify } from '../composables/useSpotify'
 import { groups, sectionsOf } from '../composables/useGroups'
 import { drag, endDrag } from '../composables/useDrag'
+import type { Playlist } from '../types'
 
 // Drag a song and a tray slides in with the queue and my playlists (by group): drop it on one to add it.
-const over = ref(null)
+const over = ref<string | null>(null)
 const all = computed(() => spotify.playlists.filter((p) => p.editable !== false))
 const sections = computed(() => (groups.on && groups.loaded ? sectionsOf(all.value, false, true) : [{ group: { id: 'alle' }, label: '', items: all.value }]))
 
-async function drop(e, target) {
+async function drop(e: DragEvent, target: 'queue' | Playlist) {
   e.preventDefault()
   over.value = null
   const t = drag.track
@@ -18,9 +19,9 @@ async function drop(e, target) {
   if (!t) return
   if (target === 'queue') { enqueue(t.t || t.uri); return }
   const r = await addToPlaylist(target.uri, t.uri)
-  notify(r.ok ? `«${t.name}» er lagt til i «${target.name}».` : r.error, !r.ok)
+  notify(r.ok ? `«${t.name}» er lagt til i «${target.name}».` : r.error ?? '', !r.ok)
 }
-const hint = (e, id) => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; over.value = id }
+const hint = (e: DragEvent, id: string) => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; over.value = id }
 </script>
 
 <template>
