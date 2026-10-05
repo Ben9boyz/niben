@@ -659,11 +659,12 @@ export function buildListeningCorner() {
   const loader = new THREE.TextureLoader()
   loader.setCrossOrigin('anonymous')
   const pageMat = new THREE.MeshStandardMaterial({ color: 0xf1ede4, roughness: 0.8 })
-  const COLW = 16
+  const COLW = 24 // px per record in the atlas (a spine is 9.5 mm wide)
+  const AH = 1024 // atlas height: the spine fills the lower 90 %
   const MAX_RECORDS = COMPARTMENT.reduce((n, [a, b]) => n + Math.floor((b - a - 0.01) / THICK), 0)
   const atlas = document.createElement('canvas')
   atlas.width = COLW * MAX_RECORDS
-  atlas.height = 512
+  atlas.height = AH
   const atlasCtx = atlas.getContext('2d')
   const atlasTex = new THREE.CanvasTexture(atlas)
   atlasTex.colorSpace = THREE.SRGBColorSpace
@@ -671,28 +672,43 @@ export function buildListeningCorner() {
   let atlasTimer = 0
   const atlasDirty = () => { clearTimeout(atlasTimer); atlasTimer = setTimeout(() => (atlasTex.needsUpdate = true), 120) }
 
+  const spineCovers = new Map() // index -> the small cover (drawn at the top of the spine)
   function drawSpine(i, album, color) {
     const x = atlasCtx
     const x0 = i * COLW
     x.save()
-    x.beginPath(); x.rect(x0, 0, COLW, 512); x.clip()
+    x.beginPath(); x.rect(x0, 0, COLW, AH); x.clip()
     x.fillStyle = color
-    x.fillRect(x0, 0, COLW, 512)
+    x.fillRect(x0, 0, COLW, AH)
     const g = x.createLinearGradient(x0, 0, x0 + COLW, 0)
     g.addColorStop(0, 'rgba(0,0,0,0.35)'); g.addColorStop(0.25, 'rgba(0,0,0,0)')
     g.addColorStop(0.8, 'rgba(255,255,255,0.06)'); g.addColorStop(1, 'rgba(0,0,0,0.3)')
     x.fillStyle = g
-    x.fillRect(x0, 44, COLW, 468) // keep the top 44 px plain: other faces sample their colour there
+    x.fillRect(x0, 70, COLW, AH - 70) // keep the top plain: other faces sample their colour there
     const m = String(color).match(/\d+/g)?.map(Number) || [60, 60, 60]
     const light = (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) / 255 > 0.6
-    x.translate(x0 + COLW / 2, 280)
+    // the spine is the edge of the cover: take the last few pixels of the cover (the side next to the spine) and stretch them along it
+    const cov = spineCovers.get(i)
+    const top = Math.round(AH * 0.1)
+    if (cov) {
+      const sw = Math.max(2, Math.min(10, Math.round(cov.width * 0.08)))
+      x.drawImage(cov, cov.width - sw, 0, sw, cov.height, x0, top, COLW, AH - top)
+      x.fillStyle = 'rgba(0,0,0,0.32)' // a veil so the name stays readable on any cover
+      x.fillRect(x0, top, COLW, AH - top)
+    }
+    const dark = !cov && light
+    x.translate(x0 + COLW / 2, (top + AH) / 2 + 6)
     x.rotate(Math.PI / 2)
-    x.fillStyle = light ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.85)'
-    x.font = '700 10px Inter, sans-serif'
+    x.font = '700 17px Inter, sans-serif'
     x.textAlign = 'center'
     x.textBaseline = 'middle'
-    let t = `${album.name}  ·  ${album.artist || ''}`
-    while (x.measureText(t).width > 420 && t.length > 4) t = t.slice(0, -2)
+    const room = AH - top - 40
+    let t = album.name || ''
+    const full = `${album.name}  ·  ${album.artist || ''}`
+    if (x.measureText(full).width <= room) t = full // name and artist if there is room, otherwise the name
+    while (x.measureText(t).width > room && t.length > 4) t = t.slice(0, -2)
+    if (cov) { x.lineWidth = 3; x.strokeStyle = 'rgba(0,0,0,0.55)'; x.strokeText(t, 0, 1) }
+    x.fillStyle = dark ? 'rgba(0,0,0,0.78)' : 'rgba(255,255,255,0.92)'
     x.fillText(t, 0, 1)
     x.restore()
   }
@@ -775,6 +791,7 @@ export function buildListeningCorner() {
     const key = albums.map((a) => a.uri).join('|')
     if (key === albumsKey) return
     albumsKey = key
+    spineCovers.clear()
     for (const l of loose.values()) group.remove(l.mesh)
     loose.clear()
     // a little air before each new artist (not much – a few millimetres), so the shelf reads in groups
@@ -795,19 +812,24 @@ export function buildListeningCorner() {
       const r = { album, index: i, color, out: 0, hidden: false,
         home: new THREE.Vector3(x0 + 0.006 + THICK / 2 + off, BOTTOM_Y + SLEEVE / 2 + 0.001, FRONT_Z - SLEEVE / 2 - 0.012) }
       writeInstance(r)
-      // colour the spine from the small cover thumbnail
+      // the small cover goes on the spine (and colours it, if the album has no colour yet)
       const thumb = album.thumb || album.image
-      if (thumb && !album.color) {
+      if (thumb) {
         const img = new Image()
         img.crossOrigin = 'anonymous'
         img.onload = () => {
-          const col = averageColor(img)
-          if (!col) return
-          r.color = col
-          drawSpine(i, album, col)
+          if (records[i] !== r) return // the shelf changed meanwhile
+          spineCovers.set(i, img)
+          if (!album.color) {
+            const col = averageColor(img)
+            if (col) {
+              r.color = col
+              const l = loose.get(album.uri)
+              if (l) l.mesh.material[1].color.set(col)
+            }
+          }
+          drawSpine(i, album, r.color)
           atlasDirty()
-          const l = loose.get(album.uri)
-          if (l) l.mesh.material[1].color.set(col)
         }
         img.src = thumb
       }
