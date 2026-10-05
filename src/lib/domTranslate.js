@@ -23,7 +23,8 @@ let scanTimer = 0
 let saveTimer = 0
 let busy = 0
 const dirty = new Set()
-const unavailable = new Set() // languages the server can't translate (no service set up) – stop asking
+const unavailable = new Set() // languages nobody can translate (no service on the server, none in the browser) – stop asking
+const viaBrowser = new Map() // lang -> a browser Translator (Chrome's built-in, on-device) when the server has no service
 
 const table = (lang) => { let t = mem.get(lang); if (!t) mem.set(lang, (t = new Map())); return t }
 
@@ -124,6 +125,24 @@ const rescanAll = () => { dirty.add(document); scheduleScan() }
 
 // ── fetching ──
 function scheduleFlush() { if (!flushTimer) flushTimer = setTimeout(flush, 80) }
+// Chrome (138+) can translate on the device itself – no key, nothing sent anywhere. Used when the server has no translator.
+async function browserTranslator(lang) {
+  if (viaBrowser.has(lang)) return viaBrowser.get(lang)
+  let tr = null
+  try {
+    const T = self.Translator
+    if (T) {
+      for (const src of ['nb', 'no']) {
+        try {
+          const av = await T.availability({ sourceLanguage: src, targetLanguage: lang })
+          if (av && av !== 'unavailable') { tr = await T.create({ sourceLanguage: src, targetLanguage: lang }); break }
+        } catch {}
+      }
+    }
+  } catch {}
+  viaBrowser.set(lang, tr)
+  return tr
+}
 async function flush() {
   flushTimer = 0
   const lang = i18n.lang
@@ -137,14 +156,25 @@ async function flush() {
     try {
       const r = await fetch('api.php?action=translate', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Niben': '1' }, body: JSON.stringify({ lang, name: byCode[lang]?.en || lang, texts: chunk }) })
       const j = await r.json().catch(() => ({}))
-      if (j.error === 'not_configured' || r.status === 503) { unavailable.add(lang); i18n.unavailable = [...unavailable]; break }
+      if (j.error === 'not_configured' || r.status === 503) {
+        const tr = await browserTranslator(lang)
+        if (tr) {
+          const t = table(lang)
+          for (const s of chunk) { try { const o = await tr.translate(s); if (o) t.set(s, o) } catch {} }
+          persist(lang)
+          rescanAll()
+          continue
+        }
+        unavailable.add(lang); i18n.unavailable = [...unavailable]; break
+      }
+      i18n.error = !r.ok && j.error && j.error !== 'not_configured' ? j.error : ''
       if (Array.isArray(j.texts)) {
         const t = table(lang)
         chunk.forEach((s, k) => { if (typeof j.texts[k] === 'string' && j.texts[k]) t.set(s, j.texts[k]) })
         persist(lang)
         rescanAll()
       }
-    } catch { /* offline: the original stays; asked again at the next change */ }
+    } catch { i18n.error = 'Fikk ikke kontakt med oversetteren.' }
     finally { busy--; i18n.working = busy > 0 }
   }
 }

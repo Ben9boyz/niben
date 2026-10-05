@@ -3,6 +3,7 @@ import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { Globe, Check, Search, Loader } from 'lucide-vue-next'
 import { LANGS } from '../lib/languages'
 import { i18n, setLang } from '../composables/useLang'
+import { admin } from '../composables/useAdmin'
 
 // The globe: pick the language of the site. Everything except the language names themselves gets translated.
 const q = ref('')
@@ -36,7 +37,8 @@ onBeforeUnmount(() => { document.removeEventListener('pointerdown', onDoc); wind
           </li>
           <li v-if="!list.length" class="none">–</li>
         </ul>
-        <p v-if="noService" class="warn">This language isn't set up for translation yet.</p>
+        <p v-if="i18n.error && !noService" class="warn" translate="no">{{ i18n.error }}</p>
+        <p v-if="noService" class="warn" translate="no">The site can't be translated to this language yet (no translation service is set up). {{ admin.loggedIn ? 'Admin → Oversikt → Språk: kjør ./translate-setup.sh.' : '' }}</p>
       </div>
     </transition>
   </span>
@@ -58,7 +60,7 @@ li button { display: flex; align-items: center; justify-content: space-between; 
 li button:hover { background: var(--accent-soft); }
 li button.on { color: var(--accent); background: var(--accent-soft); }
 .none { padding: 8px 12px; color: var(--text-3); }
-.warn { margin: 2px 6px 4px; font-size: 0.74rem; color: #b8711a; }
+.warn { margin: 2px 6px 4px; padding: 8px 10px; border-radius: 10px; background: rgba(240, 160, 64, 0.16); font-size: 0.76rem; color: #8a5410; }
 @media (max-width: 720px) {
   .langbtn { width: 40px; height: 40px; border-radius: 14px; box-shadow: none; }
   .langbtn b { display: none; }

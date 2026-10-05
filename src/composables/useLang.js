@@ -11,6 +11,7 @@ export const i18n = reactive({
   chosen: !!read(), // has the visitor picked one themselves
   suggest: null, // a language code to offer on this first visit, else null
   menu: false,
+  error: '', // the last thing that went wrong with translating
   working: false, // the translator is fetching something
   unavailable: [], // languages the server could not translate (no translation service set up)
 })
