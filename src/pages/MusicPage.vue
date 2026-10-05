@@ -149,7 +149,7 @@ function show(view) {
   }
   .gsearch { padding: 9px 14px; }
   .main-card { padding: 10px; padding-bottom: 80px; }
-  .m-mini { display: flex; top: auto !important; bottom: calc(92px + env(safe-area-inset-bottom)); left: 10px; right: 10px; width: auto; }
+  .m-mini { display: flex; top: auto !important; bottom: calc(72px + env(safe-area-inset-bottom)); left: 10px; right: 10px; width: auto; transition: bottom 0.35s var(--ease, ease); }
 }
 .m-sheet-bg { position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-end; background: rgba(0, 0, 0, 0.35); }
 .m-sheet { position: relative; width: 100%; padding: 18px 14px calc(18px + env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; background: var(--bg); }
@@ -159,4 +159,6 @@ function show(view) {
 <style>
 /* player mode has a fixed top bar: the sticky columns stop below it */
 @media (min-width: 821px) { html.player-shell .music .lib-col, html.player-shell .music .now-col { top: 84px; } }
+/* phones: with the menu slid away, the mini player drops down to where the menu was */
+@media (max-width: 820px) { html.nav-hidden .music .m-mini { bottom: calc(14px + env(safe-area-inset-bottom)) !important; } }
 </style>

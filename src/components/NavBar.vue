@@ -50,7 +50,19 @@ function place() {
 }
 
 watch(activeGroup, () => nextTick(place))
-function onScroll() { scrolled.value = window.scrollY > 12 }
+watch(() => route.fullPath, () => setHidden(false))
+const phone = window.matchMedia('(max-width: 720px)')
+let lastY = 0
+function setHidden(v) { document.documentElement.classList.toggle('nav-hidden', v) }
+function onScroll() {
+  const y = window.scrollY
+  scrolled.value = y > 12
+  if (!phone.matches) return setHidden(false)
+  // down = out of the way (the page is what you're reading); up, or back at the top = back
+  if (y > lastY + 10 && y > 90) setHidden(true)
+  else if (y < lastY - 6 || y < 40) setHidden(false)
+  lastY = y
+}
 onMounted(() => {
   nextTick(place)
   document.fonts?.ready.then(place)
@@ -59,6 +71,7 @@ onMounted(() => {
   checkLogin()
 })
 onBeforeUnmount(() => {
+  setHidden(false)
   window.removeEventListener('resize', place)
   window.removeEventListener('scroll', onScroll)
 })
@@ -382,8 +395,19 @@ onBeforeUnmount(() => {
   .player-link { display: grid; place-items: center; align-self: center; width: 40px; height: 40px; border-radius: 14px; color: var(--text-3); opacity: 0.6; transition: opacity 0.2s, color 0.2s, background 0.2s; }
   .player-link:hover { opacity: 1; color: var(--accent); background: var(--accent-soft); }
 }
+/* phones: only icons (the top bar says where you are), a slim bar that slides away while you scroll down */
 @media (max-width: 720px) {
-  .item { flex-direction: column; gap: 2px; padding: 7px 0 6px; }
-  .item .label { display: block; font-size: 0.6rem; font-weight: 600; line-height: 1; }
+  .nav-wrap { transition: transform 0.35s var(--ease, ease), opacity 0.25s; }
+  .nav { padding: 4px; width: min(calc(100vw - 32px), 380px); }
+  .drop { top: 4px; bottom: 4px; }
+  .item { flex-direction: row; padding: 10px 0; }
+  .item .label { display: none; }
+}
+</style>
+
+<style>
+/* phones: the menu slides away while scrolling down (class set in the script) */
+@media (max-width: 720px) {
+  html.nav-hidden .nav-wrap { transform: translateY(calc(100% + 28px)); opacity: 0; pointer-events: none; }
 }
 </style>
