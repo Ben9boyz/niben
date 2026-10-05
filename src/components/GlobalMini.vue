@@ -34,7 +34,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <img v-if="now?.image" crossorigin="anonymous" :src="now.image" alt="" />
         <Music v-else :size="16" />
       </button>
-      <button class="txt" :title="now?.name ? `${now.name} – ${now.artist}` : 'Velg musikk'" @click="open = !open">
+      <button class="txt" :translate="now?.name ? 'no' : null" :title="now?.name ? `${now.name} – ${now.artist}` : 'Velg musikk'" @click="open = !open">
         <b>{{ now?.name || 'Ingenting spilles' }}</b>
         <span>{{ now?.name ? now.artist : 'Trykk for å velge' }}</span>
       </button>

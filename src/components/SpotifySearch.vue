@@ -121,7 +121,7 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
         <button v-for="p in myPlaylists" :key="p.uri" class="row" @click="open = { item: p, kind: 'playlist' }">
           <img v-if="p.thumb || p.image" crossorigin="anonymous" :src="p.thumb || p.image" alt="" class="art" />
           <span v-else class="art ph"><Music :size="16" /></span>
-          <span class="t"><b>{{ p.name }}</b><small>{{ p.count ? `${p.count} låter` : p.owner }}</small></span>
+          <span class="t" translate="no"><b>{{ p.name }}</b><small>{{ p.count ? `${p.count} låter` : p.owner }}</small></span>
         </button>
       </section>
 
@@ -154,7 +154,7 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
           <button class="main" @click="open = { item: p, kind: 'playlist' }">
             <img v-if="p.thumb || p.image" crossorigin="anonymous" :src="p.thumb || p.image" alt="" class="art" />
             <span v-else class="art ph"><Music :size="16" /></span>
-            <span class="t"><b>{{ p.name }}</b><small>{{ p.owner }}<template v-if="p.count"> · {{ p.count }} låter</template></small></span>
+            <span class="t" translate="no"><b>{{ p.name }}</b><small>{{ p.owner }}<template v-if="p.count"> · {{ p.count }} låter</template></small></span>
           </button>
           <button class="act" :disabled="busy === p.uri" title="Lagre blant spillelistene dine" @click="follow(p)"><Plus :size="15" />Lagre</button>
         </div>

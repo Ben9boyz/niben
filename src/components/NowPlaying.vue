@@ -27,8 +27,8 @@ const now = computed(() => spotify.now)
         <small>{{ now?.playing ? 'Spilles nå' : now?.name ? 'Satt på pause' : 'Ingenting spilles' }}</small>
         <span class="tr"><NowAddButton /><LikeButton /><LockBadge /></span>
       </div>
-      <b class="title">{{ now?.name || '—' }}</b>
-      <span class="sub">{{ now?.artist }}<template v-if="now?.album"> · {{ now.album }}</template></span>
+      <b class="title" translate="no">{{ now?.name || '—' }}</b>
+      <span class="sub" translate="no">{{ now?.artist }}<template v-if="now?.album"> · {{ now.album }}</template></span>
       <ProgressBar layout="below" />
     </div>
 

@@ -44,7 +44,7 @@ const emit = defineEmits(['pick', 'hover', 'move', 'dragitem'])
       >
         <img crossorigin="anonymous" v-if="it.image" :src="it.image" alt="" loading="lazy" />
         <span v-else class="ph"><Music :size="28" /></span>
-        <span class="cap"><b>{{ it.name }}</b><small v-if="it.sub">{{ it.sub }}</small></span>
+        <span class="cap" translate="no"><b>{{ it.name }}</b><small v-if="it.sub">{{ it.sub }}</small></span>
         <span v-if="it.uri === playingUri" class="live" title="Spilles nå"><i></i><i></i><i></i></span>
       </button>
       <button v-if="playable(it)" class="pl" :class="{ now: it.uri === playingUri }" :title="it.uri === playingUri && spotify.now?.playing ? 'Pause' : 'Spill av fra første låt'" :aria-label="`Spill ${it.name}`" @click.stop="go(it)">

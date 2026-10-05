@@ -244,6 +244,11 @@ export function mockApi() {
             let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 997
             return send(res, 200, { bpm: 70 + (h % 90) })
           }
+          case 'translate': {
+            // dev: pretend to translate (the real server asks Claude / Google and keeps the answers)
+            const tag = (b.lang || '??').toUpperCase()
+            return send(res, 200, { texts: (b.texts || []).map((t) => `[${tag}] ${t}`) })
+          }
           case 'spotify_artist': {
             if (!loggedIn) return send(res, 401, { error: 'Logg inn for å åpne artister.' })
             const nm = url.searchParams.get('name') || 'Mock Artist'

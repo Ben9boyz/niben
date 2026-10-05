@@ -35,7 +35,7 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
     <ol v-else>
       <li v-for="(t, i) in queue.slice(0, 12)" :key="t.uri + i">
         <img v-if="t.img" crossorigin="anonymous" :src="t.img" alt="" /><span v-else class="ph"><Music :size="13" /></span>
-        <span class="t"><b>{{ t.name }}</b><small>{{ t.artist }}</small></span>
+        <span class="t" translate="no"><b>{{ t.name }}</b><small>{{ t.artist }}</small></span>
         <small class="d">{{ fmtClock(t.ms / 1000) }}</small>
       </li>
     </ol>

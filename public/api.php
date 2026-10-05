@@ -256,6 +256,7 @@ require_once __DIR__ . '/_steam.inc.php';
 require_once __DIR__ . '/_about.inc.php';
 require_once __DIR__ . '/_site.inc.php';
 require_once __DIR__ . '/_github.inc.php';
+require_once __DIR__ . '/_translate.inc.php';
 
 try {
     if (str_starts_with($action, 'spotify_')) {
@@ -283,6 +284,7 @@ try {
         gh_handle($action);
         fail('Ukjent handling.', 404);
     }
+    if ($action === 'translate') tr_handle();
     switch ($action) {
 
     case 'content': {

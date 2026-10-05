@@ -4,6 +4,7 @@ import App from './App.vue'
 import { registerServiceWorker } from './composables/usePwa'
 import { shell, enterPlayer } from './composables/useShell'
 import { rememberTab } from './lib/nav'
+import { startDomTranslate } from './lib/domTranslate'
 import './style.css'
 // Every page loads on demand: a panel (3D room) and a page (plain version) per route
 const lazy = (panel, page, title) => ({ component: panel, meta: { page: defineAsyncComponent(page), title } })
@@ -40,6 +41,7 @@ router.afterEach((to) => {
 })
 
 createApp(App).use(router).mount('#app')
+startDomTranslate() // the page in the visitor's language (English unless they chose another)
 registerServiceWorker()
 
 // iOS Safari ignores user-scalable=no: stop the pinch gesture itself

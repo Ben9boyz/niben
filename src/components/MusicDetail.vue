@@ -124,7 +124,7 @@ async function onPlay(track = null) {
         <div v-else class="cover ph"><Music :size="40" /></div>
         <div class="info">
           <small>{{ kind === 'album' ? 'Album' : 'Spilleliste' }}</small>
-          <h2>{{ item.name }}</h2>
+          <h2 translate="no">{{ item.name }}</h2>
           <p>
             <template v-if="kind === 'album' && item.artist"><a class="lnk" href="#" @click.prevent="openArtistPage({ id: item.artist_id, name: firstArtist(item.artist) })">{{ item.artist }}</a><template v-if="meta.length > 1"> · </template></template>
             {{ (kind === 'album' && item.artist ? meta.slice(1) : meta).join(' · ') }}
@@ -166,7 +166,7 @@ async function onPlay(track = null) {
             <span v-if="spotify.now?.uri === t.uri && spotify.now?.playing" class="eq"><i></i><i></i><i></i></span>
             <template v-else><span class="num">{{ t.n || i + 1 }}</span><span class="hov"><Play :size="13" fill="currentColor" /></span></template>
           </span>
-          <span class="t"><b>{{ t.name }}</b>
+          <span class="t" translate="no"><b>{{ t.name }}</b>
             <small v-if="kind === 'playlist' || t.artist !== item.artist">
               <a class="lnk" href="#" @click.stop.prevent="openArtistPage({ id: t.artist_id, name: firstArtist(t.artist) })">{{ t.artist }}</a><template v-if="kind === 'playlist' && t.album_uri"> · <a class="lnk" href="#" title="Åpne albumet" @click.stop.prevent="openAlbumPage(albumOfTrack(t))">{{ t.album }}</a></template>
             </small></span>

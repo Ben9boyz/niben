@@ -1,5 +1,6 @@
 <script setup>
 import { shortcuts } from '../composables/useShortcuts'
+import LangSwitch from './LangSwitch.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { GROUPS, groupOf, groupTarget } from '../lib/nav'
 import { useRoute, useRouter } from 'vue-router'
@@ -143,6 +144,8 @@ onBeforeUnmount(() => {
       <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2.5l8.5 4.75v9.5L12 21.5l-8.5-4.75v-9.5z" /><path d="M3.5 7.25L12 12l8.5-4.75M12 12v9.5" /></svg>
       <span>{{ mode === 'rom' ? 'Enkel' : '3D-rom' }}</span>
     </button>
+
+    <LangSwitch class="langwrap" />
 
     <button class="kbdbtn glass" title="Hurtigtaster (?)" aria-label="Hurtigtaster" @click="shortcuts.open = true">
       <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2.5" /><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M7 14h10" /></svg>
@@ -317,6 +320,7 @@ onBeforeUnmount(() => {
 .spin-leave-to { transform: rotate(90deg) scale(0.4); opacity: 0; }
 
 .item .label, .tip, .spacer, .kbdbtn { display: none; }
+.langwrap { display: contents; }
 @media (max-width: 720px) {
   .nav-wrap { top: auto; bottom: calc(14px + env(safe-area-inset-bottom)); }
   .brand { display: none; }
