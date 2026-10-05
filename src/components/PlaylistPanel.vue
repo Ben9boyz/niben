@@ -2,12 +2,15 @@
 import { ref, computed } from 'vue'
 import { spotify, prefetchTracks } from '../composables/useSpotify'
 import { room } from '../composables/useRoom'
-import CoverGrid from './CoverGrid.vue'
+import GroupedGrid from './GroupedGrid.vue'
+import GroupBar from './GroupBar.vue'
+import { loadGroups } from '../composables/useGroups'
 import MusicDetail from './MusicDetail.vue'
 
 // Panel twin of the iPod: same selected playlist, same highlighted row (room.ipod) – and the same
 // search text, so typing here filters the iPod's list too.
 defineProps({ search: { type: Boolean, default: true } }) // false: the page has its own search bar
+loadGroups()
 const q = computed({ get: () => room.ipod.q, set: (v) => { room.ipod.q = v; room.ipod.active = 0 } })
 const playlist = computed(() => room.ipod.playlist)
 const items = computed(() => {
@@ -46,7 +49,8 @@ function back() {
           <b>Spillelister</b>
           <input v-if="search" v-model="q" type="search" class="search" placeholder="Søk …" aria-label="Søk i spillelistene" />
         </div>
-        <CoverGrid :items="items" :playing-uri="spotify.now?.context" :cursor-uri="cursorUri" @pick="open" @hover="hover" />
+        <GroupBar />
+        <GroupedGrid :items="items" :playing-uri="spotify.now?.context" :cursor-uri="cursorUri" @pick="open" @hover="hover" />
         <p v-if="!items.length" class="muted">Ingen treff.</p>
       </div>
     </transition>

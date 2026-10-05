@@ -6,33 +6,50 @@ defineProps({
   selectedUri: { type: String, default: null },
   playingUri: { type: String, default: null },
   cursorUri: { type: String, default: null }, // the iPod's highlighted row
+  // editing groups: each tile gets a group picker and can be dragged to another group
+  movable: Boolean,
+  groups: { type: Array, default: () => [] }, // [{ id, name }]
+  groupOf: { type: Function, default: null }, // uri -> group id
+  guessed: { type: Array, default: () => [] }, // uris whose group is only a guess
+  why: { type: Object, default: () => ({}) }, // uri -> what the guess was based on
 })
-const emit = defineEmits(['pick', 'hover'])
+const emit = defineEmits(['pick', 'hover', 'move'])
 </script>
 
 <template>
   <div class="cgrid">
-    <button
-      v-for="it in items"
-      :key="it.uri"
-      class="tile"
-      :class="{ on: it.uri === selectedUri, playing: it.uri === playingUri, cursor: it.uri === cursorUri }"
-      :aria-label="`${it.name}${it.sub ? ` – ${it.sub}` : ''}`"
-      @click="emit('pick', it)"
-      @mouseenter="emit('hover', it)"
-    >
-      <img crossorigin="anonymous" v-if="it.image" :src="it.image" alt="" loading="lazy" />
-      <span v-else class="ph"><Music :size="28" /></span>
-      <span class="cap"><b>{{ it.name }}</b><small v-if="it.sub">{{ it.sub }}</small></span>
-      <span v-if="it.uri === playingUri" class="live" title="Spilles nå"><i></i><i></i><i></i></span>
-    </button>
+    <div v-for="it in items" :key="it.uri" class="cell" :data-uri="it.uri" :draggable="movable || undefined">
+      <button
+        class="tile"
+        :class="{ on: it.uri === selectedUri, playing: it.uri === playingUri, cursor: it.uri === cursorUri }"
+        :aria-label="`${it.name}${it.sub ? ` – ${it.sub}` : ''}`"
+        @click="emit('pick', it)"
+        @mouseenter="emit('hover', it)"
+      >
+        <img crossorigin="anonymous" v-if="it.image" :src="it.image" alt="" loading="lazy" />
+        <span v-else class="ph"><Music :size="28" /></span>
+        <span class="cap"><b>{{ it.name }}</b><small v-if="it.sub">{{ it.sub }}</small></span>
+        <span v-if="it.uri === playingUri" class="live" title="Spilles nå"><i></i><i></i><i></i></span>
+      </button>
+      <template v-if="movable">
+        <span v-if="guessed.includes(it.uri)" class="guess" :title="why[it.uri] ? `Gjettet ut fra: ${why[it.uri]}` : 'Gruppen er et gjett – flytt eller bekreft'">gjettet</span>
+        <select class="mv" :value="groupOf?.(it.uri) || ''" :aria-label="`Gruppe for ${it.name}`" @change="emit('move', it.uri, $event.target.value)" @click.stop>
+          <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.depth ? '↳ ' : '' }}{{ g.name }}</option>
+        </select>
+      </template>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; }
+.cell { position: relative; min-width: 0; }
+.cell[draggable="true"] { cursor: grab; }
+.mv { position: absolute; left: 4px; right: 4px; bottom: 4px; z-index: 3; width: calc(100% - 8px); padding: 3px 4px; border: 0; border-radius: 6px; background: rgba(0, 0, 0, 0.72); color: #fff; font: 600 0.66rem var(--font); }
+.guess { position: absolute; left: 4px; top: 4px; z-index: 3; padding: 1px 6px; border-radius: 999px; background: #f0a040; color: #fff; font: 700 0.6rem var(--font); }
 .tile {
   position: relative;
+  width: 100%;
   aspect-ratio: 1;
   padding: 0;
   border: 0;

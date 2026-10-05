@@ -5,7 +5,9 @@ import { spotify, useSpotify, refreshSpotify, prefetchTracks, findAlbum } from '
 import { admin, checkLogin, api } from '../composables/useAdmin'
 import { room } from '../composables/useRoom'
 import { mode } from '../composables/useMode'
-import CoverGrid from './CoverGrid.vue'
+import GroupedGrid from './GroupedGrid.vue'
+import GroupBar from './GroupBar.vue'
+import { loadGroups } from '../composables/useGroups'
 import MusicDetail from './MusicDetail.vue'
 import SpotifySearch from './SpotifySearch.vue'
 import { Search as SearchIcon, X as CloseIcon } from 'lucide-vue-next'
@@ -14,6 +16,7 @@ import { Search as SearchIcon, X as CloseIcon } from 'lucide-vue-next'
 const props = defineProps({ search: { type: Boolean, default: true } }) // false: the page has its own search bar
 useSpotify()
 checkLogin()
+loadGroups()
 const route = useRoute()
 const msg = ref(null)
 if (route.query.spotify === 'ok') msg.value = { ok: 'Spotify er koblet til.' }
@@ -92,7 +95,8 @@ async function disconnect() {
                 <button v-if="admin.loggedIn" class="spot" title="Søk i hele Spotify" @click="spot = true"><SearchIcon :size="14" />Spotify</button>
               </span>
             </div>
-            <CoverGrid :items="items" :playing-uri="spotify.now?.context" @pick="pick" @hover="(it) => prefetchTracks(it.uri)" />
+            <GroupBar />
+            <GroupedGrid :items="items" :playing-uri="spotify.now?.context" @pick="pick" @hover="(it) => prefetchTracks(it.uri)" />
             <p v-if="!items.length" class="muted">Ingen treff.</p>
           </template>
           <div v-if="admin.loggedIn" class="admin-row">

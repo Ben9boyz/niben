@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Search, ListEnd, Clock } from 'lucide-vue-next'
 import { spotify } from '../composables/useSpotify'
+import { groups, sectionsOf, loadGroups } from '../composables/useGroups'
 
 // "Add this song": play it next (the queue) at the very top, then a searchable list of my own playlists –
 // the ones used lately first. Enter adds to the first match, Esc closes.
@@ -13,6 +14,7 @@ const q = ref('')
 const input = ref(null)
 const recentUris = ref([])
 onMounted(() => {
+  loadGroups()
   try { recentUris.value = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') } catch {}
   input.value?.focus({ preventScroll: true })
 })
@@ -21,6 +23,8 @@ const all = computed(() => spotify.playlists.filter((p) => p.editable !== false 
 const needle = computed(() => q.value.trim().toLowerCase())
 const recents = computed(() => (needle.value ? [] : recentUris.value.map((u) => all.value.find((p) => p.uri === u)).filter(Boolean).slice(0, 5)))
 const rest = computed(() => (needle.value ? all.value.filter((p) => p.name.toLowerCase().includes(needle.value)) : all.value.filter((p) => !recents.value.includes(p))))
+// grouped (when grouping is on and nothing is typed): a heading per group
+const sections = computed(() => (groups.on && groups.loaded && !needle.value ? sectionsOf(rest.value) : null))
 const first = computed(() => (needle.value ? rest.value[0] : null))
 
 function pick(p) {
@@ -42,7 +46,13 @@ function pick(p) {
         <button v-for="p in recents" :key="'r' + p.uri" class="row" @click="pick(p)"><Clock :size="13" aria-hidden="true" /><span>{{ p.name }}</span></button>
         <small v-if="rest.length">Alle spillelister</small>
       </template>
-      <button v-for="p in rest" :key="p.uri" class="row" :class="{ first: p === first }" @click="pick(p)">
+      <template v-if="sections">
+        <template v-for="sec in sections" :key="sec.group.id">
+          <small>{{ sec.label }}</small>
+          <button v-for="p in sec.items" :key="p.uri" class="row" @click="pick(p)"><span>{{ p.name }}</span><i v-if="p.count">{{ p.count }}</i></button>
+        </template>
+      </template>
+      <button v-for="p in (sections ? [] : rest)" :key="p.uri" class="row" :class="{ first: p === first }" @click="pick(p)">
         <span>{{ p.name }}</span><i v-if="p.count">{{ p.count }}</i>
       </button>
       <p v-if="!rest.length && !recents.length" class="none">{{ needle ? 'Ingen treff.' : 'Ingen spillelister du kan legge til i.' }}</p>

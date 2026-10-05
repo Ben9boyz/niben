@@ -8,6 +8,7 @@ export function mockApi() {
   const files = new Map() // path -> { type, buf }
   seed(db, files)
   let loggedIn = false
+  const mock = {} // scratch state for the stand-in endpoints
   const sp = { lock: 0, lockSeconds: 600, now: { playing: false } }
   const SP_ALBUMS = [
     ['Blue Hour', 'The Midnight Club', '#2b6cb0'], ['Paper Planes', 'Northern Lights', '#d69e2e'], ['Fjord', 'Aurora Sky', '#38a169'],
@@ -210,6 +211,22 @@ export function mockApi() {
               { name: 'dotfiles', description: 'Oppsett for terminal og editor.', language: 'Shell', topics: [], stars: 0, url: 'https://github.com/Ben9boyz/dotfiles', homepage: null, created: '2024', pushed: '2026-05-01T12:00:00Z' },
               { name: 'chord-trainer', description: null, language: 'JavaScript', topics: ['guitar'], stars: 7, url: 'https://github.com/Ben9boyz/chord-trainer', homepage: null, created: '2025', pushed: '2026-02-01T12:00:00Z' },
             ] })
+          case 'spotify_groups': {
+            if (!mock.groups) {
+              const groups = [{ id: 'fokus', name: 'Jobb og fokus' }, { id: 'jazz', name: 'Jazz fusion', parent: 'fokus' }, { id: 'trening', name: 'Trening' }, { id: 'rolig', name: 'Rolig' }, { id: 'annet', name: 'Annet' }]
+              const guess = (t) => (/jazz/i.test(t) ? 'jazz' : /fokus|focus|study|soundtrack/i.test(t) ? 'fokus' : /trening|workout/i.test(t) ? 'trening' : /søndag|chill|rolig/i.test(t) ? 'rolig' : 'annet')
+              const assign = {}
+              for (const x of [...SP_PLAYLISTS, ...SP_ALBUMS]) assign[x.uri] = guess(x.name)
+              mock.groups = { groups, assign, auto: Object.keys(assign) }
+            }
+            return send(res, 200, mock.groups)
+          }
+          case 'spotify_groups_save': {
+            if (!needAdmin()) return
+            if (b.groups) { mock.groups.groups = b.groups.map((g, i) => ({ id: g.id || `g${i}${Date.now() % 1000}`, name: g.name, ...(g.parent ? { parent: g.parent } : {}) })); const ids = mock.groups.groups.map((g) => g.id); for (const u in mock.groups.assign) if (!ids.includes(mock.groups.assign[u])) mock.groups.assign[u] = ids[ids.length - 1] }
+            if (b.assign) for (const u in b.assign) { mock.groups.assign[u] = b.assign[u]; mock.groups.auto = mock.groups.auto.filter((x) => x !== u) }
+            return send(res, 200, { ok: true, ...mock.groups })
+          }
           case 'spotify_search': {
             if (!loggedIn) return send(res, 401, { error: 'Logg inn for å søke i hele Spotify.' })
             const q = String(url.searchParams.get('q') || '').trim()

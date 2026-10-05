@@ -1,0 +1,125 @@
+import { reactive } from 'vue'
+import { api } from './useAdmin'
+
+// My groups ("Jobb og fokus", "Trening" …) for albums and playlists. They live on the server (the same on every
+// device); the on/off switch for grouping is per browser. New things get a guessed group, marked as guessed
+// until I move or confirm them.
+const KEY = 'niben-grouping'
+function readOn() {
+  try { return localStorage.getItem(KEY) !== 'off' } catch { return true }
+}
+
+const COLLAPSED_KEY = 'niben-groups-collapsed'
+function readCollapsed() {
+  try { return JSON.parse(localStorage.getItem(COLLAPSED_KEY) || '{}') } catch { return {} }
+}
+const phone = typeof window !== 'undefined' ? window.matchMedia('(max-width: 820px)') : { matches: false }
+
+export const groups = reactive({
+  loaded: false,
+  list: [], // [{ id, name, parent? }] in the order shown – a group with a parent is a folder inside it (one level)
+  sel: null, // the folder picked in the library (null = all)
+  collapsed: readCollapsed(), // id -> true / false, set by me (otherwise: open on the PC, only the first open on a phone)
+  treeOpen: {}, // the library's folder tree: id -> false when folded in
+  assign: {}, // uri -> group id
+  auto: [], // uris that only have a guess
+  why: {}, // uri -> what the guess was based on (a genre, the sound …)
+  audio: null, // 'yes' / 'no': does Spotify give this app the sound data?
+  on: readOn(),
+  editing: false, // admin: move things / edit the groups
+})
+
+export function setGrouping(on) {
+  groups.on = on
+  try { localStorage.setItem(KEY, on ? 'on' : 'off') } catch {}
+}
+
+function apply(j) {
+  if (!j?.groups) return
+  groups.list = j.groups
+  groups.assign = j.assign || {}
+  groups.auto = j.auto || []
+  groups.why = j.why || {}
+  groups.audio = j.audio ?? null
+  groups.loaded = true
+}
+
+let loading = null
+export function loadGroups(force = false) {
+  if (loading && !force) return loading
+  loading = fetch('api.php?action=spotify_groups', { cache: 'no-store' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then(apply)
+    .catch(() => {})
+  return loading
+}
+
+export const groupOf = (uri) => groups.assign[uri] || null
+export const topGroups = () => groups.list.filter((g) => !g.parent)
+export const childrenOf = (id) => groups.list.filter((g) => g.parent === id)
+/** The groups in tree order (a folder right after its parent), for pickers: { id, name, depth }. */
+export function flatGroups() {
+  return topGroups().flatMap((g) => [{ id: g.id, name: g.name, depth: 0 }, ...childrenOf(g.id).map((c) => ({ id: c.id, name: c.name, depth: 1 }))])
+}
+export const nameOf = (id) => {
+  const g = groups.list.find((x) => x.id === id)
+  const par = g?.parent && groups.list.find((x) => x.id === g.parent)
+  return g ? (par ? `${par.name} › ${g.name}` : g.name) : ''
+}
+/** How many of these uris are in a group (and its folders). */
+export function countIn(id, uris) {
+  const ids = new Set([id, ...childrenOf(id).map((c) => c.id)])
+  return uris.filter((u) => ids.has(groups.assign[u])).length
+}
+
+/** Is a section folded in? My choice wins; otherwise open on the PC and – on a phone – only the first one. */
+export function isCollapsed(id, index = 0) {
+  if (id in groups.collapsed) return !!groups.collapsed[id]
+  return phone.matches && index > 0
+}
+export function toggleCollapsed(id, index = 0) {
+  groups.collapsed = { ...groups.collapsed, [id]: !isCollapsed(id, index) }
+  try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(groups.collapsed)) } catch {}
+}
+export function select(id) { groups.sel = groups.sel === id ? null : id }
+
+/** Move one album / playlist to a group (admin). Shows at once, saved behind it. */
+export async function moveTo(uri, id) {
+  const before = groups.assign[uri]
+  groups.assign[uri] = id
+  groups.auto = groups.auto.filter((u) => u !== uri)
+  try {
+    await api('spotify_groups_save', { assign: { [uri]: id } })
+    return { ok: true }
+  } catch (e) {
+    groups.assign[uri] = before
+    return { ok: false, error: e.message }
+  }
+}
+
+/** Save the list of groups (names / order / added / removed). */
+export async function saveGroups(list) {
+  try {
+    apply(await api('spotify_groups_save', { groups: list }))
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+}
+
+/** Items split by group in tree order (a folder after its parent). Only the picked folder when one is picked.
+ *  Empty groups are left out unless `keepEmpty` (as drop targets). Each: { group, items, depth, label }. */
+export function sectionsOf(items, keepEmpty = false) {
+  const by = new Map(groups.list.map((g) => [g.id, []]))
+  const other = []
+  for (const it of items) (by.get(groups.assign[it.uri]) || other).push(it)
+  const sel = groups.sel
+  const keep = (g) => !sel || g.id === sel || g.parent === sel
+  const out = []
+  for (const g of groups.list.filter(keep)) {
+    const its = by.get(g.id)
+    if (its.length || keepEmpty) out.push({ group: g, items: its, depth: g.parent ? 1 : 0, label: g.parent ? nameOf(g.id) : g.name })
+  }
+  if (other.length && !sel) out.push({ group: { id: '_', name: 'Uten gruppe' }, items: other, depth: 0, label: 'Uten gruppe' })
+  return out
+}
