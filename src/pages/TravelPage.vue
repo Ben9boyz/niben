@@ -45,12 +45,12 @@ function select(c) {
 
     <div class="cols" :class="{ picked: !!selected }">
       <div class="glass card mapcard">
-        <FlatMap :visited="visited" :selected="selected" @select="select" />
         <div class="search"><CountryPicker :highlight="visited" clear-on-pick placeholder="Søk etter et land …" @pick="select" /></div>
+        <FlatMap :visited="visited" :selected="selected" @select="select" />
       </div>
 
       <aside class="glass card">
-        <h3>Land jeg har besøkt</h3>
+        <h3>Land jeg har besøkt <small>{{ countries.length }}</small></h3>
         <div class="clist">
           <button v-for="c in countries" :key="c.en" class="row" :class="{ active: c.en === selected }" @click="select(c.en)">
             <span class="pin">{{ c.trips.length }}</span>
@@ -60,7 +60,7 @@ function select(c) {
         <div v-if="!countries.length" class="empty">Ingen reiser ennå.</div>
       </aside>
 
-      <section ref="detail" class="detail-col">
+      <section ref="detail" class="detail-col" :class="{ card: !!selected, glass: !!selected }">
         <template v-if="selected">
           <div class="dhead">
             <h2>{{ norskNavn(selected) }}</h2>
@@ -76,35 +76,45 @@ function select(c) {
 </template>
 
 <style scoped>
-/* map and trips in the wide column, the country list beside them (on phones: map, a row of countries, trips) */
-.cols { display: grid; grid-template-columns: 280px minmax(0, 1fr); grid-template-areas: 'list map' 'list detail'; gap: 18px; align-items: start; }
-.mapcard { grid-area: map; padding: 14px; }
-.search { max-width: 380px; margin: 10px auto 0; }
-aside { grid-area: list; position: sticky; top: 24px; max-height: calc(100vh - 48px); overflow-y: auto; padding: 14px; }
-aside h3 { margin: 4px 8px 10px; font-size: 1rem; }
-.pin { width: 32px; height: 32px; flex: none; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 0.8rem; color: #fff; background: linear-gradient(135deg, var(--accent-2), var(--accent)); }
-.detail-col { grid-area: detail; scroll-margin-top: 24px; min-height: 200px; }
-.dhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.dhead h2 { font-size: 1.8rem; }
-.big { padding: 40px; }
-/* wide screens with a country chosen: list | map | trips side by side, the map stays put */
-@media (min-width: 1280px) {
-  .cpage { --page-max: 1700px; }
-  .cols.picked { grid-template-columns: 240px minmax(0, 1fr) minmax(0, 1.15fr); grid-template-areas: 'list map detail'; }
-  .cols.picked .mapcard { position: sticky; top: 24px; }
-  .cols.picked .detail-col { min-height: 0; }
+/* One calm layout: the map on top, the countries as chips under it, the trips below (or – on wide screens with a
+   country chosen – the map and the countries on the left, the trips on the right). */
+.cols { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'map' 'list' 'detail'; gap: 16px; align-items: start; }
+.mapcard { grid-area: map; padding: 14px; display: grid; gap: 12px; }
+.search { width: min(420px, 100%); }
+aside { grid-area: list; padding: 14px 16px 16px; }
+aside h3 { margin: 0 0 10px; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); display: flex; align-items: center; gap: 8px; }
+aside h3 small { padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.72rem; letter-spacing: 0; }
+.clist { display: flex; flex-wrap: wrap; gap: 8px; }
+.clist .row { flex: none; display: inline-flex; align-items: center; gap: 10px; width: auto; margin: 0; padding: 6px 16px 6px 6px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass); cursor: pointer; transition: border-color 0.15s, background 0.15s, transform 0.15s; }
+.clist .row:hover { border-color: var(--accent); transform: none; background: var(--accent-soft); }
+.clist .row.active { background: var(--accent-soft); border-color: var(--accent); }
+.clist .meta { display: grid; line-height: 1.15; text-align: left; }
+.clist .name { font-weight: 700; font-size: 0.9rem; }
+.clist .sub { font-size: 0.72rem; color: var(--text-3); }
+.pin { width: 30px; height: 30px; flex: none; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 0.78rem; color: #fff; background: linear-gradient(135deg, var(--accent-2), var(--accent)); }
+.detail-col { grid-area: detail; scroll-margin-top: 24px; min-height: 120px; }
+.detail-col.card { padding: 18px; }
+.dhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.dhead h2 { font-size: 1.8rem; margin: 0; }
+.big { padding: 28px; text-align: center; }
+/* wide screens with a country chosen: map + countries on the left (the map stays put), the trips on the right */
+@media (min-width: 1100px) {
+  .cols.picked { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'map detail' 'list detail'; gap: 18px; }
+  .cols.picked .mapcard { position: sticky; top: 24px; z-index: 1; }
+  .cols.picked aside { position: static; }
+  .cols.picked .detail-col { align-self: start; }
 }
+@media (min-width: 1500px) { .cpage { --page-max: 1560px; } }
 @media (max-width: 860px) {
-  .cols { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'map' 'list' 'detail'; gap: 12px; }
   .mapcard { padding: 8px; }
-  aside { position: static; max-height: none; padding: 10px 0 10px 10px; }
+  aside { padding: 10px; }
   aside h3 { display: none; }
-  .clist { display: flex; gap: 6px; overflow-x: auto; padding-right: 10px; scrollbar-width: none; }
+  .clist { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
   .clist::-webkit-scrollbar { display: none; }
-  .clist .row { flex: none; width: auto; padding: 6px 12px 6px 6px; margin: 0; border-radius: 999px; background: var(--glass); }
-  .clist .row.active { background: var(--accent-soft); }
   .clist .sub { display: none; }
+  .clist .row { padding: 5px 12px 5px 5px; }
   .pin { width: 26px; height: 26px; font-size: 0.72rem; }
-  .big { padding: 24px; }
+  .detail-col.card { padding: 12px; }
+  .big { padding: 20px; }
 }
 </style>
