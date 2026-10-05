@@ -129,6 +129,8 @@ function jp_anime(array $decks): array {
         $out[] = ['title' => $t, 'parts' => count($s['decks']), 'known' => round($s['k'] / $s['w'], 1), 'learning' => round($s['l'] / $s['w'], 1)] + $al;
     }
     usort($out, fn($a, $b) => $b['known'] <=> $a['known']);
+    // an anime I can follow (nearly every word known): a milestone, once
+    if (function_exists('ms_add')) foreach ($out as $a) if (($a['known'] ?? 0) >= 98) ms_add('anime:' . $a['title'], 'anime', (string)($a['en'] ?? $a['title']), 'Klarer ordene i anime-en – ' . round($a['known']) . ' %', $a['cover'] ?? null);
     return $out;
 }
 

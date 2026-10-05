@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, onBeforeUnmount } from 'vue'
-import { Music, BookOpen, Languages, Guitar, Gamepad2, Plane, ArrowRight, Radio } from 'lucide-vue-next'
+import { Music, BookOpen, Languages, Guitar, Gamepad2, Plane, ArrowRight, Radio, PartyPopper, Mic, Tv, Trophy } from 'lucide-vue-next'
+import { milestones, loadMilestones } from '../composables/useMilestones'
 import { useRouter } from 'vue-router'
 import { useData } from '../composables/useData'
 import { useSpotify } from '../composables/useSpotify'
@@ -15,8 +16,19 @@ const router = useRouter()
 const data = useData()
 const spotify = useSpotify()
 let stopSteam
-onMounted(() => { stopSteam = watchSteam(); loadJapanese() })
+onMounted(() => { stopSteam = watchSteam(); loadJapanese(); loadMilestones() })
 onBeforeUnmount(() => stopSteam?.())
+
+// ── milestones: what I just managed (new recording, finished book, anime, song) – kept for 30 days ──
+const MS_ICON = { recording: Mic, book: BookOpen, anime: Tv, song: Guitar, other: Trophy }
+const MS_LABEL = { recording: 'Nytt opptak', book: 'Ferdig lest', anime: 'Klarer anime', song: 'Sang lært', other: 'Klart' }
+const MS_TO = { recording: '/gitar', book: '/boker', anime: '/japansk', song: '/ovelse', other: '/' }
+const recent = computed(() => (milestones.items || []).filter((m) => Date.now() / 1000 - m.t < 30 * 86400).slice(0, 5))
+const fresh = computed(() => recent.value.length && Date.now() / 1000 - recent.value[0].t < 4 * 86400)
+const msAgo = (t) => {
+  const d = Math.floor((Date.now() / 1000 - t) / 86400)
+  return d <= 0 ? 'i dag' : d === 1 ? 'i går' : d < 7 ? `for ${d} dager siden` : `for ${Math.round(d / 7)} uker siden`
+}
 
 // ── music ──
 const track = computed(() => (spotify.now?.name ? spotify.now : null))
@@ -54,6 +66,20 @@ const inDays = (t) => {
 
 <template>
   <div class="now">
+    <!-- just happened -->
+    <section v-if="recent.length" class="card wide ms" :class="{ fresh }">
+      <h3><PartyPopper :size="15" />{{ fresh ? 'Nytt!' : 'Nylig klart' }}</h3>
+      <ul>
+        <li v-for="m in recent" :key="m.key">
+          <router-link :to="m.url || MS_TO[m.type] || '/'" class="msrow">
+            <img v-if="m.image" :src="m.image" alt="" class="msart" />
+            <span v-else class="msart ic"><component :is="MS_ICON[m.type] || Trophy" :size="18" /></span>
+            <span class="txt"><b translate="no">{{ m.title }}</b><small>{{ MS_LABEL[m.type] || 'Klart' }}<template v-if="m.sub && m.type !== 'recording'"> · <span translate="no">{{ m.sub }}</span></template> · {{ msAgo(m.t) }}</small></span>
+          </router-link>
+        </li>
+      </ul>
+    </section>
+
     <!-- listening -->
     <section class="card">
       <h3><Music :size="15" />Hører på</h3>
@@ -138,10 +164,16 @@ const inDays = (t) => {
 <style scoped>
 .now { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; container-type: inline-size; }
 /* wide (the plain home page): three columns, the cards sit side by side instead of in two tall stacks */
-@container (min-width: 880px) { .now { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; } .card.wide:last-child { grid-column: span 3; } }
 .card:has(> .none:last-child:nth-child(2)) { opacity: 0.7; }
 .card { display: grid; gap: 8px; align-content: start; padding: 16px; border-radius: 16px; background: var(--glass-strong); border: 1px solid var(--glass-border); min-width: 0; }
 .card.wide { grid-column: span 2; }
+.ms ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.msrow { display: flex; align-items: center; gap: 12px; padding: 4px; border-radius: 12px; color: inherit; text-decoration: none; }
+.msrow:hover { background: var(--accent-soft); }
+.msart { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; flex: none; }
+.msart.ic { display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.ms.fresh { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, var(--glass-strong)), var(--glass-strong)); border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 10%, transparent); }
+.ms.fresh h3 { color: var(--accent); }
 h3 { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
 .row, .word { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; min-width: 0; }
 .art { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex: none; }
@@ -174,4 +206,6 @@ h3 { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 0.7rem;
 .trip b { font-size: 1.05rem; }
 .trip span { font-size: 0.8rem; opacity: 0.85; }
 @media (max-width: 560px) { .now { grid-template-columns: 1fr; } .card.wide { grid-column: auto; } }
+/* wide (the plain home page): three columns */
+@container (min-width: 880px) { .now { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; } .card.wide:last-child, .card.wide.ms { grid-column: span 3; } }
 </style>

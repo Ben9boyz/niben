@@ -258,6 +258,7 @@ require_once __DIR__ . '/_site.inc.php';
 require_once __DIR__ . '/_github.inc.php';
 require_once __DIR__ . '/_translate.inc.php';
 require_once __DIR__ . '/_visits.inc.php';
+require_once __DIR__ . '/_milestones.inc.php';
 
 try {
     if (str_starts_with($action, 'spotify_')) {
@@ -286,6 +287,7 @@ try {
         fail('Ukjent handling.', 404);
     }
     if ($action === 'translate') tr_handle();
+    if ($action === 'milestones' || $action === 'milestone_add' || $action === 'milestone_delete') ms_handle($action, $post);
     if ($action === 'visit') {
         if (!$post || ($_SERVER['HTTP_X_NIBEN'] ?? '') !== '1') out(['ok' => false]);
         vi_count((string)(body()['path'] ?? ''));
@@ -488,6 +490,8 @@ try {
                 ->execute($vals);
             $id = (int)db()->lastInsertId();
         }
+        // finished (a date, and not "reading"): a milestone – once per book
+        if (!empty($b['read_on']) && empty($b['reading']) && date_or_null($b['read_on'])) ms_add('book:' . $id, 'book', (string)$vals[0], (string)($vals[1] ?? ''), $vals[4] ?? null, strtotime((string)date_or_null($b['read_on']) . ' 12:00') ?: time(), null);
         out(['id' => $id]);
     }
 
@@ -522,6 +526,7 @@ try {
             db()->prepare('INSERT INTO recordings (guitar, title, recorded_on, youtube, audio_path, notes) VALUES (?,?,?,?,?,?)')
                 ->execute([$guitar, $title, date_or_null($b['recorded_on'] ?? null), $yt, $audio, str_or_null($b['notes'] ?? null, 5000)]);
             $id = (int)db()->lastInsertId();
+            ms_add('rec:' . $id, 'recording', $title, 'Nytt gitaropptak', null, time(), null); // just released
         }
         out(['id' => $id]);
     }

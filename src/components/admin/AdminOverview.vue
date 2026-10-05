@@ -1,10 +1,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Download, Users, Music2, Gamepad2, Languages, Globe2, BookOpen, Plane, Mic, RefreshCw, Unplug, Plug, Trash2, Check, AlertTriangle } from 'lucide-vue-next'
+import { Trophy, Download, Users, Music2, Gamepad2, Languages, Globe2, BookOpen, Plane, Mic, RefreshCw, Unplug, Plug, Trash2, Check, AlertTriangle } from 'lucide-vue-next'
 import { api } from '../../composables/useAdmin'
 import { spotify, setLockSeconds, refreshSpotify, fmtLock, notify } from '../../composables/useSpotify'
 import { byCode } from '../../lib/languages'
 import { pwa, install, desktopApp } from '../../composables/usePwa'
+import { milestones, loadMilestones, setMilestones } from '../../composables/useMilestones'
 
 // The first admin tab: what is connected and how things are set up, in plain words – with the buttons to fix it.
 const emit = defineEmits(['goto'])
@@ -50,6 +51,18 @@ const dayLabel = (d) => new Date(d + 'T12:00:00').toLocaleDateString('nb-NO', { 
 const bf = ref('')
 async function loadBf() { try { bf.value = (await api('admin_best_friend')).id || '' } catch {} }
 onMounted(loadBf)
+onMounted(() => loadMilestones(true))
+const MS_TYPES = [['song', 'Sang jeg har lært'], ['anime', 'Anime jeg klarer'], ['book', 'Bok jeg har lest'], ['recording', 'Opptak'], ['other', 'Annet']]
+const ms = ref({ type: 'song', title: '', sub: '' })
+async function addMs() {
+  if (!ms.value.title.trim()) return
+  busy.value = 'ms'
+  try { const r = await api('milestone_add', { ...ms.value }); setMilestones(r.items); ms.value.title = ''; ms.value.sub = ''; flash('Lagt til – vises nå på hjem-siden.') } catch (e) { err.value = e.message }
+  busy.value = ''
+}
+async function delMs(key) {
+  try { setMilestones((await api('milestone_delete', { key })).items) } catch (e) { err.value = e.message }
+}
 async function saveBf() {
   busy.value = 'bf'
   try { const r = await api('admin_best_friend', { id: bf.value }); bf.value = r.id; flash('Bestevennen er lagret – vises på Spill-siden om litt.') } catch (e) { err.value = e.message }
@@ -70,6 +83,21 @@ const langName = (c) => byCode[c]?.en || c
         <button class="stat" @click="emit('goto', 'reiser')"><Plane :size="18" /><b>{{ st.counts.trips }}</b><span>reiser</span><small>{{ st.counts.photos }} bilder</small></button>
         <button class="stat" @click="emit('goto', 'boker')"><BookOpen :size="18" /><b>{{ st.counts.books }}</b><span>bøker</span></button>
         <button class="stat" @click="emit('goto', 'opptak')"><Mic :size="18" /><b>{{ st.counts.recordings }}</b><span>gitaropptak</span></button>
+      </section>
+
+      <!-- milestones -->
+      <section class="card">
+        <header><Trophy :size="18" /><h3>Milepæler på hjem-siden</h3></header>
+        <p class="help">Vises i 30 dager under «Akkurat nå». Nye opptak og bøker du er ferdig med, og anime du klarer (98 % av ordene), kommer av seg selv. Resten legger du inn her.</p>
+        <form class="msform" @submit.prevent="addMs">
+          <select v-model="ms.type" aria-label="Type"><option v-for="t in MS_TYPES" :key="t[0]" :value="t[0]">{{ t[1] }}</option></select>
+          <input v-model="ms.title" placeholder="Hva klarte du? F.eks. Wonderwall" aria-label="Tittel" required />
+          <input v-model="ms.sub" placeholder="Litt til (valgfritt)" aria-label="Undertekst" />
+          <button class="btn primary small" :disabled="busy === 'ms' || !ms.title.trim()">Legg til</button>
+        </form>
+        <ul v-if="milestones.items.length" class="mslist">
+          <li v-for="m in milestones.items.slice(0, 8)" :key="m.key"><span>{{ m.title }}</span><small>{{ MS_TYPES.find((t) => t[0] === m.type)?.[1] || 'Annet' }} · {{ new Date(m.t * 1000).toLocaleDateString('nb-NO') }}</small><button class="x" :aria-label="`Fjern ${m.title}`" @click="delMs(m.key)"><Trash2 :size="14" /></button></li>
+        </ul>
       </section>
 
       <!-- the desktop app (only I need it, so it lives here and not in the menu) -->
@@ -194,6 +222,14 @@ const langName = (c) => byCode[c]?.en || c
 .bfrow { flex-wrap: nowrap; }
 .bfin { flex: 2; min-width: 0; padding: 8px 12px; border: 1px solid var(--glass-border); border-radius: 10px; background: var(--bg); color: var(--text); font: 500 0.84rem var(--font); }
 .svc small { flex-basis: 100%; color: var(--text-3); }
+.msform { display: grid; grid-template-columns: 170px 1fr 1fr auto; gap: 8px; }
+.msform select, .msform input { min-width: 0; padding: 8px 12px; border: 1px solid var(--glass-border); border-radius: 10px; background: var(--bg); color: var(--text); font: 500 0.86rem var(--font); }
+.mslist { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.mslist li { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-radius: 8px; }
+.mslist li:hover { background: var(--accent-soft); }
+.mslist span { flex: 1; font-size: 0.88rem; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mslist small { color: var(--text-3); }
+@media (max-width: 700px) { .msform { grid-template-columns: 1fr; } }
 .langs { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; max-height: 220px; overflow-y: auto; }
 .langs li { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-radius: 8px; }
 .langs li:hover { background: var(--accent-soft); }

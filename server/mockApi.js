@@ -254,6 +254,9 @@ export function mockApi() {
             return send(res, 200, { days, today: days[29].u, week: 31, month: 94, total: 212, returning: 37, hits_today: days[29].h })
           }
           case 'visit': return send(res, 200, { ok: true })
+          case 'milestones': return send(res, 200, { items: mock.milestones || (mock.milestones = [{ key: 'rec:1', type: 'recording', title: 'Hotel California (akustisk)', sub: 'Nytt gitaropptak', image: null, t: Math.floor(Date.now() / 1000) - 3600 }, { key: 'anime:1', type: 'anime', title: 'Laid-Back Camp', sub: 'Klarer ordene i anime-en – 99 %', image: mockCover(160), t: Math.floor(Date.now() / 1000) - 86400 * 2 }, { key: 'book:1', type: 'book', title: 'The Order of Time', sub: 'Carlo Rovelli', image: mockCover(40), t: Math.floor(Date.now() / 1000) - 86400 * 6 }]) })
+          case 'milestone_add': { if (!needAdmin()) return; (mock.milestones ||= []).unshift({ key: 'm' + Date.now(), type: b.type, title: b.title, sub: b.sub || '', image: null, t: Math.floor(Date.now() / 1000) }); return send(res, 200, { ok: true, items: mock.milestones }) }
+          case 'milestone_delete': { if (!needAdmin()) return; mock.milestones = (mock.milestones || []).filter((m) => m.key !== b.key); return send(res, 200, { ok: true, items: mock.milestones }) }
           case 'admin_best_friend':
             if (!needAdmin()) return
             return send(res, 200, { ok: true, id: (b && b.id) || '76561198148569463' })
