@@ -304,7 +304,7 @@ try {
             $books = $pdo->query('SELECT ' . $bookCols . $bookOrder)->fetchAll(); // "reading" column not added yet
         }
         $recs = $pdo->query('SELECT id, guitar, title, recorded_on, youtube, audio_path, notes FROM recordings ORDER BY COALESCE(recorded_on, created_at) DESC, id DESC')->fetchAll();
-        out(['trips' => $trips, 'books' => $books, 'recordings' => $recs, 'songs' => songs_list($pdo)]);
+        out(['trips' => $trips, 'books' => $books, 'recordings' => $recs, 'songs' => songs_list($pdo), 'about' => json_decode((string)kv_get('about'), true)]);
     }
 
     case 'limits':

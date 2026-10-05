@@ -8,6 +8,17 @@ function about_handle(string $action, bool $post): void {
         $raw = kv_get('about');
         out(['about' => $raw ? json_decode($raw, true) : null]);
     }
+    case 'about_photo': {
+        // my photo on the about page (and the home page / the frame in the room) – stored like the trip photos
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        [$path] = save_photo($_FILES['file'] ?? []);
+        $about = json_decode((string)kv_get('about'), true) ?: [];
+        if (!empty($about['bilde'])) delete_upload($about['bilde']);
+        $about['bilde'] = $path;
+        kv_set('about', json_encode($about, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        out(['ok' => true, 'bilde' => $path]);
+    }
     case 'about_save': {
         if (!$post) fail('Bruk POST.', 405);
         require_admin();
@@ -19,7 +30,9 @@ function about_handle(string $action, bool $post): void {
             $name = $clean($l['navn'] ?? '', 40);
             if ($name !== '' && preg_match('~^https?://~i', $url)) $links[] = ['navn' => $name, 'url' => $url];
         }
+        $old = json_decode((string)kv_get('about'), true) ?: [];
         $about = [
+            'bilde' => $old['bilde'] ?? null,
             'tagline' => $clean($b['tagline'] ?? '', 120),
             'tekst' => $clean($b['tekst'] ?? '', 4000),
             'lenker' => $links,

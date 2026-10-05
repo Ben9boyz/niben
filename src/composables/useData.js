@@ -101,6 +101,8 @@ async function load() {
           bpm: x.bpm ? +x.bpm : null, slag: x.beats ? +x.beats : null, capo: x.capo ? +x.capo : null,
           ug: x.ug_url, notat: x.notes, ark: x.sheet, ovrer: !!+x.practising, slagmonster: x.strum || null,
         }))
+        // my own photo and text from the about page (uploaded, not in the repo)
+        if (db.about?.bilde) merged.om = { ...(merged.om || {}), bilde: db.about.bilde }
         state.fromDb = true
       }
     }

@@ -90,6 +90,7 @@ export function mockApi() {
               books: [...db.books].reverse(),
               recordings: [...db.recordings].reverse(),
               songs: db.songs,
+              about: db.about || null,
             })
           case 'song_save': {
             if (!needAdmin()) return
@@ -259,9 +260,16 @@ export function mockApi() {
             return send(res, 200, { token: 'mock', expires: 0, streaming: false }) // no real Spotify in dev
           case 'about_get':
             return send(res, 200, { about: db.about || null })
+          case 'about_photo': {
+            if (!needAdmin()) return
+            if (!file) return send(res, 400, { error: 'Mangler fil.' })
+            const path = await store('photos', file)
+            db.about = { ...(db.about || {}), bilde: path }
+            return send(res, 200, { ok: true, bilde: path })
+          }
           case 'about_save':
             if (!needAdmin()) return
-            db.about = { tagline: b.tagline || '', tekst: b.tekst || '', lenker: (b.lenker || []).filter((l) => l.navn && /^https?:\/\//.test(l.url || '')) }
+            db.about = { bilde: db.about?.bilde || null, tagline: b.tagline || '', tekst: b.tekst || '', lenker: (b.lenker || []).filter((l) => l.navn && /^https?:\/\//.test(l.url || '')) }
             return send(res, 200, { ok: true, about: db.about })
           case 'steam_public': {
             const now = Math.floor(Date.now() / 1000)

@@ -1,12 +1,14 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Guitar, Music, BookOpen, Plane, Languages, Gamepad2, Code2, ArrowUpRight, Pencil, Plus, X, Check, Sparkles } from 'lucide-vue-next'
+import { Guitar, Music, BookOpen, Plane, Languages, Gamepad2, Code2, ArrowUpRight, Pencil, Plus, X, Check, Sparkles, ImageUp } from 'lucide-vue-next'
 import { useData } from '../composables/useData'
 import { useSpotify } from '../composables/useSpotify'
 import { steam, loadSteam } from '../composables/useSteam'
 import { jp, loadJapanese } from '../composables/useJapanese'
-import { admin, checkLogin, api } from '../composables/useAdmin'
+import { admin, checkLogin, api, shrinkImage } from '../composables/useAdmin'
+import { reloadData } from '../composables/useData'
+import { thumb } from '../lib/photos'
 import { atlasName } from '../three/countries'
 
 // "Om meg": a short text I write myself (edited right here when logged in) and everything else
@@ -29,6 +31,27 @@ async function loadAbout() {
 const fallback = computed(() => (/^Eksempel/i.test(data.om?.tekst || '') ? '' : data.om?.tekst || ''))
 const text = computed(() => about.value?.tekst || fallback.value)
 const tagline = computed(() => about.value?.tagline || '')
+// my photo: uploaded on this page (stored on the server like the trip photos), else the one in data.json
+const photo = computed(() => about.value?.bilde || data.om?.bilde || '')
+const photoBusy = ref(false)
+async function uploadPhoto(e) {
+  const f = e.target.files?.[0]
+  e.target.value = ''
+  if (!f) return
+  photoBusy.value = true
+  msg.value = ''
+  try {
+    const fd = new FormData()
+    fd.append('file', await shrinkImage(f, 1600))
+    const r = await api('about_photo', fd)
+    about.value = { ...(about.value || {}), bilde: r.bilde }
+    reloadData() // the home page and the frame in the room use it too
+  } catch (err) {
+    msg.value = err.message
+  } finally {
+    photoBusy.value = false
+  }
+}
 
 // ── numbers from the corners ──
 const countries = computed(() => new Set((data.reiser || []).map((t) => atlasName(t.land))).size)
@@ -89,9 +112,16 @@ async function save() {
 <template>
   <div class="about" :class="{ compact }">
     <header class="hero">
-      <img v-if="data.om?.bilde && !compact" :src="data.om.bilde" alt="" class="photo" />
+      <div v-if="!compact" class="photo-wrap">
+        <img v-if="photo" :src="thumb(photo, 900)" alt="" class="photo" />
+        <label v-if="admin.loggedIn" class="photo-btn" :class="{ busy: photoBusy }">
+          <ImageUp :size="15" />{{ photoBusy ? 'Laster opp …' : 'Bytt bilde' }}
+          <input type="file" accept="image/*" hidden @change="uploadPhoto" />
+        </label>
+        <p v-if="msg && !editing" class="err">{{ msg }}</p>
+      </div>
       <div class="intro">
-        <img v-if="data.om?.bilde && compact" :src="data.om.bilde" alt="" class="avatar" />
+        <img v-if="photo && compact" :src="thumb(photo, 400)" alt="" class="avatar" />
         <h1 v-if="!compact">Hei, jeg er {{ data.site?.navn || 'Benjamin' }}</h1>
         <p v-if="tagline" class="tagline">{{ tagline }}</p>
 
@@ -159,6 +189,10 @@ async function save() {
 .about { display: grid; gap: 24px; }
 .hero { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 32px; align-items: center; }
 .compact .hero { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.photo-wrap { position: relative; }
+.photo-btn { position: absolute; left: 50%; bottom: 12px; translate: -50% 0; display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #fff; font: 600 0.8rem var(--font); cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); white-space: nowrap; }
+.photo-btn:hover { background: rgba(0, 0, 0, 0.7); }
+.photo-btn.busy { opacity: 0.7; pointer-events: none; }
 .photo { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 28px; box-shadow: 0 24px 50px rgba(0, 0, 0, 0.25); }
 .avatar { width: 72px; height: 72px; border-radius: 22px; object-fit: cover; margin-bottom: 10px; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2); }
 .intro { min-width: 0; }
