@@ -1,8 +1,14 @@
 <script setup>
+import { watch } from 'vue'
 import { room } from '../composables/useRoom'
+import { peek, peekClear } from '../composables/useBrowse'
+import PeekView from '../components/PeekView.vue'
 import NowPlaying from '../components/NowPlaying.vue'
 import VinylPanel from '../components/VinylPanel.vue'
 import PlaylistPanel from '../components/PlaylistPanel.vue'
+
+// picking a record or playlist in the room closes any album / artist page opened with "Gå til …"
+watch(() => [room.sel.musikk, room.ipod.playlist, room.musicView], () => { if (peek.stack.length) peekClear() })
 </script>
 
 <template>
@@ -10,7 +16,8 @@ import PlaylistPanel from '../components/PlaylistPanel.vue'
     <div class="panel-body">
       <div class="np-sticky"><NowPlaying /></div>
       <transition name="fade" mode="out-in">
-        <PlaylistPanel v-if="room.musicView.startsWith('ipod')" key="p" />
+        <PeekView v-if="peek.stack.length" key="peek" />
+        <PlaylistPanel v-else-if="room.musicView.startsWith('ipod')" key="p" />
         <VinylPanel v-else key="v" />
       </transition>
     </div>

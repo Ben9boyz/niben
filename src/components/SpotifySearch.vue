@@ -179,7 +179,7 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
               <span class="t">
                 <button class="plain nm" :disabled="!!busy" @click="playTrack(t)"><b>{{ t.name }}</b></button>
                 <small>
-                  <a v-if="admin.loggedIn && mode !== 'rom'" class="lnk" href="#" title="Åpne artisten og albumene" @click.prevent="openArtistPage({ id: t.artist_id, name: firstArtist(t.artist) })">{{ t.artist }}</a><template v-else>{{ t.artist }}</template>
+                  <a v-if="admin.loggedIn" class="lnk" href="#" title="Åpne artisten og albumene" @click.prevent="openArtistPage({ id: t.artist_id, name: firstArtist(t.artist) })">{{ t.artist }}</a><template v-else>{{ t.artist }}</template>
                   · <a v-if="admin.loggedIn && t.album_uri" class="lnk" href="#" title="Åpne albumet" @click.prevent="mode === 'rom' ? openAlbum(albumOf(t)) : openAlbumPage(albumOfTrack(t))">{{ t.album }}</a><template v-else>{{ t.album }}</template>
                 </small>
               </span>

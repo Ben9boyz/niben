@@ -6,6 +6,7 @@ import { room } from '../composables/useRoom'
 import GroupedGrid from './GroupedGrid.vue'
 import GroupBar from './GroupBar.vue'
 import { loadGroups } from '../composables/useGroups'
+import { ipodRows } from '../composables/useIpodList'
 import MusicDetail from './MusicDetail.vue'
 
 // Panel twin of the iPod: same selected playlist, same highlighted row (room.ipod) – and the same
@@ -19,7 +20,8 @@ const items = computed(() => {
   const list = n ? spotify.playlists.filter((p) => p.name.toLowerCase().includes(n)) : spotify.playlists
   return sorted('playlist', list).map((p) => ({ uri: p.uri, name: p.name, sub: p.count ? `${p.count} låter` : p.owner, image: p.image || p.thumb }))
 })
-const cursorUri = computed(() => (q.value ? null : spotify.playlists[room.ipod.active]?.uri))
+// the highlighted tile = the iPod's highlighted row (same list, same order, same folder)
+const cursorUri = computed(() => { const r = ipodRows.value[room.ipod.active]; return r?.kind === 'playlist' ? r.item.uri : null })
 
 function open(it) {
   if (room.musicView === 'ipodDock') room.musicView = 'ipod' // lift the iPod up
@@ -29,12 +31,11 @@ function open(it) {
 }
 function hover(it) {
   prefetchTracks(it.uri)
-  if (q.value) return
-  const i = spotify.playlists.findIndex((p) => p.uri === it.uri)
+  const i = ipodRows.value.findIndex((r) => r.item?.uri === it.uri)
   if (i >= 0) room.ipod.active = i
 }
 function back() {
-  room.ipod.active = Math.max(0, spotify.playlists.findIndex((x) => x.uri === playlist.value?.uri))
+  room.ipod.active = Math.max(0, ipodRows.value.findIndex((r) => r.item?.uri === playlist.value?.uri))
   room.ipod.view = 'menu'
   room.ipod.playlist = null
 }

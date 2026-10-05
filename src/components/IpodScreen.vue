@@ -1,7 +1,9 @@
 <script setup>
-import { ChevronLeft, ChevronRight, Play, Lock, Shuffle } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, Play, Lock, Shuffle, Folder } from 'lucide-vue-next'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { room } from '../composables/useRoom'
+import { ipodRows, ipodFolderName } from '../composables/useIpodList'
+import { groups, openFolder } from '../composables/useGroups'
 import { spotify, useSpotify, lockLeft, progressMs, fmtClock, play, fetchTracks, lockNote, control, setShuffle } from '../composables/useSpotify'
 import { admin, checkLogin } from '../composables/useAdmin'
 
@@ -30,9 +32,8 @@ const pct = computed(() => (now.value?.duration_ms ? (progressMs.value / now.val
 // rows for the current view, so arrow keys / click wheel work the same everywhere
 const rows = computed(() => {
   if (view.value === 'menu') {
-    // same order as the panel's list so the highlight can be shared
-    const f = room.ipod.q.trim().toLowerCase()
-    return spotify.playlists.filter((p) => !f || p.name.toLowerCase().includes(f)).map((p) => ({ kind: 'playlist', label: p.name, sub: p.count ? `${p.count} låter` : p.owner, item: p, img: p.thumb || p.image }))
+    // the same list and order as the panel (folders first when grouping is on) so the highlight can be shared
+    return ipodRows.value
   }
   if (view.value === 'playlist') {
     const r = []
@@ -46,8 +47,8 @@ const rows = computed(() => {
   return []
 })
 
-watch(() => room.ipod.q, () => { if (view.value === 'menu') active.value = 0 })
-const title = computed(() => (view.value === 'menu' ? 'Spillelister' : view.value === 'now' ? 'Spilles nå' : playlist.value?.name || ''))
+watch(() => [room.ipod.q, groups.sel], () => { if (view.value === 'menu') active.value = 0 })
+const title = computed(() => (view.value === 'menu' ? (!room.ipod.q.trim() && ipodFolderName.value) || 'Spillelister' : view.value === 'now' ? 'Spilles nå' : playlist.value?.name || ''))
 
 function frame() {
   raf = requestAnimationFrame(frame)
@@ -58,6 +59,7 @@ function frame() {
 async function open(row) {
   if (!row) return
   if (row.kind === 'now') { view.value = 'now'; return }
+  if (row.kind === 'folder') { openFolder(row.id); active.value = 0; return }
   if (row.kind === 'playlist') {
     playlist.value = row.item
     view.value = 'playlist'
@@ -89,8 +91,11 @@ async function wheel(op) {
 }
 
 function back() {
-  if (view.value === 'menu') room.musicView = 'ipodDock'
-  else { view.value = 'menu'; active.value = 0 }
+  if (view.value === 'menu') {
+    // inside a folder: up one level (to its parent folder, or the top); at the top: put the iPod down
+    if (groups.on && groups.sel && !room.ipod.q.trim()) { const par = groups.list.find((g) => g.id === groups.sel)?.parent; groups.sel = par || null; active.value = 0 }
+    else room.musicView = 'ipodDock'
+  } else { view.value = 'menu'; active.value = 0 }
 }
 
 function move(d) {
@@ -153,9 +158,9 @@ onBeforeUnmount(() => {
         @mouseenter="active = i"
       >
         <img v-if="r.img" crossorigin="anonymous" :src="r.img" alt="" class="art" loading="lazy" />
-        <span class="l"><Play v-if="r.kind === 'playall' && !locked" size="0.8em" fill="currentColor" class="pa" />{{ r.label }}</span>
+        <span class="l"><Play v-if="r.kind === 'playall' && !locked" size="0.8em" fill="currentColor" class="pa" /><Folder v-if="r.kind === 'folder'" size="0.85em" class="pa" />{{ r.label }}</span>
         <span v-if="r.ms" class="r">{{ fmtClock(r.ms / 1000) }}</span>
-        <span v-else-if="r.kind === 'playlist' || r.kind === 'now'" class="r"><ChevronRight size="1em" /></span>
+        <span v-else-if="r.kind === 'playlist' || r.kind === 'now' || r.kind === 'folder'" class="r"><ChevronRight size="1em" /></span>
       </button>
       <div v-if="view === 'menu' && !rows.length" class="msg">{{ room.ipod.q ? 'Ingen treff.' : 'Ingen spillelister.' }}</div>
     </div>

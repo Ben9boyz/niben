@@ -765,16 +765,23 @@ export function buildListeningCorner() {
     albumsKey = key
     for (const l of loose.values()) group.remove(l.mesh)
     loose.clear()
-    const capacity = COMPARTMENT.map(([a, b]) => Math.floor((b - a - 0.01) / THICK))
+    // a little air before each new artist (not much – a few millimetres), so the shelf reads in groups
+    const GAP = 0.012
+    const room = COMPARTMENT.map(([a, b]) => b - a - 0.01)
+    const artistOf = (a) => String(a?.artist || '').split(',')[0].trim().toLowerCase()
+    let comp = 0, cursor = 0
     records = albums.slice(0, MAX_RECORDS).map((album, i) => {
-      const comp = i < capacity[0] ? 0 : 1
-      const slot = comp === 0 ? i : i - capacity[0]
+      let gap = i > 0 && cursor > 0 && artistOf(album) !== artistOf(albums[i - 1]) ? GAP : 0
+      if (comp === 0 && cursor + gap + THICK > room[0] + 1e-6) { comp = 1; cursor = 0; gap = 0 }
+      else if (comp === 1 && cursor + gap + THICK > room[1] + 1e-6) gap = 0
+      const off = cursor + gap
+      cursor = off + THICK
       const [x0] = COMPARTMENT[comp]
       const color = album.color || '#3a4352'
       drawSpine(i, album, color)
       colAttr.setX(i, i)
       const r = { album, index: i, color, out: 0, hidden: false,
-        home: new THREE.Vector3(x0 + 0.006 + THICK / 2 + slot * THICK, BOTTOM_Y + SLEEVE / 2 + 0.001, FRONT_Z - SLEEVE / 2 - 0.012) }
+        home: new THREE.Vector3(x0 + 0.006 + THICK / 2 + off, BOTTOM_Y + SLEEVE / 2 + 0.001, FRONT_Z - SLEEVE / 2 - 0.012) }
       writeInstance(r)
       // colour the spine from the small cover thumbnail
       const thumb = album.thumb || album.image

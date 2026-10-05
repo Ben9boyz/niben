@@ -190,10 +190,10 @@ async function onPlay(track = null) {
 
 <style scoped>
 .detail { --tint: var(--accent); display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; }
-.bar { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.bar .back { background: var(--accent-soft); color: var(--accent); }
+.bar { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 0 8px; } /* same side padding as the song rows: the Spotify link lines up with the times */
+.bar .back { margin: 0; background: var(--accent-soft); color: var(--accent); } /* the global .back has a bottom margin that pushed the pill up */
 .bar .back:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
-.bar-meta { flex: 1; min-width: 0; font-size: 0.78rem; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-meta { flex: 1; min-width: 0; line-height: 1; font-size: 0.78rem; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hero {
   display: grid;
   gap: 12px;
@@ -224,7 +224,7 @@ async function onPlay(track = null) {
 .hbtn.on { color: #1db954; }
 .qalbum { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 999px; background: rgba(0, 0, 0, 0.16); color: var(--text); font: 600 0.8rem var(--font); cursor: pointer; }
 .qalbum:hover { background: rgba(0, 0, 0, 0.28); }
-.open { display: inline-flex; align-items: center; gap: 3px; font-size: 0.8rem; font-weight: 600; color: var(--text-2); text-decoration: none; white-space: nowrap; }
+.open { display: inline-flex; align-items: center; line-height: 1; gap: 3px; font-size: 0.8rem; font-weight: 600; color: var(--text-2); text-decoration: none; white-space: nowrap; }
 .open:hover { color: var(--accent); }
 
 .tracks { list-style: none; margin: 0; padding: 0; }
