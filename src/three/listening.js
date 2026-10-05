@@ -513,18 +513,11 @@ export function buildListeningCorner() {
   ipod.add(body)
   const W = 0.1, H = 0.166, D = 0.018
   add(new RoundedBoxGeometry(W, H, D, 4, 0.008), new THREE.MeshPhysicalMaterial({ color: 0xe2e4e8, roughness: 0.18, clearcoat: 1, metalness: 0.05 }), 0, 0, 0, body)
-  // sound coming out of the iPod: soft rings spreading from it and a few music notes drifting up (only while it plays)
+  // sound coming out of the iPod: a few music notes drifting up from it (only while it plays)
   const soundFx = new THREE.Group()
   soundFx.position.copy(ipodHome.pos).add(new THREE.Vector3(0, 0.13, 0.02))
   soundFx.visible = false
   group.add(soundFx)
-  const ringGeo = new THREE.RingGeometry(0.93, 1, 48)
-  const rings = [0, 1, 2].map((i) => {
-    const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0x4ea1ff, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }))
-    m.userData.phase = i / 3
-    soundFx.add(m)
-    return m
-  })
   const noteTex = ['\u266A', '\u266B'].map((ch) => canvasTex(64, 64, (x, w, h) => {
     x.font = '700 52px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'
     x.fillStyle = '#ffffff'; x.fillText(ch, w / 2, h / 2 + 4)
@@ -541,12 +534,6 @@ export function buildListeningCorner() {
     soundA += ((on ? 1 : 0) - soundA) * Math.min(1, dt * (on ? 3 : 4))
     soundFx.visible = soundA > 0.02
     if (!soundFx.visible) return false
-    for (const r of rings) {
-      const k = (t * 0.55 + r.userData.phase) % 1
-      r.scale.setScalar(0.05 + k * 0.2)
-      r.material.opacity = soundA * 0.5 * (1 - k) * Math.min(1, k * 6)
-      r.quaternion.copy(camera.quaternion)
-    }
     for (const n of notes) {
       const k = (t * 0.32 + n.userData.phase) % 1
       n.position.set(n.userData.side * (0.03 + k * 0.1) + Math.sin(t * 1.6 + n.userData.sway * 6) * 0.012 * n.userData.sway, 0.03 + k * 0.25, 0.02)
