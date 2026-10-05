@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Trophy, Download, Users, Music2, Gamepad2, Languages, Globe2, BookOpen, Plane, Mic, RefreshCw, Unplug, Plug, Trash2, Check, AlertTriangle } from 'lucide-vue-next'
+import { Database, Trophy, Download, Users, Music2, Gamepad2, Languages, Globe2, BookOpen, Plane, Mic, RefreshCw, Unplug, Plug, Trash2, Check, AlertTriangle } from 'lucide-vue-next'
 import { api } from '../../composables/useAdmin'
 import { spotify, setLockSeconds, refreshSpotify, fmtLock, notify } from '../../composables/useSpotify'
 import { byCode } from '../../lib/languages'
@@ -48,6 +48,15 @@ async function clearLang(lang) {
 }
 const maxDay = computed(() => Math.max(1, ...(vis.value?.days || []).map((d) => d.u)))
 const dayLabel = (d) => new Date(d + 'T12:00:00').toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })
+const dbs = ref(null)
+async function loadDb() { try { dbs.value = await api('admin_db') } catch {} }
+onMounted(loadDb)
+const junkCount = computed(() => dbs.value ? dbs.value.junk.cache.rows + dbs.value.junk.logins + dbs.value.junk.limits + dbs.value.junk.visits : 0)
+async function cleanDb() {
+  busy.value = 'db'
+  try { const r = await api('admin_db_clean', {}); dbs.value = r.status; flash('Ryddet: ' + Object.values(r.removed).reduce((a, b) => a + b, 0) + ' gamle rader fjernet.') } catch (e) { err.value = e.message }
+  busy.value = ''
+}
 const bf = ref('')
 async function loadBf() { try { bf.value = (await api('admin_best_friend')).id || '' } catch {} }
 onMounted(loadBf)
@@ -83,6 +92,14 @@ const langName = (c) => byCode[c]?.en || c
         <button class="stat" @click="emit('goto', 'reiser')"><Plane :size="18" /><b>{{ st.counts.trips }}</b><span>reiser</span><small>{{ st.counts.photos }} bilder</small></button>
         <button class="stat" @click="emit('goto', 'boker')"><BookOpen :size="18" /><b>{{ st.counts.books }}</b><span>bøker</span></button>
         <button class="stat" @click="emit('goto', 'opptak')"><Mic :size="18" /><b>{{ st.counts.recordings }}</b><span>gitaropptak</span></button>
+      </section>
+
+      <!-- database -->
+      <section v-if="dbs" class="card">
+        <header><Database :size="18" /><h3>Database</h3><span class="pill" :class="junkCount ? 'off' : 'ok'">{{ junkCount ? `${junkCount} gamle rader` : 'Rent' }}</span></header>
+        <p class="help">{{ dbs.tables.length }} tabeller, {{ dbs.total_kb < 1024 ? dbs.total_kb + ' kB' : (dbs.total_kb / 1024).toFixed(1) + ' MB' }} totalt. Rydd fjerner bare gammelt som lages på nytt av seg selv (mellomlagret Spotify/Steam-data, gamle innloggingsforsøk og tellere). Reiser, bøker, opptak, sanger og bilder røres aldri.</p>
+        <ul class="langs"><li v-for="t in dbs.tables" :key="t.name"><span>{{ t.name }}</span><small>{{ t.rows }} rader · {{ t.kb }} kB</small></li></ul>
+        <button class="btn small" :disabled="busy === 'db' || !junkCount" @click="cleanDb"><Trash2 :size="14" />Rydd gamle rader</button>
       </section>
 
       <!-- milestones -->

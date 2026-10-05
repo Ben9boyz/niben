@@ -293,6 +293,8 @@ try {
         vi_count((string)(body()['path'] ?? ''));
         out(['ok' => true]);
     }
+    if ($action === 'admin_db') { require_admin(); out(db_status()); }
+    if ($action === 'admin_db_clean') { require_admin(); if (!$post) fail('Bruk POST.', 405); out(['ok' => true, 'removed' => db_clean(), 'status' => db_status()]); }
     if ($action === 'admin_visits') { require_admin(); out(vi_stats()); }
     if ($action === 'admin_status') {
         require_admin();
