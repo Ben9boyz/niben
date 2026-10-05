@@ -34,19 +34,19 @@ const STATIONS = {
   reiser: null, // computed from globe position
   om: { pos: [1.45, 1.62, PORTRAIT.z], target: [4, 1.62, PORTRAIT.z] },
   ovelse: { pos: [-0.55, 1.55, 2.0], target: [-4, 1.4, 2.0] },
-  lytte: { pos: [-0.35, 1.65, 0.95], target: [3.7, 0.42, 0.95] },
+  lytte: { pos: [-0.35, 1.7, 0.95], target: [3.7, 0.55, 0.95] },
   japansk: { pos: [-0.9, 1.5, 4.85], target: [-1.2, 0.28, 2.8] },
   // the desk again, from the left and a little lower: the gamepad in front, Steam on the monitor
   gaming: { pos: [1.3, 1.22, -1.75], target: [2.05, 1.0, -3.25] },
 }
 // the listening corner while music plays: closer, from above at an angle – the turntable and the
 // sleeve beside it in focus, the record shelf still visible underneath
-const LYTTE_TOP = { pos: [2.55, 1.55, -0.2], target: [3.72, 0.5, -0.12] }
+const LYTTE_TOP = { pos: [2.55, 1.7, -0.2], target: [3.72, 0.75, -0.12] }
 // a playlist playing: looking at the iPod back on its stand on the sideboard by the turntable (its screen shows the song)
 // in front of the record shelf (under the turntable), to browse the spines
-const LYTTE_SHELF = { pos: [2.12, 0.8, 0.1], target: [3.6, 0.3, 0.1] }
+const LYTTE_SHELF = { pos: [1.9, 0.95, 0.1], target: [3.6, 0.45, 0.1] }
 // (close up, so what's on the iPod's little screen can be read when it stands there)
-const LYTTE_IPOD = { pos: [3.14, 0.93, 0.138], target: [3.59, 0.73, 0.098] } // (30 % closer than before; aimed at the iPod's screen and wheel, not its base)
+const LYTTE_IPOD = { pos: [3.14, 1.17, 0.138], target: [3.59, 0.97, 0.098] } // (30 % closer than before; aimed at the iPod's screen and wheel, not its base)
 
 export const STATION_LABELS = { gaming: 'Gaming', japansk: 'Japansk', lytte: 'Lytteplassen', ovelse: 'Øvingstimer', gitar: 'Gitarer', boker: 'Bokhylla', kode: 'Prosjekter', reiser: 'Reiser', om: 'Om meg' }
 

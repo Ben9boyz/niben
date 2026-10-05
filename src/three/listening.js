@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { canvasTex, wrapText } from './textures'
 
@@ -12,16 +13,18 @@ const SLEEVE = 0.31
 const THICK = 0.0095
 const SLEEVE_T = 0.0045 // a record sleeve that has left the shelf: thin, like the real thing (the shelf slots are wider)
 const DISC_R = 0.147 // the vinyl: a 12-inch disc in a 12.4-inch sleeve
-const BOARD_W = 1.5
-const BOTTOM_Y = 0.0925 // top of the bottom board
-const TOP_Y = 0.61 // top of the sideboard
+const BOARD_W = 1.295 // the record cabinet (3 × 2 compartments)
+const TOP_Y = 0.85 // top of the cabinet
 const FRONT_Z = 0.45
 // the playing record's sleeve leans against the wall: tilted back LEAN rad, turned a bit towards the room
 const LEAN = 0.26
 const LEAN_Q = new THREE.Quaternion().setFromEuler(new THREE.Euler(-LEAN, -Math.PI / 2 - 0.25, 0, 'XYZ'))
 const LEAN_UP = (SLEEVE / 2) * Math.cos(LEAN) + 0.002 // centre height above the top
 const LEAN_Z = 0.165 - (SLEEVE / 2) * Math.sin(LEAN) // bottom edge ~16 cm from the wall
-const COMPARTMENT = [[-0.735, -0.012], [0.012, 0.735]] // inner x ranges
+// the six compartments of the cabinet: 3 columns × 2 rows, top row first (inner x range + the height of the floor)
+const COLS = [[-0.625, -0.2225], [-0.2075, 0.2025], [0.2175, 0.626]]
+const FLOORS = [0.433, 0.015]
+const COMPARTMENT = FLOORS.flatMap((y) => COLS.map(([a, b]) => ({ x0: a, x1: b, y })))
 
 function averageColor(img) {
   try {
@@ -210,14 +213,26 @@ export function buildListeningCorner() {
     return m
   }
 
-  // ── Open sideboard = record shelf ──
+  // ── Record cabinet (3 × 2 compartments; the frame is the model public/models/plateskap.glb – the boards below are what shows until it has loaded) ──
   const sideboardStart = group.children.length
-  add(new THREE.BoxGeometry(BOARD_W + 0.04, 0.03, 0.45), wood, 0, TOP_Y - 0.015, 0.225) // top
-  add(new THREE.BoxGeometry(BOARD_W, 0.025, 0.42), white, 0, BOTTOM_Y - 0.0125, 0.24) // bottom
-  add(new THREE.BoxGeometry(BOARD_W, TOP_Y - 0.08, 0.01), inner, 0, (TOP_Y + 0.08) / 2 - 0.015, 0.035) // back
-  ;[-BOARD_W / 2 + 0.0075, 0, BOARD_W / 2 - 0.0075].forEach((x) =>
-    add(new THREE.BoxGeometry(0.015, TOP_Y - 0.08, 0.42), white, x, (TOP_Y + 0.08) / 2 - 0.015, 0.24))
-  ;[-0.7, 0.7].forEach((x) => [0.08, 0.42].forEach((z) => add(new THREE.CylinderGeometry(0.015, 0.012, 0.08, 10), wood, x, 0.04, z)))
+  const cabinet = new THREE.Group()
+  group.add(cabinet)
+  const CAB_Z = 0.255 // centre of the cabinet's depth (front plane at FRONT_Z)
+  const CAB_D = 0.39
+  const T = 0.015
+  ;[-0.64, -0.215, 0.21, 0.641].forEach((x) => add(new THREE.BoxGeometry(T, TOP_Y, CAB_D), wood, x, TOP_Y / 2, CAB_Z, cabinet))
+  ;[T / 2, 0.4255, TOP_Y - T / 2].forEach((y) => add(new THREE.BoxGeometry(BOARD_W, T, CAB_D), wood, 0.0005, y, CAB_Z, cabinet))
+  add(new THREE.BoxGeometry(BOARD_W, TOP_Y, 0.008), inner, 0.0005, TOP_Y / 2, CAB_Z - CAB_D / 2 + 0.004, cabinet)
+  const frameModel = new THREE.Group() // the model's frame (same size as the boards), once it has loaded
+  frameModel.position.set(-0.215, 0, CAB_Z)
+  group.add(frameModel)
+  new GLTFLoader().load('models/plateskap.glb', (g) => {
+    g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; o.userData.kind = 'shelf' } })
+    frameModel.add(g.scene)
+    cabinet.visible = false
+    shelfDirty = true
+  }, undefined, () => {})
+  let shelfDirty = false
 
   // ── lighting for the records ──
   // a warm spot from above onto the turntable and the sleeve that's playing
@@ -227,7 +242,7 @@ export function buildListeningCorner() {
   group.add(spot, spot.target)
   // an LED strip under the top board, washing down over the record spines
   const led = new THREE.Mesh(new THREE.BoxGeometry(BOARD_W - 0.06, 0.008, 0.012), new THREE.MeshBasicMaterial({ color: 0xffe2b8, toneMapped: false }))
-  led.position.set(0, TOP_Y - 0.03, FRONT_Z - 0.03)
+  led.position.set(0, TOP_Y - 0.03, FRONT_Z - 0.03) // (under the top board: over the top row of records)
   group.add(led)
   const ledLight = new THREE.RectAreaLight(0xffd9a8, 5, BOARD_W - 0.06, 0.06)
   ledLight.position.copy(led.position)
@@ -235,7 +250,8 @@ export function buildListeningCorner() {
   group.add(ledLight)
 
   // the whole sideboard is clickable ("go to the shelf"), not just the records in it
-  for (const m of group.children.slice(sideboardStart)) m.userData.kind = 'shelf'
+  cabinet.traverse((m) => { m.userData.kind = 'shelf' })
+  frameModel.userData.kind = 'shelf'
   // ── Turntable ──
   const tt = new THREE.Group()
   tt.position.set(-0.42, TOP_Y, 0.24)
@@ -287,7 +303,7 @@ export function buildListeningCorner() {
   // floor-standing speakers either side of the sideboard
   ;[-1, 1].forEach((side) => {
     const sp = new THREE.Group()
-    sp.position.set(side * 1.0, 0, 0.2)
+    sp.position.set(side * 0.9, 0, 0.2)
     group.add(sp)
     add(new RoundedBoxGeometry(0.26, 0.82, 0.24, 3, 0.012), speakerWood, 0, 0.5, 0, sp)
     add(new THREE.CylinderGeometry(0.022, 0.03, 0.09, 12), dark, 0, 0.045, 0, sp) // plinth
@@ -301,7 +317,7 @@ export function buildListeningCorner() {
   // a plant on the sideboard
   const plantLeaves = []
   const plant = new THREE.Group()
-  plant.position.set(0.67, TOP_Y, 0.14)
+  plant.position.set(0.56, TOP_Y, 0.14)
   group.add(plant)
   add(new THREE.CylinderGeometry(0.058, 0.044, 0.1, 20), terracotta, 0, 0.05, 0, plant)
   for (let i = 0; i < 9; i++) {
@@ -315,7 +331,7 @@ export function buildListeningCorner() {
   }
   // a candle that flickers (the flame is part of the beat pulse below)
   const candle = new THREE.Group()
-  candle.position.set(0.62, TOP_Y, 0.37)
+  candle.position.set(0.6, TOP_Y, 0.4)
   group.add(candle)
   add(new THREE.CylinderGeometry(0.03, 0.03, 0.06, 20), new THREE.MeshStandardMaterial({ color: 0xe9d9bd, roughness: 0.5 }), 0, 0.03, 0, candle)
   add(new THREE.CylinderGeometry(0.0015, 0.0015, 0.014, 6), dark, 0, 0.067, 0, candle)
@@ -690,7 +706,7 @@ export function buildListeningCorner() {
   const pageMat = new THREE.MeshStandardMaterial({ color: 0xf1ede4, roughness: 0.8 })
   const COLW = 24 // px per record in the atlas (a spine is 9.5 mm wide)
   const AH = 1024 // atlas height: the spine fills the lower 90 %
-  const MAX_RECORDS = COMPARTMENT.reduce((n, [a, b]) => n + Math.floor((b - a - 0.01) / THICK), 0)
+  const MAX_RECORDS = Math.min(150, COMPARTMENT.reduce((n, c) => n + Math.floor((c.x1 - c.x0 - 0.01) / THICK), 0)) // (the texture atlas must stay under 4096 px wide)
   const atlas = document.createElement('canvas')
   atlas.width = COLW * MAX_RECORDS
   atlas.height = AH
@@ -872,23 +888,25 @@ export function buildListeningCorner() {
     loose.clear()
     // a little air before each new artist (not much – a few millimetres), so the shelf reads in groups
     const GAP = 0.012
-    const room = COMPARTMENT.map(([a, b]) => b - a - 0.01)
+    const room = COMPARTMENT.map((c) => c.x1 - c.x0 - 0.01)
+    const per = Math.max(14, Math.ceil(Math.min(albums.length, MAX_RECORDS) / 3)) // spread over the top row first, then the bottom row
     const artistOf = (a) => String(a?.artist || '').split(',')[0].trim().toLowerCase()
-    let comp = 0, cursor = 0
+    let comp = 0, cursor = 0, inComp = 0
     records = albums.slice(0, MAX_RECORDS).map((album, i) => {
       let gap = i > 0 && cursor > 0 && artistOf(album) !== artistOf(albums[i - 1]) ? GAP : 0
-      if (comp === 0 && cursor + gap + THICK > room[0] + 1e-6) { comp = 1; cursor = 0; gap = 0 }
-      else if (comp === 1 && cursor + gap + THICK > room[1] + 1e-6) gap = 0
+      const full = cursor + gap + THICK > room[comp] + 1e-6 || inComp >= per
+      if (full && comp < COMPARTMENT.length - 1) { comp++; cursor = 0; gap = 0; inComp = 0 }
       const off = cursor + gap
       cursor = off + THICK
-      const [x0] = COMPARTMENT[comp]
+      inComp++
+      const cab = COMPARTMENT[comp]
       const color = album.color || '#3a4352'
       drawSpine(i, album, color)
       colAttr.setX(i, i)
       cellAttr.setXY(i, (i % CCOLS) * (CELL / facesCanvas.width), 1 - (Math.floor(i / CCOLS) + 1) * (CELL / facesCanvas.height))
       drawFace(i, color, null)
       const r = { album, index: i, color, out: 0, hidden: false,
-        home: new THREE.Vector3(x0 + 0.006 + THICK / 2 + off, BOTTOM_Y + SLEEVE / 2 + 0.001, FRONT_Z - SLEEVE / 2 - 0.012) }
+        home: new THREE.Vector3(cab.x0 + 0.006 + THICK / 2 + off, cab.y + SLEEVE / 2 + 0.001, FRONT_Z - SLEEVE / 2 - 0.012) }
       writeInstance(r)
       // the cover (300 px) loads in the background: it goes on the spine, colours it if the album has no colour yet, and is
       // kept as a texture so that a record pulled out of the shelf already has its cover on it
@@ -1105,6 +1123,7 @@ export function buildListeningCorner() {
 
   function update(dt, t, camera) {
     let moving = false
+    if (shelfDirty) { moving = true; shelfDirty = false } // the frame model has just arrived: draw it
     if (!calm) animateLife(t)
     ttLed.visible = playing
     const spinTarget = playing && !calm ? (rpmFor(tempo) / 60) * Math.PI * 2 : 0
