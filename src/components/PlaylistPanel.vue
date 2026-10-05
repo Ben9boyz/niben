@@ -62,7 +62,7 @@ function back() {
 .stick { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 16px; }
 .stick .head { flex: 0 0 auto; margin: 0 2px; padding-bottom: 6px; }
 .stick :deep(.gb) { flex: 1 1 280px; min-width: 0; }
-.stick :deep(.gb .row) { justify-content: flex-end; }
+.stick :deep(.gb .gbrow) { justify-content: flex-end; }
 .stick .head b { font-size: 1.05rem; letter-spacing: 0.04em; color: var(--text-2); }
 .pp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .browse { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
@@ -71,4 +71,11 @@ function back() {
 .head b { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
 .search { width: 160px; min-width: 0; flex: 0 1 160px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--glass-border); background: var(--glass-strong); color: var(--text); font: 500 0.82rem var(--font); outline: none; }
 .search:focus { border-color: var(--accent); }
+@media (max-width: 820px) {
+  /* phones: the name on top, the buttons spread over the whole width underneath */
+  .stick { flex-direction: column; align-items: stretch; gap: 8px; }
+  .stick :deep(.gb) { flex: 0 0 auto; }
+  .stick .head { padding-bottom: 0; }
+  .stick :deep(.gb .gbrow) { justify-content: space-between; }
+}
 </style>

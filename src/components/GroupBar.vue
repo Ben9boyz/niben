@@ -32,7 +32,7 @@ async function save() {
 
 <template>
   <div class="gb">
-    <div class="row">
+    <div class="gbrow">
       <button class="sw" :class="{ on: groups.on }" role="switch" :aria-checked="groups.on" title="Grupper av / på" aria-label="Grupper av / på" @click="setGrouping(!groups.on)">
         <Layers :size="15" />
       </button>
@@ -72,7 +72,7 @@ async function save() {
 
 <style scoped>
 .gb { display: grid; gap: 8px; }
-.row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gbrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .sw, .ed { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.78rem var(--font); cursor: pointer; }
 .sw { padding: 5px 8px; }
 .sw.on { color: #fff; background: var(--accent); border-color: var(--accent); }
@@ -100,4 +100,10 @@ async function save() {
 .g button:disabled { opacity: 0.3; cursor: default; }
 .new { justify-self: start; display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border: 1px dashed var(--glass-border); border-radius: 999px; background: transparent; color: var(--text-2); font: 600 0.78rem var(--font); cursor: pointer; }
 .new:hover { color: var(--accent); border-color: var(--accent); }
+@media (max-width: 820px) {
+  /* phones: the switch on the left, Mapper/Artist exactly in the middle, Rediger on the right */
+  .gbrow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; }
+  .gbrow > .sw { justify-self: start; }
+  .gbrow > .ed { justify-self: end; }
+}
 </style>

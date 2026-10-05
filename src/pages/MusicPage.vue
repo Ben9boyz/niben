@@ -193,7 +193,7 @@ function show(view) {
   .m-mini { display: flex; top: auto !important; bottom: calc(72px + env(safe-area-inset-bottom)); left: 10px; right: 10px; width: auto; transition: bottom 0.35s var(--ease, ease); }
 }
 .m-sheet-bg { position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-end; background: rgba(0, 0, 0, 0.35); }
-.m-sheet { position: relative; width: 100%; padding: 18px 14px calc(18px + env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; background: var(--bg); }
+.m-sheet { position: relative; width: 100%; padding: 56px 14px calc(18px + env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; background: var(--bg); }
 .m-close { position: absolute; top: 10px; right: 10px; z-index: 2; display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 50%; background: var(--glass-strong); color: var(--text-2); cursor: pointer; }
 </style>
 

@@ -115,7 +115,7 @@ async function disconnect() {
 .stick { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 16px; }
 .stick .head { flex: 0 0 auto; margin: 0 2px; padding-bottom: 6px; }
 .stick :deep(.gb) { flex: 1 1 280px; min-width: 0; }
-.stick :deep(.gb .row) { justify-content: flex-end; }
+.stick :deep(.gb .gbrow) { justify-content: flex-end; }
 .stick .head b { font-size: 1.05rem; letter-spacing: 0.04em; color: var(--text-2); }
 .vp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .browse { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
@@ -129,4 +129,11 @@ async function disconnect() {
 .spot { display: inline-flex; align-items: center; gap: 4px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--glass-border); background: var(--glass-strong); color: var(--text-2); font: 600 0.78rem var(--font); cursor: pointer; flex: none; }
 .spot:hover, .spot.on { color: var(--accent); border-color: var(--accent); }
 .admin-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+@media (max-width: 820px) {
+  /* phones: the name on top, the buttons spread over the whole width underneath */
+  .stick { flex-direction: column; align-items: stretch; gap: 8px; }
+  .stick :deep(.gb) { flex: 0 0 auto; }
+  .stick .head { padding-bottom: 0; }
+  .stick :deep(.gb .gbrow) { justify-content: space-between; }
+}
 </style>

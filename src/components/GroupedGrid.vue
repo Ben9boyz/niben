@@ -162,6 +162,7 @@ const allow = (e, id) => { if (canDrag.value && drag.item) { e.preventDefault();
 .apic { flex: none; width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: var(--glass-strong); }
 .apic.ph { display: inline-grid; place-items: center; color: var(--text-3); }
 .groups { display: grid; gap: 18px; }
+@media (max-width: 820px) { .groups { gap: 4px; } .grp { padding: 2px; } .fold { padding: 8px 2px; } }
 .fb { display: grid; gap: 10px; }
 .crumbs { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; color: var(--text-3); font-size: 0.82rem; }
 .crumbs button { display: inline-flex; align-items: center; gap: 2px; padding: 4px 9px; border: 0; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font: 600 0.8rem var(--font); cursor: pointer; }

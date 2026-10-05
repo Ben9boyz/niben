@@ -170,10 +170,10 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
               <span class="t"><b>{{ t.name }}</b><small>{{ t.artist }} · {{ t.album }}</small></span>
               <span class="d"><Lock v-if="locked" :size="13" /><Play v-else :size="13" fill="currentColor" /> {{ fmtClock(t.ms / 1000) }}</span>
             </button>
-            <button v-if="admin.loggedIn && t.album_uri" class="act" title="Åpne albumet" @click="mode === 'rom' ? openAlbum(albumOf(t)) : openAlbumPage(albumOfTrack(t))"><Disc3 :size="15" />Album</button>
-            <button v-if="admin.loggedIn && mode !== 'rom'" class="act" title="Åpne artisten og albumene" @click="openArtistPage({ id: t.artist_id, name: firstArtist(t.artist) })"><User :size="15" />Artist</button>
-            <button class="act" title="Spill etterpå – i køen" aria-label="Spill etterpå" @click="enqueue(t.uri)"><ListEnd :size="15" />Kø</button>
-            <button class="act" title="Legg til i en spilleliste" @click="menuFor = menuFor === t.uri ? null : t.uri"><ListPlus :size="15" />Liste</button>
+            <button v-if="admin.loggedIn && t.album_uri" class="act" title="Åpne albumet" @click="mode === 'rom' ? openAlbum(albumOf(t)) : openAlbumPage(albumOfTrack(t))"><Disc3 :size="15" /><span class="lb">Album</span></button>
+            <button v-if="admin.loggedIn && mode !== 'rom'" class="act" title="Åpne artisten og albumene" @click="openArtistPage({ id: t.artist_id, name: firstArtist(t.artist) })"><User :size="15" /><span class="lb">Artist</span></button>
+            <button class="act" title="Spill etterpå – i køen" aria-label="Spill etterpå" @click="enqueue(t.uri)"><ListEnd :size="15" /><span class="lb">Kø</span></button>
+            <button class="act" title="Legg til i en spilleliste" @click="menuFor = menuFor === t.uri ? null : t.uri"><ListPlus :size="15" /><span class="lb">Liste</span></button>
           </div>
           <div v-if="menuFor === t.uri" class="menu"><AddMenu @queue="menuFor = null; enqueue(t.uri)" @pick="(p) => addTo(t, p)" @close="menuFor = null" /></div>
         </div>
@@ -205,4 +205,11 @@ h4 { margin: 0 2px 4px; font-size: 0.72rem; letter-spacing: 0.12em; text-transfo
 .act { display: inline-flex; align-items: center; gap: 4px; flex: none; padding: 6px 10px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.75rem var(--font); cursor: pointer; }
 .act:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
 .menu { margin: 2px 0 6px 54px; }
+@media (max-width: 560px) {
+  /* phones: the song gets the whole line, its buttons (album · artist · queue · playlist) sit under it */
+  .trk .row.wrap { flex-wrap: wrap; row-gap: 2px; }
+  .trk .main { flex: 1 1 100%; }
+  .trk .act { margin-left: 0; padding: 7px 12px; }
+  .trk .row.wrap > .act:first-of-type { margin-left: 54px; }
+}
 </style>
