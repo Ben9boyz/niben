@@ -8,16 +8,20 @@ cd "$(dirname "$0")"
 echo "Hvilken oversetter vil du bruke?"
 echo "  1) Claude (Anthropic)"
 echo "  2) Google Translate"
+echo "  3) MyMemory (GRATIS, ingen kort – lim inn e-posten din i stedet for nøkkel)"
 read -r -p "Valg [1/2]: " CH
 read -r -s -p "API-nøkkel (vises ikke): " KEY; echo
 KEY="$(echo -n "$KEY" | tr -d '[:space:]')"
 if [ -z "$KEY" ]; then echo "Ingen nøkkel."; exit 1; fi
 case "$CH" in
   2) PROVIDER=google ;;
+  3) PROVIDER=mymemory ;;
   *) PROVIDER=anthropic ;;
 esac
 # prøv at nøkkelen virker
-if [ "$PROVIDER" = anthropic ]; then
+if [ "$PROVIDER" = mymemory ]; then
+  CODE=200 # ingen nøkkel å teste
+elif [ "$PROVIDER" = anthropic ]; then
   CODE=$(curl -s -o /dev/null -w "%{http_code}" https://api.anthropic.com/v1/messages \
     -H "x-api-key: $KEY" -H "anthropic-version: 2023-06-01" -H "content-type: application/json" \
     -d '{"model":"claude-haiku-4-5-20251001","max_tokens":8,"messages":[{"role":"user","content":"hi"}]}')

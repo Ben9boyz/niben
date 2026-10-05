@@ -1,7 +1,7 @@
 <?php
 // Translation of the text on the site. The site is written in Norwegian; the browser sends the sentences it
 // shows and gets them back in the visitor's language. Every sentence is translated ONCE and kept in the database,
-// so the service is only asked about new text (the translator can be Claude or Google Translate – whichever key is
+// so the service is only asked about new text (the translator can be Claude, Google Translate or the free MyMemory – whichever key is
 // in _translate.php, made by translate-setup.sh).
 
 const TR_MAX_TEXTS = 40;
@@ -42,6 +42,24 @@ function tr_call(string $lang, array $texts): ?array {
         $out = [];
         foreach ($j['data']['translations'] ?? [] as $x) $out[] = html_entity_decode((string)($x['translatedText'] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         return count($out) === count($texts) ? $out : null;
+    }
+    if ($cfg['provider'] === 'mymemory') {
+        // free, no card: MyMemory (about 5 000 characters a day; 50 000 when an e-mail address is given as the "key").
+        // One request per sentence, max ~500 characters each.
+        @set_time_limit(90);
+        $out = [];
+        foreach ($texts as $t) {
+            $q = http_build_query(['q' => $t, 'langpair' => 'no|' . $lang, 'de' => (string)$cfg['key']]);
+            [$s, $res] = http_req('GET', 'https://api.mymemory.translated.net/get?' . $q);
+            $j = $s === 200 ? json_decode((string)$res, true) : null;
+            $o = trim((string)($j['responseData']['translatedText'] ?? ''));
+            if (!$j || (int)($j['responseStatus'] ?? 0) !== 200 || $o === '' || stripos($o, 'MYMEMORY WARNING') !== false || stripos($o, 'PLEASE SELECT') !== false) {
+                error_log('niben translate: MyMemory ' . $s . ' ' . substr((string)$res, 0, 160));
+                return null; // quota used up (or a hiccup): nothing is saved, it tries again later
+            }
+            $out[] = html_entity_decode($o, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+        return $out;
     }
     if ($cfg['provider'] === 'anthropic') {
         $prompt = "Translate the user interface text of a personal hobby website (guitars, books, travel, music, Japanese study, gaming, coding) from Norwegian to {$name}.\n"
