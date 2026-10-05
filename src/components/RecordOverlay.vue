@@ -101,8 +101,38 @@ function onKey(e) {
   else if (room.shelfView) room.shelfView = false
 }
 
-onMounted(() => { raf = requestAnimationFrame(frame); window.addEventListener('keydown', onKey) })
-onBeforeUnmount(() => { cancelAnimationFrame(raf); clearTimeout(flipTimer); window.removeEventListener('keydown', onKey) })
+// The mouse wheel / trackpad over the 3D view: turned-over record → scrolls its song list · browsing the shelf (or
+// holding a record from it) → moves along the shelf, one record per notch
+let acc = 0, wheelAt = 0
+function onWheel(e) {
+  if (!room.shelfView && !room.sel.musikk) return
+  if (e.target.closest?.('.dock, .rback, .smenu, .gwin, .ctx, .cm, .pk')) return // panels and lists scroll themselves
+  if (room.recordFlipped && backReady.value) {
+    const tl = document.querySelector('.rback .tl')
+    if (tl) { tl.scrollBy({ top: e.deltaY }); e.preventDefault() }
+    return
+  }
+  if (!room.shelfView) return
+  e.preventDefault()
+  acc += e.deltaY
+  const now = performance.now()
+  if (Math.abs(acc) < 50 || now - wheelAt < 140) return
+  const d = acc > 0 ? 1 : -1
+  acc = 0
+  wheelAt = now
+  const n = shelfCount.value
+  if (!n) return
+  if (peeked.value) browse(d)
+  else if (album.value) { // a record in my hand: put it back and take the neighbour
+    const i = shelfAlbums.value.findIndex((a) => a.uri === album.value.uri)
+    const j = ((i < 0 ? room.peekIndex : i) + d + n) % n
+    room.peekIndex = j
+    room.sel.musikk = { kind: 'album', uri: shelfAlbums.value[j].uri, t: Date.now() }
+  }
+}
+
+onMounted(() => { raf = requestAnimationFrame(frame); window.addEventListener('keydown', onKey); window.addEventListener('wheel', onWheel, { passive: false }) })
+onBeforeUnmount(() => { cancelAnimationFrame(raf); clearTimeout(flipTimer); window.removeEventListener('keydown', onKey); window.removeEventListener('wheel', onWheel) })
 </script>
 
 <template>

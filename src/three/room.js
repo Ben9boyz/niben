@@ -105,7 +105,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
 
   const scene = new THREE.Scene()
   const pmrem = new THREE.PMREMGenerator(renderer)
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+  const baseEnv = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+  scene.environment = baseEnv
 
   const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 60)
   camera.position.set(0.8, 9.5, 19)
@@ -116,18 +117,32 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     samples: quality === 'low' ? 2 : quality === 'ultra' ? Math.min(8, renderer.capabilities.maxSamples || 4) : 4,
   }))
   composer.addPass(new RenderPass(scene, camera))
-  // Heavy shaders (ambient occlusion, light shafts, lamp shadows, full-size bloom) only in the downloaded app.
-  // The web version stays light: no extra code is even downloaded for it.
+  // Heavy shaders (ambient occlusion, light shafts, lamp shadows, full-size bloom) are on by themselves only in the
+  // downloaded app – the web version stays light. Every one of them can be switched on / off in Innstillinger → Grafikk.
   const fancy = inApp
+  const maxMsaa = renderer.capabilities.maxSamples || 4
+  const maxTex = renderer.capabilities.maxTextureSize || 4096
+  // what "Auto" means for this device (the user's own choices override any of these)
+  const autoGfx = () => ({
+    res: 'auto', fps: 0,
+    msaa: quality === 'low' ? 2 : 4, // 8× MSAA on a half-float target costs a lot and shows little – still available in the settings
+    shadows: quality === 'ultra' ? 4096 : quality === 'low' ? 1024 : 2048,
+    soft: inApp, lamp: false, ao: fancy ? 'auto' : 'off', shafts: fancy, bloom: 'half', bloomMul: 1,
+    vignette: true, reflections: quality === 'ultra' ? 512 : quality === 'high' ? 256 : 128,
+    weather: true, ambient: true, exposure: 1, showFps: false,
+  })
+  let eff = autoGfx()
+  let gfxIn = null // what the user chose in the settings ({ mode: 'auto' | 'custom', … } or null)
   let ao = null
-  if (fancy) {
+  let aoLoading = false
+  function ensureAO() {
+    if (ao || aoLoading) return
+    aoLoading = true
     import('three/examples/jsm/postprocessing/GTAOPass.js').then(({ GTAOPass }) => {
       ao = new GTAOPass(scene, camera, 256, 256)
       ao.output = GTAOPass.OUTPUT.Default
-      ao.updateGtaoMaterial({ radius: 0.35, distanceExponent: 1.5, thickness: 1.2, scale: 1.1, samples: 24, distanceFallOff: 1, screenSpaceRadius: false })
-      ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 3, samples: 16 })
       composer.insertPass(ao, 1)
-      ao.enabled = level <= 3
+      applyGfx(gfxIn)
       resize()
       invalidate(0.5)
     })
@@ -186,7 +201,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   // ── light shafts from the window (ultra only): a soft, dusty volume along the sun's direction ──
   const shaftU = { uTime: { value: 0 }, uStrength: { value: 0 }, uColor: { value: new THREE.Color(0xfff1dc) } }
   let shafts = null
-  if (fancy) {
+  function buildShafts() {
+    if (shafts) return
     const dir = new THREE.Vector3(-10, -5.2, -3.2).normalize()
     const L = 6.5
     const c = [[0.9, 2.3, 1.0], [0.9, 0.9, 1.0], [0.9, 0.9, 2.4], [0.9, 2.3, 2.4]].map(([, y, z]) => new THREE.Vector3(3.95, y, z))
@@ -226,6 +242,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     shafts.renderOrder = 5
     shafts.visible = false
     scene.add(shafts)
+    applyWeatherLight()
   }
   // ── weather outside the window: rain / snow falling in front of the sky, lightning, grey clouds ──
   let weather = { kind: 'clear', day: true }
@@ -248,6 +265,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   scene.add(snow)
   let flash = 0
   function stepWeather(dt, t) {
+    if (!eff.weather) { rain.visible = false; snow.visible = false; return false }
     const k = weather.kind
     const raining = k === 'rain' || k === 'drizzle' || k === 'thunder'
     rain.visible = raining
@@ -317,12 +335,9 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   const lampLight = new THREE.PointLight(0xffd7a8, 0.4, 7, 1.6)
   lampLight.position.set(0.9, 1.78, 0)
   lampGroup.add(lampLight)
-  if (inApp) { // the lamp casts real shadows in the app
-    lampLight.castShadow = true
-    lampLight.shadow.mapSize.set(1024, 1024)
-    lampLight.shadow.bias = -0.002
-    lampLight.shadow.radius = 4
-  }
+  lampLight.shadow.mapSize.set(1024, 1024) // (switched on by the graphics settings)
+  lampLight.shadow.bias = -0.002
+  lampLight.shadow.radius = 4
 
   // corner plant
   const plant = new THREE.Group()
@@ -351,8 +366,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   sun.position.set(10, 5.2, 3.2)
   sun.target.position.set(0, 0, 0)
   sun.castShadow = true
-  const shadowRes = quality === 'ultra' ? 4096 : quality === 'low' ? 1024 : 2048 // sharper shadows on strong machines
-  sun.shadow.mapSize.set(shadowRes, shadowRes)
+  sun.shadow.mapSize.set(2048, 2048) // (the size follows the graphics settings)
   sun.shadow.radius = 3
   sun.shadow.camera.left = -6
   sun.shadow.camera.right = 6
@@ -750,7 +764,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
       windowLight.color.set(t.windowColor).lerp(new THREE.Color(0xffb27a), warm * 0.6)
     }
     if (shafts) {
-      shafts.visible = !reduced && (t.night ? true : weather.kind === 'clear' || weather.kind === 'cloud')
+      shafts.visible = eff.shafts && !reduced && (t.night ? true : weather.kind === 'clear' || weather.kind === 'cloud')
       shaftU.uStrength.value = t.night ? 0.035 : 0.16 * d * d
       shaftU.uColor.value.copy(t.night ? new THREE.Color(0x9fc0ff) : sun.color)
     }
@@ -770,13 +784,13 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     lampLight.intensity = t.lamp
     spot.intensity = t.night ? 1.4 : 0.7
     scene.environmentIntensity = t.env
-    bloom.strength = t.bloom
+    bloom.strength = t.bloom * eff.bloomMul
     windowLight.intensity = t.window
     windowLight.color.set(t.windowColor)
     scheduleEnvCapture()
     invalidate(1)
     bloom.threshold = t.threshold
-    renderer.toneMappingExposure = t.exposure
+    renderer.toneMappingExposure = t.exposure * eff.exposure
     skyMat.map.dispose()
     skyMat.map = skyTexture(t.night, weather.kind)
     skyMat.needsUpdate = true
@@ -801,11 +815,15 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   let envTimer = 0
   const envPos = new THREE.Vector3(0, 1.4, 0)
   function captureEnv() {
+    if (!eff.reflections) { // reflections off: the plain studio light instead of the room itself
+      if (envRT) { scene.environment = baseEnv; envRT.dispose(); envRT = null }
+      return
+    }
     renderer.shadowMap.needsUpdate = true
     invalidate(0.5)
     const old = envRT
     const wasBloom = bloom.enabled
-    envRT = pmrem.fromScene(scene, 0.035, 0.1, 30, { size: quality === 'ultra' ? 512 : quality === 'high' ? 256 : 128, position: envPos })
+    envRT = pmrem.fromScene(scene, 0.035, 0.1, 30, { size: eff.reflections, position: envPos })
     scene.environment = envRT.texture
     old?.dispose()
     bloom.enabled = wasBloom
@@ -815,6 +833,57 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     envTimer = setTimeout(captureEnv, delay)
   }
 
+  // ── Graphics settings ─────────────────────────────────────
+  // "Auto" = what autoGfx() says for this device (and the frame time moves the resolution up and down). In "custom"
+  // every value comes from the settings; whatever the user left out stays automatic.
+  function applyGfx(g) {
+    const prev = eff
+    eff = g && g.mode === 'custom' ? { ...autoGfx(), ...g } : autoGfx()
+    eff.showFps = !!g?.showFps // the frame counter works in Auto too
+    const n = eff
+    // picture sharpness: smoothing of the edges (MSAA) – the render targets are rebuilt with the new sample count
+    if (n.msaa !== prev.msaa) {
+      for (const t of [composer.renderTarget1, composer.renderTarget2]) { t.samples = Math.max(0, Math.min(n.msaa, maxMsaa)); t.dispose() }
+    }
+    // shadows: size (0 = off), softness and the lamp's own shadow
+    const shadowsOn = n.shadows > 0
+    sun.castShadow = shadowsOn
+    const size = Math.min(n.shadows || 1024, maxTex)
+    if (sun.shadow.mapSize.x !== size) { sun.shadow.mapSize.set(size, size); sun.shadow.map?.dispose(); sun.shadow.map = null }
+    lampLight.castShadow = shadowsOn && !!n.lamp
+    if (!lampLight.castShadow && lampLight.shadow.map) { lampLight.shadow.map.dispose(); lampLight.shadow.map = null }
+    const wantType = n.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap
+    if (renderer.shadowMap.type !== wantType) {
+      renderer.shadowMap.type = wantType
+      scene.traverse((o) => { if (o.material) [].concat(o.material).forEach((m) => { m.needsUpdate = true }) })
+    }
+    shadowsDirty = true
+    // ambient occlusion (loaded the first time it is switched on) and the light shafts
+    if (n.ao !== 'off') {
+      ensureAO()
+      if (ao) {
+        ao.updateGtaoMaterial({ radius: 0.35, distanceExponent: 1.5, thickness: 1.2, scale: 1.1, samples: n.ao === 'low' ? 8 : n.ao === 'auto' ? 12 : 24, distanceFallOff: 1, screenSpaceRadius: false })
+        ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: n.ao === 'low' ? 4 : 6, rings: n.ao === 'low' ? 2 : 3, samples: n.ao === 'low' ? 8 : n.ao === 'auto' ? 10 : 16 })
+        ao.enabled = n.ao !== 'auto' || level <= 3
+      }
+    } else if (ao) ao.enabled = false
+    if (n.shafts) buildShafts()
+    if (shafts) applyWeatherLight()
+    // glow, vignette, reflections, exposure
+    bloom.enabled = n.bloom !== 'off'
+    vignette.enabled = !!n.vignette
+    if (n.reflections !== prev.reflections) scheduleEnvCapture(60)
+    // the frame counter in the corner
+    if (n.showFps && !fpsEl) {
+      fpsEl = document.createElement('div')
+      fpsEl.style.cssText = 'position:fixed;left:104px;bottom:12px;z-index:60;padding:4px 9px;border-radius:8px;background:rgba(0,0,0,.62);color:#9fe6b0;font:600 12px ui-monospace,Menlo,monospace;pointer-events:none'
+      document.body.appendChild(fpsEl)
+    } else if (!n.showFps && fpsEl) { fpsEl.remove(); fpsEl = null }
+    applyLevel() // resolution (also sets the AO rung and calls resize)
+    setTheme(themeName) // glow strength and exposure
+    invalidate(1)
+  }
+
   // ── Resize ─────────────────────────────────────────────
   function resize() {
     const w = host.clientWidth || 1
@@ -822,7 +891,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     renderer.setSize(w, h, false)
     composer.setPixelRatio(renderer.getPixelRatio())
     composer.setSize(w, h)
-    bloom.resolution.set(fancy ? w : w / 2, fancy ? h : h / 2) // ultra: bloom at full resolution
+    bloom.resolution.set(eff.bloom === 'full' ? w : w / 2, eff.bloom === 'full' ? h : h / 2)
     camera.aspect = w / h
     // narrow screens: widen the lens so the subject fits
     camera.fov = w / h < 0.8 ? 62 : w / h < 1.2 ? 52 : 42
@@ -857,14 +926,14 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   let perfN = 0
   let perfSkip = 90 // ignore the first frames (shader compilation, intro)
   function applyLevel() {
-    const l = LEVELS[level]
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, l.pr))
-    if (ao) ao.enabled = level <= 3 // AO is the first thing to go when frames get slow
+    // "Auto": the ladder above (never more than the screen has); a number: exactly that – even supersampling
+    renderer.setPixelRatio(eff.res === 'auto' ? Math.min(window.devicePixelRatio, LEVELS[level].pr) : Number(eff.res))
+    if (ao && eff.ao === 'auto') ao.enabled = level <= 3 // AO is the first thing to go when frames get slow
     resize()
   }
   applyLevel()
   function measure(raw) {
-    if (document.hidden) return
+    if (document.hidden || eff.res !== 'auto') return
     if (perfSkip > 0) { perfSkip--; return }
     perfSum += raw
     perfN++
@@ -895,6 +964,11 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   function frame() {
     if (!running) return
     raf = requestAnimationFrame(frame)
+    if (eff.fps) { // frame-rate cap
+      const t0 = performance.now()
+      if (t0 - lastFrameAt < 1000 / eff.fps - 1.5) return
+      lastFrameAt = t0
+    }
     clock.update()
     const raw = clock.getDelta()
     const active = step(Math.min(raw, 0.05))
@@ -905,11 +979,15 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     if (!active && !shadowsDirty && !(ambient && now - lastRender > 48) && now - lastRender < 1000) return
     if (active) measure(raw)
     shaftU.uTime.value = simT
-    if (shadowsDirty || ++shadowTick % 30 === 0) renderer.shadowMap.needsUpdate = true
+    // shadows are redrawn when something moved (and, for late-loading textures, now and then)
+    if (shadowsDirty || ++shadowTick % 240 === 0) renderer.shadowMap.needsUpdate = true
     shadowsDirty = false
     composer.render()
     lastRender = now
+    fpsFrames++
+    if (now - fpsAt > 500) { fpsVal = Math.round(fpsFrames * 1000 / (now - fpsAt)); fpsFrames = 0; fpsAt = now; if (fpsEl) fpsEl.textContent = `${fpsVal} fps · ${Math.round(renderer.getPixelRatio() * 100) / 100}× · ${renderer.info.render.calls} anrop` }
   }
+  let lastFrameAt = 0, fpsFrames = 0, fpsAt = performance.now(), fpsVal = 0, fpsEl = null
   let shadowsDirty = true
   let ambient = false
 
@@ -987,8 +1065,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     if (near('kode', 'gaming') && desk.update(dt, t)) active = true
     if (globeTable.update(dt, t, !reduced && near('reiser'))) active = true
     if (timerState && near('ovelse', 'hjem') && practice.update(dt, t, timerState(), timerInterval)) active = true
-    ambient = !reduced && !document.hidden && near('lytte', 'hjem', 'kode', 'gaming')
-    if (!reduced && near('lytte', 'hjem') && stepWeather(dt, t)) { active = true; ambient = true }
+    ambient = eff.ambient && !reduced && !document.hidden && near('lytte', 'hjem', 'kode', 'gaming')
+    if (!reduced && eff.weather && near('lytte', 'hjem') && stepWeather(dt, t)) { active = true; ambient = true }
     figures.update(t)
     if (listening.update(dt, t, camera)) { shadowsDirty = true; active = true }
     if (japan.update(dt)) { shadowsDirty = true; active = true }
@@ -1005,6 +1083,11 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   const fireReady = () => { if (!readyFired) { readyFired = true; onReady?.() } }
   requestAnimationFrame(fireReady)
   setTimeout(fireReady, 1500)
+
+  // compile every shader up front (in the background, in parallel) instead of stuttering when something first shows;
+  // the browser / app keeps its own on-disk cache of the compiled shaders for the next start
+  try { renderer.compileAsync?.(scene, camera)?.catch?.(() => {}) } catch {}
+  applyGfx(null) // start with what "Auto" means for this device (the settings are sent in right after)
 
   return {
     goTo,
@@ -1072,6 +1155,10 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
       const r = renderer.domElement.getBoundingClientRect()
       return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }
     },
+    /** The user's graphics choices ({ mode: 'auto' | 'custom', … }); null = automatic. */
+    setGraphics(g) { gfxIn = g; applyGfx(g) },
+    /** What the picture is made of right now (for the settings window): quality class, resolution, frame rate … */
+    get gfxInfo() { return { quality, level, pixelRatio: renderer.getPixelRatio(), fps: fpsVal, maxMsaa, maxTex, dpr: window.devicePixelRatio, gpu: spec.gpu, score: spec.score, auto: autoGfx(), software: spec.software } },
     get debug() { return { station, camPos: camPos.toArray(), cam: camera.position.toArray(), flight: !!flight } },
     // test helper: draw calls / triangles of one plain render (no post-processing)
     stats() {
@@ -1089,6 +1176,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     fastForward(seconds = 3) { for (let i = 0; i < seconds * 60; i++) step(1 / 60); renderer.shadowMap.needsUpdate = true; composer.render() },
     dispose() {
       running = false
+      fpsEl?.remove()
       cancelAnimationFrame(raf)
       ro.disconnect()
       el.removeEventListener('pointermove', onMove)

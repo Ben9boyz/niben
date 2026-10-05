@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import { Settings, Globe, Sun, Moon, Radio, Check, Wind, Keyboard, Box, LayoutList, ShieldCheck, ChevronDown, Search } from 'lucide-vue-next'
+import { Gauge, Settings, Globe, Sun, Moon, Radio, Check, Wind, Keyboard, Box, LayoutList, ShieldCheck, ChevronDown, Search } from 'lucide-vue-next'
 import { LANGS } from '../lib/languages'
 import { i18n, setLang } from '../composables/useLang'
 import { useTheme } from '../composables/useTheme'
@@ -10,6 +10,7 @@ import { mode as viewMode, toggleMode } from '../composables/useMode'
 import { shortcuts } from '../composables/useShortcuts'
 import { admin } from '../composables/useAdmin'
 import { useData } from '../composables/useData'
+import { gfxUi } from '../composables/useGraphics'
 
 // One button for everything about how the site looks: my photo (with the green dot) when I'm logged in, a cog for
 // everybody else. It opens a small menu: admin (me only), 3D room / plain version, theme, calm mode, language, shortcuts.
@@ -101,6 +102,8 @@ const setView = (v) => { if (viewMode.value !== v) toggleMode() }
             <li v-for="l in langs" :key="l.code"><button :class="{ on: l.code === i18n.lang }" :lang="l.code" @click="pickLang(l.code)"><span>{{ l.name }}</span><Check v-if="l.code === i18n.lang" :size="14" aria-hidden="true" /></button></li>
           </ul>
         </div>
+
+        <button v-if="viewMode === 'rom'" class="row" role="menuitem" @click="close(); gfxUi.open = true"><Gauge :size="16" aria-hidden="true" /><span class="l"><b>Grafikk</b><small>Auto – eller still inn selv</small></span></button>
 
         <button v-if="!touch" class="row" role="menuitem" @click="close(); shortcuts.open = true"><Keyboard :size="16" aria-hidden="true" /><span class="l"><b>Hurtigtaster</b><small>Trykk ? når som helst</small></span></button>
       </div>

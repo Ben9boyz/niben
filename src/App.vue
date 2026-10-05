@@ -7,6 +7,7 @@ import SubTabs from './components/SubTabs.vue'
 import DropTray from './components/DropTray.vue'
 import GlobalMini from './components/GlobalMini.vue'
 import ShortcutsHelp from './components/ShortcutsHelp.vue'
+import GraphicsSettings from './components/GraphicsSettings.vue'
 import LangSuggest from './components/LangSuggest.vue'
 import ContextMenu from './components/ContextMenu.vue'
 import WeatherFx from './components/WeatherFx.vue'
@@ -48,6 +49,7 @@ const toTop = () => window.scrollTo(0, 0)
   <MusicToast />
   <DropTray />
   <ShortcutsHelp />
+  <GraphicsSettings />
   <LangSuggest />
   <ContextMenu />
   <GlobalMini v-if="mode !== 'rom' || shell === 'player'" :show="route.name !== 'lytte' && route.name !== 'admin'" />

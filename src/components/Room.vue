@@ -9,6 +9,7 @@ import { timer, timerState, toggle as toggleTimer } from '../composables/useTime
 import { spotify, useSpotify, prefetchTracks, fetchTracks, fetchTempo, fetchQueue, control, findAlbum, addGuest } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 import { useVinylNoise } from '../composables/useVinylNoise'
+import { gfxPayload } from '../composables/useGraphics'
 import { weather } from '../composables/useLive'
 import { calm } from '../composables/useCalm'
 import { shelfAlbums, loadGroups } from '../composables/useGroups'
@@ -108,6 +109,8 @@ onMounted(() => {
 watch(() => data.version, () => data.loaded && api?.setData(data))
 // the word of the day on the card in the Japanese corner
 loadJapanese()
+// the graphics settings (Innstillinger → Grafikk) go straight to the room
+watch(() => [room.api, JSON.stringify(gfxPayload())], () => room.api?.setGraphics(gfxPayload()), { immediate: true })
 watch(() => [jp.word, room.api], () => room.api?.setJapanWord(jp.word), { immediate: true })
 // the monitor in the gaming corner shows Steam
 loadSteam()
