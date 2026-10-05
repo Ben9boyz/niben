@@ -475,3 +475,10 @@ html.player-shell .cpage { padding-top: 80px; padding-bottom: 40px; }
 .more-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px; border: 0; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font: 600 0.86rem var(--font); cursor: pointer; transition: filter 0.2s; }
 .more-btn:hover { filter: brightness(1.06); }
 .more-btn .up { transform: rotate(180deg); }
+
+/* phones: no pinch- or double-tap zoom (the 3D room's canvas has its own touch handling), and fields are
+   16 px so iOS doesn't zoom in when one is tapped */
+@media (pointer: coarse) {
+  html, body { touch-action: pan-x pan-y; }
+  input, select, textarea { font-size: 16px !important; }
+}

@@ -41,3 +41,6 @@ router.afterEach((to) => {
 
 createApp(App).use(router).mount('#app')
 registerServiceWorker()
+
+// iOS Safari ignores user-scalable=no: stop the pinch gesture itself
+for (const t of ['gesturestart', 'gesturechange']) document.addEventListener(t, (e) => e.preventDefault(), { passive: false })
