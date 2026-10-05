@@ -1,7 +1,7 @@
 <script setup>
 import { ChevronLeft, Music, Lock, Play, Pause, ArrowUpRight, ListPlus } from 'lucide-vue-next'
 import { ref, computed, watch } from 'vue'
-import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote, control, addToPlaylist } from '../composables/useSpotify'
+import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote, control, addToPlaylist, enqueue } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 
 // Spotify-style page for one album or playlist: big cover, colour from the cover, tracks.
@@ -146,10 +146,11 @@ async function onPlay(track = null) {
             <template v-else><span class="num">{{ t.n || i + 1 }}</span><span class="hov"><Play :size="13" fill="currentColor" /></span></template>
           </span>
           <span class="t"><b>{{ t.name }}</b><small v-if="kind === 'playlist' || t.artist !== item.artist">{{ t.artist }}</small></span>
-          <button v-if="admin.loggedIn" class="add" :class="{ on: menuFor === t.uri }" title="Legg til i en spilleliste" aria-label="Legg til i en spilleliste" @click.stop="menuFor = menuFor === t.uri ? null : t.uri"><ListPlus :size="15" /></button>
+          <button v-if="admin.loggedIn" class="add" :class="{ on: menuFor === t.uri }" title="Legg i kø eller i en spilleliste" aria-label="Legg i kø eller i en spilleliste" @click.stop="menuFor = menuFor === t.uri ? null : t.uri"><ListPlus :size="15" /></button>
           <span class="d">{{ busy === t.uri ? '…' : fmtClock(t.ms / 1000) }}</span>
         </li>
         <li v-if="menuFor === t.uri" class="plmenu">
+          <button class="qbtn" @click="menuFor = null; enqueue(t.uri)">Spill etterpå (kø)</button>
           <span v-if="!editable.length" class="note">Ingen spillelister du kan legge til i.</span>
           <button v-for="p in editable" :key="p.uri" @click="addTo(t, p)">{{ p.name }}</button>
         </li>
@@ -203,6 +204,7 @@ async function onPlay(track = null) {
 .tracks li.plmenu:hover { background: transparent; }
 .plmenu button { padding: 5px 11px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text); font: 600 0.78rem var(--font); cursor: pointer; }
 .plmenu button:hover { border-color: var(--accent); color: var(--accent); }
+.plmenu .qbtn { border-color: #1db954; color: #1db954; }
 .plmenu .note { color: var(--text-3); font-size: 0.8rem; }
 .tracks li.note { display: block; padding: 10px 8px; color: var(--text-3); line-height: 1.4; }
 .tracks li.clickable { cursor: pointer; }

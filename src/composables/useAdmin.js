@@ -4,8 +4,8 @@ import { reloadData } from './useData'
 export const admin = reactive({ checked: false, loggedIn: false })
 
 /** Calls api.php. `body` may be a plain object (sent as JSON) or FormData (for uploads). */
-export async function api(action, body, { onProgress } = {}) {
-  const url = `api.php?action=${encodeURIComponent(action)}`
+export async function api(action, body, { onProgress, query = '' } = {}) {
+  const url = `api.php?action=${encodeURIComponent(action)}${query}`
   if (body instanceof FormData && onProgress) {
     // XHR gives upload progress for large audio files
     return new Promise((resolve, reject) => {

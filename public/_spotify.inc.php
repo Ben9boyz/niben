@@ -191,6 +191,9 @@ function sp_now(): ?array {
         return [
             'playing' => $playing,
             'device' => $dev['name'] ?? null,
+            'device_type' => $dev['type'] ?? null,
+            'volume' => $dev['volume_percent'] ?? null,
+            'repeat' => $j['repeat_state'] ?? 'off',
             'shuffle' => (bool)($j['shuffle_state'] ?? false),
             'progress_ms' => (int)($j['progress_ms'] ?? 0),
             'duration_ms' => (int)($it['duration_ms'] ?? 0),

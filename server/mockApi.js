@@ -219,6 +219,22 @@ export function mockApi() {
             const playlists = [0, 1].map((i) => ({ id: `sp${i}`, uri: `spotify:playlist:searchlist${String(i).padStart(10, '0')}`, name: `${q} mix ${i + 1}`, owner: 'Spotify-bruker', image: mockCover(i * 90 + 40), thumb: mockCover(i * 90 + 40), count: 30 + i * 12, url: null }))
             return send(res, 200, { albums, tracks, playlists })
           }
+          case 'spotify_queue':
+            return send(res, 200, { tracks: ['Golden Hour', 'Slow Down', 'Northern Sky', 'Paper Hearts'].map((name, i) => ({ uri: `spotify:track:q${i}`, name, artist: 'Mock Artist', img: mockCover(i * 40), ms: 180000 + i * 9000 })) })
+          case 'spotify_devices':
+            if (!needAdmin()) return
+            return send(res, 200, { devices: [{ id: 'dev00000000000000000001', name: 'niben.no', type: 'Computer', active: true, volume: 70 }, { id: 'dev00000000000000000002', name: 'iPhone', type: 'Smartphone', active: false, volume: 50 }] })
+          case 'spotify_transfer': case 'spotify_volume': case 'spotify_enqueue':
+            if (!needAdmin()) return
+            return send(res, 200, { ok: true })
+          case 'spotify_repeat':
+            if (!needAdmin()) return
+            sp.now.repeat = b.state
+            return send(res, 200, { ok: true })
+          case 'spotify_liked':
+            if (!needAdmin()) return
+            if (isPost) { sp.liked = !!b.on; return send(res, 200, { ok: true, liked: sp.liked }) }
+            return send(res, 200, { liked: !!sp.liked })
           case 'spotify_follow':
             if (!needAdmin()) return
             return send(res, 200, { ok: true })

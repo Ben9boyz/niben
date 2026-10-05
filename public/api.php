@@ -249,6 +249,7 @@ $post = $method === 'POST';
 require_once __DIR__ . '/_guard.inc.php';
 guard_request($action);
 require_once __DIR__ . '/_spotify.inc.php';
+require_once __DIR__ . '/_spotify_more.inc.php';
 require_once __DIR__ . '/_jpdb.inc.php';
 require_once __DIR__ . '/_songs.inc.php';
 require_once __DIR__ . '/_steam.inc.php';
@@ -258,6 +259,7 @@ require_once __DIR__ . '/_github.inc.php';
 
 try {
     if (str_starts_with($action, 'spotify_')) {
+        sp_more_handle($action, $post);
         sp_handle($action, $post);
         fail('Ukjent handling.', 404);
     }

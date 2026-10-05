@@ -1,6 +1,7 @@
 <script setup>
 import NavBar from './components/NavBar.vue'
 import MusicToast from './components/MusicToast.vue'
+import { useMediaSession } from './composables/useMediaSession'
 import { defineAsyncComponent } from 'vue'
 import SubTabs from './components/SubTabs.vue'
 // three.js and the whole room are only fetched when the 3D version is used
@@ -12,6 +13,7 @@ import PlayerTop from './components/PlayerTop.vue'
 import PlayerBar from './components/PlayerBar.vue'
 
 const data = useData()
+useMediaSession()
 const toTop = () => window.scrollTo(0, 0)
 
 </script>

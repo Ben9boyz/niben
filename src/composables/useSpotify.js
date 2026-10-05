@@ -374,3 +374,54 @@ export function addGuest(a) {
 }
 /** An album on the shelf, or a guest from search. */
 export const findAlbum = (uri) => spotify.albums.find((a) => a.uri === uri) || spotify.guests.find((a) => a.uri === uri) || null
+
+// ── more of the player: queue, devices, volume, repeat, liked songs ──
+async function act(action, body) {
+  try { return { ok: true, ...(await api(action, body)) } } catch (e) { return { ok: false, error: e.message, code: e.code } }
+}
+/** Up next in Spotify's queue. */
+export async function fetchQueue() {
+  try { const r = await fetch('api.php?action=spotify_queue', { cache: 'no-store' }); return (await r.json()).tracks || [] } catch { return [] }
+}
+/** My Spotify devices (admin). */
+export async function fetchDevices() {
+  try { return (await api('spotify_devices')).devices || [] } catch { return [] }
+}
+/** Move playback to another device (it keeps playing). */
+export async function transferTo(device, playNow = true) {
+  const r = await act('spotify_transfer', { device, play: playNow })
+  if (r.ok) setTimeout(refreshNow, 900)
+  return r
+}
+let volTimer = 0
+/** Volume of the device that's playing (0–100), sent a moment after the slider stops. */
+export function setDeviceVolume(percent) {
+  if (spotify.now) spotify.now.volume = percent
+  clearTimeout(volTimer)
+  return new Promise((res) => { volTimer = setTimeout(async () => res(await act('spotify_volume', { percent })), 250) })
+}
+const REPEAT_NEXT = { off: 'context', context: 'track', track: 'off' }
+/** Repeat: off → the list/album → this song → off. */
+export async function cycleRepeat() {
+  const next = REPEAT_NEXT[spotify.now?.repeat || 'off']
+  const before = spotify.now?.repeat
+  if (spotify.now) spotify.now.repeat = next // show it at once
+  const r = await act('spotify_repeat', { state: next })
+  if (!r.ok && spotify.now) spotify.now.repeat = before
+  return r
+}
+/** Put a song next in the queue. */
+export async function enqueue(uri) {
+  const r = await act('spotify_enqueue', { uri })
+  if (r.ok) notify('Lagt i køen.')
+  return r
+}
+/** Is this song among my liked songs? / save or remove it. */
+export async function isLiked(uri) {
+  try { return !!(await api('spotify_liked', null, { query: `&uri=${encodeURIComponent(uri)}` })).liked } catch { return false }
+}
+export async function setLiked(uri, on) {
+  const r = await act('spotify_liked', { uri, on })
+  if (r.ok) notify(on ? 'Lagret i «Likte sanger».' : 'Fjernet fra «Likte sanger».')
+  return r
+}

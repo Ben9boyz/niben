@@ -2,6 +2,7 @@
 import { Lock, Play, Pause } from 'lucide-vue-next'
 import { ref, computed } from 'vue'
 import LockControl from './LockControl.vue'
+import PlayerControls from './PlayerControls.vue'
 import { spotify, lockLeft, progressMs, fmtClock, control } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 import { web, setEnabled, setVolume } from '../composables/useWebPlayer'
@@ -66,9 +67,11 @@ const webLabel = computed(() => ({
       </template>
     </div>
 
-    <!-- admin controls, in the same card -->
+    <!-- the player's buttons (admin) -->
+    <PlayerControls v-if="admin.loggedIn && spotify.connected && now?.name" class="pctrl" :compact="!props.stacked" />
+
+    <!-- niben.no as a Spotify speaker (admin) -->
     <div v-if="admin.loggedIn && spotify.connected" class="ctrl" :class="web.status">
-      <button v-if="now?.name" class="pp" :aria-label="now?.playing ? 'Pause' : 'Spill'" @click="togglePlay"><Pause v-if="now?.playing" :size="14" fill="currentColor" /><Play v-else :size="14" fill="currentColor" /></button>
       <label v-if="!web.unavailable" class="switch" title="La niben.no være en Spotify-høyttaler">
         <input type="checkbox" :checked="web.enabled && web.status !== 'reconnect'" @change="setEnabled($event.target.checked)" />
         <span class="track"><span class="knob"></span></span>
@@ -103,6 +106,7 @@ const webLabel = computed(() => ({
 .bar.seekable::before { content: ''; position: absolute; inset: -8px 0; } /* bigger click target */
 .times { display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-3); margin-top: 2px; font-variant-numeric: tabular-nums; }
 
+.pctrl { grid-column: 1 / -1; margin-top: 6px; }
 .ctrl { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--glass-border); min-width: 0; }
 .wl { flex: 1; min-width: 0; font-size: 0.78rem; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ctrl.ready .wl { color: #1db954; font-weight: 600; }
