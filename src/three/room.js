@@ -16,6 +16,7 @@ import { buildGlobeTable } from './globe'
 import { buildPracticeCorner } from './practice'
 import { buildJapanCorner } from './japan'
 import { buildListeningCorner } from './listening'
+import { buildFigureShelf } from './figures'
 import { woodFloor, wallTexture, skyTexture, canvasTex } from './textures'
 import { atlasName, norskNavn } from './countries'
 
@@ -358,6 +359,11 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   listening.group.rotation.y = -Math.PI / 2
   tag(listening.group, 'lytte')
   scene.add(listening.group)
+
+  // a display shelf with Star Wars and anime figures on the back wall, between the bookshelf and the desk
+  const figures = buildFigureShelf()
+  figures.group.position.set(0.38, 1.28, -3.5)
+  scene.add(figures.group)
   let music = { albums: [], playlists: [], now: null }
   let stack = [] // the records on the table (see setStack)
   let animeList = [] // the Japanese corner's DVDs (from jpdb)
@@ -742,7 +748,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     // Render on demand: only when something moves, plus a slow heartbeat (1/s) so late-loading
     // textures still show up. An idle room costs (almost) nothing.
     const now = performance.now()
-    if (!active && !shadowsDirty && now - lastRender < 1000) return
+    // little things move on their own (the cat breathes, dust drifts, steam rises …): a gentle ~20 frames a second while you can see them
+    if (!active && !shadowsDirty && !(ambient && now - lastRender > 48) && now - lastRender < 1000) return
     if (active) measure(raw)
     if (shadowsDirty || ++shadowTick % 30 === 0) renderer.shadowMap.needsUpdate = true
     shadowsDirty = false
@@ -750,6 +757,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     lastRender = now
   }
   let shadowsDirty = true
+  let ambient = false
 
   function step(dt) {
     simT += dt
@@ -824,6 +832,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     if (near('kode', 'gaming') && desk.update(dt, t)) active = true
     if (globeTable.update(dt, t, !reduced && near('reiser'))) active = true
     if (timerState && near('ovelse', 'hjem') && practice.update(dt, t, timerState(), timerInterval)) active = true
+    ambient = !reduced && !document.hidden && near('lytte', 'hjem', 'kode', 'gaming')
+    figures.update(t)
     if (listening.update(dt, t, camera)) { shadowsDirty = true; active = true }
     if (japan.update(dt)) { shadowsDirty = true; active = true }
     if (listening.isSpinning() && near('lytte', 'hjem')) active = true

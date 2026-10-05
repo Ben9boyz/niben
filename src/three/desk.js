@@ -252,6 +252,14 @@ export function buildDesk() {
   screen.userData = { kind: 'screen' }
   monitor.add(screen)
 
+  // soundbar under the monitor
+  const barBody = add(new RoundedBoxGeometry(0.64, 0.052, 0.085, 3, 0.012), new THREE.MeshStandardMaterial({ color: 0x1d1f26, roughness: 0.45, metalness: 0.2 }), 0, 0.786, -0.025)
+  barBody.castShadow = true
+  add(new THREE.BoxGeometry(0.6, 0.036, 0.004), new THREE.MeshStandardMaterial({ color: 0x2a2d36, roughness: 0.95 }), 0, 0.786, 0.019) // grille cloth
+  ;[-0.27, 0.27].forEach((x) => add(new THREE.CylinderGeometry(0.014, 0.014, 0.003, 18), new THREE.MeshStandardMaterial({ color: 0x0c0d10, roughness: 0.6 }), x, 0.786, 0.022).rotation.x = Math.PI / 2)
+  const barLed = new THREE.Mesh(new THREE.SphereGeometry(0.0035, 8, 6), new THREE.MeshBasicMaterial({ color: 0x6fd0ff, toneMapped: false }))
+  barLed.position.set(0.29, 0.775, 0.0225)
+  group.add(barLed)
   // keyboard + mouse
   add(new THREE.BoxGeometry(0.44, 0.018, 0.14), white, -0.05, 0.769, 0.17)
   // 56 keys as one instanced mesh (one draw call instead of 56)

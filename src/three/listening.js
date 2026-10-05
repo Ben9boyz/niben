@@ -288,6 +288,7 @@ export function buildListeningCorner() {
     tw.rotation.x = Math.PI / 2
   })
   // a plant on the sideboard
+  const plantLeaves = []
   const plant = new THREE.Group()
   plant.position.set(0.67, TOP_Y, 0.14)
   group.add(plant)
@@ -297,6 +298,9 @@ export function buildListeningCorner() {
     const lf = add(new THREE.SphereGeometry(0.05, 10, 8), i % 2 ? leafMat : leafMat2, Math.cos(a) * 0.035, 0.17 + (i % 3) * 0.05, Math.sin(a) * 0.035, plant)
     lf.scale.set(0.34, 1.35 + (i % 3) * 0.2, 0.12)
     lf.rotation.set(Math.sin(a) * 0.55, -a, -Math.cos(a) * 0.55)
+    lf.userData.rx = lf.rotation.x
+    lf.userData.rz = lf.rotation.z
+    plantLeaves.push(lf)
   }
   // a candle that flickers (the flame is part of the beat pulse below)
   const candle = new THREE.Group()
@@ -408,6 +412,50 @@ export function buildListeningCorner() {
   lampLight.position.set(0, 1.45, 0.05)
   lamp.add(lampLight)
 
+  // more turntable details: strobe dots, felt mat, speed buttons, pitch fader, power LED, counterweight, headshell, dust cover, feet
+  const feltMat = new THREE.MeshStandardMaterial({ color: 0x2a2b30, roughness: 1 })
+  add(new THREE.CylinderGeometry(0.146, 0.146, 0.002, 64), feltMat, 0, 0.0005, 0, platter)
+  const dots = new THREE.InstancedMesh(new THREE.BoxGeometry(0.004, 0.006, 0.0025), new THREE.MeshStandardMaterial({ color: 0xe9e6dc, roughness: 0.5 }), 72)
+  const dm = new THREE.Matrix4(), dq = new THREE.Quaternion(), dv = new THREE.Vector3(), ds = new THREE.Vector3(1, 1, 1)
+  for (let i = 0; i < 72; i++) {
+    const a = (i / 72) * Math.PI * 2
+    dq.setFromEuler(new THREE.Euler(0, -a + Math.PI / 2, 0))
+    dm.compose(dv.set(Math.cos(a) * 0.1535, 0.0035, Math.sin(a) * 0.1535), dq, ds)
+    dots.setMatrixAt(i, dm)
+  }
+  platter.add(dots)
+  // speed buttons 33 / 45 and the start-stop button along the front
+  ;[[-0.17, 0.12], [-0.145, 0.12]].forEach(([x, z], i) => add(new THREE.CylinderGeometry(0.0085, 0.0085, 0.008, 16), i ? dark : alu, x, 0.084, z, tt))
+  const startBtn = add(new THREE.CylinderGeometry(0.011, 0.011, 0.009, 18), alu, -0.2, 0.0845, 0.12, tt)
+  const ttLed = new THREE.Mesh(new THREE.SphereGeometry(0.0033, 8, 6), new THREE.MeshBasicMaterial({ color: 0x3be08a, toneMapped: false }))
+  ttLed.position.set(-0.2, 0.0905, 0.1)
+  tt.add(ttLed)
+  // pitch fader on the right
+  add(new THREE.BoxGeometry(0.012, 0.003, 0.09), dark, 0.2, 0.0815, 0.04, tt)
+  add(new THREE.BoxGeometry(0.02, 0.008, 0.012), alu, 0.2, 0.0845, 0.03, tt)
+  // dust cover: open, hinged at the back, tilted up
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.003, 0.3), new THREE.MeshPhysicalMaterial({ color: 0xcfe6ff, roughness: 0.05, transmission: 0.0, transparent: true, opacity: 0.18, metalness: 0, clearcoat: 1 }))
+  lid.castShadow = false
+  const lidPivot = new THREE.Group()
+  lidPivot.position.set(0, 0.082, -0.172)
+  lidPivot.rotation.x = -1.75
+  lid.position.set(0, 0, 0.15)
+  lidPivot.add(lid)
+  tt.add(lidPivot)
+  add(new THREE.BoxGeometry(0.44, 0.004, 0.004), alu, 0, 0.082, -0.172, tt) // hinge
+  // rubber feet
+  ;[[-0.2, -0.15], [0.2, -0.15], [-0.2, 0.15], [0.2, 0.15]].forEach(([x, z]) => add(new THREE.CylinderGeometry(0.018, 0.02, 0.012, 14), dark, x, -0.006, z, tt))
+  // arm: counterweight, headshell + cartridge + finger lift, arm rest
+  add(new THREE.CylinderGeometry(0.014, 0.014, 0.03, 16), dark, -0.045, 0.0, -0.06, arm).rotation.x = Math.PI / 2
+  add(new THREE.CylinderGeometry(0.018, 0.018, 0.012, 16), alu, 0, 0, 0, arm)
+  add(new THREE.BoxGeometry(0.014, 0.004, 0.035), alu, -0.119, -0.002, 0.232, arm) // headshell
+  add(new THREE.BoxGeometry(0.01, 0.008, 0.016), new THREE.MeshStandardMaterial({ color: 0xd33a2c, roughness: 0.4 }), -0.119, -0.008, 0.24, arm) // cartridge
+  add(new THREE.CylinderGeometry(0.0012, 0.0012, 0.02, 6), alu, -0.128, 0.004, 0.22, arm).rotation.z = 1.2 // finger lift
+  add(new THREE.CylinderGeometry(0.0045, 0.0045, 0.03, 10), alu, 0.04, 0.1, 0.07, tt)
+  add(new THREE.BoxGeometry(0.022, 0.006, 0.012), dark, 0.04, 0.115, 0.07, tt) // arm rest clip
+  // a yellow "45" adapter on the board next to it
+  add(new THREE.CylinderGeometry(0.018, 0.018, 0.004, 20), new THREE.MeshStandardMaterial({ color: 0xe8b934, roughness: 0.5 }), 0.27, 0.002, 0.07, tt)
+
   // ── iPod classic ──
   const ipodHome = { pos: new THREE.Vector3(1.92, 0.43, 1.3), rotY: -0.45 }
   const ipod = new THREE.Group()
@@ -504,6 +552,62 @@ export function buildListeningCorner() {
     leg.rotation.set(Math.sin(a) * 0.18, 0, -Math.cos(a) * 0.18)
   })
   add(new THREE.CylinderGeometry(0.04, 0.036, 0.09, 24), white, 2.17, 0.465, 1.42) // mug
+
+  // ── Alive: a sleeping cat on the sofa, steam over the mug, dust in the sunbeam, a swaying plant ──
+  const cat = new THREE.Group()
+  cat.position.set(0.66, 0.555, 0.52)
+  cat.rotation.y = 0.5
+  sofa.add(cat)
+  const fur = new THREE.MeshStandardMaterial({ color: 0xd9904a, roughness: 0.95 })
+  const furLight = new THREE.MeshStandardMaterial({ color: 0xf3d2a4, roughness: 0.95 })
+  const catBody = add(new THREE.SphereGeometry(0.1, 20, 14), fur, 0, 0.055, 0, cat)
+  catBody.scale.set(1.5, 0.62, 1)
+  const catHead = add(new THREE.SphereGeometry(0.055, 16, 12), fur, -0.15, 0.05, 0.04, cat)
+  ;[-1, 1].forEach((s) => { const e = add(new THREE.ConeGeometry(0.02, 0.04, 6), fur, -0.16 + s * 0.03, 0.1, 0.045, cat); e.rotation.z = s * 0.12 })
+  add(new THREE.SphereGeometry(0.03, 10, 8), furLight, -0.188, 0.04, 0.045, cat) // muzzle
+  const tail = add(new THREE.TorusGeometry(0.09, 0.016, 8, 22, 4.2), fur, 0.02, 0.025, 0.05, cat)
+  tail.rotation.x = Math.PI / 2
+  tail.rotation.z = 0.4
+  ;[0.0, 0.05, 0.1].forEach((x) => add(new THREE.BoxGeometry(0.012, 0.004, 0.04), furLight, x - 0.02, 0.1, 0.0, cat).rotation.y = 0.3) // stripes
+  const steam = []
+  const steamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })
+  for (let i = 0; i < 4; i++) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), steamMat.clone())
+    s.userData.phase = i / 4
+    s.scale.set(1, 1.4, 1)
+    group.add(s)
+    steam.push(s)
+  }
+  const DUST = 70
+  const dustPos = new Float32Array(DUST * 3)
+  const dustSeed = []
+  for (let i = 0; i < DUST; i++) {
+    dustSeed.push({ x: 1.6 + Math.random() * 1.8, y: 0.5 + Math.random() * 1.5, z: 0.1 + Math.random() * 1.1, p: Math.random() * 6.28, sp: 0.04 + Math.random() * 0.08 })
+  }
+  const dustGeo = new THREE.BufferGeometry()
+  dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3))
+  const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xfff1d6, size: 0.012, transparent: true, opacity: 0.55, depthWrite: false, toneMapped: false, sizeAttenuation: true }))
+  dust.frustumCulled = false
+  group.add(dust)
+  function animateLife(t) {
+    catBody.scale.y = 0.62 + Math.sin(t * 1.6) * 0.035 // breathing
+    catBody.scale.x = 1.5 + Math.sin(t * 1.6) * 0.015
+    cat.children[0].position.y = 0.055 + Math.sin(t * 1.6) * 0.003
+    steam.forEach((s) => {
+      const k = (t * 0.25 + s.userData.phase) % 1
+      s.position.set(2.17 + Math.sin(t * 1.3 + s.userData.phase * 9) * 0.01 * k, 0.5 + k * 0.16, 1.42 + Math.cos(t * 1.1 + s.userData.phase * 7) * 0.008 * k)
+      s.material.opacity = Math.sin(k * Math.PI) * 0.16
+      s.scale.setScalar(0.8 + k * 1.1)
+    })
+    for (let i = 0; i < DUST; i++) {
+      const d = dustSeed[i]
+      dustPos[i * 3] = d.x + Math.sin(t * d.sp * 3 + d.p) * 0.12
+      dustPos[i * 3 + 1] = d.y + ((t * d.sp + d.p) % 1.5) * 0.1 + Math.sin(t * 0.6 + d.p) * 0.03
+      dustPos[i * 3 + 2] = d.z + Math.cos(t * d.sp * 2 + d.p) * 0.1
+    }
+    dustGeo.attributes.position.needsUpdate = true
+    plantLeaves.forEach((l, i) => { l.rotation.z = l.userData.rz + Math.sin(t * 0.9 + i) * 0.045; l.rotation.x = l.userData.rx + Math.cos(t * 0.7 + i * 1.3) * 0.03 })
+  }
 
   // ── Records ──
   // All records on the shelf are ONE instanced mesh. Spines come from a shared texture atlas
@@ -794,6 +898,8 @@ export function buildListeningCorner() {
 
   function update(dt, t, camera) {
     let moving = false
+    animateLife(t)
+    ttLed.visible = playing
     const spinTarget = playing ? (rpmFor(tempo) / 60) * Math.PI * 2 : 0
     spin += (spinTarget - spin) * Math.min(1, dt * (playing ? 1.4 : 0.9))
     if (spin > 0.002) platter.rotation.y -= dt * spin
