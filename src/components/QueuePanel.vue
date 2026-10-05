@@ -13,13 +13,16 @@ const props = defineProps({ flat: Boolean }) // playlists: always the plain song
 const open = ref(new Set()) // album groups that are unfolded
 let soon = 0
 
-// the queue as albums: songs that follow each other on the same album become one tile ("Resten av …" for the
+// the queue as albums: songs that directly follow each other on the same album become one tile (never songs picked from here and there) ("Resten av …" for the
 // album that's playing, then each album I queued). Tap a tile to see its songs. Only when there is an album to show.
 const groups = computed(() => {
   const out = []
   for (const t of queue.value || []) {
     const last = out[out.length - 1]
-    if (last && t.album_uri && last.uri === t.album_uri) last.tracks.push(t)
+    // only songs that follow each other: same album, right after one another in the queue AND in the album's order
+    const prev = last?.tracks[last.tracks.length - 1]
+    const inOrder = !prev || prev.no == null || t.no == null || (t.disc === prev.disc ? t.no === prev.no + 1 : t.no === 1)
+    if (last && t.album_uri && last.uri === t.album_uri && inOrder) last.tracks.push(t)
     else out.push({ uri: t.album_uri, name: t.album || t.name, image: t.album_image || t.img, tracks: [t] })
   }
   return out

@@ -239,7 +239,7 @@ function sp_more_handle(string $action, bool $post): bool {
     }
     case 'spotify_queue': {
         // what's coming up (anyone may look – cached for 10 seconds)
-        $q = sp_cached('cache_queue3', 10, function () {
+        $q = sp_cached('cache_queue4', 10, function () {
             [$s, $j] = sp_api('GET', '/me/player/queue');
             if ($s !== 200) return ['tracks' => []];
             $out = [];
@@ -249,7 +249,7 @@ function sp_more_handle(string $action, bool $post): bool {
                 $out[] = ['uri' => $t['uri'] ?? null, 'name' => $t['name'] ?? '', 'artist' => implode(', ', array_map(fn($x) => $x['name'], $t['artists'] ?? [])),
                     'img' => sp_img($album['images'] ?? [], 64), 'ms' => (int)($t['duration_ms'] ?? 0),
                     // which album it is on (the 3D table shows the queued albums as a stack)
-                    'album_uri' => $album['uri'] ?? null, 'album' => $album['name'] ?? '',
+                    'album_uri' => $album['uri'] ?? null, 'album' => $album['name'] ?? '', 'no' => $t['track_number'] ?? null, 'disc' => $t['disc_number'] ?? null,
                     'album_artist' => implode(', ', array_map(fn($x) => $x['name'], $album['artists'] ?? [])),
                     'album_image' => sp_img($album['images'] ?? [], 300)];
             }
