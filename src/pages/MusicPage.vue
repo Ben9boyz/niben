@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { Disc3, ListMusic, Library, Search, X } from 'lucide-vue-next'
+import { Disc3, ListMusic, Library, Search, X, Sparkles } from 'lucide-vue-next'
 import { room } from '../composables/useRoom'
 import { spotify, useSpotify } from '../composables/useSpotify'
 import { shell } from '../composables/useShell'
@@ -66,6 +66,7 @@ function show(view) {
             <button role="tab" :aria-selected="allMode" :class="{ on: allMode && !gq }" @click="libView = 'all'">
               <Library class="ic" :size="19" aria-hidden="true" />Alt<small>{{ spotify.albums.length + spotify.playlists.length || '' }}</small>
             </button>
+            <router-link to="/oppdag" class="disc-link"><Sparkles class="ic" :size="19" aria-hidden="true" />Oppdag</router-link>
           </nav>
           <!-- the folders of whatever I'm looking at: Album or Spillelister -->
           <div v-if="byArtist" class="mapper">
@@ -146,8 +147,9 @@ function show(view) {
 .lh { margin: 2px 6px; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
 .lib { display: grid; gap: 2px; }
 .mapper { display: grid; gap: 2px; padding-top: 8px; margin-top: 4px; border-top: 1px solid var(--glass-border); }
-.lib button { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text-2); font: 600 0.92rem var(--font); text-align: left; cursor: pointer; transition: background 0.2s, color 0.2s; }
-.lib button:hover { background: var(--accent-soft); color: var(--text); }
+.lib button, .lib .disc-link { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text-2); font: 600 0.92rem var(--font); text-align: left; cursor: pointer; transition: background 0.2s, color 0.2s; }
+.lib .disc-link { text-decoration: none; }
+.lib button:hover, .lib .disc-link:hover { background: var(--accent-soft); color: var(--text); }
 .lib button.on { background: var(--accent-soft); color: var(--accent); }
 .lib .ic { flex: none; }
 .lib small { margin-left: auto; font-weight: 500; opacity: 0.6; font-variant-numeric: tabular-nums; }

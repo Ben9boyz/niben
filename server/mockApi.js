@@ -363,6 +363,32 @@ export function mockApi() {
           case 'spotify_token':
             if (!needAdmin()) return
             return send(res, 200, { token: 'mock', expires: 0, streaming: false }) // no real Spotify in dev
+          case 'discover_get':
+            return send(res, 200, { picks: db.picks || [], recs: db.recs || [], at: db.recsAt || 0, hasKey: !!db.lfKey })
+          case 'discover_key':
+            if (!needAdmin()) return
+            db.lfKey = (b.key || '').trim()
+            return send(res, 200, { ok: true, hasKey: !!db.lfKey })
+          case 'discover_add': {
+            if (!needAdmin()) return
+            const m = String(b.url || '').match(/(album|track)[/:]([A-Za-z0-9]{10,40})/)
+            if (!m) return send(res, 400, { error: 'Det der ser ikke ut som en Spotify-lenke til et album eller en låt.' })
+            const i = (db.picks || []).length
+            const row = { id: m[2], uri: `spotify:${m[1]}:${m[2]}`, type: m[1], name: m[1] === 'album' ? `Foreslått album ${i + 1}` : `Foreslått låt ${i + 1}`, artist: 'Mock Artist', year: '2025', image: mockCover(i * 53 + 11), image_large: mockCover(i * 53 + 11), thumb: mockCover(i * 53 + 11), url: `https://open.spotify.com/${m[1]}/${m[2]}`, note: String(b.note || '').slice(0, 300), t: Math.floor(Date.now() / 1000) }
+            db.picks = [row, ...(db.picks || []).filter((x) => x.uri !== row.uri)]
+            return send(res, 200, { ok: true, pick: row })
+          }
+          case 'discover_del':
+            if (!needAdmin()) return
+            db.picks = (db.picks || []).filter((x) => x.uri !== b.uri)
+            return send(res, 200, { ok: true })
+          case 'discover_refresh': {
+            if (!needAdmin()) return
+            if (!db.lfKey) return send(res, 400, { error: 'Legg inn en Last.fm-nøkkel først.' })
+            db.recs = Array.from({ length: 12 }, (_, i) => ({ id: `rec${i}`, uri: `spotify:album:recalbum${String(i).padStart(10, '0')}`, type: 'album', name: ['Midnight Tapes', 'Soft Static', 'Glass Garden', 'Paper Moons', 'Long Way Home', 'Blue Hour', 'Salt', 'Dust & Honey', 'Evergreen', 'Low Light', 'Satellites', 'Hollow'][i], artist: ['Nova Lane', 'Pale Sun', 'The Harbour', 'Mira Fell'][i % 4], year: String(2025 - (i % 6)), image: mockCover(i * 41 + 7), image_large: mockCover(i * 41 + 7), thumb: mockCover(i * 41 + 7), why: 'Ligner på Acoustic Days, Aurora Sky', score: 3 - i * 0.1 }))
+            db.recsAt = Math.floor(Date.now() / 1000)
+            return send(res, 200, { ok: true, recs: db.recs, at: db.recsAt })
+          }
           case 'about_get':
             return send(res, 200, { about: db.about || null })
           case 'about_photo': {

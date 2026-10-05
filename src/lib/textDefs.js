@@ -72,6 +72,17 @@ export const TEXT_GROUPS = [
     { k: 'practice.title', label: 'Øving: tittel', d: 'Øvingshjørnet' },
     { k: 'practice.cal', label: 'Øvingskalender: forklaring', d: 'Kalenderen fylles når du øver her på siden – hver dag du gjør kort, får den en farge.', long: true },
   ] },
+  { title: 'Oppdag', items: [
+    { k: 'discover.eyebrow', label: 'Lille tekst over tittelen', d: 'Musikk' },
+    { k: 'discover.title', label: 'Tittel', d: 'Oppdag' },
+    { k: 'discover.hint', label: 'Hint (3D-panelet)', d: 'Album jeg anbefaler – og gode album du kanskje ikke har hørt.' },
+    { k: 'discover.intro', label: 'Innledning', d: 'Album og låter jeg synes du bør høre, og forslag til gode album som ligner på det jeg har i samlingen.', long: true },
+    { k: 'discover.add', label: 'Skjema (bare for meg)', d: 'Foreslå et album eller en låt' },
+    { k: 'discover.picks', label: 'Overskrift: mine anbefalinger', d: 'Fra meg' },
+    { k: 'discover.recs', label: 'Overskrift: forslag', d: 'Du kan like disse' },
+    { k: 'discover.recs.hint', label: 'Forklaring til forslagene', d: 'Kjente album fra artister som ligner på dem jeg har mest av, men som ikke er i samlingen min.', long: true },
+    { k: 'discover.none', label: 'Når det ikke er forslag ennå', d: 'Ingen forslag ennå.' },
+  ] },
   { title: 'Gjestebok', items: [
     { k: 'guest.title', label: 'Tittel', d: 'Gjestebok' },
     { k: 'guest.note', label: 'Under skjemaet', d: 'Hilsenen vises etter at jeg har lest den.' },
