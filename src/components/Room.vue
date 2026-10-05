@@ -6,7 +6,9 @@ import { room, clearSelection } from '../composables/useRoom'
 import { useData } from '../composables/useData'
 import { useTheme } from '../composables/useTheme'
 import { timer, timerState, toggle as toggleTimer } from '../composables/useTimer'
-import { spotify, useSpotify, prefetchTracks, fetchTracks } from '../composables/useSpotify'
+import { spotify, useSpotify, prefetchTracks, fetchTracks, fetchTempo, control } from '../composables/useSpotify'
+import { admin } from '../composables/useAdmin'
+import { useVinylNoise } from '../composables/useVinylNoise'
 import { shelfAlbums, loadGroups } from '../composables/useGroups'
 import { jp, loadJapanese } from '../composables/useJapanese'
 import { steam, loadSteam } from '../composables/useSteam'
@@ -17,6 +19,7 @@ const router = useRouter()
 const data = useData()
 const { theme } = useTheme()
 const failed = ref(false)
+useVinylNoise() // a quiet crackle on the music while it plays in the room
 useSpotify() // keeps records/iPod in the room up to date
 loadGroups() // the shelf order may follow my folders
 let api
@@ -26,6 +29,7 @@ const ROUTES = { hjem: '/', japansk: '/japansk', gaming: '/gaming', lytte: '/lyt
 let nextPeek = null // the record clicked on the way down to the shelf (pulled out first)
 function onPick(p) {
   if (p.kind === 'station') { router.push(ROUTES[p.station]); return }
+  if (p.kind === 'turntable') { if (spotify.now?.name && admin.loggedIn) control(spotify.now.playing ? 'pause' : 'resume'); return }
   if (p.kind === 'guitar') room.sel.gitar = p.index
   else if (p.kind === 'book') room.sel.bok = room.sel.bok === p.index ? -1 : p.index
   else if (p.kind === 'country') room.sel.land = room.sel.land === p.name ? null : p.name
@@ -82,6 +86,7 @@ onMounted(() => {
   api.setTheme(theme.value)
   api.setTimerInterval(timer.interval)
   api.setMusic(sceneMusic())
+  if (spotify.now?.uri) fetchTempo(spotify.now.uri).then((b) => { if (api && spotify.now?.uri) api.setTempo(b) })
   if (data.loaded) api.setData(data)
   api.goTo(route.name || 'hjem', { duration: 2.6 })
 })
@@ -98,6 +103,11 @@ watch(() => [jp.anime, room.jpAnime, room.api], () => room.api?.setAnime(jp.anim
 watch(theme, (t) => api?.setTheme(t))
 watch(() => timer.interval, (v) => api?.setTimerInterval(v))
 // the records stand in the shelf's order (by artist, or by my folders)
+// the turntable spins to the tempo of the song (4 beats – one bar – per turn)
+watch(() => spotify.now?.uri, async (uri) => {
+  const bpm = uri ? await fetchTempo(uri) : 0
+  if (spotify.now?.uri === uri) api?.setTempo(bpm)
+}, { immediate: false })
 const sceneMusic = () => ({ albums: shelfAlbums.value, playlists: spotify.playlists, now: spotify.now, guests: spotify.guests })
 watch(() => [shelfAlbums.value, spotify.playlists, spotify.now, spotify.guests], () => api?.setMusic(sceneMusic()), { deep: false })
 // typing in the shelf search: the matching records slide out (only a handful – more would just be a mess)

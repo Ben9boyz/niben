@@ -177,6 +177,17 @@ export function prefetchTracks(uri) {
   if (!uri || trackCache.has(uri)) return
   prefetchTimer = setTimeout(() => fetchTracks(uri), 180) // only if it rests there a moment
 }
+const tempoCache = new Map()
+/** Tempo (BPM) of a song – 0 when nobody knows. Cached; the turntable in the 3D room spins to it. */
+export async function fetchTempo(uri) {
+  const id = String(uri || '').split(':')[2]
+  if (!id || !uri.startsWith('spotify:track:')) return 0
+  if (tempoCache.has(id)) return tempoCache.get(id)
+  const p = fetch(`api.php?action=spotify_tempo&id=${encodeURIComponent(id)}`, { credentials: 'same-origin', headers: { 'X-Niben': '1' } })
+    .then((r) => r.json()).then((j) => Number(j.bpm) || 0).catch(() => { tempoCache.delete(id); return 0 })
+  tempoCache.set(id, p)
+  return p
+}
 /** Track list for 'spotify:album:…' / 'spotify:playlist:…' – { tracks, hidden }. */
 export async function fetchTracks(uri) {
   if (trackCache.has(uri)) return trackCache.get(uri)

@@ -237,6 +237,7 @@ export function buildListeningCorner() {
   // ── Turntable ──
   const tt = new THREE.Group()
   tt.position.set(-0.42, TOP_Y, 0.24)
+  tt.userData = { kind: 'turntable' } // click: pause / play
   group.add(tt)
   add(new RoundedBoxGeometry(0.46, 0.08, 0.36, 3, 0.012), wood, 0, 0.04, 0, tt)
   add(new THREE.CylinderGeometry(0.155, 0.155, 0.016, 64), dark, -0.04, 0.088, 0, tt)
@@ -265,6 +266,114 @@ export function buildListeningCorner() {
   armRod.rotation.z = 0.5
   add(new THREE.BoxGeometry(0.018, 0.01, 0.03), dark, -0.115, -0.006, 0.205, arm)
   add(new THREE.CylinderGeometry(0.012, 0.012, 0.012, 16), alu, 0.17, 0.09, 0.13, tt)
+
+  // ── Decor: speakers, a plant, a candle, frames, fairy lights, headphones, a floor lamp ──
+  const terracotta = new THREE.MeshStandardMaterial({ color: 0xc9774f, roughness: 0.85 })
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x4f8a5b, roughness: 0.7 })
+  const leafMat2 = new THREE.MeshStandardMaterial({ color: 0x66a06d, roughness: 0.7 })
+  const speakerWood = new THREE.MeshStandardMaterial({ color: 0x8a5a36, roughness: 0.5 })
+  const grill = new THREE.MeshStandardMaterial({ color: 0x1b1c20, roughness: 0.9 })
+  // floor-standing speakers either side of the sideboard
+  ;[-1, 1].forEach((side) => {
+    const sp = new THREE.Group()
+    sp.position.set(side * 1.0, 0, 0.2)
+    group.add(sp)
+    add(new RoundedBoxGeometry(0.26, 0.82, 0.24, 3, 0.012), speakerWood, 0, 0.5, 0, sp)
+    add(new THREE.CylinderGeometry(0.022, 0.03, 0.09, 12), dark, 0, 0.045, 0, sp) // plinth
+    const w = add(new THREE.CylinderGeometry(0.085, 0.085, 0.01, 40), grill, 0, 0.36, 0.122, sp)
+    w.rotation.x = Math.PI / 2
+    const w2 = add(new THREE.CylinderGeometry(0.03, 0.03, 0.01, 24), alu, 0, 0.36, 0.128, sp) // dust cap
+    w2.rotation.x = Math.PI / 2
+    const tw = add(new THREE.CylinderGeometry(0.03, 0.03, 0.01, 24), grill, 0, 0.66, 0.122, sp)
+    tw.rotation.x = Math.PI / 2
+  })
+  // a plant on the sideboard
+  const plant = new THREE.Group()
+  plant.position.set(0.67, TOP_Y, 0.14)
+  group.add(plant)
+  add(new THREE.CylinderGeometry(0.058, 0.044, 0.1, 20), terracotta, 0, 0.05, 0, plant)
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2 + i * 0.4
+    const lf = add(new THREE.SphereGeometry(0.05, 10, 8), i % 2 ? leafMat : leafMat2, Math.cos(a) * 0.035, 0.17 + (i % 3) * 0.05, Math.sin(a) * 0.035, plant)
+    lf.scale.set(0.34, 1.35 + (i % 3) * 0.2, 0.12)
+    lf.rotation.set(Math.sin(a) * 0.55, -a, -Math.cos(a) * 0.55)
+  }
+  // a candle that flickers (the flame is part of the beat pulse below)
+  const candle = new THREE.Group()
+  candle.position.set(0.62, TOP_Y, 0.37)
+  group.add(candle)
+  add(new THREE.CylinderGeometry(0.03, 0.03, 0.06, 20), new THREE.MeshStandardMaterial({ color: 0xe9d9bd, roughness: 0.5 }), 0, 0.03, 0, candle)
+  add(new THREE.CylinderGeometry(0.0015, 0.0015, 0.014, 6), dark, 0, 0.067, 0, candle)
+  const flameMat = new THREE.MeshBasicMaterial({ color: 0xffc46b, toneMapped: false })
+  const flame = new THREE.Mesh(new THREE.SphereGeometry(0.009, 10, 8), flameMat)
+  flame.scale.set(0.8, 1.7, 0.8)
+  flame.position.set(0, 0.082, 0)
+  candle.add(flame)
+  const candleLight = new THREE.PointLight(0xffb76b, 0.35, 0.8, 2)
+  candleLight.position.set(0, 0.1, 0.02)
+  candle.add(candleLight)
+  // a stack of sleeves + a record brush
+  ;[0xd97b66, 0x5b8fb9, 0xe2c46a].forEach((c, i) => {
+    const sl = add(new THREE.BoxGeometry(0.3, 0.008, 0.3), new THREE.MeshStandardMaterial({ color: c, roughness: 0.7 }), 0.4 + i * 0.004, 0.004 + i * 0.0085, 0.27, group.children.length ? group : group)
+    sl.position.y += TOP_Y
+    sl.rotation.y = 0.12 * (i - 1)
+  })
+  const brush = add(new THREE.BoxGeometry(0.1, 0.014, 0.025), dark, 0.4, TOP_Y + 0.033, 0.27)
+  brush.rotation.y = 0.5
+  // frames on the wall above (abstract "records at sunset")
+  const art = (seed) => canvasTex(300, 380, (x, w, h) => {
+    const g = x.createLinearGradient(0, 0, 0, h)
+    const pal = [['#f6c177', '#d9694f'], ['#8fb8de', '#3f5f93'], ['#cfe3c0', '#5c8a6a']][seed % 3]
+    g.addColorStop(0, pal[0]); g.addColorStop(1, pal[1])
+    x.fillStyle = g; x.fillRect(0, 0, w, h)
+    x.fillStyle = 'rgba(20,20,26,.92)'; x.beginPath(); x.arc(w / 2, h * 0.58, w * 0.32, 0, Math.PI * 2); x.fill()
+    x.strokeStyle = 'rgba(255,255,255,.14)'; x.lineWidth = 2
+    for (let r = 0.16; r < 0.3; r += 0.035) { x.beginPath(); x.arc(w / 2, h * 0.58, w * r, 0, Math.PI * 2); x.stroke() }
+    x.fillStyle = pal[0]; x.beginPath(); x.arc(w / 2, h * 0.58, w * 0.08, 0, Math.PI * 2); x.fill()
+  })
+  ;[[-0.5, 1.38, 0.3, 0.38, 0], [0.02, 1.5, 0.36, 0.46, 1], [0.54, 1.38, 0.3, 0.38, 2]].forEach(([x, y, fw, fh, seed]) => {
+    add(new THREE.BoxGeometry(fw + 0.03, fh + 0.03, 0.02), wood, x, y, 0.025)
+    const pic = new THREE.Mesh(new THREE.PlaneGeometry(fw, fh), new THREE.MeshStandardMaterial({ map: art(seed), roughness: 0.6 }))
+    pic.position.set(x, y, 0.0362)
+    group.add(pic)
+  })
+  // fairy lights along the wall
+  const fairyMat = new THREE.MeshBasicMaterial({ color: 0xffd9a8, toneMapped: false })
+  const bulbs = new THREE.InstancedMesh(new THREE.SphereGeometry(0.011, 8, 6), fairyMat, 24)
+  const fm = new THREE.Matrix4()
+  const wirePts = []
+  for (let i = 0; i < 24; i++) {
+    const u = i / 23
+    const x = -1.15 + u * 2.3
+    const y = 2.02 - Math.sin(u * Math.PI) * 0.16 - (i % 2) * 0.03
+    fm.makeTranslation(x, y, 0.04)
+    bulbs.setMatrixAt(i, fm)
+  }
+  for (let i = 0; i <= 40; i++) { const u = i / 40; wirePts.push(new THREE.Vector3(-1.15 + u * 2.3, 2.03 - Math.sin(u * Math.PI) * 0.16, 0.037)) }
+  group.add(bulbs)
+  group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(wirePts), 60, 0.0018, 4), grill))
+  // headphones on a hook
+  const hp = new THREE.Group()
+  hp.position.set(-0.98, 1.2, 0.05)
+  group.add(hp)
+  add(new THREE.CylinderGeometry(0.004, 0.004, 0.03, 8), alu, 0, 0.09, -0.01, hp).rotation.x = Math.PI / 2
+  const band = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.006, 8, 24, Math.PI), dark)
+  band.position.set(0, 0.02, 0.02)
+  hp.add(band)
+  ;[-1, 1].forEach((side) => add(new THREE.CylinderGeometry(0.03, 0.03, 0.022, 18), dark, side * 0.07, 0.02, 0.02, hp).rotation.z = Math.PI / 2)
+  // a floor lamp by the sofa
+  const lamp = new THREE.Group()
+  lamp.position.set(3.25, 0, 0.35)
+  group.add(lamp)
+  add(new THREE.CylinderGeometry(0.1, 0.11, 0.025, 24), dark, 0, 0.0125, 0, lamp)
+  add(new THREE.CylinderGeometry(0.008, 0.008, 1.35, 8), alu, 0, 0.7, 0, lamp)
+  const shadeMat = new THREE.MeshBasicMaterial({ color: 0xffdcae, toneMapped: false, side: THREE.DoubleSide })
+  const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.2, 0.26, 28, 1, true), shadeMat)
+  shade.position.set(0, 1.5, 0)
+  lamp.add(shade)
+  const lampLight = new THREE.PointLight(0xffc98a, 0.9, 2.6, 2)
+  lampLight.position.set(0, 1.45, 0.05)
+  lamp.add(lampLight)
 
   // ── iPod classic ──
   const ipodHome = { pos: new THREE.Vector3(1.92, 0.43, 1.3), rotY: -0.45 }
@@ -639,10 +748,30 @@ export function buildListeningCorner() {
   const basis = new THREE.Matrix4()
   const ax = new THREE.Vector3(), ay = new THREE.Vector3(), az = new THREE.Vector3()
   let armAngle = 0
+  // the record turns once per bar (4 beats): a 120 BPM song gives 30 rpm. Unknown tempo = 33⅓ rpm.
+  let tempo = 0
+  let spin = 0 // rad/s, eased so the record winds up and slows down
+  const rpmFor = (bpm) => {
+    if (!(bpm > 30)) return 33.3
+    let b = bpm
+    while (b < 84) b *= 2
+    while (b > 168) b /= 2
+    return Math.min(42, Math.max(24, b / 4))
+  }
 
   function update(dt, t, camera) {
     let moving = false
-    if (playing) platter.rotation.y -= dt * (33.3 / 60) * Math.PI * 2
+    const spinTarget = playing ? (rpmFor(tempo) / 60) * Math.PI * 2 : 0
+    spin += (spinTarget - spin) * Math.min(1, dt * (playing ? 1.4 : 0.9))
+    if (spin > 0.002) platter.rotation.y -= dt * spin
+    if (Math.abs(spinTarget - spin) > 0.05) moving = true
+    // lights pulse softly on the beat while a song plays; the candle flickers
+    const beat = playing && tempo > 30 ? Math.exp(-5 * (((t * tempo) / 60) % 1)) : 0
+    const glow = playing ? 0.82 + 0.38 * beat : 0.7
+    fairyMat.color.setRGB(1, 0.85, 0.66).multiplyScalar(glow)
+    shadeMat.color.setRGB(1, 0.86, 0.68).multiplyScalar(0.8 + 0.25 * beat)
+    flame.scale.y = 1.7 + Math.sin(t * 9) * 0.18 + Math.sin(t * 23) * 0.1
+    candleLight.intensity = 0.32 + Math.sin(t * 7) * 0.05 + Math.sin(t * 19) * 0.03
     armAngle += ((playing ? -0.42 : 0) - armAngle) * Math.min(1, dt * 2)
     arm.rotation.y = armAngle
     // the iPod's progress bar moves on once a second while something plays
@@ -788,7 +917,8 @@ export function buildListeningCorner() {
     setFilter(list) { filterSet = list?.length ? new Set(list) : null },
     setHoldIpod(v, big = false) { holdIpod = v; ipodBig = big },
     setFlip(v) { flipSel = v },
-    isSpinning: () => playing,
+    setTempo(bpm) { tempo = Number(bpm) || 0 },
+    isSpinning: () => playing || spin > 0.02,
     isHoldingIpod: () => holdIpod,
     ipodScreenRect,
     selectedRect,

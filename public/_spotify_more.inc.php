@@ -91,6 +91,25 @@ function sp_guess_by_genres(array $genres, array $ids): ?array {
 
 /** Spotify's audio data for songs (instrumentalness, energy, speechiness, acousticness) – trackId => [...].
  *  Apps made after late 2024 are refused (403); then this answers null and is not asked again for a week. */
+/** Tempo (BPM) of a song, so the record on the 3D turntable can spin in time with it. Spotify's audio features when
+ *  the app may use them, else Deezer's public track data (found through the song's ISRC). 0 = nobody knows. Cached 30 days. */
+function sp_tempo(string $id): ?array {
+    return sp_cached("tempo1_{$id}", 30 * 86400, function () use ($id) {
+        $f = sp_audio_features([$id]);
+        if ($f && !empty($f[$id]['tempo'])) return ['bpm' => round((float)$f[$id]['tempo'], 1), 'from' => 'spotify'];
+        [$s, $t] = sp_api('GET', "/tracks/{$id}");
+        if ($s !== 200) return null; // Spotify hiccup: try again next time
+        $isrc = preg_replace('~[^A-Za-z0-9]~', '', (string)($t['external_ids']['isrc'] ?? ''));
+        if ($isrc !== '') {
+            [$code, $body] = http_req('GET', 'https://api.deezer.com/track/isrc:' . $isrc, ['Accept: application/json']);
+            $j = $code === 200 ? json_decode($body, true) : null;
+            if (is_array($j) && (float)($j['bpm'] ?? 0) > 30) return ['bpm' => round((float)$j['bpm'], 1), 'from' => 'deezer'];
+            if ($code !== 200 && $code !== 404) return null;
+        }
+        return ['bpm' => 0, 'from' => 'none'];
+    });
+}
+
 function sp_audio_features(array $trackIds): ?array {
     if (kv_get('audio_features') === 'no' && time() - (int)kv_get('audio_features_at') < 7 * 86400) return null;
     $trackIds = array_slice(array_values(array_filter($trackIds)), 0, 100);

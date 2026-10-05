@@ -2,6 +2,8 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Shuffle, SkipBack, SkipForward, Play, Pause, Repeat, Repeat1, MonitorSpeaker, Smartphone, Speaker, Laptop, Volume2 } from 'lucide-vue-next'
 import WebPlayerToggle from './WebPlayerToggle.vue'
+import { vinyl, setVinyl } from '../composables/useVinylNoise'
+import { mode } from '../composables/useMode'
 import { spotify, control, setShuffle, cycleRepeat, fetchDevices, transferTo, setDeviceVolume, lockLeft, fmtClock, notify } from '../composables/useSpotify'
 
 // The player's buttons (admin): shuffle · back · play/pause · next · repeat, the heart (liked songs),
@@ -60,6 +62,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDoc))
     <div v-if="open === 'devices'" class="pop glass">
       <b class="label-caps">Spill på</b>
       <WebPlayerToggle class="here" />
+      <label v-if="mode === 'rom'" class="vin" title="Svak vinylknitring over musikken i 3D-rommet"><input type="checkbox" :checked="vinyl.on" @change="setVinyl($event.target.checked)" /><span class="sw"><i></i></span>Vinylknitring</label>
       <p v-if="!devices" class="muted">Henter enheter …</p>
       <p v-else-if="!devices.length" class="muted">Ingen Spotify-enheter er åpne.</p>
       <button v-for="d in devices || []" :key="d.id" class="dv" :class="{ active: d.active }" :disabled="d.restricted" @click="pick(d)">
@@ -83,6 +86,12 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDoc))
 .play:hover { transform: scale(1.06); }
 .compact .play { width: 34px; height: 34px; }
 .pop { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 8px); display: grid; gap: 6px; padding: 12px; border-radius: 16px; background: var(--bg); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25); max-height: 340px; overflow-y: auto; }
+.vin { display: flex; align-items: center; gap: 10px; padding: 6px 10px; font-size: 0.78rem; color: var(--text-2); cursor: pointer; }
+.vin input { position: absolute; opacity: 0; pointer-events: none; }
+.vin .sw { position: relative; flex: none; width: 34px; height: 20px; border-radius: 999px; background: rgba(120, 130, 145, 0.35); transition: background 0.2s; }
+.vin .sw i { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform 0.2s; }
+.vin input:checked + .sw { background: #1db954; }
+.vin input:checked + .sw i { transform: translateX(14px); }
 .here { padding: 4px 10px 8px; border-bottom: 1px solid var(--glass-border); }
 .muted { margin: 0; color: var(--text-3); font-size: 0.82rem; }
 .q { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }

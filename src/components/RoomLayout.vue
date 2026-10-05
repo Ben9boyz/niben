@@ -1,5 +1,5 @@
 <script setup>
-import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { ChevronRight, PanelRightOpen } from 'lucide-vue-next'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Room from './Room.vue'
@@ -7,8 +7,6 @@ import LeaderLine from './LeaderLine.vue'
 import MusicSwitch from './MusicSwitch.vue'
 import IpodScreen from './IpodScreen.vue'
 import RecordOverlay from './RecordOverlay.vue'
-import MiniNowPlaying from './MiniNowPlaying.vue'
-import MusicDrawer from './MusicDrawer.vue'
 import SubTabs from './SubTabs.vue'
 import BrandLogo from './BrandLogo.vue'
 import { useData } from '../composables/useData'
@@ -49,22 +47,7 @@ function hiddenSet() {
 }
 const canHide = computed(() => !mobile.value && !isHome.value && !isFocus.value)
 const hidden = computed(() => canHide.value && room.panelHidden)
-// panel away + music on: the little "now playing" box (top-right) is the way back, so no "Vis panel"
-// little "now playing" top-right while music plays – everywhere in the room (not in the listening
-// corner while its panel shows the full card, and not in the player app, which has its own bar)
-const showMini = computed(() => (!!spotify.now?.name || (admin.loggedIn && isMusic.value)) && shell.value !== 'player' && !mobile.value && (hidden.value || route.name !== 'lytte'))
-// a side panel on the right moves down below it
-const belowMini = computed(() => showMini.value && !hidden.value && !isFocus.value && !isHome.value)
-// the mini player opens the music panel on its own, on top of wherever you are (in the listening
-// corner itself it just brings the side panel back)
-const drawer = ref(false)
-function openMini() {
-  if (route.name === 'lytte') setHidden(false)
-  else drawer.value = !drawer.value
-}
-watch(() => route.name, () => (drawer.value = false))
-// top-right corner (the nav is a rail on the left, so nothing else is up there)
-const miniTop = 20
+// (the side panel comes back with the little icon at the edge – there is no extra mini player in the room)
 function setHidden(v) {
   room.panelHidden = v
   const set = hiddenSet()
@@ -139,7 +122,6 @@ watch(() => route.name, () => (collapsed.value = false))
     ref="dock"
     class="dock"
     :class="{ home: isHome, focus: isFocus, wide: isWide, expanded: isExpanded, big: isExpanded && route.name !== 'lytte', collapsed: collapsed && mobile && !isFocus, hidden }"
-    :style="belowMini ? { top: `${miniTop + 62}px` } : null"
     :inert="hidden || undefined"
   >
     <button v-if="mobile && !isHome && !isFocus" class="grabber" @click="collapsed = !collapsed" :aria-label="collapsed ? 'Vis panel' : 'Skjul panel'">
@@ -152,13 +134,9 @@ watch(() => route.name, () => (collapsed.value = false))
     </router-view>
   </aside>
 
-  <!-- panel slid away: a tiny "now playing" in the top-right corner -->
-  <MiniNowPlaying v-if="showMini && room.ready" :style="{ top: `${miniTop}px` }" @open="openMini" />
-  <MusicDrawer v-if="drawer && showMini && room.ready" :style="{ top: `${miniTop + 62}px` }" @close="drawer = false" />
-
   <!-- desktop: slide the panel away / bring it back -->
   <button
-    v-if="canHide && room.ready && !(hidden && showMini && isMusic)"
+    v-if="canHide && room.ready"
     class="hide-toggle glass"
     :class="{ out: hidden }"
     :style="hidden ? null : { right: `${panelW + 20 - 16}px` }"
@@ -166,7 +144,7 @@ watch(() => route.name, () => (collapsed.value = false))
     :title="hidden ? 'Vis panelet' : 'Skjul panelet'"
     @click="setHidden(!hidden)"
   >
-    <ChevronLeft v-if="hidden" :size="20" aria-hidden="true" /><ChevronRight v-else :size="20" aria-hidden="true" /><b v-if="hidden">Vis panel</b>
+    <PanelRightOpen v-if="hidden" :size="20" aria-hidden="true" /><ChevronRight v-else :size="20" aria-hidden="true" />
   </button>
 </template>
 
@@ -208,7 +186,7 @@ watch(() => route.name, () => (collapsed.value = false))
 }
 .hide-toggle span { font-size: 1.3rem; line-height: 1; }
 .hide-toggle:hover { color: var(--accent); }
-.hide-toggle.out { right: 16px; padding: 0 14px 0 12px; }
+.hide-toggle.out { right: 16px; width: 44px; justify-content: center; padding: 0; }
 .dock.away { opacity: 0; transform: translateX(40px); pointer-events: none; transition: opacity 0.35s, transform 0.45s var(--ease); }
 .dock.away > :deep(*) { pointer-events: none; }
 .dock.home {

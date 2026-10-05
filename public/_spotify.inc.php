@@ -374,6 +374,15 @@ function sp_handle(string $action, bool $post): void {
         out(sp_tracks($type, $id));
     }
 
+    case 'spotify_tempo': {
+        $id = (string)($_GET['id'] ?? '');
+        if (!preg_match('~^[A-Za-z0-9]{10,40}$~', $id)) fail('Ugyldig forespørsel.');
+        // visitors: only the song that is playing right now (anything else would cost calls to Spotify / Deezer)
+        if (!is_admin() && (string)(sp_now()['uri'] ?? '') !== 'spotify:track:' . $id) out(['bpm' => 0]);
+        $t = sp_tempo($id);
+        out(['bpm' => (float)($t['bpm'] ?? 0)]);
+    }
+
     case 'spotify_artist': {
         if (!is_admin()) fail('Logg inn for å åpne artister.', 401);
         $r = sp_artist((string)($_GET['id'] ?? ''), trim((string)($_GET['name'] ?? '')));

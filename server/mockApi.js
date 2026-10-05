@@ -239,6 +239,11 @@ export function mockApi() {
             const playlists = [0, 1].map((i) => ({ id: `sp${i}`, uri: `spotify:playlist:searchlist${String(i).padStart(10, '0')}`, name: `${q} mix ${i + 1}`, owner: 'Spotify-bruker', image: mockCover(i * 90 + 40), thumb: mockCover(i * 90 + 40), count: 30 + i * 12, url: null }))
             return send(res, 200, { albums, tracks, playlists })
           }
+          case 'spotify_tempo': {
+            const id = url.searchParams.get('id') || ''
+            let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 997
+            return send(res, 200, { bpm: 70 + (h % 90) })
+          }
           case 'spotify_artist': {
             if (!loggedIn) return send(res, 401, { error: 'Logg inn for å åpne artister.' })
             const nm = url.searchParams.get('name') || 'Mock Artist'

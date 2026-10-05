@@ -492,6 +492,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
         if (a) label = `${a.en || a.title} · ${String(a.known).replace('.', ',')} % kjent`
       }
       else if (hoverInfo.kind === 'ipod') label = 'Spillelister'
+      else if (hoverInfo.kind === 'turntable' && music.now?.name) label = music.now.playing ? 'Pause' : 'Spill videre'
       else if (hoverInfo.kind === 'shelf' && lyttePose !== 'shelf') label = 'Bla i platehylla'
       else if (hoverInfo.station === 'reiser' && hoverInfo.country) { globeTable.setHover(hoverInfo.country); label = norskNavn(hoverInfo.country) }
     }
@@ -530,6 +531,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     else if (info.kind === 'album') onPick?.({ station, kind: 'album', uri: music.albums[info.index]?.uri })
     else if (info.kind === 'anime') onPick?.({ station, kind: 'anime', index: info.index })
     else if (info.kind === 'ipod') onPick?.({ station, kind: 'ipod' })
+    else if (info.kind === 'turntable') onPick?.({ station, kind: 'turntable' })
     else if (info.kind === 'shelf') onPick?.({ station, kind: 'shelf' })
     else onPick?.({ station, kind: 'object' })
   }
@@ -832,6 +834,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
       return s && { x: r.left + s.x, y: r.top + s.y, w: s.w, h: s.h }
     },
     /** The records matching the shelf search slide out of the shelf (null = no search). */
+    /** Tempo (BPM) of the song that's playing; 0 = unknown (the record turns at 33⅓ rpm). */
+    setTempo(bpm) { listening.setTempo(bpm); invalidate(0.5) },
     setShelfFilter(list) { listening.setFilter(list); invalidate(1) },
     setMusic(state) {
       music = { albums: state.albums || [], playlists: state.playlists || [], now: state.now || null, guests: state.guests || [] }
