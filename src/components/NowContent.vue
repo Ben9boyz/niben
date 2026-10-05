@@ -253,5 +253,5 @@ h3 { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 0.7rem;
 .trip span { font-size: 0.8rem; opacity: 0.85; }
 @media (max-width: 560px) { .now { grid-template-columns: 1fr; } .card.wide { grid-column: auto; } }
 /* wide (the plain home page): three columns */
-@container (min-width: 880px) { .now { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; } .card.wide:last-child, .card.wide.ms { grid-column: span 3; } }
+@container (min-width: 760px) { .now { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; } .card.wide:last-child, .card.wide.ms { grid-column: span 3; } }
 </style>

@@ -17,6 +17,7 @@ import { shell } from '../composables/useShell'
 import GlobalMini from './GlobalMini.vue'
 import MusicSwitch from './MusicSwitch.vue'
 import ListenDock from './ListenDock.vue'
+import TourCard from './TourCard.vue'
 import { admin } from '../composables/useAdmin'
 
 const data = useData()
@@ -169,6 +170,7 @@ watch(() => route.name, () => (collapsed.value = false))
   <MusicSwitch v-if="isMusic && room.ready" @pick="collapsed = false" />
   <ListenDock v-if="listenPhone && room.ready && collapsed && !decor.editing" />
   <GlobalMini :show="miniOn" />
+  <TourCard v-if="room.ready" />
 
   <!-- phones, panel closed: one icon brings it back -->
   <button v-if="mobile && collapsed && !isHome && !isFocus && room.ready" class="open-fab glass" aria-label="Åpne panelet" title="Åpne panelet" @click="collapsed = false">
@@ -235,7 +237,7 @@ watch(() => route.name, () => (collapsed.value = false))
   right: auto;
   left: calc(var(--rail) + 20px);
   bottom: 32px;
-  width: min(560px, calc(100vw - 64px));
+  width: min(880px, calc(100vw - var(--rail) - 64px)); /* wide: more of "Akkurat nå" at once */
 }
 
 .dock.focus {

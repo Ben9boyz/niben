@@ -24,10 +24,10 @@ const data = useData()
 </template>
 
 <style scoped>
-.hero { padding: 30px 32px 24px; border-radius: 32px; }
-h1 { font-size: clamp(2rem, 4.4vw, 3.3rem); font-weight: 800; }
-.lead { font-size: 1.02rem; margin-top: 12px; }
-.now-wrap { margin-top: 18px; max-height: min(42vh, 380px); overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
+.hero { padding: 32px 36px 26px; border-radius: 32px; }
+h1 { font-size: clamp(2.1rem, 4.6vw, 3.6rem); font-weight: 800; }
+.lead { font-size: 1.08rem; margin-top: 12px; max-width: 62ch; }
+.now-wrap { margin-top: 20px; max-height: min(50vh, 520px); overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
 .tap { display: flex; align-items: center; gap: 8px; margin-top: 18px; font-size: 0.85rem; color: var(--text-3); }
 .tap svg { color: var(--accent); animation: tap 1.8s ease-in-out infinite; }
 @keyframes tap { 50% { transform: translateY(-3px) rotate(-8deg); } }
