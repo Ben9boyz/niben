@@ -130,7 +130,7 @@ function jp_anime(array $decks): array {
     }
     usort($out, fn($a, $b) => $b['known'] <=> $a['known']);
     // an anime I can follow (nearly every word known): a milestone, once
-    if (function_exists('ms_add')) foreach ($out as $a) if (($a['known'] ?? 0) >= 98) ms_add('anime:' . $a['title'], 'anime', (string)($a['en'] ?? $a['title']), 'Klarer ordene i anime-en – ' . round($a['known']) . ' %', $a['cover'] ?? null);
+    if (function_exists('ms_add')) foreach ($out as $a) if (($a['known'] ?? 0) >= 80) ms_add('anime:' . $a['title'], 'anime', (string)($a['en'] ?? $a['title']), 'Du forstår anime-en – ' . round($a['known']) . ' %', $a['cover'] ?? null);
     return $out;
 }
 

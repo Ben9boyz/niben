@@ -88,7 +88,7 @@ const langName = (c) => byCode[c]?.en || c
       <!-- milestones -->
       <section class="card">
         <header><Trophy :size="18" /><h3>Milepæler på hjem-siden</h3></header>
-        <p class="help">Vises i 30 dager under «Akkurat nå». Nye opptak, bøker du er ferdig med, anime du klarer (98 % av ordene) og reiser (dagen de begynner) kommer av seg selv. Resten legger du inn her.</p>
+        <p class="help">Vises i 30 dager under «Akkurat nå». Nye opptak, bøker du er ferdig med, anime du forstår (80 % av ordene, som jpdb bruker) og reiser (dagen de begynner) kommer av seg selv. Resten legger du inn her.</p>
         <form class="msform" @submit.prevent="addMs">
           <select v-model="ms.type" aria-label="Type"><option v-for="t in MS_TYPES" :key="t[0]" :value="t[0]">{{ t[1] }}</option></select>
           <input v-model="ms.title" placeholder="Hva klarte du? F.eks. Wonderwall" aria-label="Tittel" required />
