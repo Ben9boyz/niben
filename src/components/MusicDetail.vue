@@ -1,5 +1,5 @@
 <script setup>
-import { Heart, ChevronLeft, Music, Lock, Play, Pause, ArrowUpRight, CirclePlus, ListEnd } from 'lucide-vue-next'
+import { Bookmark, ChevronLeft, Music, Lock, Play, Pause, ArrowUpRight, CirclePlus, ListEnd } from 'lucide-vue-next'
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import AddMenu from './AddMenu.vue'
 import { startTrackDrag, endDrag } from '../composables/useDrag'
@@ -30,12 +30,14 @@ async function addTo(t, pl) {
   msg.value = r.ok ? { ok: `«${t.name}» er lagt til i «${pl.name}».` } : { error: r.error }
 }
 // Q over a song puts it next in the queue
-const hoverUri = ref(null)
+const hoverT = ref(null)
+// a song for my queue: album tracks don't say which album they're on, so add that
+const qt = (t) => (t.album_uri || props.kind !== 'album' ? t : { ...t, album_uri: props.item.uri, album: props.item.name, album_image: props.item.image || props.item.thumb || '', img: props.item.thumb || props.item.image || '' })
 function onKey(e) {
-  if (e.key.toLowerCase() !== 'q' || e.metaKey || e.ctrlKey || e.altKey || !hoverUri.value || !admin.loggedIn) return
+  if (e.key.toLowerCase() !== 'q' || e.metaKey || e.ctrlKey || e.altKey || !hoverT.value || !admin.loggedIn) return
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return
   e.preventDefault()
-  enqueue(hoverUri.value)
+  enqueue(qt(hoverT.value))
 }
 onMounted(() => window.addEventListener('keydown', onKey))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
@@ -143,7 +145,7 @@ async function onPlay(track = null) {
         </button>
         <span v-if="admin.loggedIn && locked && !isPlayingHere" class="lockt">Låst {{ fmtClock(lockLeft) }}</span>
         <span v-if="isPlayingHere" class="now-tag">Spilles nå</span>
-        <button v-if="admin.loggedIn && kind === 'album'" class="hbtn" :class="{ on: isSaved(item.uri) }" :title="isSaved(item.uri) ? 'Fjern fra biblioteket' : 'Lagre i biblioteket'" :aria-label="isSaved(item.uri) ? 'Fjern fra biblioteket' : 'Lagre i biblioteket'" @click="toggleAlbumSaved(item)"><Heart :size="22" :fill="isSaved(item.uri) ? 'currentColor' : 'none'" /></button>
+        <button v-if="admin.loggedIn && kind === 'album'" class="hbtn" :class="{ on: isSaved(item.uri) }" :title="isSaved(item.uri) ? 'Fjern fra biblioteket' : 'Lagre i biblioteket'" :aria-label="isSaved(item.uri) ? 'Fjern fra biblioteket' : 'Lagre i biblioteket'" @click="toggleAlbumSaved(item)"><Bookmark :size="22" :fill="isSaved(item.uri) ? 'currentColor' : 'none'" /></button>
         <button v-if="admin.loggedIn && kind === 'album'" class="qalbum" title="Legg hele albumet sist i køen" @click="enqueueAlbum(item.uri, item.name)"><ListEnd :size="16" />Legg i kø</button>
         <span class="spacer"></span>
         <a v-if="item.url" class="open" :href="item.url" target="_blank" rel="noopener">Åpne i Spotify <ArrowUpRight :size="15" /></a>
@@ -162,10 +164,10 @@ async function onPlay(track = null) {
           @click="admin.loggedIn && onPlay(t)"
           @contextmenu="rowMenu($event, t)"
           v-on="longPress((e) => rowMenu(e, t))"
-          @mouseenter="hoverUri = t.uri"
-          @mouseleave="hoverUri = null"
+          @mouseenter="hoverT = t"
+          @mouseleave="hoverT = null"
           :draggable="admin.loggedIn || undefined"
-          @dragstart="startTrackDrag($event, t)"
+          @dragstart="startTrackDrag($event, qt(t))"
           @dragend="endDrag"
         >
           <span class="n">
@@ -176,12 +178,12 @@ async function onPlay(track = null) {
             <small v-if="kind === 'playlist' || t.artist !== item.artist">
               <a class="lnk" href="#" @click.stop.prevent="openArtistPage({ id: t.artist_id, name: firstArtist(t.artist) })">{{ t.artist }}</a><template v-if="kind === 'playlist' && t.album_uri"> · <a class="lnk" href="#" title="Åpne albumet" @click.stop.prevent="openAlbumPage(albumOfTrack(t))">{{ t.album }}</a></template>
             </small></span>
-          <button v-if="admin.loggedIn" class="add" title="Spill etterpå – i køen (Q)" aria-label="Spill etterpå" @click.stop="enqueue(t.uri)"><ListEnd :size="15" /></button>
+          <button v-if="admin.loggedIn" class="add" title="Spill etterpå – i køen (Q)" aria-label="Spill etterpå" @click.stop="enqueue(qt(t))"><ListEnd :size="15" /></button>
           <button v-if="admin.loggedIn" class="add" :class="{ on: menuFor === t.uri }" title="Legg i en spilleliste" aria-label="Legg i en spilleliste" @click.stop="menuFor = menuFor === t.uri ? null : t.uri"><CirclePlus :size="18" /></button>
           <span class="d">{{ busy === t.uri ? '…' : fmtClock(t.ms / 1000) }}</span>
         </li>
         <li v-if="menuFor === t.uri" class="plmenu">
-          <AddMenu :exclude="item.uri" @queue="menuFor = null; enqueue(t.uri)" @pick="(p) => addTo(t, p)" @close="menuFor = null" />
+          <AddMenu :exclude="item.uri" @queue="menuFor = null; enqueue(qt(t))" @pick="(p) => addTo(t, p)" @close="menuFor = null" />
         </li>
       </template>
     </ol>
