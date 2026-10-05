@@ -59,7 +59,9 @@ function back() {
 </template>
 
 <style scoped>
-.stick { display: grid; gap: 10px; }
+.stick { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 16px; }
+.stick .head { flex: 0 0 auto; min-height: 30px; margin: 0 2px; }
+.stick :deep(.gb) { flex: 1 1 280px; min-width: 0; }
 .pp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .browse { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .muted { color: var(--text-3); font-size: 0.85rem; }
