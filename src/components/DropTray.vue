@@ -42,7 +42,7 @@ const hint = (e, id) => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer
 
 <style scoped>
 .tray { position: fixed; z-index: 80; right: 20px; top: 84px; bottom: 90px; width: min(300px, calc(100vw - 40px)); display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 18px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3); }
-.list { display: grid; gap: 2px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.list { display: grid; gap: 2px; overflow-y: auto; overscroll-behavior: contain; }
 .list small { padding: 8px 8px 2px; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
 .row { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 10px; border: 1px dashed transparent; color: var(--text); font: 600 0.85rem var(--font); }
 .row span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

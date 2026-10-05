@@ -220,13 +220,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); clearTimeout(flipTimer); wind
 .rback header { display: flex; flex-direction: column; padding: 2px 4px 8px; border-bottom: 1px solid rgba(0, 0, 0, 0.12); }
 .rback header b { font-size: 0.95rem; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rback header small { font-size: 0.72rem; color: #6b6458; }
-.tl { flex: 1; margin: 6px 0 0; padding: 0 6px 0 0; list-style: none; overflow-y: scroll; overscroll-behavior: contain; }
-@supports (-moz-appearance: none) { .tl { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text) 45%, transparent) transparent; } }
-/* always-visible scrollbar (macOS hides the thin one until you scroll): the track list on the back of the record */
-.tl::-webkit-scrollbar { width: 8px; }
-.tl::-webkit-scrollbar-track { background: color-mix(in srgb, var(--text) 8%, transparent); border-radius: 8px; }
-.tl::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text) 40%, transparent); border-radius: 8px; }
-.tl::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+.tl { flex: 1; margin: 6px 0 0; padding: 0 6px 0 0; list-style: none; overflow-y: auto; overscroll-behavior: contain; }
 .tl li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 6px; align-items: center; padding: 5px 4px; border-radius: 6px; font-size: 0.8rem; }
 .tl li.clickable { cursor: pointer; }
 .tl li.clickable:hover { background: rgba(0, 0, 0, 0.06); }

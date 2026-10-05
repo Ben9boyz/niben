@@ -64,7 +64,7 @@ button.danger { color: #d24b4b; }
 button svg { flex: none; color: var(--text-3); }
 button:hover svg { color: inherit; }
 .l { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sub { position: absolute; top: -6px; left: calc(100% + 4px); width: 210px; max-height: 280px; overflow-y: auto; padding: 6px; border-radius: 14px; background: var(--bg); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3); scrollbar-width: thin; }
+.sub { position: absolute; top: -6px; left: calc(100% + 4px); width: 210px; max-height: 280px; overflow-y: auto; padding: 6px; border-radius: 14px; background: var(--bg); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3); }
 .sub.left { left: auto; right: calc(100% + 4px); }
 .none { padding: 8px 10px; color: var(--text-3); }
 @media (max-width: 720px) { .sub { position: static; width: auto; max-height: 200px; margin: 2px 0 4px 12px; box-shadow: none; } button { padding: 11px 10px; } }

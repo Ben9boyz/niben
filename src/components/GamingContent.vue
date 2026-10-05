@@ -159,7 +159,7 @@ const coverFailed = (g) => { noCover.value = new Set(noCover.value).add(g.appid)
 .stats span { font-size: 0.7rem; }
 
 .sec { display: grid; gap: 8px; min-width: 0; }
-.shelf { display: grid; grid-auto-flow: column; grid-auto-columns: 110px; gap: 10px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; scrollbar-width: thin; }
+.shelf { display: grid; grid-auto-flow: column; grid-auto-columns: 110px; gap: 10px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; }
 .cap { display: grid; gap: 3px; color: var(--text); text-decoration: none; scroll-snap-align: start; min-width: 0; }
 .art { display: block; aspect-ratio: 2 / 3; border-radius: 10px; overflow: hidden; background: var(--accent-soft); box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2); }
 .art img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.5s var(--ease, ease); }

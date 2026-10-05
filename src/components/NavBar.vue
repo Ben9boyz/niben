@@ -301,6 +301,7 @@ onBeforeUnmount(() => {
 .install:hover { transform: translateY(-2px) scale(1.03); }
 @media (max-width: 720px) { .install { display: none; } }
 .admin-chip {
+  overflow: hidden;
   position: absolute;
   left: 140px;
   width: 40px;

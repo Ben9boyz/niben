@@ -34,7 +34,7 @@ import { shortcuts, SHORTCUT_GROUPS } from '../composables/useShortcuts'
 header { display: flex; align-items: center; gap: 10px; padding: 16px 18px 8px; color: var(--accent); }
 header h2 { margin: 0; flex: 1; font-size: 1.1rem; color: var(--text); }
 .x { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--glass-strong); color: var(--text-2); cursor: pointer; }
-.body { overflow-y: auto; padding: 4px 18px 8px; display: grid; gap: 14px; scrollbar-width: thin; }
+.body { overflow-y: auto; padding: 4px 18px 8px; display: grid; gap: 14px; }
 h3 { margin: 6px 0 6px; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
 dl { display: grid; grid-template-columns: minmax(150px, auto) 1fr; gap: 6px 14px; margin: 0; align-items: center; }
 dt { display: flex; gap: 4px; flex-wrap: wrap; }

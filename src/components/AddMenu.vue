@@ -68,7 +68,7 @@ function pick(p) {
 .search:focus-within { border-color: var(--accent); color: var(--accent); }
 .search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--text); font: 500 0.85rem var(--font); }
 .search input::-webkit-search-cancel-button { display: none; }
-.list { display: grid; gap: 1px; max-height: 210px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.list { display: grid; gap: 1px; max-height: 210px; overflow-y: auto; overscroll-behavior: contain; }
 .list small { padding: 6px 8px 2px; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
 .row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--text); font: 500 0.85rem var(--font); text-align: left; cursor: pointer; }
 .cv { width: 30px; height: 30px; flex: none; border-radius: 5px; object-fit: cover; background: var(--glass-strong); }

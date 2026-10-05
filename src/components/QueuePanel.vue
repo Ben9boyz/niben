@@ -48,7 +48,7 @@ header { display: flex; align-items: center; justify-content: space-between; gap
 header b { display: inline-flex; align-items: center; gap: 6px; }
 .pos { padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font: 700 0.7rem var(--font); }
 .muted { margin: 0; color: var(--text-3); font-size: 0.82rem; }
-ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; max-height: 340px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; max-height: 340px; overflow-y: auto; overscroll-behavior: contain; }
 li { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 3px 4px; border-radius: 8px; }
 li img, .ph { width: 32px; height: 32px; border-radius: 5px; object-fit: cover; background: var(--accent-soft); }
 .ph { display: grid; place-items: center; color: var(--text-3); }

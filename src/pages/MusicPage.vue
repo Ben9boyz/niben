@@ -132,7 +132,7 @@ function show(view) {
 .layout { display: grid; grid-template-columns: 210px minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
 .lib-col, .now-col { position: sticky; top: 20px; }
 /* a card taller than the screen scrolls inside itself instead of being cut off */
-.lib-card, .now-card { max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.lib-card, .now-card { max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain;  }
 .lib-card { padding: 12px; border-radius: 20px; display: grid; gap: 8px; }
 .lh { margin: 2px 6px; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
 .lib { display: grid; gap: 2px; }
@@ -148,7 +148,7 @@ function show(view) {
    (ALBUM + the group buttons) – nothing ever moves above the search line, the library or what's playing */
 @media (min-width: 821px) {
   .main-col { position: sticky; top: 20px; height: calc(100dvh - 40px); grid-template-rows: auto minmax(0, 1fr); gap: 12px; }
-  .main-card { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; min-height: 0; }
+  .main-card { overflow-y: auto; overscroll-behavior: contain;  min-height: 0; }
 }
 .seg { display: none !important; }
 @media (max-width: 820px) { .seg { display: grid !important; } }
@@ -199,7 +199,6 @@ function show(view) {
 </style>
 
 <style>
-.music .main-card::-webkit-scrollbar, .music .lib-card::-webkit-scrollbar, .music .now-card::-webkit-scrollbar { display: none; }
 @media (min-width: 821px) { html.player-shell .music.cpage { padding-top: 84px; padding-bottom: 20px; } }
 /* the header of the grid (name + group buttons) sticks to the top of the card; tiles vanish under it */
 @media (min-width: 821px) {

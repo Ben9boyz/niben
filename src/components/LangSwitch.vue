@@ -53,7 +53,7 @@ onBeforeUnmount(() => { document.removeEventListener('pointerdown', onDoc); wind
 .search:focus-within { border-color: var(--accent); color: var(--accent); }
 .search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--text); font: 500 0.88rem var(--font); }
 .search input::-webkit-search-cancel-button { display: none; }
-ul { list-style: none; margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+ul { list-style: none; margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain; }
 li button { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 8px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--text); font: 600 0.9rem var(--font); text-align: left; cursor: pointer; }
 li button:hover { background: var(--accent-soft); }
 li button.on { color: var(--accent); background: var(--accent-soft); }
