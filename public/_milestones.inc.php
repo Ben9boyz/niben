@@ -11,6 +11,11 @@ function ms_trips(): void {
         $rows = db()->query("SELECT id, country, place, title, date_from, date_to, year FROM trips WHERE date_from IS NOT NULL AND date_from <= CURDATE() AND date_from >= CURDATE() - INTERVAL 30 DAY")->fetchAll();
         foreach ($rows as $r) ms_add('trip:' . $r['id'], 'trip', trim(($r['place'] ?: $r['country']) . ($r['place'] && $r['country'] ? ', ' . $r['country'] : '')), (string)$r['title'], null, strtotime($r['date_from'] . ' 12:00') ?: time());
     } catch (Throwable $e) {}
+    // recordings: the date on the recording (Gitar → opptak) decides – one made in the last 30 days is "just released"
+    try {
+        $rows = db()->query("SELECT id, guitar, title, recorded_on FROM recordings WHERE recorded_on IS NOT NULL AND recorded_on <= CURDATE() AND recorded_on >= CURDATE() - INTERVAL 30 DAY")->fetchAll();
+        foreach ($rows as $r) ms_add('rec:' . $r['id'], 'recording', (string)$r['title'], 'Nytt gitaropptak', null, strtotime($r['recorded_on'] . ' 12:00') ?: time());
+    } catch (Throwable $e) {}
 }
 
 function ms_all(): array {

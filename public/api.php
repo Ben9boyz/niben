@@ -526,7 +526,7 @@ try {
             db()->prepare('INSERT INTO recordings (guitar, title, recorded_on, youtube, audio_path, notes) VALUES (?,?,?,?,?,?)')
                 ->execute([$guitar, $title, date_or_null($b['recorded_on'] ?? null), $yt, $audio, str_or_null($b['notes'] ?? null, 5000)]);
             $id = (int)db()->lastInsertId();
-            ms_add('rec:' . $id, 'recording', $title, 'Nytt gitaropptak', null, time(), null); // just released
+            // (the milestone is added when the list is read, from the recording's date – see ms_trips)
         }
         out(['id' => $id]);
     }
