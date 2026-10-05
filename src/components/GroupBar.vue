@@ -9,7 +9,7 @@ import { notify } from '../composables/useSpotify'
 
 // Above the albums / playlists: a switch for grouping, and (admin) "Rediger" – moving things between groups
 // and adding / renaming / reordering / deleting the groups themselves.
-const props = defineProps({ artist: Boolean }) // albums: the "Artist" view is offered (and no "Lister")
+const props = defineProps({ artist: Boolean, all: Boolean }) // all: the "Alt" pot – albums + playlists, no Artist view // albums: the "Artist" view is offered (and no "Lister")
 const view = computed(() => (!props.artist && groups.view === 'artist' ? 'mapper' : groups.view))
 const draft = ref([])
 const open = computed(() => admin.loggedIn && groups.editing)
@@ -42,7 +42,7 @@ async function save() {
         <button :class="{ on: view === 'lister' }" @click="setView('lister')">Lister</button>
         <button v-if="artist" :class="{ on: view === 'artist' }" @click="setView('artist')">Artist</button>
       </span>
-      <span class="tools"><SortButton :kind="artist ? 'album' : 'playlist'" />
+      <span class="tools"><SortButton :kind="all ? 'all' : artist ? 'album' : 'playlist'" />
       <button v-if="admin.loggedIn && groups.on && groups.view !== 'artist'" class="ed" :class="{ on: groups.editing }" @click="groups.editing = !groups.editing"><Pencil :size="13" />{{ groups.editing ? 'Ferdig' : 'Rediger' }}</button></span>
     </div>
     <div v-if="open && groups.on" class="editor">

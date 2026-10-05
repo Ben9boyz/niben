@@ -1,6 +1,6 @@
 <script setup>
-import { Music, Play, Pause, Heart } from 'lucide-vue-next'
-import { spotify, isSaved, toggleAlbumSaved } from '../composables/useSpotify'
+import { Music, Play, Pause } from 'lucide-vue-next'
+import { spotify } from '../composables/useSpotify'
 import { playItem, itemMenu } from '../lib/menus'
 import { showMenu, longPress } from '../composables/useContextMenu'
 import { admin } from '../composables/useAdmin'
@@ -11,8 +11,6 @@ import { admin } from '../composables/useAdmin'
 const go = playItem
 const menu = (e, it) => showMenu(e, it.name, itemMenu(it, () => emit('pick', it)))
 const holds = (it) => longPress((e) => menu(e, it))
-const heartable = (it) => admin.loggedIn && /^spotify:album:/.test(it.uri || '') && (props.likeable || isSaved(it.uri))
-const like = (it) => toggleAlbumSaved({ uri: it.uri, name: it.name, artist: it.sub, image: it.image, image_large: it.image, thumb: it.image })
 const playable = (it) => admin.loggedIn && /^spotify:(album|playlist):/.test(it.uri || '')
 // Grid of square covers (records and playlists). The name shows on hover.
 const props = defineProps({
@@ -22,7 +20,6 @@ const props = defineProps({
   cursorUri: { type: String, default: null }, // the iPod's highlighted row
   // groups: tiles can be dragged to a folder (PC); with `movable` each also gets a group picker (touch screens)
   draggable: Boolean,
-  likeable: Boolean, // albums not in my library get a heart (hover) that saves them
 
   movable: Boolean,
   groups: { type: Array, default: () => [] }, // [{ id, name }]
@@ -49,7 +46,6 @@ const emit = defineEmits(['pick', 'hover', 'move', 'dragitem'])
         <span class="cap" translate="no"><b>{{ it.name }}</b><small v-if="it.sub">{{ it.sub }}</small></span>
         <span v-if="it.uri === playingUri" class="live" title="Spilles nå"><i></i><i></i><i></i></span>
       </button>
-      <button v-if="heartable(it)" class="hrt" :class="{ on: isSaved(it.uri) }" :title="isSaved(it.uri) ? 'Fjern fra biblioteket' : 'Lagre i biblioteket'" :aria-label="isSaved(it.uri) ? 'Fjern fra biblioteket' : 'Lagre i biblioteket'" @click.stop="like(it)"><Heart :size="14" :fill="isSaved(it.uri) ? 'currentColor' : 'none'" /></button>
       <button v-if="playable(it)" class="pl" :class="{ now: it.uri === playingUri }" :title="it.uri === playingUri && spotify.now?.playing ? 'Pause' : 'Spill av fra første låt'" :aria-label="`Spill ${it.name}`" @click.stop="go(it)">
         <Pause v-if="it.uri === playingUri && spotify.now?.playing" :size="15" fill="currentColor" /><Play v-else :size="15" fill="currentColor" />
       </button>
@@ -71,10 +67,6 @@ const emit = defineEmits(['pick', 'hover', 'move', 'dragitem'])
 @media (hover: hover) and (pointer: fine) { .mv { display: none; } }
 .mv { position: absolute; left: 4px; right: 4px; bottom: 4px; z-index: 3; width: calc(100% - 8px); padding: 3px 4px; border: 0; border-radius: 6px; background: rgba(0, 0, 0, 0.72); color: #fff; font: 600 0.66rem var(--font); }
 .guess { position: absolute; left: 4px; top: 4px; z-index: 3; padding: 1px 6px; border-radius: 999px; background: #f0a040; color: #fff; font: 700 0.6rem var(--font); }
-.hrt { position: absolute; right: 7px; top: 7px; z-index: 2; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: rgba(0, 0, 0, 0.55); color: #fff; cursor: pointer; opacity: 0; transition: opacity 0.18s, color 0.15s; }
-.cell:hover .hrt, .hrt:focus-visible { opacity: 1; }
-.hrt:hover, .hrt.on { color: #1db954; }
-@media (hover: none) { .hrt { opacity: 0.9; } }
 .pl { position: absolute; right: 7px; bottom: 7px; z-index: 2; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: #1db954; color: #fff; box-shadow: 0 6px 14px rgba(0, 0, 0, 0.4); cursor: pointer; opacity: 0; transform: translateY(6px); transition: opacity 0.18s, transform 0.18s, filter 0.15s; }
 .cell:hover .pl, .pl:focus-visible { opacity: 1; transform: none; }
 .pl:hover { filter: brightness(1.1); transform: scale(1.08); }

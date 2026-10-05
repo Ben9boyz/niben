@@ -5,12 +5,13 @@ import { reactive, watch } from 'vue'
 const KEY = 'niben-sort'
 export const OPTIONS = {
   album: [['added', 'Nylig lagret'], ['az', 'Tittel A–Å'], ['artist', 'Artist A–Å'], ['year', 'Utgivelsesår (nyest)'], ['longest', 'Flest låter'], ['shortest', 'Færrest låter']],
+  all: [['az', 'Navn A–Å'], ['albums', 'Album først'], ['lists', 'Spillelister først']], // "Alt": albums and playlists in one pot
   playlist: [['default', 'Som i Spotify'], ['az', 'Navn A–Å'], ['longest', 'Flest låter'], ['shortest', 'Færrest låter']],
 }
 const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || '{}') } catch { return {} } }
 const saved = read()
-export const sort = reactive({ album: saved.album && OPTIONS.album.some((o) => o[0] === saved.album) ? saved.album : 'added', playlist: saved.playlist && OPTIONS.playlist.some((o) => o[0] === saved.playlist) ? saved.playlist : 'default' })
-watch(sort, () => { try { localStorage.setItem(KEY, JSON.stringify({ album: sort.album, playlist: sort.playlist })) } catch {} })
+export const sort = reactive({ album: saved.album && OPTIONS.album.some((o) => o[0] === saved.album) ? saved.album : 'added', playlist: saved.playlist && OPTIONS.playlist.some((o) => o[0] === saved.playlist) ? saved.playlist : 'default', all: saved.all && OPTIONS.all.some((o) => o[0] === saved.all) ? saved.all : 'az' })
+watch(sort, () => { try { localStorage.setItem(KEY, JSON.stringify({ album: sort.album, playlist: sort.playlist, all: sort.all })) } catch {} })
 
 const nb = (a, b) => String(a || '').localeCompare(String(b || ''), 'nb')
 /** A sorted copy of the albums / playlists (the original order is kept for everything else). */

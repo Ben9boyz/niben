@@ -1,5 +1,5 @@
-import { Play, Pause, ListEnd, ListPlus, FolderInput, ExternalLink, Link, User, Disc3, Heart, FolderOpen, Library, PlayCircle } from 'lucide-vue-next'
-import { spotify, play, control, lockLeft, fmtClock, lockNote, notify, enqueue, enqueueAlbum, addToPlaylist, saveAlbum, isLiked, setLiked, addGuest } from '../composables/useSpotify'
+import { Play, Pause, ListEnd, ListPlus, FolderInput, ExternalLink, Link, User, Disc3, Heart, HeartOff, FolderOpen } from 'lucide-vue-next'
+import { spotify, play, control, lockLeft, fmtClock, lockNote, notify, enqueue, enqueueAlbum, addToPlaylist, isSaved, toggleAlbumSaved, isLiked, setLiked, addGuest } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 import { groups, flatGroups, moveTo } from '../composables/useGroups'
 import { openAlbumPage, openArtistPage, albumOfTrack, firstArtist } from '../composables/useBrowse'
@@ -35,7 +35,11 @@ export function itemMenu(it, open) {
   }
   items.push({ label: isAlbum ? 'Åpne albumet' : 'Åpne spillelisten', icon: FolderOpen, run: open })
   if (isAlbum && it.sub) items.push({ label: 'Gå til artist', icon: User, run: () => openArtistPage({ id: it.artist_id, name: firstArtist(it.sub) }) })
-  if (admin.loggedIn && isAlbum && !own) items.push({ label: 'Legg i biblioteket', icon: Library, run: async () => { const r = await saveAlbum(it.uri); say(r.ok ? { text: `«${it.name}» ligger nå blant albumene dine.` } : { error: true, text: r.error }) } })
+  // like an album = save it in the library (right-click, no heart on the tile)
+  if (admin.loggedIn && isAlbum) {
+    const saved = isSaved(it.uri)
+    items.push({ label: saved ? 'Fjern fra biblioteket' : 'Lagre i biblioteket', icon: saved ? HeartOff : Heart, run: () => toggleAlbumSaved({ uri: it.uri, name: it.name, artist: it.sub, image: it.image, image_large: it.image, thumb: it.image }) })
+  }
   if (admin.loggedIn && own && groups.on && groups.loaded) {
     items.push({ sep: true })
     items.push({ label: 'Flytt til mappe', icon: FolderInput, sub: flatGroups().map((g) => ({ label: `${g.depth ? '↳ ' : ''}${g.name}`, run: async () => { const r = await moveTo(it.uri, g.id); if (!r.ok) say({ error: true, text: r.error }) } })) })

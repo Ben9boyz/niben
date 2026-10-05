@@ -1,42 +1,43 @@
 <script setup>
 import { computed } from 'vue'
 import { spotify } from '../composables/useSpotify'
-import { sorted } from '../composables/useSort'
+import { sort, sorted } from '../composables/useSort'
 import { room } from '../composables/useRoom'
-import CoverGrid from './CoverGrid.vue'
-import SortButton from './SortButton.vue'
+import GroupedGrid from './GroupedGrid.vue'
+import GroupBar from './GroupBar.vue'
 
-// "Alt": the playlists and the albums together in one view (each in its own section, in the chosen order).
+// "Alt": the albums and the playlists together in ONE pot – one grid, my folders / lists work across both
+// (but no "Artist" view). The sort button picks A–Å, or albums / playlists first.
 const lists = computed(() => sorted('playlist', spotify.playlists).map((p) => ({ uri: p.uri, name: p.name, sub: p.count ? `${p.count} låter` : p.owner, image: p.image || p.thumb })))
 const albums = computed(() => sorted('album', spotify.albums).map((a) => ({ uri: a.uri, name: a.name, sub: a.artist, image: a.image || a.thumb })))
-function openList(it) {
-  room.musicView = 'ipod'
-  room.ipod.playlist = spotify.playlists.find((p) => p.uri === it.uri)
-  room.ipod.view = 'playlist'
-  room.ipod.active = 0
-}
-function openAlbum(it) {
-  room.musicView = 'vinyl'
-  room.sel.musikk = { kind: 'album', uri: it.uri, t: Date.now() }
+const nb = (a, b) => String(a || '').localeCompare(String(b || ''), 'nb')
+const items = computed(() => {
+  if (sort.all === 'albums') return [...albums.value, ...lists.value]
+  if (sort.all === 'lists') return [...lists.value, ...albums.value]
+  return [...albums.value, ...lists.value].sort((a, b) => nb(a.name, b.name))
+})
+function open(it) {
+  if (it.uri.startsWith('spotify:playlist:')) {
+    room.musicView = 'ipod'
+    room.ipod.playlist = spotify.playlists.find((p) => p.uri === it.uri)
+    room.ipod.view = 'playlist'
+    room.ipod.active = 0
+  } else {
+    room.musicView = 'vinyl'
+    room.sel.musikk = { kind: 'album', uri: it.uri, t: Date.now() }
+  }
 }
 </script>
 
 <template>
   <div class="all">
-    <section v-if="lists.length">
-      <header><b class="label-caps">Spillelister <span>{{ lists.length }}</span></b><SortButton kind="playlist" /></header>
-      <CoverGrid :items="lists" :playing-uri="spotify.now?.context" @pick="openList" />
-    </section>
-    <section v-if="albums.length">
-      <header><b class="label-caps">Album <span>{{ albums.length }}</span></b><SortButton kind="album" /></header>
-      <CoverGrid :items="albums" :playing-uri="spotify.now?.context" @pick="openAlbum" />
-    </section>
+    <GroupBar all />
+    <GroupedGrid :items="items" :playing-uri="spotify.now?.context" @pick="open" />
+    <p v-if="!items.length" class="muted">Ingenting her ennå.</p>
   </div>
 </template>
 
 <style scoped>
-.all { display: grid; gap: 22px; min-width: 0; }
-section { display: grid; gap: 10px; }
-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-header span { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.7rem; letter-spacing: 0; }
+.all { display: grid; gap: 14px; min-width: 0; }
+.muted { color: var(--text-3); }
 </style>

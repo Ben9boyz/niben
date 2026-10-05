@@ -43,7 +43,7 @@ const kinds = (d) => [
     <template v-else>
       <section v-for="k in kinds(data)" :key="k.title">
         <h4>{{ k.title }}</h4>
-        <CoverGrid :items="tiles(k.list)" :playing-uri="spotify.now?.context" likeable @pick="openAlbumPage($event)" />
+        <CoverGrid :items="tiles(k.list)" :playing-uri="spotify.now?.context" @pick="openAlbumPage($event)" />
       </section>
       <p v-if="!data.albums.length" class="note">Fant ingen album.</p>
     </template>
