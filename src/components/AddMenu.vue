@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Search, ListEnd, Clock } from 'lucide-vue-next'
+import { Search, ListEnd, ListMusic } from 'lucide-vue-next'
 import { spotify } from '../composables/useSpotify'
 import { groups, sectionsOf, loadGroups } from '../composables/useGroups'
 
@@ -43,17 +43,17 @@ function pick(p) {
     <div class="list">
       <template v-if="recents.length">
         <small>Nylig brukt</small>
-        <button v-for="p in recents" :key="'r' + p.uri" class="row" @click="pick(p)"><Clock :size="13" aria-hidden="true" /><span>{{ p.name }}</span></button>
+        <button v-for="p in recents" :key="'r' + p.uri" class="row" @click="pick(p)"><img v-if="p.thumb || p.image" crossorigin="anonymous" :src="p.thumb || p.image" alt="" class="cv" loading="lazy" /><span v-else class="cv ph"><ListMusic :size="13" aria-hidden="true" /></span><span>{{ p.name }}</span></button>
         <small v-if="rest.length">Alle spillelister</small>
       </template>
       <template v-if="sections">
         <template v-for="sec in sections" :key="sec.group.id">
           <small>{{ sec.label }}</small>
-          <button v-for="p in sec.items" :key="p.uri" class="row" @click="pick(p)"><span>{{ p.name }}</span><i v-if="p.count">{{ p.count }}</i></button>
+          <button v-for="p in sec.items" :key="p.uri" class="row" @click="pick(p)"><img v-if="p.thumb || p.image" crossorigin="anonymous" :src="p.thumb || p.image" alt="" class="cv" loading="lazy" /><span v-else class="cv ph"><ListMusic :size="13" aria-hidden="true" /></span><span>{{ p.name }}</span><i v-if="p.count">{{ p.count }}</i></button>
         </template>
       </template>
       <button v-for="p in (sections ? [] : rest)" :key="p.uri" class="row" :class="{ first: p === first }" @click="pick(p)">
-        <span>{{ p.name }}</span><i v-if="p.count">{{ p.count }}</i>
+        <img v-if="p.thumb || p.image" crossorigin="anonymous" :src="p.thumb || p.image" alt="" class="cv" loading="lazy" /><span v-else class="cv ph"><ListMusic :size="13" aria-hidden="true" /></span><span>{{ p.name }}</span><i v-if="p.count">{{ p.count }}</i>
       </button>
       <p v-if="!rest.length && !recents.length" class="none">{{ needle ? 'Ingen treff.' : 'Ingen spillelister du kan legge til i.' }}</p>
     </div>
@@ -71,6 +71,9 @@ function pick(p) {
 .list { display: grid; gap: 1px; max-height: 210px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .list small { padding: 6px 8px 2px; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
 .row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--text); font: 500 0.85rem var(--font); text-align: left; cursor: pointer; }
+.cv { width: 30px; height: 30px; flex: none; border-radius: 5px; object-fit: cover; background: var(--glass-strong); }
+.cv.ph { display: grid; place-items: center; color: var(--text-3); }
+.row { padding: 5px 8px; }
 .row span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row i { font-style: normal; font-size: 0.72rem; color: var(--text-3); font-variant-numeric: tabular-nums; }
 .row:hover, .row.first { background: var(--accent-soft); color: var(--accent); }
