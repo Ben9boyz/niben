@@ -7,22 +7,29 @@ declare module '*.vue' {
 }
 
 // Spotify's Web Playback SDK (loaded from sdk.scdn.co)
+interface SpotifyImage { url: string; width?: number; height?: number }
+interface SpotifyTrackInfo { uri: string; name: string; artists: { name: string }[]; album: { name: string; uri: string; images: SpotifyImage[] } }
 interface SpotifyPlayerState {
   paused: boolean
+  shuffle: boolean
   position: number
   duration: number
-  track_window: { current_track: { uri: string; name: string; artists: { name: string }[]; album: { name: string; uri: string; images: { url: string }[] } } }
+  context: { uri: string | null }
+  track_window: { current_track: SpotifyTrackInfo | null }
 }
 interface SpotifyPlayer {
   connect(): Promise<boolean>
   disconnect(): void
-  addListener(event: string, cb: (arg: never) => void): boolean
-  removeListener(event: string): boolean
-  getCurrentState(): Promise<SpotifyPlayerState | null>
+  addListener(event: 'ready' | 'not_ready', cb: (p: { device_id: string }) => void): boolean
+  addListener(event: 'initialization_error' | 'authentication_error' | 'account_error' | 'playback_error', cb: (e: { message: string }) => void): boolean
+  addListener(event: 'player_state_changed', cb: (s: SpotifyPlayerState | null) => void): boolean
+  pause(): Promise<void>
+  resume(): Promise<void>
+  seek(ms: number): Promise<void>
+  nextTrack(): Promise<void>
+  previousTrack(): Promise<void>
   setVolume(v: number): Promise<void>
-  togglePlay(): Promise<void>
-  activateElement?(): Promise<void>
-  _options?: { id?: string }
+  activateElement(): Promise<void>
 }
 interface Window {
   Spotify?: { Player: new (options: { name: string; getOAuthToken: (cb: (token: string) => void) => void; volume?: number }) => SpotifyPlayer }
@@ -30,5 +37,8 @@ interface Window {
 }
 
 // the desktop app ("niben musikk") adds this through its preload script
-interface NibenAppBridge { kind?: string; [key: string]: unknown }
+interface NibenAppBridge { kind?: string; drm?: boolean; [key: string]: unknown }
 interface Window { nibenApp?: NibenAppBridge }
+
+// Safari's prefixed audio context
+interface Window { webkitAudioContext?: typeof AudioContext }
