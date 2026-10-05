@@ -221,6 +221,7 @@ function sp_track(array $t): array {
         'artist_id' => $t['artists'][0]['id'] ?? null,
         'ms' => (int)($t['duration_ms'] ?? 0),
         'n' => $t['track_number'] ?? null,
+        'disc' => $t['disc_number'] ?? null, // albums with 2+ discs: the numbers start over on each
         'img' => sp_img($al['images'] ?? [], 64), // tiny cover (playlists; album tracks have none)
     ];
     if ($al && !empty($al['uri'])) { // so a song can open its album
@@ -299,7 +300,7 @@ function sp_artist(string $id, string $name): ?array {
 
 /** Track list for an album or playlist (fetched on demand, cached for 6 hours). */
 function sp_tracks(string $type, string $id): array {
-    $data = sp_cached("tracks4_{$type}_{$id}", 21600, function () use ($type, $id) {
+    $data = sp_cached("tracks5_{$type}_{$id}", 21600, function () use ($type, $id) {
         $out = [];
         // read page after page; the next page starts after what we actually GOT (if Spotify hands out fewer than the
         // 50 we ask for, jumping 50 ahead would skip songs – the cause of albums with only their first few songs)
@@ -662,7 +663,7 @@ function sp_handle(string $action, bool $post): void {
         if ($s === 403) out(['error' => 'Spotify sier nei – du kan bare legge til i lister du har laget selv (eller som er samarbeidslister).', 'code' => 'forbidden'], 403);
         if ($s === 401) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
         if ($s >= 300) fail('Spotify svarte med feil (' . $s . ').', 502);
-        kv_del('cache_playlists_v3', 'cache_playlists_v4', 'tracks2_playlist_' . $m[1], 'tracks4_playlist_' . $m[1]);
+        kv_del('cache_playlists_v3', 'cache_playlists_v4', 'tracks2_playlist_' . $m[1], 'tracks4_playlist_' . $m[1], 'tracks5_playlist_' . $m[1]);
         out(['ok' => true]);
     }
 

@@ -211,12 +211,12 @@ export async function fetchTracks(uri) {
   if (trackCache.has(uri)) return trackCache.get(uri)
   const [, type, id] = uri.split(':')
   const p = (async () => {
-    const saved = await pget(`tracks:${uri}`, type === 'album' ? 90 * DAY : 6 * 3600000)
+    const saved = await pget(`tracks2:${uri}`, type === 'album' ? 90 * DAY : 6 * 3600000)
     if (saved) return saved
     try {
       const j = await (await fetch(`api.php?action=spotify_tracks&type=${type}&id=${encodeURIComponent(id)}`)).json()
       const out = { tracks: j.tracks || [], hidden: !!j.hidden }
-      if (!j.error && (out.tracks.length || out.hidden)) pset(`tracks:${uri}`, out)
+      if (!j.error && (out.tracks.length || out.hidden)) pset(`tracks2:${uri}`, out)
       return out
     } catch {
       trackCache.delete(uri)
@@ -227,7 +227,7 @@ export async function fetchTracks(uri) {
   return p
 }
 /** Forget a saved track list (after I've changed the playlist from here). */
-export function forgetTracks(uri) { trackCache.delete(uri); pdel(`tracks:${uri}`) }
+export function forgetTracks(uri) { trackCache.delete(uri); pdel(`tracks2:${uri}`) }
 
 /** Shuffle on / off (admin) – for whatever is playing, wherever it plays. */
 export async function setShuffle(on) {

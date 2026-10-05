@@ -30,6 +30,7 @@ async function addTo(t, pl) {
   msg.value = r.ok ? { ok: `«${t.name}» er lagt til i «${pl.name}».` } : { error: r.error }
 }
 // Q over a song puts it next in the queue
+const multiDisc = computed(() => (tracks.value?.tracks || []).some((t) => (t.disc || 1) > 1))
 const hoverT = ref(null)
 // a song for my queue: album tracks don't say which album they're on, so add that
 const qt = (t) => (t.album_uri || props.kind !== 'album' ? t : { ...t, album_uri: props.item.uri, album: props.item.name, album_image: props.item.image || props.item.thumb || '', img: props.item.thumb || props.item.image || '' })
@@ -159,6 +160,7 @@ async function onPlay(track = null) {
       <li v-else-if="tracks.hidden" class="note">Spotify viser bare låtene i spillelister du har laget selv. Du kan fortsatt spille av hele lista.</li>
       <li v-else-if="!tracks.tracks.length" class="note">Fant ingen låter.</li>
       <template v-for="(t, i) in tracks?.tracks || []" :key="t.uri + i">
+        <li v-if="kind === 'album' && multiDisc && t.disc && t.disc !== tracks.tracks[i - 1]?.disc" class="disc">Plate {{ t.disc }}</li>
         <li
           :class="{ current: spotify.now?.uri === t.uri, clickable: admin.loggedIn && (!locked || spotify.now?.uri === t.uri), withadd: admin.loggedIn }"
           @click="admin.loggedIn && onPlay(t)"
@@ -191,6 +193,7 @@ async function onPlay(track = null) {
 </template>
 
 <style scoped>
+.disc { grid-column: 1 / -1; display: block; padding: 10px 4px 2px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); list-style: none; }
 .detail { --tint: var(--accent); display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; }
 .bar { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 0 8px; } /* same side padding as the song rows: the Spotify link lines up with the times */
 .bar .back { margin: 0; background: var(--accent-soft); color: var(--accent); } /* the global .back has a bottom margin that pushed the pill up */
