@@ -21,6 +21,8 @@ function st_api(string $method, array $params = []): ?array {
     return $status === 200 ? json_decode((string)$res, true) : null;
 }
 
+// my best friend on Steam (can be changed in Admin → Oversikt; a 'best_friend' in _steam.php wins over both)
+const ST_BEST_FRIEND = '76561198148569463';
 const ST_STATES = ['Frakoblet', 'Pålogget', 'Opptatt', 'Borte', 'Snoozer', 'Vil bytte', 'Vil spille'];
 
 /** Profile + what's playing now (changes often – cached briefly). */
@@ -190,7 +192,7 @@ function st_friends(): ?array {
         $mine = [];
         foreach ((st_library()['top'] ?? []) as $g) $mine[$g['appid']] = $g;
         // best friend: set best_friend (a Steam ID) in _steam.php, else the friend with the most hours in MY most played games
-        $best = $c['best_friend'] ?? null;
+        $best = $c['best_friend'] ?? (kv_get('st_best_friend') ?: ST_BEST_FRIEND);
         $scores = [];
         if (!$best) {
             foreach (array_slice(array_keys($players), 0, 30) as $id) {

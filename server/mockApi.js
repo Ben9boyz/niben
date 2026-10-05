@@ -254,6 +254,9 @@ export function mockApi() {
             return send(res, 200, { days, today: days[29].u, week: 31, month: 94, total: 212, returning: 37, hits_today: days[29].h })
           }
           case 'visit': return send(res, 200, { ok: true })
+          case 'admin_best_friend':
+            if (!needAdmin()) return
+            return send(res, 200, { ok: true, id: (b && b.id) || '76561198148569463' })
           case 'admin_translate_clear':
             if (!needAdmin()) return
             return send(res, 200, { ok: true })

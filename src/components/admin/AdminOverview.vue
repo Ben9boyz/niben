@@ -47,6 +47,14 @@ async function clearLang(lang) {
 }
 const maxDay = computed(() => Math.max(1, ...(vis.value?.days || []).map((d) => d.u)))
 const dayLabel = (d) => new Date(d + 'T12:00:00').toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })
+const bf = ref('')
+async function loadBf() { try { bf.value = (await api('admin_best_friend')).id || '' } catch {} }
+onMounted(loadBf)
+async function saveBf() {
+  busy.value = 'bf'
+  try { const r = await api('admin_best_friend', { id: bf.value }); bf.value = r.id; flash('Bestevennen er lagret – vises på Spill-siden om litt.') } catch (e) { err.value = e.message }
+  busy.value = ''
+}
 const langName = (c) => byCode[c]?.en || c
 </script>
 
@@ -121,6 +129,7 @@ const langName = (c) => byCode[c]?.en || c
         <header><Gamepad2 :size="18" /><h3>Andre tjenester</h3></header>
         <ul class="svc">
           <li><span>Steam (spill)</span><span class="pill" :class="st.steam ? 'ok' : 'off'">{{ st.steam ? 'På' : 'Av' }}</span><small v-if="!st.steam">Kjør <code>./steam-setup.sh</code> på maskinen din.</small></li>
+          <li class="bfrow" v-if="st.steam"><span>Bestevenn på Steam</span><input v-model="bf" class="bfin" placeholder="Steam-ID eller lenke til profilen" aria-label="Bestevenn på Steam" @keydown.enter="saveBf" /><button class="btn small" :disabled="busy === 'bf'" @click="saveBf">Lagre</button></li>
           <li><span>jpdb (japansk)</span><span class="pill" :class="st.jpdb ? 'ok' : 'off'">{{ st.jpdb ? 'På' : 'Av' }}</span><small v-if="!st.jpdb">Kjør <code>./jpdb-setup.sh</code>.</small></li>
         </ul>
       </section>
@@ -182,6 +191,8 @@ const langName = (c) => byCode[c]?.en || c
 .svc { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
 .svc li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .svc li span:first-child { flex: 1; font-weight: 600; }
+.bfrow { flex-wrap: nowrap; }
+.bfin { flex: 2; min-width: 0; padding: 8px 12px; border: 1px solid var(--glass-border); border-radius: 10px; background: var(--bg); color: var(--text); font: 500 0.84rem var(--font); }
 .svc small { flex-basis: 100%; color: var(--text-3); }
 .langs { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; max-height: 220px; overflow-y: auto; }
 .langs li { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-radius: 8px; }

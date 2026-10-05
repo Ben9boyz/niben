@@ -2,6 +2,7 @@
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { ListMusic, Music } from 'lucide-vue-next'
 import { spotify, fetchQueue, fetchTracks, fmtClock } from '../composables/useSpotify'
+import { queueDrop, queueOver, drag } from '../composables/useDrag'
 
 // Under "now playing": what comes next, and – for an album – where you are in it ("Låt 5 av 12"). For an album
 // the queue is simply the rest of the album, so there is nothing to skip to; for a playlist it shows what's coming.
@@ -25,11 +26,12 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
 </script>
 
 <template>
-  <section v-if="spotify.now?.name" class="qp">
+  <section v-if="spotify.now?.name" class="qp" :class="{ over: queueOver, armed: drag.track || drag.item }" v-on="queueDrop">
     <header>
       <b class="label-caps"><ListMusic :size="13" aria-hidden="true" />Neste i køen</b>
       <small v-if="pos" class="pos">Låt {{ pos.n }} av {{ pos.of }}</small>
     </header>
+    <p v-if="queueOver" class="drophint">Slipp for å legge sist i køen</p>
     <p v-if="!queue" class="muted">Henter …</p>
     <p v-else-if="!queue.length" class="muted">Ingenting mer i køen.</p>
     <ol v-else>
@@ -44,6 +46,9 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
 
 <style scoped>
 .qp { display: grid; gap: 8px; padding: 12px; border-radius: 18px; background: var(--glass-strong); border: 1px solid var(--glass-border); min-width: 0; }
+.qp.armed { border-style: dashed; border-color: #1db954; }
+.qp.over { background: color-mix(in srgb, #1db954 14%, var(--glass-strong)); }
+.drophint { margin: 0; padding: 8px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 0.82rem; color: #1db954; background: color-mix(in srgb, #1db954 12%, transparent); }
 header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 header b { display: inline-flex; align-items: center; gap: 6px; }
 .pos { padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font: 700 0.7rem var(--font); }

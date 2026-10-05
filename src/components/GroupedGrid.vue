@@ -78,7 +78,7 @@ const allow = (e, id) => { if (canDrag.value && drag.item) { e.preventDefault();
 </script>
 
 <template>
-  <CoverGrid v-if="plain" :items="items" :selected-uri="selectedUri" :playing-uri="playingUri" :cursor-uri="cursorUri" @pick="emit('pick', $event)" @hover="emit('hover', $event)" />
+  <CoverGrid v-if="plain" :items="items" :selected-uri="selectedUri" :playing-uri="playingUri" :cursor-uri="cursorUri" :draggable="admin.loggedIn" @dragstart="onDragStart" @dragend="endDrag" @pick="emit('pick', $event)" @hover="emit('hover', $event)" />
   <div v-else-if="viewMode === 'mapper'" class="fb" @dragstart="onDragStart" @dragend="endDrag">
     <nav v-if="cur" class="crumbs" aria-label="Mappesti">
       <button @click="openFolder(null)"><ChevronLeft :size="14" aria-hidden="true" />Alle</button>

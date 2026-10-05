@@ -10,9 +10,30 @@ export function startTrackDrag(e, t) {
 }
 export function startItemDrag(e, uri) {
   drag.item = uri
-  if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', uri) }
+  if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'copyMove'; e.dataTransfer.setData('text/plain', uri) }
 }
 export function endDrag() {
   drag.track = null
   drag.item = null
+}
+
+// ── dropping on the queue (the "Neste i køen" box / the now-playing card): a song, or a whole album / playlist ──
+import { ref } from 'vue'
+import { enqueue, enqueueAlbum, notify, findAlbum, spotify } from './useSpotify'
+export const queueOver = ref(false)
+export const canDropOnQueue = () => !!(drag.track || (drag.item && /^spotify:(album|playlist):/.test(drag.item)))
+export const queueDrop = {
+  dragover(e) { if (!canDropOnQueue()) return; e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; queueOver.value = true },
+  dragleave(e) { if (!e.currentTarget.contains(e.relatedTarget)) queueOver.value = false },
+  async drop(e) {
+    e.preventDefault()
+    queueOver.value = false
+    const t = drag.track, it = drag.item
+    endDrag()
+    if (t) { const r = await enqueue(t.uri); if (!r.ok) notify(r.error || 'Klarte ikke å legge i køen.', true); return }
+    if (it) {
+      const name = (findAlbum(it) || spotify.playlists.find((p) => p.uri === it))?.name || ''
+      enqueueAlbum(it, name)
+    }
+  },
 }

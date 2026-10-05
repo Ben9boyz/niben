@@ -305,6 +305,17 @@ try {
             'translate' => tr_admin_status(),
         ]);
     }
+    if ($action === 'admin_best_friend') {
+        require_admin();
+        if (!$post) out(['id' => kv_get('st_best_friend') ?: ST_BEST_FRIEND]);
+        $b = json_decode((string)file_get_contents('php://input'), true) ?: [];
+        $v = trim((string)($b['id'] ?? ''));
+        if (preg_match('~/profiles/(\d{17})~', $v, $m)) $v = $m[1];
+        if ($v !== '' && !preg_match('~^\d{17}$~', $v)) fail('Bruk den 17-sifrede Steam-ID-en eller lenken til profilen (…/profiles/7656…).', 400);
+        kv_set('st_best_friend', $v === '' ? null : $v);
+        kv_del('st_friends'); // forget what was cached so it shows at once
+        out(['ok' => true, 'id' => $v ?: ST_BEST_FRIEND]);
+    }
     if ($action === 'admin_translate_clear') {
         require_admin();
         if (!$post) fail('Bruk POST.', 405);

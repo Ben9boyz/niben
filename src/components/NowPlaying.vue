@@ -7,6 +7,9 @@ import LikeButton from './LikeButton.vue'
 import NowAddButton from './NowAddButton.vue'
 import WebPlayerToggle from './WebPlayerToggle.vue'
 import { spotify } from '../composables/useSpotify'
+import { queueDrop, queueOver } from '../composables/useDrag'
+import { mode } from '../composables/useMode'
+import { shell } from '../composables/useShell'
 import { admin } from '../composables/useAdmin'
 
 // stacked: big cover on top (the plain music page's sidebar)
@@ -15,7 +18,7 @@ const now = computed(() => spotify.now)
 </script>
 
 <template>
-  <section class="now" :class="{ playing: now?.playing, admin: admin.loggedIn, stacked: props.stacked }">
+  <section class="now" :class="{ playing: now?.playing, admin: admin.loggedIn, stacked: props.stacked, dropping: queueOver }" v-on="queueDrop">
     <div class="cover">
       <img crossorigin="anonymous" v-if="now?.image" :src="(props.stacked && now.image_large) || now.image" alt="" />
       <div v-else class="vinyl-ph"></div>
@@ -25,7 +28,7 @@ const now = computed(() => spotify.now)
     <div class="meta">
       <div class="top">
         <small>{{ now?.playing ? 'Spilles nå' : now?.name ? 'Satt på pause' : 'Ingenting spilles' }}</small>
-        <span class="tr"><NowAddButton /><LikeButton /><LockBadge /></span>
+        <span class="tr"><NowAddButton /><LikeButton v-if="mode === 'rom' && shell !== 'player'" /><LockBadge /></span>
       </div>
       <b class="title" translate="no">{{ now?.name || '—' }}</b>
       <span class="sub" translate="no">{{ now?.artist }}<template v-if="now?.album"> · {{ now.album }}</template></span>
@@ -52,6 +55,7 @@ const now = computed(() => spotify.now)
 @keyframes eq { 0%, 100% { height: 4px; } 50% { height: 14px; } }
 .meta { display: flex; flex-direction: column; min-width: 0; }
 .top { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 20px; }
+.now.dropping { outline: 2px dashed #1db954; outline-offset: 2px; }
 .tr { display: inline-flex; align-items: center; gap: 6px; }
 .top small { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); white-space: nowrap; }
 .now.playing .top small { color: #1db954; }

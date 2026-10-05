@@ -23,9 +23,9 @@ export function longPress(fn, ms = 520) {
   let t = 0, sx = 0, sy = 0, fired = false
   const clear = () => { clearTimeout(t); t = 0 }
   return {
-    onTouchstart(e) { fired = false; const p = e.touches[0]; sx = p.clientX; sy = p.clientY; clear(); t = setTimeout(() => { fired = true; fn({ clientX: sx, clientY: sy, preventDefault() {} }) }, ms) },
-    onTouchmove(e) { const p = e.touches[0]; if (Math.hypot(p.clientX - sx, p.clientY - sy) > 10) clear() },
-    onTouchend(e) { clear(); if (fired) { e.preventDefault(); fired = false } },
-    onTouchcancel: clear,
+    touchstart(e) { fired = false; const p = e.touches[0]; sx = p.clientX; sy = p.clientY; clear(); t = setTimeout(() => { fired = true; fn({ clientX: sx, clientY: sy, preventDefault() {} }) }, ms) },
+    touchmove(e) { const p = e.touches[0]; if (Math.hypot(p.clientX - sx, p.clientY - sy) > 10) clear() },
+    touchend(e) { clear(); if (fired) { e.preventDefault(); fired = false } },
+    touchcancel: clear,
   }
 }

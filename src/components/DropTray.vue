@@ -50,3 +50,8 @@ const hint = (e, id) => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer
 .row.over { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 @media (hover: none) { .tray { display: none; } }
 </style>
+
+<style>
+/* on the music page the queue box sits on the right: the tray steps aside so it can be a drop target too */
+@media (min-width: 1181px) { html:has(.music .now-col) .tray { right: 338px !important; } }
+</style>
