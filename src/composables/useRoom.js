@@ -9,6 +9,7 @@ export const room = reactive({
   musicView: 'vinyl', // listening station: 'vinyl' | 'spiller' (record on, turntable view) | 'ipod' (in hand) | 'ipodDock' (playlist on, iPod on its stand)
   // what the iPod shows – shared with the panel so the two mirror each other
   ipod: { view: 'menu', playlist: null, active: 0, q: '' }, // q: the search text, shared by the panel and the iPod screen
+  discover: false, // listening corner: the "Oppdag" view (picks + suggestions) is open instead of albums / playlists
   panelHidden: false,
   shelfView: false, // listening corner: camera in front of the record shelf
   shelfQ: '', // text typed in the shelf search: matching records slide out of the shelf in the room
@@ -30,6 +31,7 @@ export function clearSelection() {
   room.sel.land = null
   room.sel.musikk = null
   room.musicView = 'vinyl'
+  room.discover = false
   room.ipod.view = 'menu'
   room.ipod.playlist = null
   room.ipod.active = 0

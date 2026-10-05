@@ -9,7 +9,6 @@ import SegSwitch from './SegSwitch.vue'
 defineProps({ floating: Boolean })
 const route = useRoute()
 const items = computed(() => {
-  if (route.name === 'lytte') return null // the library has its own switches (Album / Spillelister / Alt); Oppdag is reached from there
   const g = groupOf(route.name)
   return g && g.routes.length > 1 ? g.routes.map((r) => ({ id: r, label: TAB_LABELS[r], icon: ROUTE_ICONS[r], to: { name: r } })) : null
 })

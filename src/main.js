@@ -1,3 +1,4 @@
+import { room } from './composables/useRoom'
 import { createApp, defineAsyncComponent } from 'vue'
 import { createRouter, createWebHashHistory } from 'vue-router'
 import App from './App.vue'
@@ -11,7 +12,7 @@ const lazy = (panel, page, title) => ({ component: panel, meta: { page: defineAs
 const routes = [
   { path: '/', name: 'hjem', ...lazy(() => import('./panels/HomePanel.vue'), () => import('./pages/HomePage.vue'), 'Hjem') },
   { path: '/lytte', name: 'lytte', ...lazy(() => import('./panels/MusicPanel.vue'), () => import('./pages/MusicPage.vue'), 'Musikk') },
-  { path: '/oppdag', name: 'oppdag', ...lazy(() => import('./panels/DiscoverPanel.vue'), () => import('./pages/DiscoverPage.vue'), 'Oppdag') },
+  { path: '/oppdag', redirect: () => { room.discover = true; return '/lytte' } }, // (old link: Oppdag is a view inside the listening corner now)
   { path: '/ovelse', name: 'ovelse', ...lazy(() => import('./panels/PracticePanel.vue'), () => import('./pages/PracticePage.vue'), 'Gitar-øving') },
   { path: '/gitar', name: 'gitar', ...lazy(() => import('./panels/GuitarPanel.vue'), () => import('./pages/GuitarPage.vue'), 'Gitarer') },
   { path: '/boker', name: 'boker', ...lazy(() => import('./panels/BooksPanel.vue'), () => import('./pages/BooksPage.vue'), 'Bøker') },

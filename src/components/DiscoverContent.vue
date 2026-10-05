@@ -44,6 +44,7 @@ const when = computed(() => (discover.at ? new Date(discover.at * 1000).toLocale
   <div class="dc">
     <PeekView v-if="peek.stack.length" />
     <template v-else>
+      <h3 class="dtitle">{{ tx('discover.title') }}</h3>
       <p class="lead">{{ tx('discover.intro') }}</p>
 
       <!-- me: add a suggestion -->
@@ -100,6 +101,7 @@ const when = computed(() => (discover.at ? new Date(discover.at * 1000).toLocale
 
 <style scoped>
 .dc { display: grid; gap: 22px; min-width: 0; }
+.dtitle { margin: 0; font-size: 1.15rem; font-weight: 800; letter-spacing: 0; text-transform: none; }
 .lead { margin: 0; color: var(--text-2); max-width: 62ch; line-height: 1.5; }
 h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 10px; }
 h3 small { font-weight: 500; letter-spacing: 0; text-transform: none; }

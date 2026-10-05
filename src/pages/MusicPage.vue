@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { defineAsyncComponent } from 'vue'
 import { Disc3, ListMusic, Library, Search, X, Sparkles } from 'lucide-vue-next'
 import { room } from '../composables/useRoom'
 import { spotify, useSpotify } from '../composables/useSpotify'
@@ -13,6 +14,7 @@ import SegSwitch from '../components/SegSwitch.vue'
 import FolderTree from '../components/FolderTree.vue'
 import ArtistTree from '../components/ArtistTree.vue'
 import AllPanel from '../components/AllPanel.vue'
+const DiscoverContent = defineAsyncComponent(() => import('../components/DiscoverContent.vue'))
 import QueuePanel from '../components/QueuePanel.vue'
 import { loadGroups, groups, select } from '../composables/useGroups'
 import { peek, peekBack, peekClear } from '../composables/useBrowse'
@@ -37,8 +39,8 @@ const showAll = computed(() => allMode.value && !room.sel.musikk && !room.ipod.p
 const top = computed(() => peek.stack[peek.stack.length - 1] || null)
 const backLabel = computed(() => (peek.stack.length > 1 ? 'Tilbake' : gq.value.trim() ? 'Tilbake til søket' : 'Tilbake'))
 
-const byArtist = computed(() => !ipod.value && !showAll.value && groups.on && groups.view === 'artist')
-const hasTree = computed(() => groups.on && groups.loaded && !byArtist.value && !showAll.value)
+const byArtist = computed(() => !ipod.value && !showAll.value && !room.discover && groups.on && groups.view === 'artist')
+const hasTree = computed(() => groups.on && groups.loaded && !byArtist.value && !showAll.value && !room.discover)
 
 function show(view) {
   peekClear()
@@ -57,16 +59,18 @@ function show(view) {
         <div class="glass lib-card">
           <b class="lh">Biblioteket</b>
           <nav class="lib" role="tablist" aria-label="Bibliotek">
-            <button role="tab" :aria-selected="!ipod && !allMode" :class="{ on: !ipod && !allMode && !gq }" @click="gq = ''; setAll(false); show('vinyl')">
+            <button role="tab" :aria-selected="!ipod && !allMode" :class="{ on: !ipod && !allMode && !gq && !room.discover }" @click="gq = ''; room.discover = false; setAll(false); show('vinyl')">
               <Disc3 class="ic" :size="19" aria-hidden="true" />Album<small>{{ spotify.albums.length || '' }}</small>
             </button>
-            <button role="tab" :aria-selected="ipod && !allMode" :class="{ on: ipod && !allMode && !gq }" @click="gq = ''; setAll(false); show('ipod')">
+            <button role="tab" :aria-selected="ipod && !allMode" :class="{ on: ipod && !allMode && !gq && !room.discover }" @click="gq = ''; room.discover = false; setAll(false); show('ipod')">
               <ListMusic class="ic" :size="19" aria-hidden="true" />Spillelister<small>{{ spotify.playlists.length || '' }}</small>
             </button>
-            <button role="tab" :aria-selected="allMode" :class="{ on: allMode && !gq }" @click="libView = 'all'">
+            <button role="tab" :aria-selected="allMode" :class="{ on: allMode && !gq && !room.discover }" @click="room.discover = false; libView = 'all'">
               <Library class="ic" :size="19" aria-hidden="true" />Alt<small>{{ spotify.albums.length + spotify.playlists.length || '' }}</small>
             </button>
-            <router-link to="/oppdag" class="disc-link"><Sparkles class="ic" :size="19" aria-hidden="true" />Oppdag</router-link>
+            <button role="tab" :aria-selected="room.discover" :class="{ on: room.discover && !gq }" @click="gq = ''; peekClear(); room.sel.musikk = null; room.discover = true">
+              <Sparkles class="ic" :size="19" aria-hidden="true" />Oppdag
+            </button>
           </nav>
           <!-- the folders of whatever I'm looking at: Album or Spillelister -->
           <div v-if="byArtist" class="mapper">
@@ -97,6 +101,7 @@ function show(view) {
             <ArtistPage v-else :key="top.item.id || top.item.name" :artist="top.item" :back-label="backLabel" @back="peekBack" />
           </template>
           <SpotifySearch v-else-if="gq.trim()" :q="gq" scope="all" :tab="ipod ? 'ipod' : 'vinyl'" />
+          <DiscoverContent v-else-if="room.discover" />
           <AllPanel v-else-if="showAll" />
           <template v-else>
             <PlaylistPanel v-if="ipod" :search="false" />
@@ -147,9 +152,8 @@ function show(view) {
 .lh { margin: 2px 6px; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
 .lib { display: grid; gap: 2px; }
 .mapper { display: grid; gap: 2px; padding-top: 8px; margin-top: 4px; border-top: 1px solid var(--glass-border); }
-.lib button, .lib .disc-link { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text-2); font: 600 0.92rem var(--font); text-align: left; cursor: pointer; transition: background 0.2s, color 0.2s; }
-.lib .disc-link { text-decoration: none; }
-.lib button:hover, .lib .disc-link:hover { background: var(--accent-soft); color: var(--text); }
+.lib button { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text-2); font: 600 0.92rem var(--font); text-align: left; cursor: pointer; transition: background 0.2s, color 0.2s; }
+.lib button:hover { background: var(--accent-soft); color: var(--text); }
 .lib button.on { background: var(--accent-soft); color: var(--accent); }
 .lib .ic { flex: none; }
 .lib small { margin-left: auto; font-weight: 500; opacity: 0.6; font-variant-numeric: tabular-nums; }

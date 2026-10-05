@@ -2,6 +2,7 @@ import { reactive, watch } from 'vue'
 import { spotify } from './useSpotify'
 import { web } from './useWebPlayer'
 import { mode } from './useMode'
+import { playOn } from './usePlayOn'
 
 // A little vinyl on top of the music: very quiet hiss and now and then a crackle or a pop – you should hardly
 // notice it, just feel it. Made with the Web Audio API (no sound files). Only while a song plays HERE (the page
@@ -88,7 +89,8 @@ function stop() {
   if (ctx && master) master.gain.setTargetAtTime(0, ctx.currentTime, 0.4)
 }
 
-function shouldPlay() { return vinyl.on && mode.value === 'rom' && web.status === 'ready' && !!spotify.now?.playing }
+// only while a record plays on the turntable – not for playlists / songs that belong to the iPod
+function shouldPlay() { return vinyl.on && mode.value === 'rom' && web.status === 'ready' && !!spotify.now?.playing && playOn.value === 'vinyl' }
 let armed = false
 function sync() {
   if (shouldPlay()) {
@@ -101,5 +103,5 @@ export function useVinylNoise() {
   const arm = () => { armed = true; sync() }
   window.addEventListener('pointerdown', arm, { once: true, passive: true })
   window.addEventListener('keydown', arm, { once: true })
-  watch(() => [vinyl.on, mode.value, web.status, spotify.now?.playing], sync, { immediate: true })
+  watch(() => [vinyl.on, mode.value, web.status, spotify.now?.playing, playOn.value], sync, { immediate: true })
 }
