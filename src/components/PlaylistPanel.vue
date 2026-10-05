@@ -45,11 +45,12 @@ function back() {
       <MusicDetail v-if="playlist" :key="playlist.uri" :item="playlist" kind="playlist" back-label="Alle spillelister" @back="back" />
 
       <div v-else class="browse">
-        <div class="head">
+        <div class="stick"><div class="head">
           <b>Spillelister</b>
           <input v-if="search" v-model="q" type="search" class="search" placeholder="Søk …" aria-label="Søk i spillelistene" />
         </div>
         <GroupBar />
+        </div>
         <GroupedGrid :flat="!!q.trim()" :items="items" :playing-uri="spotify.now?.context" :cursor-uri="cursorUri" @pick="open" @hover="hover" />
         <p v-if="!items.length" class="muted">Ingen treff.</p>
       </div>
@@ -58,6 +59,7 @@ function back() {
 </template>
 
 <style scoped>
+.stick { display: grid; gap: 10px; }
 .pp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .browse { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .muted { color: var(--text-3); font-size: 0.85rem; }

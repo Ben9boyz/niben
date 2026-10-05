@@ -88,6 +88,7 @@ async function disconnect() {
           </div>
           <SpotifySearch v-if="spot" :q="sq" scope="player" />
           <template v-else>
+            <div class="stick">
             <div class="head">
               <b>Album</b>
               <span v-if="search" class="tools">
@@ -96,6 +97,7 @@ async function disconnect() {
               </span>
             </div>
             <GroupBar artist />
+            </div>
             <GroupedGrid by-artist :flat="!!q.trim()" :items="items" :playing-uri="spotify.now?.context" @pick="pick" @hover="(it) => prefetchTracks(it.uri)" />
             <p v-if="!items.length" class="muted">Ingen treff.</p>
           </template>
@@ -110,6 +112,7 @@ async function disconnect() {
 </template>
 
 <style scoped>
+.stick { display: grid; gap: 10px; }
 .vp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .browse { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .muted { color: var(--text-3); font-size: 0.85rem; }

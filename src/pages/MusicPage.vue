@@ -135,15 +135,13 @@ function show(view) {
 .lib button.on { background: var(--accent-soft); color: var(--accent); }
 .lib .ic { flex: none; }
 .lib small { margin-left: auto; font-weight: 500; opacity: 0.6; font-variant-numeric: tabular-nums; }
-.main-col { min-width: 0; display: grid; gap: 0; }
+.main-col { min-width: 0; display: grid; gap: 12px; }
 .toolbar { display: flex; gap: 10px; align-items: center; }
-/* PC: the search stays put at the top while the grid scrolls away underneath it – on the same line as the
-   library and what's playing, so nothing ever sticks higher than the search */
+/* PC: the search and the card stay put; the grid scrolls inside the card and disappears under its header
+   (ALBUM + the group buttons) – nothing ever moves above the search line, the library or what's playing */
 @media (min-width: 821px) {
-  .toolbar { position: sticky; top: 0; z-index: 6; margin: -12px -10px 0; padding: 20px 10px 12px; background: color-mix(in srgb, var(--bg) 55%, transparent); -webkit-backdrop-filter: blur(26px) saturate(140%); backdrop-filter: blur(26px) saturate(140%);
-    /* frosted glass that fades out at the edges – no pale box behind the search */
-    -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent), linear-gradient(to bottom, #000 calc(100% - 14px), transparent);
-    -webkit-mask-composite: source-in; mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent), linear-gradient(to bottom, #000 calc(100% - 14px), transparent); mask-composite: intersect; }
+  .main-col { position: sticky; top: 20px; height: calc(100dvh - 40px); grid-template-rows: auto minmax(0, 1fr); gap: 12px; }
+  .main-card { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; min-height: 0; }
 }
 .seg { display: none !important; }
 @media (max-width: 820px) { .seg { display: grid !important; } }
@@ -194,8 +192,13 @@ function show(view) {
 </style>
 
 <style>
+/* the header of the grid (name + group buttons) sticks to the top of the card; tiles vanish under it */
+@media (min-width: 821px) {
+  .main-card .stick { position: sticky; top: -16px; z-index: 4; margin: -16px -16px 0; padding: 16px 16px 10px; background: color-mix(in srgb, var(--bg) 98%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  html.player-shell .music .main-col { top: 84px; height: calc(100dvh - 104px); }
+}
 /* player mode has a fixed top bar: the sticky columns stop below it */
-@media (min-width: 821px) { html.player-shell .music .lib-col, html.player-shell .music .now-col { top: 84px; } html.player-shell .music .toolbar { top: 64px; } html.player-shell .music .lib-card, html.player-shell .music .now-card { max-height: calc(100dvh - 104px); } }
+@media (min-width: 821px) { html.player-shell .music .lib-col, html.player-shell .music .now-col { top: 84px; } html.player-shell .music .lib-card, html.player-shell .music .now-card { max-height: calc(100dvh - 104px); } }
 /* phones: with the menu slid away, the mini player drops down to where the menu was */
 /* the player view has no menu at the bottom: the mini player sits at the very bottom */
 @media (max-width: 820px) { html.player-shell .music .m-mini { bottom: calc(14px + env(safe-area-inset-bottom)) !important; } }
