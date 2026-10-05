@@ -71,7 +71,7 @@ export async function recordingDate(file: File): Promise<RecordingDate> {
   return d ? { date: d, source: 'file' } : { date: null, source: null }
 }
 
-/** Files we turn into MP3 before uploading: any video, plus large uncompressed audio. */
+/** Files we turn into MP3 before uploading: every video, plus large uncompressed audio. */
 export function needsMp3(file: File): boolean {
   const n = file.name.toLowerCase()
   return file.type.startsWith('video/') || /\.(mp4|mov|m4v|3gp|webm|wav|aif|aiff)$/.test(n)

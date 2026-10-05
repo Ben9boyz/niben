@@ -7,8 +7,7 @@
     "strict": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
-    "allowJs": true,
-    "checkJs": false,
+    "allowJs": false,
     "noEmit": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -17,5 +16,6 @@
     "verbatimModuleSyntax": false,
     "types": ["vite/client"]
   },
-  "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.vue", "env.d.ts"]
+  "include": ["src/**/*.ts", "src/**/*.vue", "env.d.ts"],
+  "exclude": ["src/sw"]
 }

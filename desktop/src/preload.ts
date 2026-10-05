@@ -1,6 +1,6 @@
 // Tells the website it is running inside the desktop app (heavier graphics, no "install app" button).
 // This is castlabs' Electron with Widevine, so Spotify's in-page player works here too (drm: true).
-const { contextBridge, ipcRenderer } = require('electron')
+import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('nibenApp', {
   platform: process.platform,

@@ -1,14 +1,19 @@
 // niben as a desktop app. The window shows the live site (https://niben.no), so the app is always the
 // same version as the website – nothing to update when the site changes. The site sees
 // window.nibenApp (preload.js) and switches to its heavier "ultra" graphics.
-const { app, BrowserWindow, shell, dialog, net, components, ipcMain } = require('electron')
-const path = require('path')
-const fs = require('fs')
+import { app, BrowserWindow, shell, dialog, net, components, ipcMain } from 'electron'
+import path from 'node:path'
+import fs from 'node:fs'
+
+interface WindowState { x?: number; y?: number; width: number; height: number; maximized?: boolean }
+interface ShellVersions { version?: string; [download: string]: string | undefined }
 
 const SITE = 'https://niben.no/'
 // the same shell builds two apps: "niben" (the whole site) and "niben musikk" (just the music
 // player) – the latter gets nibenKind: 'music' in its package.json (see music.builder.js)
-const KIND = require('./package.json').nibenKind || 'site'
+// (compiled to out/, so the package.json is one level up)
+const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')) as { nibenKind?: string }
+const KIND = pkg.nibenKind || 'site'
 const START = KIND === 'music' ? `${SITE}#/musicplayer` : SITE
 ipcMain.on('niben-kind', (e) => { e.returnValue = KIND })
 const SITE_HOST = 'niben.no'
@@ -23,17 +28,17 @@ app.commandLine.appendSwitch('force_high_performance_gpu')
 
 // ── remember the window's size and position ──
 const stateFile = () => path.join(app.getPath('userData'), 'window.json')
-function loadState() {
-  try { return JSON.parse(fs.readFileSync(stateFile(), 'utf8')) } catch { return KIND === 'music' ? { width: 1180, height: 780 } : { width: 1440, height: 900 } }
+function loadState(): WindowState {
+  try { return JSON.parse(fs.readFileSync(stateFile(), 'utf8')) as WindowState } catch { return KIND === 'music' ? { width: 1180, height: 780 } : { width: 1440, height: 900 } }
 }
-function saveState(win) {
+function saveState(win: BrowserWindow): void {
   try {
     const b = win.getNormalBounds()
     fs.writeFileSync(stateFile(), JSON.stringify({ ...b, maximized: win.isMaximized() }))
   } catch {}
 }
 
-function createWindow() {
+function createWindow(): BrowserWindow {
   const s = loadState()
   const win = new BrowserWindow({
     x: s.x, y: s.y, width: s.width, height: s.height,
@@ -68,7 +73,7 @@ function createWindow() {
 
   // no connection: a small page with "try again"
   win.webContents.on('did-fail-load', (_e, code, _desc, url, isMain) => {
-    if (isMain && code !== -3) win.loadFile(path.join(__dirname, 'offline.html'), { query: { url: url || START } })
+    if (isMain && code !== -3) win.loadFile(path.join(__dirname, '..', 'offline.html'), { query: { url: url || START } })
   })
 
   win.loadURL(START)
@@ -76,16 +81,16 @@ function createWindow() {
 }
 
 // ── the app shell itself rarely changes; when it does, tell the user and offer the download ──
-function newer(a, b) {
+function newer(a: string, b: string): boolean {
   const pa = a.split('.').map(Number), pb = b.split('.').map(Number)
   for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0)
   return false
 }
-async function checkShellUpdate(win) {
+async function checkShellUpdate(win: BrowserWindow): Promise<void> {
   try {
     const r = await net.fetch(`${SITE}app/version.json?t=${Date.now()}`)
     if (!r.ok) return
-    const v = await r.json()
+    const v = (await r.json()) as ShellVersions
     if (!v.version || !newer(v.version, app.getVersion())) return
     const key = (KIND === 'music' ? 'music' : '') + (process.platform === 'darwin' ? 'Mac' : 'Windows')
     const url = v[key.charAt(0).toLowerCase() + key.slice(1)]

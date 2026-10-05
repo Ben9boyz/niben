@@ -1,7 +1,12 @@
 // electron-builder config for "niben musikk" – the same shell as "niben", opening just the music player.
-//   npx electron-builder --config music.builder.js --mac --arm64
-const base = require('./package.json').build
-module.exports = {
+//   npx electron-builder --config out/music.builder.js --mac --arm64   (npm run build first)
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+
+interface BuilderConfig { nsis?: object; [key: string]: unknown }
+const pkg = JSON.parse(readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')) as { build: BuilderConfig }
+const base = pkg.build
+export = {
   ...base,
   appId: 'no.niben.musikk',
   productName: 'niben musikk',

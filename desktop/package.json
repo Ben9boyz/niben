@@ -3,14 +3,16 @@
   "productName": "niben",
   "version": "1.0.1",
   "description": "niben.no som app – alltid samme versjon som nettsiden",
-  "main": "main.js",
+  "main": "out/main.js",
   "private": true,
   "scripts": {
-    "start": "electron .",
-    "dist:mac": "electron-builder --mac --arm64",
-    "dist:win": "electron-builder --win --x64",
-    "dist": "electron-builder --mac --arm64 --win --x64",
-    "dist:music": "electron-builder --config music.builder.js --mac --arm64 && electron-builder --config music.builder.js --win --x64"
+    "build": "tsc -p tsconfig.json",
+    "start": "npm run build && electron .",
+    "dist:mac": "npm run build && electron-builder --mac --arm64",
+    "dist:win": "npm run build && electron-builder --win --x64",
+    "dist": "npm run build && electron-builder --mac --arm64 --win --x64",
+    "dist:music": "npm run build && electron-builder --config out/music.builder.js --mac --arm64 && electron-builder --config out/music.builder.js --win --x64",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "build": {
     "appId": "no.niben.app",
@@ -21,8 +23,7 @@
       "buildResources": "build"
     },
     "files": [
-      "main.js",
-      "preload.js",
+      "out/**/*",
       "offline.html"
     ],
     "mac": {
@@ -51,6 +52,8 @@
   },
   "devDependencies": {
     "electron": "github:castlabs/electron-releases#v44.5.1+wvcus",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "@types/node": "^22.0.0",
+    "typescript": "^7.0.2"
   }
 }
