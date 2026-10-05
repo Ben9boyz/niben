@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { Sun, Moon, Radio, Check } from 'lucide-vue-next'
 import { useTheme } from '../composables/useTheme'
 import { calm, setCalm } from '../composables/useCalm'
@@ -11,12 +11,18 @@ const open = ref(false)
 const root = ref(null)
 const menuEl = ref(null)
 const pos = ref({})
-function toggleMenu() {
+async function toggleMenu() {
   open.value = !open.value
   if (!open.value) return
+  // the button sits in the rail at the left (phones too): the menu opens beside it, bottom edges lined up, and is
+  // kept inside the screen – measured after it has been drawn so it never floats off somewhere
   const r = root.value.getBoundingClientRect()
-  const phone = innerWidth <= 720
-  pos.value = phone ? { right: '12px', top: `${r.bottom + 8}px` } : { left: `${r.right + 10}px`, bottom: `${Math.max(8, innerHeight - r.bottom)}px` }
+  pos.value = { left: `${r.right + 10}px`, top: `${Math.max(8, r.bottom - 300)}px`, visibility: 'hidden' }
+  await nextTick()
+  const h = menuEl.value?.offsetHeight || 260, w = menuEl.value?.offsetWidth || 250
+  const left = Math.max(8, Math.min(r.right + 10, innerWidth - w - 8))
+  const top = Math.max(8, Math.min(r.bottom - h, innerHeight - h - 8))
+  pos.value = { left: `${left}px`, top: `${top}px` }
 }
 const choices = computed(() => [
   ...(live.configured ? [['live', live.name ? `Live – ${live.name}` : 'Live', Radio, 'Lys om dagen, mørkt om natten der jeg bor']] : []),
@@ -24,9 +30,10 @@ const choices = computed(() => [
   ['dark', 'Mørk', Moon, ''],
 ])
 const onDoc = (e) => { if (open.value && !root.value?.contains(e.target) && !menuEl.value?.contains(e.target)) open.value = false }
+const close = () => { open.value = false }
 const onKey = (e) => { if (e.key === 'Escape') open.value = false }
-onMounted(() => { document.addEventListener('pointerdown', onDoc); window.addEventListener('keydown', onKey) })
-onBeforeUnmount(() => { document.removeEventListener('pointerdown', onDoc); window.removeEventListener('keydown', onKey) })
+onMounted(() => { document.addEventListener('pointerdown', onDoc); window.addEventListener('keydown', onKey); window.addEventListener('resize', close) })
+onBeforeUnmount(() => { document.removeEventListener('pointerdown', onDoc); window.removeEventListener('keydown', onKey); window.removeEventListener('resize', close) })
 function pick(id) { setMode(id); open.value = false }
 </script>
 
@@ -43,8 +50,9 @@ function pick(id) { setMode(id); open.value = false }
           <button v-for="c in choices" :key="c[0]" role="menuitemradio" :aria-checked="mode === c[0]" :class="{ on: mode === c[0] }" @click="pick(c[0])">
             <component :is="c[2]" :size="16" aria-hidden="true" /><span class="l"><b>{{ c[1] }}</b><small v-if="c[3]">{{ c[3] }}</small></span><Check v-if="mode === c[0]" :size="14" aria-hidden="true" />
           </button>
-          <button class="calmrow" role="menuitemcheckbox" :aria-checked="calm" :class="{ on: calm }" @click="setCalm(!calm)">
-            <Wind :size="16" aria-hidden="true" /><span class="l"><b>Rolig modus</b><small>Ingen animasjon, glød eller bevegelse</small></span><Check v-if="calm" :size="14" aria-hidden="true" />
+          <hr />
+          <button class="calmrow" role="menuitemcheckbox" :aria-checked="calm" @click="setCalm(!calm)">
+            <Wind :size="16" aria-hidden="true" /><span class="l"><b>Rolig modus</b><small>Ingen animasjon, glød eller bevegelse</small></span><i class="tg" :class="{ on: calm }" aria-hidden="true"></i>
           </button>
         </div>
       </transition>
@@ -61,7 +69,13 @@ function pick(id) { setMode(id); open.value = false }
 .tsmenu button:hover { background: var(--accent-soft); }
 .tsmenu button.on { color: var(--accent); background: var(--accent-soft); }
 .tsmenu svg { flex: none; }
-.tsmenu .calmrow { margin-top: 4px; border-top: 1px solid var(--glass-border); border-radius: 0 0 10px 10px; }
+.tsmenu hr { margin: 4px 8px; border: 0; border-top: 1px solid var(--glass-border); }
+.tsmenu button:focus { outline: none; }
+.tsmenu button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tsmenu .tg { position: relative; flex: none; width: 34px; height: 20px; border-radius: 999px; background: var(--glass-border); transition: background 0.2s; }
+.tsmenu .tg::after { content: ''; position: absolute; left: 3px; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: transform 0.2s; }
+.tsmenu .tg.on { background: var(--accent); }
+.tsmenu .tg.on::after { transform: translateX(14px); }
 .tsmenu .l { flex: 1; display: grid; min-width: 0; }
 .tsmenu .l b { font-weight: 600; font-size: 0.88rem; }
 .tsmenu .l small { font-size: 0.72rem; color: var(--text-3); line-height: 1.25; }

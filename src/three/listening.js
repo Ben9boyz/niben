@@ -357,6 +357,16 @@ export function buildListeningCorner() {
     onChange?.()
   }
   let stackKey = ''
+  // where a record lies when it is one of the sleeves in the stack on the table (group-local), or null
+  const slotQ = new THREE.Quaternion(), slotFlat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2))
+  function stackSlot(uri) {
+    const i = stackItems.findIndex((x) => x.uri === uri)
+    if (i < 0) return null
+    const m = stackGroup.children.find((c) => c.userData.index === i)
+    if (!m) return null
+    slotQ.setFromEuler(new THREE.Euler(0, m.rotation.y, 0)).multiply(slotFlat) // lying flat, cover up
+    return { pos: new THREE.Vector3().copy(stackGroup.position).add(m.position), q: slotQ.clone() }
+  }
   // the next album (all of it is in the queue): one sleeve leaning against the wall at the left of the plant
   const nextMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
   const nextEdge = new THREE.MeshStandardMaterial({ color: 0xe9e4d8, roughness: 0.8 })
@@ -810,7 +820,9 @@ export function buildListeningCorner() {
     const spineMat = new THREE.MeshStandardMaterial({ map: spineTex(r.album, r.color), roughness: 0.6 })
     // faces: +x front cover, -x back, +y/-y edges, +z spine, -z back edge
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(THICK, SLEEVE, SLEEVE), [coverMat, backMat, pageMat, pageMat, spineMat, pageMat])
-    mesh.position.copy(r.home).setZ(r.home.z + r.out * 0.09)
+    const slot = r.guest ? null : stackSlot(r.album.uri)
+    if (slot) { mesh.position.copy(slot.pos); mesh.quaternion.copy(slot.q) } // it lies in the stack on the table: it comes from there
+    else mesh.position.copy(r.home).setZ(r.home.z + r.out * 0.09)
     mesh.castShadow = mesh.receiveShadow = true
     mesh.userData = { kind: r.guest ? 'guest' : 'album', index: r.index }
     group.add(mesh)
@@ -967,7 +979,8 @@ export function buildListeningCorner() {
       const r = l.rec
       const sel = uri === selectedUri && !l.returning
       const isPlaying = uri === playingUri && !sel && !l.returning
-      const peek = uri === peekUri && uri !== playingUri && !sel && !l.returning // the album that's playing already lies on the table: browsing past it must not pull it back to the shelf
+      const slot = r.guest ? null : stackSlot(uri)
+      const peek = uri === peekUri && uri !== playingUri && !slot && !sel && !l.returning // the album that's playing already lies on the table: browsing past it must not pull it back to the shelf
       let scale = 1
       if (sel) {
         // hold still in front of the camera, cover (local +x) facing it – or flipped over to its back
@@ -989,6 +1002,10 @@ export function buildListeningCorner() {
         // cover facing the room and turned a little towards the listening spot
         targetPos.set(0.0, TOP_Y + LEAN_UP, LEAN_Z)
         targetQ.copy(LEAN_Q)
+      } else if (slot) {
+        // back on the table, in its place in the stack
+        targetPos.copy(slot.pos)
+        targetQ.copy(slot.q)
       } else {
         targetPos.copy(r.home)
         targetQ.identity()
@@ -1003,8 +1020,11 @@ export function buildListeningCorner() {
       l.mesh.scale.setScalar(l.mesh.scale.x + (scale - l.mesh.scale.x) * e)
       if (l.vel.lengthSq() > 1e-6 || l.mesh.quaternion.angleTo(targetQ) > 0.002) moving = true
       // back home: hand it back to the instanced shelf
-      if (l.returning && l.mesh.position.distanceTo(r.home) < 0.002 && l.mesh.quaternion.angleTo(targetQ) < 0.01) dropLoose(uri)
+      if (l.returning && l.mesh.position.distanceTo(targetPos) < 0.002 && l.mesh.quaternion.angleTo(targetQ) < 0.01) dropLoose(uri)
     }
+
+    // a sleeve from the stack that has been picked up is not in the stack meanwhile
+    for (const m of stackGroup.children) m.visible = !loose.has(stackItems[m.userData.index]?.uri)
 
     // iPod: on its stand, or held in front of the camera
     if (holdIpod) {
