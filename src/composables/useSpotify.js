@@ -376,7 +376,7 @@ async function searchSpotifyNow(q) {
   let j = {}
   try { j = await r.json() } catch {}
   if (!r.ok || j.error) throw new Error(j.error || `Søket feilet (${r.status})`)
-  return { albums: j.albums || [], tracks: j.tracks || [], playlists: j.playlists || [] }
+  return { albums: j.albums || [], tracks: j.tracks || [], playlists: j.playlists || [], artists: j.artists || [] }
 }
 
 /** Save someone else's playlist (from search) among mine. */

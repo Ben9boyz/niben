@@ -521,7 +521,7 @@ function sp_handle(string $action, bool $post): void {
         if (!is_admin()) fail('Logg inn for å søke i hele Spotify.', 401);
         $q = trim((string)($_GET['q'] ?? ''));
         if (mb_strlen($q) < 2) out(['albums' => [], 'tracks' => [], 'playlists' => []]);
-        [$s, $j] = sp_api('GET', '/search?type=album,track,playlist&limit=10&q=' . rawurlencode(mb_substr($q, 0, 100)));
+        [$s, $j] = sp_api('GET', '/search?type=album,track,playlist,artist&limit=10&q=' . rawurlencode(mb_substr($q, 0, 100)));
         if ($s === 429) fail('For mange søk – vent litt.', 429);
         if ($s === 401) out(['error' => 'Spotify-tilkoblingen har gått ut. Koble til på nytt.', 'code' => 'reconnect'], 409);
         if ($s !== 200) fail('Spotify svarte med feil (' . $s . ').', 502);
@@ -546,6 +546,11 @@ function sp_handle(string $action, bool $post): void {
                 'album_url' => $t['album']['external_urls']['spotify'] ?? null,
             ];
         }
+        $artists = [];
+        foreach ($j['artists']['items'] ?? [] as $a) {
+            if (!$a || empty($a['id'])) continue;
+            $artists[] = ['id' => $a['id'], 'name' => $a['name'] ?? '', 'image' => sp_img($a['images'] ?? [], 160), 'genres' => array_slice($a['genres'] ?? [], 0, 2)];
+        }
         $playlists = [];
         foreach ($j['playlists']['items'] ?? [] as $p) {
             if (!$p || empty($p['uri'])) continue; // Spotify leaves holes (null) in this list
@@ -557,7 +562,7 @@ function sp_handle(string $action, bool $post): void {
                 'url' => $p['external_urls']['spotify'] ?? null,
             ];
         }
-        out(['albums' => $albums, 'tracks' => $tracks, 'playlists' => array_slice($playlists, 0, 8)]);
+        out(['albums' => $albums, 'tracks' => $tracks, 'playlists' => array_slice($playlists, 0, 8), 'artists' => array_slice($artists, 0, 6)]);
     }
 
     case 'spotify_save': {

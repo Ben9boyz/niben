@@ -18,10 +18,13 @@ import { openAlbumPage, openArtistPage, albumOfTrack, firstArtist } from '../com
 const props = defineProps({
   q: { type: String, default: '' },
   scope: { type: String, default: 'all' }, // 'all' | 'player'
+  // the tab it is opened from decides the order and what is shown: Spillelister → songs, playlists, albums ·
+  // Album → albums, songs, artists (no playlists)
+  tab: { type: String, default: 'vinyl' }, // 'vinyl' | 'ipod'
 })
 const emit = defineEmits(['clear'])
 
-const found = ref({ albums: [], tracks: [], playlists: [] })
+const found = ref({ albums: [], tracks: [], playlists: [], artists: [] })
 const state = ref('idle') // idle | loading | error
 const error = ref('')
 const msg = ref(null)
@@ -32,20 +35,22 @@ const locked = computed(() => lockLeft.value > 0)
 
 const needle = computed(() => props.q.trim().toLowerCase())
 const mine = computed(() => new Set(spotify.albums.map((a) => a.uri)))
-const myPlaylists = computed(() => (props.scope === 'all' && needle.value ? spotify.playlists.filter((p) => p.name.toLowerCase().includes(needle.value)) : []))
+const wantPlaylists = computed(() => props.scope === 'all' && props.tab === 'ipod')
+const ORDER = computed(() => (props.tab === 'ipod' ? { tracks: 1, myPlaylists: 2, otherPlaylists: 3, myAlbums: 4, otherAlbums: 5, artists: 6 } : { myAlbums: 1, otherAlbums: 2, tracks: 3, artists: 4 }))
+const myPlaylists = computed(() => (wantPlaylists.value && needle.value ? spotify.playlists.filter((p) => p.name.toLowerCase().includes(needle.value)) : []))
 const myAlbums = computed(() => (needle.value ? spotify.albums.filter((a) => `${a.name} ${a.artist}`.toLowerCase().includes(needle.value)) : []))
 // from Spotify, minus the ones I already have in the list above
 const otherAlbums = computed(() => found.value.albums.filter((a) => !mine.value.has(a.uri)))
 // playlists from all of Spotify (the flat page only – in the room, playlists are the iPod's)
 const myPlaylistUris = computed(() => new Set(spotify.playlists.map((p) => p.uri)))
-const otherPlaylists = computed(() => (props.scope === 'all' ? (found.value.playlists || []).filter((p) => !myPlaylistUris.value.has(p.uri)) : []))
+const otherPlaylists = computed(() => (wantPlaylists.value ? (found.value.playlists || []).filter((p) => !myPlaylistUris.value.has(p.uri)) : []))
 
 let timer = 0
 let seq = 0
 watch(() => props.q, (q) => {
   clearTimeout(timer)
   const t = q.trim()
-  if (t.length < 2 || !admin.loggedIn) { found.value = { albums: [], tracks: [], playlists: [] }; state.value = 'idle'; return }
+  if (t.length < 2 || !admin.loggedIn) { found.value = { albums: [], tracks: [], playlists: [], artists: [] }; state.value = 'idle'; return }
   state.value = 'loading'
   const mySeq = ++seq
   timer = setTimeout(async () => {
@@ -107,7 +112,7 @@ async function addTo(t, pl) {
   busy.value = null
   msg.value = r.ok ? { ok: `«${t.name}» er lagt til i «${pl.name}».` } : { error: r.error }
 }
-const none = computed(() => needle.value.length >= 2 && state.value === 'idle' && !myPlaylists.value.length && !myAlbums.value.length && !otherAlbums.value.length && !otherPlaylists.value.length && !found.value.tracks.length)
+const none = computed(() => needle.value.length >= 2 && state.value === 'idle' && !myPlaylists.value.length && !myAlbums.value.length && !otherAlbums.value.length && !otherPlaylists.value.length && !found.value.tracks.length && !(found.value.artists || []).length)
 </script>
 
 <template>
@@ -115,10 +120,10 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
     <MusicDetail v-if="open" :key="open.item.uri" :item="open.item" :kind="open.kind" back-label="Tilbake til søket" @back="open = null" />
 
     <template v-else>
-      <p v-if="msg?.ok" class="notice ok">{{ msg.ok }}</p>
-      <p v-if="msg?.error" class="notice error">{{ msg.error }}</p>
+      <p v-if="msg?.ok" class="notice ok" :style="{ order: 0 }">{{ msg.ok }}</p>
+      <p v-if="msg?.error" class="notice error" :style="{ order: 0 }">{{ msg.error }}</p>
 
-      <section v-if="myPlaylists.length">
+      <section v-if="myPlaylists.length" :style="{ order: ORDER.myPlaylists }">
         <h4>Mine spillelister</h4>
         <button v-for="p in myPlaylists" :key="p.uri" class="row" @click="open = { item: p, kind: 'playlist' }">
           <img v-if="p.thumb || p.image" crossorigin="anonymous" :src="p.thumb || p.image" alt="" class="art" />
@@ -127,7 +132,7 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
         </button>
       </section>
 
-      <section v-if="myAlbums.length">
+      <section v-if="myAlbums.length" :style="{ order: ORDER.myAlbums }">
         <h4>Mine album</h4>
         <button v-for="a in myAlbums.slice(0, 12)" :key="a.uri" class="row" @click="openAlbum(a)">
           <img v-if="a.thumb || a.image" crossorigin="anonymous" :src="a.thumb || a.image" alt="" class="art" />
@@ -135,11 +140,11 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
         </button>
       </section>
 
-      <p v-if="needle.length >= 2 && !admin.loggedIn" class="hint">Logg inn for å søke i hele Spotify.</p>
-      <p v-else-if="state === 'loading'" class="hint">Søker …</p>
-      <p v-else-if="state === 'error'" class="notice error">{{ error }}</p>
+      <p v-if="needle.length >= 2 && !admin.loggedIn" class="hint" :style="{ order: 0 }">Logg inn for å søke i hele Spotify.</p>
+      <p v-else-if="state === 'loading'" class="hint" :style="{ order: 0 }">Søker …</p>
+      <p v-else-if="state === 'error'" class="notice error" :style="{ order: 0 }">{{ error }}</p>
 
-      <section v-if="otherAlbums.length">
+      <section v-if="otherAlbums.length" :style="{ order: ORDER.otherAlbums }">
         <h4>Album på Spotify</h4>
         <div v-for="a in otherAlbums" :key="a.uri" class="row wrap">
           <button class="main" @click="openAlbum(a)">
@@ -150,7 +155,7 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
         </div>
       </section>
 
-      <section v-if="otherPlaylists.length">
+      <section v-if="otherPlaylists.length" :style="{ order: ORDER.otherPlaylists }">
         <h4>Spillelister på Spotify</h4>
         <div v-for="p in otherPlaylists" :key="p.uri" class="row wrap">
           <button class="main" @click="open = { item: p, kind: 'playlist' }">
@@ -162,7 +167,7 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
         </div>
       </section>
 
-      <section v-if="found.tracks.length">
+      <section v-if="found.tracks.length" :style="{ order: ORDER.tracks }">
         <h4>Låter</h4>
         <div v-for="t in found.tracks" :key="t.uri" class="trk">
           <div class="row wrap" :draggable="admin.loggedIn || undefined" @dragstart="startTrackDrag($event, t)" @dragend="endDrag" @contextmenu="showMenu($event, t.name, trackMenu(t, { onPlay: () => playTrack(t) }))" v-on="longPress((e) => showMenu(e, t.name, trackMenu(t, { onPlay: () => playTrack(t) })))">
@@ -189,7 +194,16 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
         </div>
       </section>
 
-      <p v-if="none" class="hint">Ingen treff på «{{ q.trim() }}».</p>
+      <section v-if="found.artists?.length" :style="{ order: ORDER.artists }">
+        <h4>Artister</h4>
+        <button v-for="a in found.artists" :key="a.id" class="row" @click="openArtistPage({ id: a.id, name: a.name })">
+          <img v-if="a.image" crossorigin="anonymous" :src="a.image" alt="" class="art round" />
+          <span v-else class="art ph round"><Music :size="16" /></span>
+          <span class="t" translate="no"><b>{{ a.name }}</b><small>{{ a.genres?.join(' · ') || 'Artist' }}</small></span>
+        </button>
+      </section>
+
+      <p v-if="none" class="hint" :style="{ order: 9 }">Ingen treff på «{{ q.trim() }}».</p>
     </template>
   </div>
 </template>
@@ -207,6 +221,7 @@ h4 { margin: 0 2px 4px; font-size: 0.72rem; letter-spacing: 0.12em; text-transfo
 .main:disabled { cursor: not-allowed; }
 .main.dim { opacity: 0.6; }
 .art { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; flex: none; background: var(--glass-strong); }
+.art.round { border-radius: 50%; }
 .art.ph { display: grid; place-items: center; color: var(--text-3); }
 .t { display: grid; min-width: 0; flex: 1; }
 .t b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }

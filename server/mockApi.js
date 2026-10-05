@@ -237,7 +237,8 @@ export function mockApi() {
             const albums = [0, 1, 2].map((i) => ({ id: `s${i}`, uri: `spotify:album:searchalbum${String(i).padStart(10, '0')}`, name: `${q} (album ${i + 1})`, artist: 'Søkeartist', year: String(2000 + i * 7), image: mockCover(i * 70 + 10), image_large: mockCover(i * 70 + 10), thumb: mockCover(i * 70 + 10), url: null, tracks: 9 + i }))
             const tracks = [0, 1, 2, 3].map((i) => ({ uri: `spotify:track:searchtrack${String(i).padStart(10, '0')}`, name: `${q} – låt ${i + 1}`, artist: 'Søkeartist', ms: 180000 + i * 20000, n: i + 1, img: mockCover(i * 50), album: albums[i % 3].name, album_uri: albums[i % 3].uri, album_artist: 'Søkeartist', album_image: albums[i % 3].image, album_image_large: albums[i % 3].image, album_url: null }))
             const playlists = [0, 1].map((i) => ({ id: `sp${i}`, uri: `spotify:playlist:searchlist${String(i).padStart(10, '0')}`, name: `${q} mix ${i + 1}`, owner: 'Spotify-bruker', image: mockCover(i * 90 + 40), thumb: mockCover(i * 90 + 40), count: 30 + i * 12, url: null }))
-            return send(res, 200, { albums, tracks, playlists })
+            const artists = [0, 1, 2].map((i) => ({ id: `sa${i}`, name: i ? `${q} ${['Band', 'Collective'][i - 1]}` : q, image: mockCover(i * 120 + 20), genres: ['indie', 'pop'].slice(0, 1 + (i % 2)) }))
+            return send(res, 200, { albums, tracks, playlists, artists })
           }
           case 'spotify_tempo': {
             const id = url.searchParams.get('id') || ''

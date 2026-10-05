@@ -87,7 +87,7 @@ function show(view) {
             <MusicDetail v-if="top.kind === 'album'" :key="top.item.uri" :item="top.item" kind="album" :back-label="backLabel" @back="peekBack" />
             <ArtistPage v-else :key="top.item.id || top.item.name" :artist="top.item" :back-label="backLabel" @back="peekBack" />
           </template>
-          <SpotifySearch v-else-if="gq.trim()" :q="gq" scope="all" />
+          <SpotifySearch v-else-if="gq.trim()" :q="gq" scope="all" :tab="ipod ? 'ipod' : 'vinyl'" />
           <template v-else>
             <PlaylistPanel v-if="ipod" :search="false" />
             <VinylPanel v-else :search="false" />
