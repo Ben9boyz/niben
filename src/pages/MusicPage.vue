@@ -108,7 +108,7 @@ function show(view) {
       <aside class="now-col">
         <div class="glass now-card">
           <NowPlaying v-if="playing" stacked />
-          <QueuePanel v-if="playing" class="queue" />
+          <QueuePanel v-if="playing" class="queue" :flat="ipod" />
           <div v-else class="idle">
             <Disc3 :size="28" />
             <b>Ingenting spilles</b>
@@ -126,7 +126,7 @@ function show(view) {
           <div class="m-sheet glass">
             <button class="m-close" aria-label="Lukk" @click="sheet = false"><X :size="18" /></button>
             <NowPlaying stacked />
-            <QueuePanel class="queue" />
+            <QueuePanel class="queue" :flat="ipod" />
           </div>
         </div>
       </transition>

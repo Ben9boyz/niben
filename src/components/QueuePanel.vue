@@ -1,6 +1,6 @@
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import { ListMusic, Music } from 'lucide-vue-next'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ListMusic, Music, ChevronRight } from 'lucide-vue-next'
 import { spotify, fetchQueue, fetchTracks, fmtClock } from '../composables/useSpotify'
 import { queueDrop, queueOver, drag } from '../composables/useDrag'
 
@@ -9,8 +9,26 @@ import { queueDrop, queueOver, drag } from '../composables/useDrag'
 const queue = ref(null)
 const pos = ref(null) // { n, of } while an album plays
 let timer = 0
+const props = defineProps({ flat: Boolean }) // playlists: always the plain song list
+const open = ref(new Set()) // album groups that are unfolded
 let soon = 0
 
+// the queue as albums: songs that follow each other on the same album become one tile ("Resten av …" for the
+// album that's playing, then each album I queued). Tap a tile to see its songs. Only when there is an album to show.
+const groups = computed(() => {
+  const out = []
+  for (const t of queue.value || []) {
+    const last = out[out.length - 1]
+    if (last && t.album_uri && last.uri === t.album_uri) last.tracks.push(t)
+    else out.push({ uri: t.album_uri, name: t.album || t.name, image: t.album_image || t.img, tracks: [t] })
+  }
+  return out
+})
+const asAlbums = computed(() => !props.flat && groups.value.some((g) => g.tracks.length > 1) && groups.value.length > 0)
+const minutes = (g) => fmtClock(g.tracks.reduce((a, t) => a + (t.ms || 0), 0) / 1000)
+const rest = (g, i) => i === 0 && g.uri && g.uri === spotify.now?.context
+function toggle(i) { const o = new Set(open.value); o.has(i) ? o.delete(i) : o.add(i); open.value = o }
+watch(() => spotify.now?.uri, () => { open.value = new Set() })
 async function load() { queue.value = await fetchQueue() }
 async function where() {
   const ctx = spotify.now?.context
@@ -34,6 +52,18 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
     <p v-if="queueOver" class="drophint">Slipp for å legge sist i køen</p>
     <p v-if="!queue" class="muted">Henter …</p>
     <p v-else-if="!queue.length" class="muted">Ingenting mer i køen.</p>
+    <ol v-else-if="asAlbums" class="albums">
+      <li v-for="(g, i) in groups.slice(0, 12)" :key="(g.uri || g.name) + i" class="grp">
+        <button class="gh" :aria-expanded="open.has(i)" @click="toggle(i)">
+          <img v-if="g.image" crossorigin="anonymous" :src="g.image" alt="" /><span v-else class="ph"><Music :size="13" /></span>
+          <span class="t" translate="no"><b>{{ rest(g, i) ? 'Resten av ' + g.name : g.name }}</b><small>{{ g.tracks.length }} {{ g.tracks.length === 1 ? 'låt' : 'låter' }} · {{ minutes(g) }}</small></span>
+          <ChevronRight :size="15" class="chev" :class="{ on: open.has(i) }" aria-hidden="true" />
+        </button>
+        <ol v-if="open.has(i)" class="songs">
+          <li v-for="(t, j) in g.tracks" :key="t.uri + j"><span class="n">{{ j + 1 }}</span><span class="t" translate="no"><b>{{ t.name }}</b></span><small class="d">{{ fmtClock(t.ms / 1000) }}</small></li>
+        </ol>
+      </li>
+    </ol>
     <ol v-else>
       <li v-for="(t, i) in queue.slice(0, 12)" :key="t.uri + i">
         <img v-if="t.img" crossorigin="anonymous" :src="t.img" alt="" /><span v-else class="ph"><Music :size="13" /></span>
@@ -61,4 +91,14 @@ li img, .ph { width: 32px; height: 32px; border-radius: 5px; object-fit: cover; 
 .t b { font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .t small, .d { font-size: 0.72rem; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .d { font-variant-numeric: tabular-nums; }
+.albums { max-height: 420px; }
+.grp { display: block; padding: 0; }
+.gh { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 4px; border: 0; border-radius: 10px; background: transparent; color: var(--text); text-align: left; cursor: pointer; font: inherit; }
+.gh:hover { background: var(--accent-soft); }
+.gh img, .gh .ph { width: 40px; height: 40px; border-radius: 6px; }
+.chev { color: var(--text-3); transition: transform 0.2s; }
+.chev.on { transform: rotate(90deg); }
+.songs { display: grid; gap: 1px; margin: 2px 0 6px 50px; padding: 0; max-height: none; overflow: visible; }
+.songs li { grid-template-columns: 18px minmax(0, 1fr) auto; padding: 3px 4px; }
+.n { font-size: 0.7rem; color: var(--text-3); text-align: right; font-variant-numeric: tabular-nums; }
 </style>

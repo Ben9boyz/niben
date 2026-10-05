@@ -239,11 +239,11 @@ function sp_more_handle(string $action, bool $post): bool {
     }
     case 'spotify_queue': {
         // what's coming up (anyone may look – cached for 10 seconds)
-        $q = sp_cached('cache_queue2', 10, function () {
+        $q = sp_cached('cache_queue3', 10, function () {
             [$s, $j] = sp_api('GET', '/me/player/queue');
             if ($s !== 200) return ['tracks' => []];
             $out = [];
-            foreach (array_slice($j['queue'] ?? [], 0, 20) as $t) {
+            foreach (array_slice($j['queue'] ?? [], 0, 60) as $t) {
                 if (!$t) continue;
                 $album = $t['album'] ?? $t['show'] ?? [];
                 $out[] = ['uri' => $t['uri'] ?? null, 'name' => $t['name'] ?? '', 'artist' => implode(', ', array_map(fn($x) => $x['name'], $t['artists'] ?? [])),
