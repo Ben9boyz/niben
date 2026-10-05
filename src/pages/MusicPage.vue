@@ -68,6 +68,7 @@ function show(view) {
             <b class="lh">Mapper</b>
             <FolderTree :kind="ipod ? 'playlist' : 'album'" @pick="gq = ''; peekClear(); select($event)" />
           </div>
+          <a v-if="shell !== 'player'" href="#/musicplayer" class="as-player">Åpne som egen musikkspiller</a>
         </div>
       </aside>
 
@@ -108,8 +109,6 @@ function show(view) {
       </aside>
     </div>
 
-    <a v-if="shell !== 'player'" href="#/musicplayer" class="as-player">Åpne som egen musikkspiller</a>
-
     <!-- phones: a small player above the menu; tap for the full card -->
     <MiniNowPlaying v-if="playing" class="m-mini" @open="sheet = true" />
     <teleport to="body">
@@ -127,11 +126,13 @@ function show(view) {
 </template>
 
 <style scoped>
-.music { width: min(1680px, 100%); padding-top: 28px; }
+.music { width: min(1680px, 100%); padding-top: 20px; }
+/* PC: the page is exactly one screen tall – nothing to scroll except inside the cards, so nothing jumps */
+@media (min-width: 821px) { .music { padding-bottom: 20px; } }
 .layout { display: grid; grid-template-columns: 210px minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
 .lib-col, .now-col { position: sticky; top: 20px; }
 /* a card taller than the screen scrolls inside itself instead of being cut off */
-.lib-card, .now-card { max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.lib-card, .now-card { max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
 .lib-card { padding: 12px; border-radius: 20px; display: grid; gap: 8px; }
 .lh { margin: 2px 6px; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
 .lib { display: grid; gap: 2px; }
@@ -147,7 +148,7 @@ function show(view) {
    (ALBUM + the group buttons) – nothing ever moves above the search line, the library or what's playing */
 @media (min-width: 821px) {
   .main-col { position: sticky; top: 20px; height: calc(100dvh - 40px); grid-template-rows: auto minmax(0, 1fr); gap: 12px; }
-  .main-card { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; min-height: 0; }
+  .main-card { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; min-height: 0; }
 }
 .seg { display: none !important; }
 @media (max-width: 820px) { .seg { display: grid !important; } }
@@ -165,7 +166,7 @@ function show(view) {
 .idle b { color: var(--text-2); font-size: 0.95rem; }
 .idle small { font-size: 0.8rem; }
 .m-mini { display: none; }
-.as-player { display: block; width: max-content; margin: 18px auto 0; font-size: 0.78rem; color: var(--text-3); opacity: 0.7; text-decoration: none; }
+.as-player { display: block; width: max-content; margin: 10px auto 2px; font-size: 0.78rem; color: var(--text-3); opacity: 0.7; text-decoration: none; }
 .as-player:hover { opacity: 1; color: var(--accent); }
 
 /* in-between widths: no right column – what's playing goes on top of the library */
@@ -198,6 +199,8 @@ function show(view) {
 </style>
 
 <style>
+.music .main-card::-webkit-scrollbar, .music .lib-card::-webkit-scrollbar, .music .now-card::-webkit-scrollbar { display: none; }
+@media (min-width: 821px) { html.player-shell .music.cpage { padding-top: 84px; padding-bottom: 20px; } }
 /* the header of the grid (name + group buttons) sticks to the top of the card; tiles vanish under it */
 @media (min-width: 821px) {
   .main-card .stick { position: sticky; top: -16px; z-index: 4; margin: -16px -16px 0; padding: 10px 16px 10px; background: linear-gradient(var(--glass), var(--glass)), var(--bg); }
