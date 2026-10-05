@@ -1,11 +1,12 @@
 <script setup>
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
-import { Play, Lock, Plus, Check, Music, ListPlus } from 'lucide-vue-next'
-import { spotify, lockLeft, fmtClock, play, lockNote, searchSpotify, saveAlbum, addToPlaylist, addGuest, control, followPlaylist } from '../composables/useSpotify'
+import { Play, Lock, Plus, Check, Music, ListPlus, ListEnd } from 'lucide-vue-next'
+import { spotify, lockLeft, fmtClock, play, lockNote, searchSpotify, saveAlbum, addToPlaylist, addGuest, control, followPlaylist, enqueue } from '../composables/useSpotify'
 import { room } from '../composables/useRoom'
 import { mode } from '../composables/useMode'
 import { admin } from '../composables/useAdmin'
 import MusicDetail from './MusicDetail.vue'
+import AddMenu from './AddMenu.vue'
 
 // Search results. 'all' (the flat grid): my playlists, albums and songs. 'player' (the turntable):
 // only albums and songs. Songs start inside their album, so the music carries on after the song.
@@ -34,7 +35,6 @@ const otherAlbums = computed(() => found.value.albums.filter((a) => !mine.value.
 // playlists from all of Spotify (the flat page only – in the room, playlists are the iPod's)
 const myPlaylistUris = computed(() => new Set(spotify.playlists.map((p) => p.uri)))
 const otherPlaylists = computed(() => (props.scope === 'all' ? (found.value.playlists || []).filter((p) => !myPlaylistUris.value.has(p.uri)) : []))
-const editable = computed(() => spotify.playlists.filter((p) => p.editable !== false))
 
 let timer = 0
 let seq = 0
@@ -168,12 +168,10 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
               <span class="t"><b>{{ t.name }}</b><small>{{ t.artist }} · {{ t.album }}</small></span>
               <span class="d"><Lock v-if="locked" :size="13" /><Play v-else :size="13" fill="currentColor" /> {{ fmtClock(t.ms / 1000) }}</span>
             </button>
+            <button class="act" title="Spill etterpå – i køen" aria-label="Spill etterpå" @click="enqueue(t.uri)"><ListEnd :size="15" />Kø</button>
             <button class="act" title="Legg til i en spilleliste" @click="menuFor = menuFor === t.uri ? null : t.uri"><ListPlus :size="15" />Liste</button>
           </div>
-          <ul v-if="menuFor === t.uri" class="menu">
-            <li v-if="!editable.length" class="hint">Ingen spillelister å legge til i.</li>
-            <li v-for="p in editable" :key="p.uri"><button @click="addTo(t, p)">{{ p.name }}</button></li>
-          </ul>
+          <div v-if="menuFor === t.uri" class="menu"><AddMenu @queue="menuFor = null; enqueue(t.uri)" @pick="(p) => addTo(t, p)" @close="menuFor = null" /></div>
         </div>
       </section>
 
@@ -202,7 +200,5 @@ h4 { margin: 0 2px 4px; font-size: 0.72rem; letter-spacing: 0.12em; text-transfo
 .d { display: inline-flex; align-items: center; gap: 5px; color: var(--text-3); font-size: 0.78rem; font-variant-numeric: tabular-nums; flex: none; }
 .act { display: inline-flex; align-items: center; gap: 4px; flex: none; padding: 6px 10px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.75rem var(--font); cursor: pointer; }
 .act:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
-.menu { list-style: none; margin: 2px 0 6px 54px; padding: 4px; max-height: 190px; overflow-y: auto; border-radius: 12px; background: var(--glass-strong); border: 1px solid var(--glass-border); }
-.menu button { width: 100%; padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--text); font: 500 0.85rem var(--font); text-align: left; cursor: pointer; }
-.menu button:hover { background: var(--accent-soft); color: var(--accent); }
+.menu { margin: 2px 0 6px 54px; }
 </style>

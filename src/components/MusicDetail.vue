@@ -1,6 +1,7 @@
 <script setup>
-import { ChevronLeft, Music, Lock, Play, Pause, ArrowUpRight, ListPlus } from 'lucide-vue-next'
-import { ref, computed, watch } from 'vue'
+import { ChevronLeft, Music, Lock, Play, Pause, ArrowUpRight, ListPlus, ListEnd } from 'lucide-vue-next'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import AddMenu from './AddMenu.vue'
 import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote, control, addToPlaylist, enqueue } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 
@@ -19,12 +20,21 @@ const tracks = ref(null)
 const msg = ref(null)
 // "add to playlist" for a song (admin): the list of my own playlists opens under the song
 const menuFor = ref(null)
-const editable = computed(() => spotify.playlists.filter((p) => p.editable !== false && p.uri !== props.item.uri))
 async function addTo(t, pl) {
   menuFor.value = null
   const r = await addToPlaylist(pl.uri, t.uri)
   msg.value = r.ok ? { ok: `«${t.name}» er lagt til i «${pl.name}».` } : { error: r.error }
 }
+// Q over a song puts it next in the queue
+const hoverUri = ref(null)
+function onKey(e) {
+  if (e.key.toLowerCase() !== 'q' || e.metaKey || e.ctrlKey || e.altKey || !hoverUri.value || !admin.loggedIn) return
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return
+  e.preventDefault()
+  enqueue(hoverUri.value)
+}
+onMounted(() => window.addEventListener('keydown', onKey))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 const busy = ref(null)
 const tint = ref(null)
 const locked = computed(() => lockLeft.value > 0)
@@ -140,19 +150,20 @@ async function onPlay(track = null) {
         <li
           :class="{ current: spotify.now?.uri === t.uri, clickable: admin.loggedIn && (!locked || spotify.now?.uri === t.uri), withadd: admin.loggedIn }"
           @click="admin.loggedIn && onPlay(t)"
+          @mouseenter="hoverUri = t.uri"
+          @mouseleave="hoverUri = null"
         >
           <span class="n">
             <span v-if="spotify.now?.uri === t.uri && spotify.now?.playing" class="eq"><i></i><i></i><i></i></span>
             <template v-else><span class="num">{{ t.n || i + 1 }}</span><span class="hov"><Play :size="13" fill="currentColor" /></span></template>
           </span>
           <span class="t"><b>{{ t.name }}</b><small v-if="kind === 'playlist' || t.artist !== item.artist">{{ t.artist }}</small></span>
-          <button v-if="admin.loggedIn" class="add" :class="{ on: menuFor === t.uri }" title="Legg i kø eller i en spilleliste" aria-label="Legg i kø eller i en spilleliste" @click.stop="menuFor = menuFor === t.uri ? null : t.uri"><ListPlus :size="15" /></button>
+          <button v-if="admin.loggedIn" class="add" title="Spill etterpå – i køen (Q)" aria-label="Spill etterpå" @click.stop="enqueue(t.uri)"><ListEnd :size="15" /></button>
+          <button v-if="admin.loggedIn" class="add" :class="{ on: menuFor === t.uri }" title="Legg i en spilleliste" aria-label="Legg i en spilleliste" @click.stop="menuFor = menuFor === t.uri ? null : t.uri"><ListPlus :size="15" /></button>
           <span class="d">{{ busy === t.uri ? '…' : fmtClock(t.ms / 1000) }}</span>
         </li>
         <li v-if="menuFor === t.uri" class="plmenu">
-          <button class="qbtn" @click="menuFor = null; enqueue(t.uri)">Spill etterpå (kø)</button>
-          <span v-if="!editable.length" class="note">Ingen spillelister du kan legge til i.</span>
-          <button v-for="p in editable" :key="p.uri" @click="addTo(t, p)">{{ p.name }}</button>
+          <AddMenu :exclude="item.uri" @queue="menuFor = null; enqueue(t.uri)" @pick="(p) => addTo(t, p)" @close="menuFor = null" />
         </li>
       </template>
     </ol>
@@ -195,17 +206,13 @@ async function onPlay(track = null) {
 
 .tracks { list-style: none; margin: 0; padding: 0; }
 .tracks li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 8px; border-radius: 8px; font-size: 0.86rem; }
-.tracks li.withadd { grid-template-columns: 28px minmax(0, 1fr) auto auto; }
+.tracks li.withadd { grid-template-columns: 28px minmax(0, 1fr) auto auto auto; }
 .add { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--text-3); cursor: pointer; opacity: 0; transition: opacity 0.15s, color 0.15s; }
 .tracks li:hover .add, .add.on, .add:focus-visible { opacity: 1; }
 .add:hover, .add.on { color: var(--accent); background: var(--glass-strong); }
 @media (hover: none) { .add { opacity: 0.7; } }
-.tracks li.plmenu { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 8px 10px 46px; }
+.tracks li.plmenu { display: block; padding: 4px 8px 10px 46px; }
 .tracks li.plmenu:hover { background: transparent; }
-.plmenu button { padding: 5px 11px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text); font: 600 0.78rem var(--font); cursor: pointer; }
-.plmenu button:hover { border-color: var(--accent); color: var(--accent); }
-.plmenu .qbtn { border-color: #1db954; color: #1db954; }
-.plmenu .note { color: var(--text-3); font-size: 0.8rem; }
 .tracks li.note { display: block; padding: 10px 8px; color: var(--text-3); line-height: 1.4; }
 .tracks li.clickable { cursor: pointer; }
 .tracks li:hover { background: var(--accent-soft); }
