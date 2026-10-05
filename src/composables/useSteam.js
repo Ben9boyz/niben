@@ -37,7 +37,7 @@ export function loadSteam(force = false) {
 export function watchSteam() {
   loadSteam()
   clearInterval(timer)
-  timer = setInterval(() => loadSteam(true), 60000)
+  timer = setInterval(() => { if (!document.hidden) loadSteam(true) }, 60000)
   return () => clearInterval(timer)
 }
 

@@ -354,7 +354,14 @@ try {
             $books = $pdo->query('SELECT ' . $bookCols . $bookOrder)->fetchAll(); // "reading" column not added yet
         }
         $recs = $pdo->query('SELECT id, guitar, title, recorded_on, youtube, audio_path, notes FROM recordings ORDER BY COALESCE(recorded_on, created_at) DESC, id DESC')->fetchAll();
-        out(['trips' => $trips, 'books' => $books, 'recordings' => $recs, 'songs' => songs_list($pdo), 'about' => json_decode((string)kv_get('about'), true)]);
+        $payload = json_encode(['trips' => $trips, 'books' => $books, 'recordings' => $recs, 'songs' => songs_list($pdo), 'about' => json_decode((string)kv_get('about'), true)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        // unchanged content: the browser keeps its copy (304, no body)
+        $etag = '"' . md5($payload) . '"';
+        header('ETag: ' . $etag);
+        header('Cache-Control: private, no-cache');
+        if (($_SERVER['HTTP_IF_NONE_MATCH'] ?? '') === $etag) { http_response_code(304); exit; }
+        echo $payload;
+        exit;
     }
 
     case 'limits':

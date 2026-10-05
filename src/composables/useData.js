@@ -87,7 +87,7 @@ async function load() {
   const merged = structuredClone(base)
 
   try {
-    const r = await fetch('api.php?action=content', { cache: 'no-store' })
+    const r = await fetch('api.php?action=content', { cache: 'no-cache' })
     if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
       const db = await r.json()
       if (!db.error) {

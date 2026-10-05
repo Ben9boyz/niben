@@ -4,7 +4,7 @@
 // page load. It is tried in a test folder first, and after switching it on the front page and the API
 // must still answer; otherwise the old file is put back.
 
-const HT_VERSION = '2026-10-05-1';
+const HT_VERSION = '2026-10-06-1';
 const HT_RULES = <<<'HT'
 # niben.no – security and speed (Apache 2.4)
 
@@ -26,12 +26,12 @@ Options -Indexes
   Header unset X-Powered-By
 
   # the app's own files have a hash in the name: keep them for a year
-  <FilesMatch "^(index|mp3Worker|worker)-.+\.js$">
+  <FilesMatch "^.+-[A-Za-z0-9_-]{6,}\.js$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
-  # models and pictures: a week
-  <FilesMatch "\.(glb|png|jpe?g|webp|svg|ico)$">
-    Header set Cache-Control "public, max-age=604800"
+  # models, pictures and fonts: a week (uploads get new names when they change)
+  <FilesMatch "\.(glb|png|jpe?g|webp|svg|ico|woff2?|wasm)$">
+    Header set Cache-Control "public, max-age=604800, stale-while-revalidate=86400"
   </FilesMatch>
   # the page itself and the service worker: always check for a new version
   <FilesMatch "^(index\.html|sw\.js|manifest\.json|data\.json)$">
@@ -41,7 +41,10 @@ Options -Indexes
 
 # compress text (JavaScript ~3 MB → ~0.8 MB)
 <IfModule mod_deflate.c>
-  AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript text/javascript application/json image/svg+xml model/gltf-binary
+  AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript text/javascript application/json image/svg+xml model/gltf-binary application/wasm font/ttf
+</IfModule>
+<IfModule mod_brotli.c>
+  AddOutputFilterByType BROTLI_COMPRESS text/html text/plain text/css application/javascript text/javascript application/json image/svg+xml model/gltf-binary application/wasm
 </IfModule>
 HT;
 
