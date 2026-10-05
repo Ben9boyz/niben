@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { ChevronRight, ChevronLeft } from 'lucide-vue-next'
 import CoverGrid from './CoverGrid.vue'
 import FolderIcon from './FolderIcon.vue'
+import { User, Users } from 'lucide-vue-next'
 import { groups, sectionsOf, moveTo, groupOf, flatGroups, isCollapsed, toggleCollapsed, groupCover, topGroups, childrenOf, countIn, openFolder } from '../composables/useGroups'
 import { admin } from '../composables/useAdmin'
 import { drag, startItemDrag, endDrag } from '../composables/useDrag'
@@ -132,7 +133,8 @@ const allow = (e, id) => { if (canDrag.value && drag.item) { e.preventDefault();
     >
       <h4 class="label-caps">
         <button class="fold" :aria-expanded="!folded(s, i)" :disabled="movable" @click="toggleCollapsed(s.group.id, i)">
-          <ChevronRight :size="14" :class="{ open: !folded(s, i) }" aria-hidden="true" /><FolderIcon v-if="s.group.id !== '_'" :image="groupCover(s.group.id)" :size="16" :open="!folded(s, i)" />{{ s.label }}<small>{{ s.items.length }}</small>
+          <ChevronRight :size="14" :class="{ open: !folded(s, i) }" aria-hidden="true" /><template v-if="s.group.id.startsWith('artist:')"><img v-if="s.group.id !== 'artist:_en' && s.items[0]?.image" crossorigin="anonymous" :src="s.items[0].image" alt="" class="apic" /><span v-else class="apic ph"><Users v-if="s.group.id === 'artist:_en'" :size="12" /><User v-else :size="12" /></span></template>
+          <FolderIcon v-else-if="s.group.id !== '_'" :image="groupCover(s.group.id)" :size="16" :open="!folded(s, i)" />{{ s.label }}<small>{{ s.items.length }}</small>
         </button>
       </h4>
       <CoverGrid
@@ -157,6 +159,8 @@ const allow = (e, id) => { if (canDrag.value && drag.item) { e.preventDefault();
 </template>
 
 <style scoped>
+.apic { flex: none; width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: var(--glass-strong); }
+.apic.ph { display: inline-grid; place-items: center; color: var(--text-3); }
 .groups { display: grid; gap: 18px; }
 .fb { display: grid; gap: 10px; }
 .crumbs { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; color: var(--text-3); font-size: 0.82rem; }
