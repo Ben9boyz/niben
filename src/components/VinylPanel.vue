@@ -95,8 +95,8 @@ async function disconnect() {
                 <button v-if="admin.loggedIn" class="spot" title="Søk i hele Spotify" @click="spot = true"><SearchIcon :size="14" />Spotify</button>
               </span>
             </div>
-            <GroupBar />
-            <GroupedGrid :items="items" :playing-uri="spotify.now?.context" @pick="pick" @hover="(it) => prefetchTracks(it.uri)" />
+            <GroupBar artist />
+            <GroupedGrid by-artist :flat="!!q.trim()" :items="items" :playing-uri="spotify.now?.context" @pick="pick" @hover="(it) => prefetchTracks(it.uri)" />
             <p v-if="!items.length" class="muted">Ingen treff.</p>
           </template>
           <div v-if="admin.loggedIn" class="admin-row">

@@ -1,13 +1,30 @@
 <script setup>
 import { computed } from 'vue'
-import { Folder, FolderOpen, ChevronRight } from 'lucide-vue-next'
+import { ChevronRight } from 'lucide-vue-next'
+import FolderIcon from './FolderIcon.vue'
 import { spotify } from '../composables/useSpotify'
-import { groups, topGroups, childrenOf, countIn, select } from '../composables/useGroups'
+import { ref } from 'vue'
+import { groups, topGroups, childrenOf, countIn, select, groupCover, moveTo } from '../composables/useGroups'
+import { admin } from '../composables/useAdmin'
+import { drag, endDrag } from '../composables/useDrag'
+import { notify } from '../composables/useSpotify'
 
 // The folders under the library (PC): click one to show just that folder in the grid, click it again for all.
 // A folder with folders inside folds in and out.
 const props = defineProps({ kind: { type: String, default: 'album' } }) // which list the numbers count
 const uris = computed(() => (props.kind === 'playlist' ? spotify.playlists : spotify.albums).map((x) => x.uri))
+// drop an album / playlist tile on a folder to move it there
+const over = ref(null)
+const allow = (e, id) => { if (admin.loggedIn && drag.item) { e.preventDefault(); over.value = id } }
+async function drop(e, id) {
+  e.preventDefault()
+  const uri = drag.item
+  over.value = null
+  endDrag()
+  if (!uri || groups.assign[uri] === id) return
+  const r = await moveTo(uri, id)
+  if (!r.ok) notify(r.error, true)
+}
 const isOpen = (id) => groups.treeOpen[id] !== false
 const toggle = (id) => { groups.treeOpen = { ...groups.treeOpen, [id]: !isOpen(id) } }
 </script>
@@ -19,15 +36,15 @@ const toggle = (id) => { groups.treeOpen = { ...groups.treeOpen, [id]: !isOpen(i
       <div class="r">
         <button v-if="childrenOf(g.id).length" class="chev" :aria-label="isOpen(g.id) ? 'Brett inn' : 'Brett ut'" :aria-expanded="isOpen(g.id)" @click="toggle(g.id)"><ChevronRight :size="13" :class="{ open: isOpen(g.id) }" /></button>
         <span v-else class="chev"></span>
-        <button class="f" :class="{ on: groups.sel === g.id }" @click="select(g.id)">
-          <component :is="groups.sel === g.id ? FolderOpen : Folder" :size="15" aria-hidden="true" /><span>{{ g.name }}</span><small>{{ countIn(g.id, uris) }}</small>
+        <button class="f" :class="{ on: groups.sel === g.id, over: over === g.id }" @click="select(g.id)" @dragover="allow($event, g.id)" @dragleave="over === g.id && (over = null)" @drop="drop($event, g.id)">
+          <FolderIcon :image="groupCover(g.id)" :size="17" :open="groups.sel === g.id" /><span>{{ g.name }}</span><small>{{ countIn(g.id, uris) }}</small>
         </button>
       </div>
       <template v-if="isOpen(g.id)">
         <div v-for="c in childrenOf(g.id)" :key="c.id" class="r sub">
           <span class="chev"></span>
-          <button class="f" :class="{ on: groups.sel === c.id }" @click="select(c.id)">
-            <component :is="groups.sel === c.id ? FolderOpen : Folder" :size="14" aria-hidden="true" /><span>{{ c.name }}</span><small>{{ countIn(c.id, uris) }}</small>
+          <button class="f" :class="{ on: groups.sel === c.id, over: over === c.id }" @click="select(c.id)" @dragover="allow($event, c.id)" @dragleave="over === c.id && (over = null)" @drop="drop($event, c.id)">
+            <FolderIcon :image="groupCover(c.id)" :size="15" :open="groups.sel === c.id" /><span>{{ c.name }}</span><small>{{ countIn(c.id, uris) }}</small>
           </button>
         </div>
       </template>
@@ -48,6 +65,7 @@ const toggle = (id) => { groups.treeOpen = { ...groups.treeOpen, [id]: !isOpen(i
 .f span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .f small { font-weight: 500; opacity: 0.6; font-variant-numeric: tabular-nums; }
 .f:hover { background: var(--accent-soft); color: var(--text); }
+.f.over { background: var(--accent); color: #fff; }
 .f.on { background: var(--accent-soft); color: var(--accent); }
 .all { margin: 4px 6px 0; padding: 5px 10px; border: 0; border-radius: 999px; background: transparent; color: var(--accent); font: 600 0.76rem var(--font); text-align: left; cursor: pointer; }
 </style>

@@ -24,7 +24,7 @@ const needle = computed(() => q.value.trim().toLowerCase())
 const recents = computed(() => (needle.value ? [] : recentUris.value.map((u) => all.value.find((p) => p.uri === u)).filter(Boolean).slice(0, 5)))
 const rest = computed(() => (needle.value ? all.value.filter((p) => p.name.toLowerCase().includes(needle.value)) : all.value.filter((p) => !recents.value.includes(p))))
 // grouped (when grouping is on and nothing is typed): a heading per group
-const sections = computed(() => (groups.on && groups.loaded && !needle.value ? sectionsOf(rest.value) : null))
+const sections = computed(() => (groups.on && groups.loaded && !needle.value ? sectionsOf(rest.value, false, true) : null))
 const first = computed(() => (needle.value ? rest.value[0] : null))
 
 function pick(p) {

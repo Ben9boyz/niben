@@ -7,6 +7,7 @@ import { mode } from '../composables/useMode'
 import { admin } from '../composables/useAdmin'
 import MusicDetail from './MusicDetail.vue'
 import AddMenu from './AddMenu.vue'
+import { startTrackDrag, endDrag } from '../composables/useDrag'
 
 // Search results. 'all' (the flat grid): my playlists, albums and songs. 'player' (the turntable):
 // only albums and songs. Songs start inside their album, so the music carries on after the song.
@@ -161,7 +162,7 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
       <section v-if="found.tracks.length">
         <h4>Låter</h4>
         <div v-for="t in found.tracks" :key="t.uri" class="trk">
-          <div class="row wrap">
+          <div class="row wrap" :draggable="admin.loggedIn || undefined" @dragstart="startTrackDrag($event, t)" @dragend="endDrag">
             <button class="main" :class="{ dim: locked && spotify.now?.uri !== t.uri }" :disabled="!!busy" :title="locked ? `Låst ${fmtClock(lockLeft)}` : 'Spill låta i albumet'" @click="playTrack(t)">
               <img v-if="t.album_image" crossorigin="anonymous" :src="t.album_image" alt="" class="art" />
               <span v-else class="art ph"><Music :size="16" /></span>

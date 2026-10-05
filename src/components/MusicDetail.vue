@@ -2,6 +2,7 @@
 import { ChevronLeft, Music, Lock, Play, Pause, ArrowUpRight, ListPlus, ListEnd } from 'lucide-vue-next'
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import AddMenu from './AddMenu.vue'
+import { startTrackDrag, endDrag } from '../composables/useDrag'
 import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote, control, addToPlaylist, enqueue } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 
@@ -152,6 +153,9 @@ async function onPlay(track = null) {
           @click="admin.loggedIn && onPlay(t)"
           @mouseenter="hoverUri = t.uri"
           @mouseleave="hoverUri = null"
+          :draggable="admin.loggedIn || undefined"
+          @dragstart="startTrackDrag($event, t)"
+          @dragend="endDrag"
         >
           <span class="n">
             <span v-if="spotify.now?.uri === t.uri && spotify.now?.playing" class="eq"><i></i><i></i><i></i></span>

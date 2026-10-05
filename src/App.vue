@@ -4,6 +4,7 @@ import MusicToast from './components/MusicToast.vue'
 import { useMediaSession } from './composables/useMediaSession'
 import { defineAsyncComponent } from 'vue'
 import SubTabs from './components/SubTabs.vue'
+import DropTray from './components/DropTray.vue'
 // three.js and the whole room are only fetched when the 3D version is used
 const RoomLayout = defineAsyncComponent(() => import('./components/RoomLayout.vue'))
 import { useData } from './composables/useData'
@@ -38,6 +39,7 @@ const toTop = () => window.scrollTo(0, 0)
   </template>
 
   <MusicToast />
+  <DropTray />
   <NavBar v-if="shell !== 'player'" />
   <template v-else>
     <PlayerTop />

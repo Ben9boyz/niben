@@ -21,6 +21,7 @@ export function mockApi() {
     .map(([name, artist, color], i) => ({ id: 'a' + i, uri: `spotify:album:mockalbum${String(i).padStart(10, '0')}`, name, artist, year: String(2015 + (i % 10)), image: null, color, url: null, tracks: 10 + (i % 6) }))
   // tiny coloured squares as stand-in covers
   const mockCover = (h) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><rect width="8" height="8" fill="hsl(${h % 360},60%,50%)"/><circle cx="4" cy="4" r="1.6" fill="#fff"/></svg>`)}`
+  SP_ALBUMS.forEach((a, i) => { a.image = a.image_large = a.thumb = mockCover(i * 29 + 10) }) // coloured stand-in covers
   const SP_PLAYLISTS = ['Øving – fokus', 'Gitarhelter', 'Søndagsmorgen', 'Treningsmiks', 'Roadtrip 2025'].map((name, i) => ({
     id: 'p' + i, uri: `spotify:playlist:mockplaylist${String(i).padStart(10, '0')}`, name, owner: 'Benjamin', image: null, thumb: mockCover(i * 90 + 20), count: 20 + i * 7, url: null,
   }))
@@ -223,7 +224,7 @@ export function mockApi() {
           }
           case 'spotify_groups_save': {
             if (!needAdmin()) return
-            if (b.groups) { mock.groups.groups = b.groups.map((g, i) => ({ id: g.id || `g${i}${Date.now() % 1000}`, name: g.name, ...(g.parent ? { parent: g.parent } : {}) })); const ids = mock.groups.groups.map((g) => g.id); for (const u in mock.groups.assign) if (!ids.includes(mock.groups.assign[u])) mock.groups.assign[u] = ids[ids.length - 1] }
+            if (b.groups) { mock.groups.groups = b.groups.map((g, i) => ({ id: g.id || `g${i}${Date.now() % 1000}`, name: g.name, ...(g.parent ? { parent: g.parent } : {}), ...(g.cover ? { cover: g.cover } : {}) })); const ids = mock.groups.groups.map((g) => g.id); for (const u in mock.groups.assign) if (!ids.includes(mock.groups.assign[u])) mock.groups.assign[u] = ids[ids.length - 1] }
             if (b.assign) for (const u in b.assign) { mock.groups.assign[u] = b.assign[u]; mock.groups.auto = mock.groups.auto.filter((x) => x !== u) }
             return send(res, 200, { ok: true, ...mock.groups })
           }

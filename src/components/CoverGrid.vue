@@ -6,19 +6,21 @@ defineProps({
   selectedUri: { type: String, default: null },
   playingUri: { type: String, default: null },
   cursorUri: { type: String, default: null }, // the iPod's highlighted row
-  // editing groups: each tile gets a group picker and can be dragged to another group
+  // groups: tiles can be dragged to a folder (PC); with `movable` each also gets a group picker (touch screens)
+  draggable: Boolean,
   movable: Boolean,
   groups: { type: Array, default: () => [] }, // [{ id, name }]
   groupOf: { type: Function, default: null }, // uri -> group id
   guessed: { type: Array, default: () => [] }, // uris whose group is only a guess
   why: { type: Object, default: () => ({}) }, // uri -> what the guess was based on
 })
-const emit = defineEmits(['pick', 'hover', 'move'])
+const emit = defineEmits(['pick', 'hover', 'move', 'dragitem'])
 </script>
 
 <template>
   <div class="cgrid">
-    <div v-for="it in items" :key="it.uri" class="cell" :data-uri="it.uri" :draggable="movable || undefined">
+    <slot name="lead" />
+    <div v-for="it in items" :key="it.uri" class="cell" :data-uri="it.uri" :draggable="draggable || undefined">
       <button
         class="tile"
         :class="{ on: it.uri === selectedUri, playing: it.uri === playingUri, cursor: it.uri === cursorUri }"
@@ -45,6 +47,8 @@ const emit = defineEmits(['pick', 'hover', 'move'])
 .cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; }
 .cell { position: relative; min-width: 0; }
 .cell[draggable="true"] { cursor: grab; }
+/* drag & drop is how it works with a mouse; the picker is for touch screens */
+@media (hover: hover) and (pointer: fine) { .mv { display: none; } }
 .mv { position: absolute; left: 4px; right: 4px; bottom: 4px; z-index: 3; width: calc(100% - 8px); padding: 3px 4px; border: 0; border-radius: 6px; background: rgba(0, 0, 0, 0.72); color: #fff; font: 600 0.66rem var(--font); }
 .guess { position: absolute; left: 4px; top: 4px; z-index: 3; padding: 1px 6px; border-radius: 999px; background: #f0a040; color: #fff; font: 700 0.6rem var(--font); }
 .tile {

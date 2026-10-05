@@ -11,7 +11,7 @@ import SpotifySearch from '../components/SpotifySearch.vue'
 import MiniNowPlaying from '../components/MiniNowPlaying.vue'
 import SegSwitch from '../components/SegSwitch.vue'
 import FolderTree from '../components/FolderTree.vue'
-import { loadGroups } from '../composables/useGroups'
+import { loadGroups, groups } from '../composables/useGroups'
 
 // Plain version, laid out like Spotify: the library on the left, search + the grid in the middle, what's
 // playing on the right. Phones: the search and the Album/Spillelister switch stay at the top while the grid
@@ -48,7 +48,7 @@ function show(view) {
               <ListMusic class="ic" :size="19" aria-hidden="true" />Spillelister<small>{{ spotify.playlists.length || '' }}</small>
             </button>
           </nav>
-          <FolderTree :kind="ipod ? 'playlist' : 'album'" />
+          <FolderTree v-if="ipod || groups.view !== 'artist'" :kind="ipod ? 'playlist' : 'album'" />
         </div>
       </aside>
 

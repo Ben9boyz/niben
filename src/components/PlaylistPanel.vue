@@ -50,7 +50,7 @@ function back() {
           <input v-if="search" v-model="q" type="search" class="search" placeholder="Søk …" aria-label="Søk i spillelistene" />
         </div>
         <GroupBar />
-        <GroupedGrid :items="items" :playing-uri="spotify.now?.context" :cursor-uri="cursorUri" @pick="open" @hover="hover" />
+        <GroupedGrid :flat="!!q.trim()" :items="items" :playing-uri="spotify.now?.context" :cursor-uri="cursorUri" @pick="open" @hover="hover" />
         <p v-if="!items.length" class="muted">Ingen treff.</p>
       </div>
     </transition>

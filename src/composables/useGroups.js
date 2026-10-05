@@ -1,5 +1,7 @@
-import { reactive } from 'vue'
+import { reactive, watch } from 'vue'
 import { api } from './useAdmin'
+import { spotify } from './useSpotify'
+import { room } from './useRoom'
 
 // My groups ("Jobb og fokus", "Trening" …) for albums and playlists. They live on the server (the same on every
 // device); the on/off switch for grouping is per browser. New things get a guessed group, marked as guessed
@@ -15,6 +17,11 @@ function readCollapsed() {
 }
 const phone = typeof window !== 'undefined' ? window.matchMedia('(max-width: 820px)') : { matches: false }
 
+const VIEW_KEY = 'niben-grouping-view'
+function readView() {
+  try { const v = localStorage.getItem(VIEW_KEY); return v === 'lister' || v === 'artist' ? v : 'mapper' } catch { return 'mapper' }
+}
+
 export const groups = reactive({
   loaded: false,
   list: [], // [{ id, name, parent? }] in the order shown – a group with a parent is a folder inside it (one level)
@@ -26,8 +33,18 @@ export const groups = reactive({
   why: {}, // uri -> what the guess was based on (a genre, the sound …)
   audio: null, // 'yes' / 'no': does Spotify give this app the sound data?
   on: readOn(),
+  view: readView(), // 'mapper' = folders as tiles in the grid (open one to see what's in it) · 'lister' = sections with headings · 'artist' = albums by artist
   editing: false, // admin: move things / edit the groups
 })
+
+// the folder I'm in belongs to the list I'm looking at: switching between Album and Spillelister starts at the top
+watch(() => room.musicView.startsWith('ipod'), () => { groups.sel = null })
+
+export function setView(v) {
+  groups.view = v
+  groups.sel = null
+  try { localStorage.setItem(VIEW_KEY, v) } catch {}
+}
 
 export function setGrouping(on) {
   groups.on = on
@@ -82,6 +99,7 @@ export function toggleCollapsed(id, index = 0) {
   try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(groups.collapsed)) } catch {}
 }
 export function select(id) { groups.sel = groups.sel === id ? null : id }
+export function openFolder(id) { groups.sel = id }
 
 /** Move one album / playlist to a group (admin). Shows at once, saved behind it. */
 export async function moveTo(uri, id) {
@@ -109,11 +127,11 @@ export async function saveGroups(list) {
 
 /** Items split by group in tree order (a folder after its parent). Only the picked folder when one is picked.
  *  Empty groups are left out unless `keepEmpty` (as drop targets). Each: { group, items, depth, label }. */
-export function sectionsOf(items, keepEmpty = false) {
+export function sectionsOf(items, keepEmpty = false, ignoreSel = false) {
   const by = new Map(groups.list.map((g) => [g.id, []]))
   const other = []
   for (const it of items) (by.get(groups.assign[it.uri]) || other).push(it)
-  const sel = groups.sel
+  const sel = ignoreSel ? null : groups.sel // (the add-to menus list everything, whichever folder I'm looking in)
   const keep = (g) => !sel || g.id === sel || g.parent === sel
   const out = []
   for (const g of groups.list.filter(keep)) {
@@ -123,3 +141,23 @@ export function sectionsOf(items, keepEmpty = false) {
   if (other.length && !sel) out.push({ group: { id: '_', name: 'Uten gruppe' }, items: other, depth: 0, label: 'Uten gruppe' })
   return out
 }
+
+// ── the picture on a folder ──
+const coverOfUri = (uri) => {
+  const x = spotify.albums.find((a) => a.uri === uri) || spotify.playlists.find((p) => p.uri === uri)
+  return x ? x.thumb || x.image || null : null
+}
+/** The items (album / playlist uris) in a group and its folders, albums first. */
+export function itemsIn(id) {
+  const ids = new Set([id, ...childrenOf(id).map((c) => c.id)])
+  return [...spotify.albums, ...spotify.playlists].map((x) => x.uri).filter((u) => ids.has(groups.assign[u]))
+}
+/** The picture for a group: the one I picked, none, or – automatically – the first cover found in it. */
+export function groupCover(id) {
+  const g = groups.list.find((x) => x.id === id)
+  if (!g || g.cover === 'none') return null
+  if (g.cover) return coverOfUri(g.cover)
+  for (const u of itemsIn(id)) { const c = coverOfUri(u); if (c) return c }
+  return null
+}
+export { coverOfUri }

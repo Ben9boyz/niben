@@ -192,6 +192,9 @@ function sp_more_handle(string $action, bool $post): bool {
                 if ($gid === '' || isset($seen[$gid])) $gid = 'g' . bin2hex(random_bytes(3));
                 $seen[$gid] = true;
                 $g2 = ['id' => $gid, 'name' => $name];
+                // the picture on the folder: the cover of an album / playlist in my library, 'none', or automatic (left out)
+                $cv = (string)($g['cover'] ?? '');
+                if ($cv === 'none' || preg_match('~^spotify:(album|playlist):[A-Za-z0-9]{10,40}$~', $cv)) $g2['cover'] = $cv;
                 // a folder inside another (one level only): the parent must be a top-level group listed before it
                 $par = substr(preg_replace('~[^a-z0-9-]~', '', strtolower((string)($g['parent'] ?? ''))), 0, 24);
                 if ($par !== '' && $par !== $gid && isset($seen[$par]) && empty($parents[$par])) { $g2['parent'] = $par; $parents[$gid] = $par; }
