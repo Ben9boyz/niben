@@ -207,8 +207,12 @@ export function mockApi() {
             if (q.length < 2) return send(res, 200, { albums: [], tracks: [] })
             const albums = [0, 1, 2].map((i) => ({ id: `s${i}`, uri: `spotify:album:searchalbum${String(i).padStart(10, '0')}`, name: `${q} (album ${i + 1})`, artist: 'Søkeartist', year: String(2000 + i * 7), image: mockCover(i * 70 + 10), image_large: mockCover(i * 70 + 10), thumb: mockCover(i * 70 + 10), url: null, tracks: 9 + i }))
             const tracks = [0, 1, 2, 3].map((i) => ({ uri: `spotify:track:searchtrack${String(i).padStart(10, '0')}`, name: `${q} – låt ${i + 1}`, artist: 'Søkeartist', ms: 180000 + i * 20000, n: i + 1, img: mockCover(i * 50), album: albums[i % 3].name, album_uri: albums[i % 3].uri, album_artist: 'Søkeartist', album_image: albums[i % 3].image, album_image_large: albums[i % 3].image, album_url: null }))
-            return send(res, 200, { albums, tracks })
+            const playlists = [0, 1].map((i) => ({ id: `sp${i}`, uri: `spotify:playlist:searchlist${String(i).padStart(10, '0')}`, name: `${q} mix ${i + 1}`, owner: 'Spotify-bruker', image: mockCover(i * 90 + 40), thumb: mockCover(i * 90 + 40), count: 30 + i * 12, url: null }))
+            return send(res, 200, { albums, tracks, playlists })
           }
+          case 'spotify_follow':
+            if (!needAdmin()) return
+            return send(res, 200, { ok: true })
           case 'spotify_save':
             if (!needAdmin()) return
             return send(res, 200, { ok: true })
@@ -245,6 +249,12 @@ export function mockApi() {
           case 'spotify_token':
             if (!needAdmin()) return
             return send(res, 200, { token: 'mock', expires: 0, streaming: false }) // no real Spotify in dev
+          case 'about_get':
+            return send(res, 200, { about: db.about || null })
+          case 'about_save':
+            if (!needAdmin()) return
+            db.about = { tagline: b.tagline || '', tekst: b.tekst || '', lenker: (b.lenker || []).filter((l) => l.navn && /^https?:\/\//.test(l.url || '')) }
+            return send(res, 200, { ok: true, about: db.about })
           case 'steam_public': {
             const now = Math.floor(Date.now() / 1000)
             const G = [[1245620, 'ELDEN RING', 214.5, 6.2, 1, [31, 42]], [413150, 'Stardew Valley', 160.1, 0, 9, [24, 49]], [1086940, "Baldur's Gate 3", 132, 11.4, 0, [18, 54]], [367520, 'Hollow Knight', 88.3, 0, 30, [40, 63]], [730, 'Counter-Strike 2', 76, 1.5, 3, [1, 1]], [1145360, 'Hades', 61.2, 0, 60, [33, 49]], [620, 'Portal 2', 24.8, 0, 200, [51, 51]], [105600, 'Terraria', 22, 0, 400, null], [892970, 'Valheim', 19.5, 0, 120, null], [1794680, 'Vampire Survivors', 12, 0, 75, [120, 230]], [753640, 'Outer Wilds', 18.4, 0, 500, [20, 31]], [4000, "Garry's Mod", 9, 0, 900, null]]

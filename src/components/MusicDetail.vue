@@ -1,7 +1,7 @@
 <script setup>
-import { ChevronLeft, Music, Lock, Play, Pause, ArrowUpRight } from 'lucide-vue-next'
+import { ChevronLeft, Music, Lock, Play, Pause, ArrowUpRight, ListPlus } from 'lucide-vue-next'
 import { ref, computed, watch } from 'vue'
-import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote, control } from '../composables/useSpotify'
+import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote, control, addToPlaylist } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 
 // Spotify-style page for one album or playlist: big cover, colour from the cover, tracks.
@@ -17,6 +17,14 @@ const emit = defineEmits(['back'])
 
 const tracks = ref(null)
 const msg = ref(null)
+// "add to playlist" for a song (admin): the list of my own playlists opens under the song
+const menuFor = ref(null)
+const editable = computed(() => spotify.playlists.filter((p) => p.editable !== false && p.uri !== props.item.uri))
+async function addTo(t, pl) {
+  menuFor.value = null
+  const r = await addToPlaylist(pl.uri, t.uri)
+  msg.value = r.ok ? { ok: `«${t.name}» er lagt til i «${pl.name}».` } : { error: r.error }
+}
 const busy = ref(null)
 const tint = ref(null)
 const locked = computed(() => lockLeft.value > 0)
@@ -128,19 +136,24 @@ async function onPlay(track = null) {
       <li v-if="!tracks" class="note">Henter låter …</li>
       <li v-else-if="tracks.hidden" class="note">Spotify viser bare låtene i spillelister du har laget selv. Du kan fortsatt spille av hele lista.</li>
       <li v-else-if="!tracks.tracks.length" class="note">Fant ingen låter.</li>
-      <li
-        v-for="(t, i) in tracks?.tracks || []"
-        :key="t.uri + i"
-        :class="{ current: spotify.now?.uri === t.uri, clickable: admin.loggedIn && (!locked || spotify.now?.uri === t.uri) }"
-        @click="admin.loggedIn && onPlay(t)"
-      >
-        <span class="n">
-          <span v-if="spotify.now?.uri === t.uri && spotify.now?.playing" class="eq"><i></i><i></i><i></i></span>
-          <template v-else><span class="num">{{ t.n || i + 1 }}</span><span class="hov"><Play :size="13" fill="currentColor" /></span></template>
-        </span>
-        <span class="t"><b>{{ t.name }}</b><small v-if="kind === 'playlist' || t.artist !== item.artist">{{ t.artist }}</small></span>
-        <span class="d">{{ busy === t.uri ? '…' : fmtClock(t.ms / 1000) }}</span>
-      </li>
+      <template v-for="(t, i) in tracks?.tracks || []" :key="t.uri + i">
+        <li
+          :class="{ current: spotify.now?.uri === t.uri, clickable: admin.loggedIn && (!locked || spotify.now?.uri === t.uri), withadd: admin.loggedIn }"
+          @click="admin.loggedIn && onPlay(t)"
+        >
+          <span class="n">
+            <span v-if="spotify.now?.uri === t.uri && spotify.now?.playing" class="eq"><i></i><i></i><i></i></span>
+            <template v-else><span class="num">{{ t.n || i + 1 }}</span><span class="hov"><Play :size="13" fill="currentColor" /></span></template>
+          </span>
+          <span class="t"><b>{{ t.name }}</b><small v-if="kind === 'playlist' || t.artist !== item.artist">{{ t.artist }}</small></span>
+          <button v-if="admin.loggedIn" class="add" :class="{ on: menuFor === t.uri }" title="Legg til i en spilleliste" aria-label="Legg til i en spilleliste" @click.stop="menuFor = menuFor === t.uri ? null : t.uri"><ListPlus :size="15" /></button>
+          <span class="d">{{ busy === t.uri ? '…' : fmtClock(t.ms / 1000) }}</span>
+        </li>
+        <li v-if="menuFor === t.uri" class="plmenu">
+          <span v-if="!editable.length" class="note">Ingen spillelister du kan legge til i.</span>
+          <button v-for="p in editable" :key="p.uri" @click="addTo(t, p)">{{ p.name }}</button>
+        </li>
+      </template>
     </ol>
   </article>
 </template>
@@ -181,6 +194,16 @@ async function onPlay(track = null) {
 
 .tracks { list-style: none; margin: 0; padding: 0; }
 .tracks li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 8px; border-radius: 8px; font-size: 0.86rem; }
+.tracks li.withadd { grid-template-columns: 28px minmax(0, 1fr) auto auto; }
+.add { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--text-3); cursor: pointer; opacity: 0; transition: opacity 0.15s, color 0.15s; }
+.tracks li:hover .add, .add.on, .add:focus-visible { opacity: 1; }
+.add:hover, .add.on { color: var(--accent); background: var(--glass-strong); }
+@media (hover: none) { .add { opacity: 0.7; } }
+.tracks li.plmenu { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 8px 10px 46px; }
+.tracks li.plmenu:hover { background: transparent; }
+.plmenu button { padding: 5px 11px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text); font: 600 0.78rem var(--font); cursor: pointer; }
+.plmenu button:hover { border-color: var(--accent); color: var(--accent); }
+.plmenu .note { color: var(--text-3); font-size: 0.8rem; }
 .tracks li.note { display: block; padding: 10px 8px; color: var(--text-3); line-height: 1.4; }
 .tracks li.clickable { cursor: pointer; }
 .tracks li:hover { background: var(--accent-soft); }

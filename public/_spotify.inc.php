@@ -47,22 +47,7 @@ function kv_del(string ...$keys): void {
     foreach ($keys as $k) $st->execute([$k]);
 }
 
-// ── HTTP (no curl dependency) ─────────────────────────────
-function http_req(string $method, string $url, array $headers = [], ?string $body = null): array {
-    $ctx = stream_context_create(['http' => [
-        'method' => $method,
-        'header' => implode("\r\n", $headers),
-        'content' => $body ?? '',
-        'ignore_errors' => true,
-        'timeout' => 12,
-    ]]);
-    $res = @file_get_contents($url, false, $ctx);
-    $status = 0;
-    foreach ($http_response_header ?? [] as $h) {
-        if (preg_match('~^HTTP/\S+\s+(\d{3})~', $h, $m)) $status = (int)$m[1];
-    }
-    return [$status, $res === false ? '' : $res];
-}
+require_once __DIR__ . '/_net.inc.php'; // http_req()
 
 // ── tokens ───────────────────────────────────────────────
 function sp_token_request(array $params): ?array {
@@ -195,8 +180,17 @@ function sp_now(): ?array {
         if ($s !== 200) return null;
         $it = $j['item'];
         $album = $it['album'] ?? $it['show'] ?? [];
+        $playing = (bool)($j['is_playing'] ?? false);
+        $dev = $j['device'] ?? [];
+        // playing through the page's own player (the "niben.no" device) and that page has been closed:
+        // Spotify keeps saying "playing" for a while – if the device is gone from the list, it isn't
+        if ($playing && ($dev['name'] ?? '') === 'niben.no') {
+            [$ds, $dj] = sp_api('GET', '/me/player/devices');
+            if ($ds === 200 && !in_array($dev['id'] ?? '', array_column($dj['devices'] ?? [], 'id'), true)) $playing = false;
+        }
         return [
-            'playing' => (bool)($j['is_playing'] ?? false),
+            'playing' => $playing,
+            'device' => $dev['name'] ?? null,
             'shuffle' => (bool)($j['shuffle_state'] ?? false),
             'progress_ms' => (int)($j['progress_ms'] ?? 0),
             'duration_ms' => (int)($it['duration_ms'] ?? 0),
@@ -370,13 +364,25 @@ function sp_handle(string $action, bool $post): void {
         $lock = sp_lock_until();
         if (in_array($op, ['seek', 'next', 'previous'], true) && $lock > time()) out(['error' => 'Låst – hør ferdig', 'lock_until' => $lock, 'server_time' => time()], 423);
         if ($op === 'pause') [$s, $j] = sp_api('PUT', '/me/player/pause');
-        elseif ($op === 'resume') [$s, $j] = sp_api('PUT', '/me/player/play');
+        elseif ($op === 'resume') {
+            [$s, $j] = sp_api('PUT', '/me/player/play');
+            // nothing active (Spotify forgets an idle device): hand playback to the asked-for device, or any
+            $dev = (string)(body()['device'] ?? '');
+            if ($s === 404) {
+                if ($dev === '' || !preg_match('~^[A-Za-z0-9]{20,64}$~', $dev)) {
+                    [$ds, $dj] = sp_api('GET', '/me/player/devices');
+                    $dev = (string)(array_values(array_filter($dj['devices'] ?? [], fn($d) => empty($d['is_restricted'])))[0]['id'] ?? '');
+                }
+                if ($dev !== '') [$s, $j] = sp_api('PUT', '/me/player', ['device_ids' => [$dev], 'play' => true]);
+            }
+        }
         elseif ($op === 'seek') [$s, $j] = sp_api('PUT', '/me/player/seek?position_ms=' . max(0, (int)(body()['ms'] ?? 0)));
         elseif ($op === 'next') [$s, $j] = sp_api('POST', '/me/player/next');
         elseif ($op === 'previous') [$s, $j] = sp_api('POST', '/me/player/previous');
         elseif ($op === 'shuffle') [$s, $j] = sp_api('PUT', '/me/player/shuffle?state=' . (!empty(body()['state']) ? 'true' : 'false'));
         else fail('Ukjent handling.');
-        if ($s === 404) fail('Ingen Spotify-enhet spiller nå.', 409);
+        if ($s === 404 && $op === 'pause') out(['ok' => true]); // nothing playing – already paused
+        if ($s === 404) out(['error' => 'Ingen Spotify-enhet spiller nå.', 'code' => 'no_device'], 409);
         if ($s >= 300) fail('Spotify svarte med feil (' . $s . ').', 502);
         kv_del('cache_now');
         out(['ok' => true]);
@@ -400,10 +406,10 @@ function sp_handle(string $action, bool $post): void {
         // search all of Spotify for albums and tracks (admin only – it spends the app's request quota)
         if (!is_admin()) fail('Logg inn for å søke i hele Spotify.', 401);
         $q = trim((string)($_GET['q'] ?? ''));
-        if (mb_strlen($q) < 2) out(['albums' => [], 'tracks' => []]);
-        [$s, $j] = sp_api('GET', '/search?type=album,track&limit=10&q=' . rawurlencode(mb_substr($q, 0, 100)));
+        if (mb_strlen($q) < 2) out(['albums' => [], 'tracks' => [], 'playlists' => []]);
+        [$s, $j] = sp_api('GET', '/search?type=album,track,playlist&limit=10&q=' . rawurlencode(mb_substr($q, 0, 100)));
         if ($s === 429) fail('For mange søk – vent litt.', 429);
-        if ($s === 401) fail('Spotify-tilkoblingen har gått ut. Koble til på nytt.', 401);
+        if ($s === 401) out(['error' => 'Spotify-tilkoblingen har gått ut. Koble til på nytt.', 'code' => 'reconnect'], 409);
         if ($s !== 200) fail('Spotify svarte med feil (' . $s . ').', 502);
         $albums = [];
         foreach ($j['albums']['items'] ?? [] as $a) {
@@ -426,7 +432,18 @@ function sp_handle(string $action, bool $post): void {
                 'album_url' => $t['album']['external_urls']['spotify'] ?? null,
             ];
         }
-        out(['albums' => $albums, 'tracks' => $tracks]);
+        $playlists = [];
+        foreach ($j['playlists']['items'] ?? [] as $p) {
+            if (!$p || empty($p['uri'])) continue; // Spotify leaves holes (null) in this list
+            $playlists[] = [
+                'id' => $p['id'], 'uri' => $p['uri'], 'name' => $p['name'] ?? '',
+                'owner' => $p['owner']['display_name'] ?? '',
+                'image' => sp_img($p['images'] ?? [], 300), 'thumb' => sp_img($p['images'] ?? [], 64),
+                'count' => $p['tracks']['total'] ?? ($p['items']['total'] ?? null),
+                'url' => $p['external_urls']['spotify'] ?? null,
+            ];
+        }
+        out(['albums' => $albums, 'tracks' => $tracks, 'playlists' => array_slice($playlists, 0, 8)]);
     }
 
     case 'spotify_save': {
@@ -436,11 +453,28 @@ function sp_handle(string $action, bool $post): void {
         $uri = (string)(body()['uri'] ?? '');
         if (!preg_match('~^spotify:album:([A-Za-z0-9]{10,40})$~', $uri, $m)) fail('Ugyldig album.');
         if (!sp_has_scope('user-library-modify')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
-        [$s, $j] = sp_api('PUT', '/me/library?uris=' . rawurlencode($uri));
-        if ($s >= 400 && $s !== 401 && $s !== 403) [$s, $j] = sp_api('PUT', '/me/albums?ids=' . $m[1]); // older endpoint
-        if ($s === 401 || $s === 403) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
+        // Spotify's "save albums" endpoint; the newer library endpoint as a fallback
+        [$s, $j] = sp_api('PUT', '/me/albums?ids=' . $m[1]);
+        if ($s >= 400 && $s !== 401) [$s, $j] = sp_api('PUT', '/me/library?uris=' . rawurlencode($uri));
+        if ($s === 401) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
+        if ($s === 403) fail('Spotify sa nei til å lagre albumet (' . ($j['error']['message'] ?? '403') . ').', 403);
         if ($s >= 300) fail('Spotify svarte med feil (' . $s . ').', 502);
         kv_del('cache_albums_v3');
+        out(['ok' => true]);
+    }
+
+    case 'spotify_follow': {
+        // save someone else's playlist to my library (it then shows up among my playlists / on the iPod)
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $pl = (string)(body()['playlist'] ?? '');
+        if (!preg_match('~^spotify:playlist:([A-Za-z0-9]{10,40})$~', $pl, $m)) fail('Ugyldig spilleliste.');
+        if (!sp_has_scope('playlist-modify-public') && !sp_has_scope('playlist-modify-private')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
+        [$s, $j] = sp_api('PUT', '/playlists/' . $m[1] . '/followers', ['public' => false]);
+        if ($s >= 400 && $s !== 401) [$s, $j] = sp_api('PUT', '/me/library?uris=' . rawurlencode($pl));
+        if ($s === 401) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
+        if ($s >= 300) fail('Spotify svarte med feil (' . $s . '): ' . ($j['error']['message'] ?? ''), 502);
+        kv_del('cache_playlists_v3');
         out(['ok' => true]);
     }
 
@@ -453,9 +487,13 @@ function sp_handle(string $action, bool $post): void {
         if (!preg_match('~^spotify:playlist:([A-Za-z0-9]{10,40})$~', $pl, $m)) fail('Ugyldig spilleliste.');
         if (!preg_match('~^spotify:track:[A-Za-z0-9]{10,40}$~', $track)) fail('Ugyldig låt.');
         if (!sp_has_scope('playlist-modify-private')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
-        [$s, $j] = sp_api('POST', '/playlists/' . $m[1] . '/items', ['uris' => [$track]]);
-        if ($s === 404 || $s === 405) [$s, $j] = sp_api('POST', '/playlists/' . $m[1] . '/tracks', ['uris' => [$track]]); // older endpoint
-        if ($s === 403) out(['error' => 'Spotify sier nei – du kan bare legge til i lister du har laget selv.', 'code' => 'forbidden'], 403);
+        // "add items to playlist"; the newer /items path as a fallback
+        [$s, $j] = sp_api('POST', '/playlists/' . $m[1] . '/tracks', ['uris' => [$track]]);
+        if ($s >= 400 && $s !== 401) {
+            [$s2, $j2] = sp_api('POST', '/playlists/' . $m[1] . '/items', ['uris' => [$track]]);
+            if ($s2 < 300) [$s, $j] = [$s2, $j2];
+        }
+        if ($s === 403) out(['error' => 'Spotify sier nei – du kan bare legge til i lister du har laget selv (eller som er samarbeidslister).', 'code' => 'forbidden'], 403);
         if ($s === 401) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
         if ($s >= 300) fail('Spotify svarte med feil (' . $s . ').', 502);
         kv_del('cache_playlists_v3', 'tracks2_playlist_' . $m[1]);
@@ -490,7 +528,16 @@ function sp_handle(string $action, bool $post): void {
             if (!isset($payload['offset'])) $payload['offset'] = ['position' => 0];
             $shuffleOff(); // best effort: there may be no active device yet
         }
-        [$s, $j] = sp_api('PUT', '/me/player/play' . ($device !== '' ? '?device_id=' . $device : ''), $payload);
+        // fallback: when the asked-for device can't be reached, play on another of my devices instead
+        $fallback = !empty(body()['fallback']);
+        $playOn = function (string $dev) use ($payload) {
+            $r = sp_api('PUT', '/me/player/play' . ($dev !== '' ? '?device_id=' . rawurlencode($dev) : ''), $payload);
+            // Spotify has short hiccups (5xx): one more try
+            if ($r[0] >= 500) { usleep(600000); $r = sp_api('PUT', '/me/player/play' . ($dev !== '' ? '?device_id=' . rawurlencode($dev) : ''), $payload); }
+            return $r;
+        };
+        $usedName = null;
+        [$s, $j] = $playOn($device);
         if ($s === 404 && $device !== '') {
             // a fresh browser player isn't always known to Spotify yet (especially when nothing else is
             // playing): wait until it shows up in the device list, hand playback over to it, then play
@@ -501,29 +548,40 @@ function sp_handle(string $action, bool $post): void {
                 if ($known) {
                     sp_api('PUT', '/me/player', ['device_ids' => [$device], 'play' => false]);
                     usleep(400000);
-                    [$s, $j] = sp_api('PUT', '/me/player/play?device_id=' . $device, $payload);
+                    [$s, $j] = $playOn($device);
                 }
                 if ($s === 404) usleep(600000);
             }
-            if ($s === 404) out(['error' => 'Spotify finner ikke avspilleren på siden. Last inn siden på nytt og prøv igjen.', 'code' => 'device_missing'], 409);
+            if ($s === 404 && !$fallback) out(['error' => 'Spotify finner ikke avspilleren på siden.', 'code' => 'device_missing'], 409);
         }
-        if ($s === 404 && $device === '') {
-            // no active device: wake the most likely one
+        if ($s === 404) {
+            // no (reachable) device: wake the most likely other one – the active one first, then a computer,
+            // then a phone, then anything else that may be controlled
             [$ds, $dj] = sp_api('GET', '/me/player/devices');
-            $devices = array_values(array_filter($dj['devices'] ?? [], fn($d) => empty($d['is_restricted'])));
-            if (!$devices) fail('Ingen Spotify-enhet er åpen. Åpne Spotify på mobilen eller Macen og prøv igjen.', 409);
-            usort($devices, fn($a, $b) => (int)!empty($b['is_active']) <=> (int)!empty($a['is_active']));
-            [$s, $j] = sp_api('PUT', '/me/player/play?device_id=' . rawurlencode($devices[0]['id']), $payload);
+            $devices = array_values(array_filter($dj['devices'] ?? [], fn($d) => empty($d['is_restricted']) && ($d['id'] ?? '') !== $device));
+            $rank = fn($d) => (!empty($d['is_active']) ? 0 : 10) + (['Computer' => 0, 'Smartphone' => 1, 'Speaker' => 2][$d['type'] ?? ''] ?? 3);
+            usort($devices, fn($a, $b) => $rank($a) <=> $rank($b));
+            if (!$devices) out(['error' => 'Ingen Spotify-enhet er åpen. Åpne Spotify på mobilen eller Macen og prøv igjen.', 'code' => 'no_device'], 409);
+            foreach ($devices as $d) {
+                sp_api('PUT', '/me/player', ['device_ids' => [$d['id']], 'play' => false]);
+                usleep(300000);
+                [$s, $j] = $playOn($d['id']);
+                if ($s < 300) { $usedName = $d['name'] ?? 'en annen enhet'; break; }
+            }
         }
-        if ($s === 403) fail('Spotify sier nei – avspilling krever Spotify Premium.', 403);
-        if ($s === 401) fail('Spotify-tilkoblingen har gått ut. Koble til på nytt.', 401);
+        if ($s === 403) {
+            $reason = $j['error']['reason'] ?? '';
+            fail($reason === 'PREMIUM_REQUIRED' ? 'Avspilling krever Spotify Premium.' : 'Spotify tillot ikke avspillingen akkurat nå (' . ($j['error']['message'] ?? $reason ?: '403') . ').', 403);
+        }
+        if ($s === 401) out(['error' => 'Spotify-tilkoblingen har gått ut. Koble til på nytt.', 'code' => 'reconnect'], 409);
+        if ($s === 404) out(['error' => 'Fant ingen Spotify-enhet som svarte. Åpne Spotify et sted og prøv igjen.', 'code' => 'no_device'], 409);
         if ($s >= 300) fail('Spotify svarte med feil (' . $s . '): ' . ($j['error']['message'] ?? 'ukjent'), 502);
 
         if ($isAlbum) $shuffleOff(); // again now that the device is certainly the active one
         $until = time() + sp_lock_seconds();
         kv_set('lock_until', (string)$until);
         kv_del('cache_now');
-        out(['ok' => true, 'lock_until' => $until, 'server_time' => time()]);
+        out(['ok' => true, 'lock_until' => $until, 'server_time' => time(), 'device_name' => $usedName]);
     }
     }
 }

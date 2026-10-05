@@ -126,6 +126,8 @@ watch(() => route.name, () => (collapsed.value = false))
 
   <LeaderLine :active="route.name === 'reiser' && !!room.sel.land" />
   <MusicSwitch v-if="isMusic && room.ready" />
+  <!-- the other groups' sub-tabs: same look and spot as the music switch -->
+  <SubTabs v-if="!isHome && !isMusic && room.ready" floating />
   <IpodScreen v-if="holdingIpod" />
   <RecordOverlay v-if="isMusic && room.musicView === 'vinyl'" />
 
@@ -143,7 +145,6 @@ watch(() => route.name, () => (collapsed.value = false))
     <button v-if="mobile && !isHome && !isFocus" class="grabber" @click="collapsed = !collapsed" :aria-label="collapsed ? 'Vis panel' : 'Skjul panel'">
       <span></span>
     </button>
-    <SubTabs v-if="!isHome" class="dock-tabs" />
     <router-view v-slot="{ Component, route: r }">
       <transition name="panel" mode="out-in" type="transition">
         <component :is="Component" :key="r.path" />
@@ -182,8 +183,6 @@ watch(() => route.name, () => (collapsed.value = false))
   pointer-events: none;
 }
 .dock > :deep(*) { pointer-events: auto; }
-.dock-tabs { align-self: flex-end; margin-bottom: 10px; flex: none; }
-.dock.focus .dock-tabs { align-self: center; }
 .dock { transition: width 0.55s var(--spring); }
 .dock.expanded { width: clamp(410px, 50vw, 780px); }
 .dock.hidden { transform: translateX(calc(100% + 40px)); opacity: 0; pointer-events: none; transition: transform 0.5s var(--spring), opacity 0.3s, width 0.55s var(--spring); }

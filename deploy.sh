@@ -62,20 +62,13 @@ upload_ftp() {
   # (the password goes via stdin, so it never shows up in the process list)
   upload_one() {
     local f="$1" attempt tmp want got
-    for attempt in 1 2 3; do
+    for attempt in 1 2 3 4 5; do
       tmp=".up-$f.$$.$attempt.tmp" # a fresh temporary name each try: a leftover from a cut-off try can't block the next
       if printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sS -K - -T "$f" "$FTP_HOST/$tmp" -Q "-RNFR $tmp" -Q "-RNTO $f"; then return 0; fi
-      echo "    prøver igjen ($attempt/3) …"; sleep $((attempt * 2))
+      echo "    prøver igjen ($attempt/5) …"; sleep $((attempt * 2))
     done
-    # the host sometimes refuses the rename step (451) for a file: upload straight to its final name instead,
-    # and check that the whole file arrived
-    echo "    prøver direkte opplasting …"
-    if printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sS -K - -T "$f" "$FTP_HOST/$f"; then
-      want=$(wc -c < "$f" | tr -d ' ')
-      got=$(printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sSI -K - "$FTP_HOST/$f" 2>/dev/null | tr -d '\r' | awk 'tolower($1)=="content-length:" {print $2}')
-      if [ -z "$got" ] || [ "$got" = "$want" ]; then return 0; fi
-      echo "    størrelsen stemmer ikke ($got av $want byte)"
-    fi
+    # (never upload straight to the live name as a fallback: when the host refuses the file, a half-written
+    # copy is left behind – on 2026-10-05 that broke _spotify.inc.php and with it the whole API)
     return 1
   }
 

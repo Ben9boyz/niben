@@ -23,6 +23,7 @@ export const web = reactive({
 })
 
 let player = null
+let retryTimer = 0
 let activeHere = false // Spotify is currently playing through this page
 const readyWaiters = []
 
@@ -63,8 +64,15 @@ export async function start() {
     web.status = 'ready'
     readyWaiters.splice(0).forEach((w) => w(device_id))
   })
-  player.addListener('not_ready', () => { playDevice.id = null; web.status = 'loading' })
-  player.addListener('initialization_error', ({ message }) => fail(`Nettleseren støtter ikke Spotify-avspilling (${message}).`))
+  // Spotify dropped the player (sleep, network change): register it again by itself
+  player.addListener('not_ready', () => {
+    playDevice.id = null
+    web.status = 'loading'
+    clearTimeout(retryTimer)
+    retryTimer = setTimeout(() => { if (player && !playDevice.id) playDevice.reconnect?.() }, 3000)
+  })
+  // this browser can't play Spotify (no DRM etc.): plays go to my other Spotify devices instead
+  player.addListener('initialization_error', ({ message }) => { fail(`Nettleseren støtter ikke Spotify-avspilling (${message}) – spiller på andre enheter.`); web.unavailable = true; stop() })
   player.addListener('authentication_error', () => fail('Spotify godtok ikke innloggingen – koble til på nytt.'))
   player.addListener('account_error', () => fail('Avspilling i nettleseren krever Spotify Premium.'))
   player.addListener('playback_error', ({ message }) => { web.error = message })
@@ -115,8 +123,25 @@ export async function start() {
     if (id) await new Promise((r) => setTimeout(r, 1200)) // let Spotify catch up
     return id
   }
+  // wait for the player to register with Spotify (null after `ms`)
+  playDevice.waitReady = (ms = 6000) => {
+    if (playDevice.id) return Promise.resolve(playDevice.id)
+    if (!player) return Promise.resolve(null)
+    return new Promise((resolve) => {
+      readyWaiters.push(resolve)
+      setTimeout(() => resolve(null), ms)
+    })
+  }
   const ok = await player.connect()
   if (!ok && web.status === 'loading') fail('Klarte ikke å koble til Spotify.')
+}
+
+// for play(): start the page's player if it's allowed but off, and wait for it (device id or null)
+playDevice.start = async () => {
+  if (web.unavailable || !admin.loggedIn) return null
+  if (!web.enabled) return null
+  if (!player) await start()
+  return playDevice.waitReady ? playDevice.waitReady(8000) : null
 }
 
 export function stop() {
@@ -126,6 +151,8 @@ export function stop() {
   playDevice.activate = null
   playDevice.control = null
   playDevice.reconnect = null
+  playDevice.waitReady = null
+  clearTimeout(retryTimer)
   activeHere = false
   if (web.status !== 'reconnect') web.status = 'off'
 }
@@ -141,6 +168,22 @@ export function setVolume(v) {
   web.volume = v
   player?.setVolume(v)
 }
+
+// closing / reloading the page stops the music it was playing – tell Spotify, so the site doesn't go
+// on saying "playing" (keepalive lets the request finish after the page is gone)
+window.addEventListener('pagehide', () => {
+  if (!player || !activeHere || web.paused) return
+  try {
+    fetch('api.php?action=spotify_control', {
+      method: 'POST',
+      keepalive: true,
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Niben': '1' },
+      body: JSON.stringify({ op: 'pause' }),
+    })
+  } catch {}
+  player.disconnect()
+})
 
 // start as soon as the admin is known to be logged in; drop the player on logout
 watch(() => admin.loggedIn, (on) => {

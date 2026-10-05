@@ -39,6 +39,7 @@ export async function api(action, body, { onProgress } = {}) {
     if (r.status === 401) admin.loggedIn = false
     const err = new Error(json.error || `Feil ${r.status}`)
     err.code = json.code
+    err.status = r.status
     throw err
   }
   return json

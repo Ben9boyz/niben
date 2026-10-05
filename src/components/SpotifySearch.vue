@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { Play, Lock, Plus, Check, Music, ListPlus } from 'lucide-vue-next'
-import { spotify, lockLeft, fmtClock, play, lockNote, searchSpotify, saveAlbum, addToPlaylist, addGuest, control } from '../composables/useSpotify'
+import { spotify, lockLeft, fmtClock, play, lockNote, searchSpotify, saveAlbum, addToPlaylist, addGuest, control, followPlaylist } from '../composables/useSpotify'
 import { room } from '../composables/useRoom'
 import { mode } from '../composables/useMode'
 import { admin } from '../composables/useAdmin'
@@ -16,7 +16,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['clear'])
 
-const found = ref({ albums: [], tracks: [] })
+const found = ref({ albums: [], tracks: [], playlists: [] })
 const state = ref('idle') // idle | loading | error
 const error = ref('')
 const msg = ref(null)
@@ -31,6 +31,9 @@ const myPlaylists = computed(() => (props.scope === 'all' && needle.value ? spot
 const myAlbums = computed(() => (needle.value ? spotify.albums.filter((a) => `${a.name} ${a.artist}`.toLowerCase().includes(needle.value)) : []))
 // from Spotify, minus the ones I already have in the list above
 const otherAlbums = computed(() => found.value.albums.filter((a) => !mine.value.has(a.uri)))
+// playlists from all of Spotify (the flat page only – in the room, playlists are the iPod's)
+const myPlaylistUris = computed(() => new Set(spotify.playlists.map((p) => p.uri)))
+const otherPlaylists = computed(() => (props.scope === 'all' ? (found.value.playlists || []).filter((p) => !myPlaylistUris.value.has(p.uri)) : []))
 const editable = computed(() => spotify.playlists.filter((p) => p.editable !== false))
 
 let timer = 0
@@ -38,7 +41,7 @@ let seq = 0
 watch(() => props.q, (q) => {
   clearTimeout(timer)
   const t = q.trim()
-  if (t.length < 2 || !admin.loggedIn) { found.value = { albums: [], tracks: [] }; state.value = 'idle'; return }
+  if (t.length < 2 || !admin.loggedIn) { found.value = { albums: [], tracks: [], playlists: [] }; state.value = 'idle'; return }
   state.value = 'loading'
   const mySeq = ++seq
   timer = setTimeout(async () => {
@@ -87,6 +90,12 @@ async function save(a) {
   busy.value = null
   msg.value = r.ok ? { ok: `«${a.name}» ligger nå blant albumene dine.` } : { error: r.error }
 }
+async function follow(p) {
+  busy.value = p.uri
+  const r = await followPlaylist(p.uri)
+  busy.value = null
+  msg.value = r.ok ? { ok: `«${p.name}» ligger nå blant spillelistene dine.` } : { error: r.error }
+}
 async function addTo(t, pl) {
   menuFor.value = null
   busy.value = t.uri
@@ -94,7 +103,7 @@ async function addTo(t, pl) {
   busy.value = null
   msg.value = r.ok ? { ok: `«${t.name}» er lagt til i «${pl.name}».` } : { error: r.error }
 }
-const none = computed(() => needle.value.length >= 2 && state.value === 'idle' && !myPlaylists.value.length && !myAlbums.value.length && !otherAlbums.value.length && !found.value.tracks.length)
+const none = computed(() => needle.value.length >= 2 && state.value === 'idle' && !myPlaylists.value.length && !myAlbums.value.length && !otherAlbums.value.length && !otherPlaylists.value.length && !found.value.tracks.length)
 </script>
 
 <template>
@@ -134,6 +143,18 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
             <span class="t"><b>{{ a.name }}</b><small>{{ a.artist }}<template v-if="a.year"> · {{ a.year }}</template></small></span>
           </button>
           <button class="act" :disabled="busy === a.uri" title="Legg i albumene dine (biblioteket)" @click="save(a)"><Plus :size="15" />Legg til</button>
+        </div>
+      </section>
+
+      <section v-if="otherPlaylists.length">
+        <h4>Spillelister på Spotify</h4>
+        <div v-for="p in otherPlaylists" :key="p.uri" class="row wrap">
+          <button class="main" @click="open = { item: p, kind: 'playlist' }">
+            <img v-if="p.thumb || p.image" crossorigin="anonymous" :src="p.thumb || p.image" alt="" class="art" />
+            <span v-else class="art ph"><Music :size="16" /></span>
+            <span class="t"><b>{{ p.name }}</b><small>{{ p.owner }}<template v-if="p.count"> · {{ p.count }} låter</template></small></span>
+          </button>
+          <button class="act" :disabled="busy === p.uri" title="Lagre blant spillelistene dine" @click="follow(p)"><Plus :size="15" />Lagre</button>
         </div>
       </section>
 

@@ -3,6 +3,7 @@ import { api } from './useAdmin'
 
 // Shared Spotify state: what's saved, what's playing, and the 10-minute switch lock.
 export const spotify = reactive({
+  notice: null, // { text, error, t } – a short message after starting/controlling playback (MusicToast)
   loaded: false,
   configured: false,
   connected: false,
@@ -203,16 +204,26 @@ export async function setShuffle(on) {
   }
 }
 
-/** The in-browser Spotify player (useWebPlayer), when it's running: plays go there. */
-export const playDevice = { id: null, activate: null, control: null, reconnect: null }
+/** The in-browser Spotify player (useWebPlayer), when it's running: plays go there. `waitReady` resolves
+ *  the device id once the player has registered (or null), `start` starts it if it's off. */
+export const playDevice = { id: null, activate: null, control: null, reconnect: null, waitReady: null, start: null }
+
+/** Show a short message about playback (where it ended up, why it failed). */
+export function notify(text, error = false) {
+  spotify.notice = { text, error, t: Date.now() }
+}
 
 /** Pause / resume / seek / next / previous (admin). Goes straight to the browser player when it's
  *  the one playing. Pausing always works; seeking and skipping are locked like switching. */
 export async function control(op, ms = 0) {
   if (['seek', 'next', 'previous'].includes(op) && lockLeft.value > 0) return { ok: false, error: 'Låst – hør ferdig' }
-  if (playDevice.control && (await playDevice.control(op, ms))) return { ok: true }
   try {
-    await api('spotify_control', { op, ms: Math.round(ms) })
+    if (playDevice.control && (await playDevice.control(op, ms))) return { ok: true }
+  } catch {} // the browser player failed: ask Spotify through the server instead
+  try {
+    const body = { op, ms: Math.round(ms) }
+    if (op === 'resume' && playDevice.id) { playDevice.activate?.(); body.device = playDevice.id }
+    await api('spotify_control', body)
     if (spotify.now) {
       if (op === 'seek') spotify.now.progress_ms = ms
       if (op === 'pause' || op === 'resume') spotify.now.playing = op === 'resume'
@@ -225,34 +236,66 @@ export async function control(op, ms = 0) {
   }
 }
 
-/** Starts an album/playlist (optionally at a given track). Locked for the admin-set lock length afterwards. */
+/** Starts an album/playlist (optionally at a given track). Locked for the admin-set lock length afterwards.
+ *  Tries hard to play somewhere: the player on this page first (waiting for it / reconnecting it when
+ *  Spotify can't see it), then any other Spotify device of mine – and says where it ended up. */
 let starting = false // one start at a time: a double click / tap must not send two plays
 export async function play(uri, track = null) {
   if (starting) return { ok: false, error: 'Starter allerede …' }
   starting = true
   // must run inside the click, before any await, or the browser keeps the player muted
   if (playDevice.id) playDevice.activate?.()
+  const body = { uri }
+  if (track) body.track = track
+  const send = async () => {
+    try {
+      return await api('spotify_play', body)
+    } catch (e) {
+      // Spotify had a hiccup: one more try
+      if (e.status >= 500 || /HTTP 5|Failed to fetch|NetworkError/i.test(e.message)) {
+        await new Promise((r) => setTimeout(r, 800))
+        return api('spotify_play', body)
+      }
+      throw e
+    }
+  }
   try {
-    const body = { uri }
-    if (track) body.track = track
-    if (playDevice.id) body.device = playDevice.id
+    // the page's player is still starting up: wait a moment for it rather than playing elsewhere
+    if (!playDevice.id && playDevice.waitReady) body.device = (await playDevice.waitReady(6000)) || undefined
+    else if (playDevice.id) body.device = playDevice.id
     let r
     try {
-      r = await api('spotify_play', body)
+      r = await send()
     } catch (e) {
-      // Spotify hasn't registered the browser player: reconnect it and try once more
-      if (e.code !== 'device_missing' || !playDevice.reconnect) throw e
-      body.device = await playDevice.reconnect()
-      if (!body.device) throw e
-      r = await api('spotify_play', body)
+      if (e.code === 'device_missing' && playDevice.reconnect) {
+        // Spotify can't see the page's player: re-register it and try again …
+        const id = await playDevice.reconnect()
+        if (id) body.device = id
+        try {
+          r = await send()
+        } catch (e2) {
+          if (e2.code !== 'device_missing') throw e2
+          // … and if it still can't, play on another of my devices
+          body.fallback = true
+          r = await send()
+        }
+      } else if (e.code === 'no_device' && !body.device && playDevice.start) {
+        // nothing open anywhere: start the page's own player and play here
+        const id = await playDevice.start()
+        if (!id) throw e
+        body.device = id
+        r = await send()
+      } else throw e
     }
     spotify.lockUntil = r.lock_until
     spotify.startedHere = Date.now()
     if (r.server_time) spotify.offset = r.server_time - Date.now() / 1000
+    if (r.device_name) notify(`Spiller på «${r.device_name}» – fant ikke spilleren på siden.`)
     setTimeout(refreshNow, 1500) // give Spotify a moment before asking what's playing
-    return { ok: true }
+    return { ok: true, device: r.device_name || null }
   } catch (e) {
     await refreshNow()
+    notify(e.message, true)
     return { ok: false, error: e.message }
   } finally {
     starting = false
@@ -286,7 +329,18 @@ export async function searchSpotify(q) {
   let j = {}
   try { j = await r.json() } catch {}
   if (!r.ok || j.error) throw new Error(j.error || `Søket feilet (${r.status})`)
-  return { albums: j.albums || [], tracks: j.tracks || [] }
+  return { albums: j.albums || [], tracks: j.tracks || [], playlists: j.playlists || [] }
+}
+
+/** Save someone else's playlist (from search) among mine. */
+export async function followPlaylist(uri) {
+  try {
+    await api('spotify_follow', { playlist: uri })
+    refreshLists(true)
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
 }
 
 /** Put an album in the library – it joins the record shelf. */
