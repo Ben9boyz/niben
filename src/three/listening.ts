@@ -723,12 +723,15 @@ export function buildListeningCorner() {
   soundFx.position.copy(ipodHome.pos).add(new THREE.Vector3(0, 0.13, 0.02))
   soundFx.visible = false
   group.add(soundFx)
+  // white notes on solid black, drawn ADDITIVELY: black adds nothing, so there is no transparency to go wrong (on some Macs the
+  // transparent corners of a note came out as black boxes)
   const noteTex = ['\u266A', '\u266B'].map((ch) => canvasTex(64, 64, (x, w, h) => {
-    x.font = '700 52px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'
+    x.fillStyle = '#000000'; x.fillRect(0, 0, w, h)
+    x.font = '700 52px "Helvetica Neue", Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'
     x.fillStyle = '#ffffff'; x.fillText(ch, w / 2, h / 2 + 4)
   }))
   const notes = [0, 1, 2, 3].map((i) => {
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: noteTex[i % 2], color: i % 2 ? 0xffd27a : 0x8fc6ff, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }))
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: noteTex[i % 2], color: i % 2 ? 0xffd27a : 0x8fc6ff, transparent: true, blending: THREE.AdditiveBlending, opacity: 0, depthWrite: false, toneMapped: false }))
     const data: SpriteData = { phase: i / 4, side: i % 2 ? 1 : -1, sway: 0.6 + i * 0.35 }
     sp.userData = data
     sp.raycast = () => {} // only decoration: never in the way of a click

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
-import { ChevronLeft, ChevronRight, ArrowUpFromLine, Library, ScanEye, Smartphone, SkipBack, SkipForward, Play, Pause, RotateCw, X, Lock, Undo2 } from 'lucide-vue-next'
+import { Ellipsis, ChevronLeft, ChevronRight, ArrowUpFromLine, Library, ScanEye, Smartphone, SkipBack, SkipForward, Play, Pause, RotateCw, X, Lock, Undo2 } from 'lucide-vue-next'
 import { room } from '../composables/useRoom'
 import { shelfAlbums } from '../composables/useGroups'
 import { spotify, lockLeft, play, control, findAlbum, fmtClock } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 import { targetEl } from '../lib/dom'
+import { showMenu } from '../composables/useContextMenu'
+import { itemMenu } from '../lib/menus'
 
 // Phones, the 3D listening corner: ONE small bar at the bottom with exactly what you can do where you are – no
 // side menus. At the turntable: down to the shelf · look from above · the iPod. From above: the buttons (back / play /
@@ -91,11 +93,19 @@ async function ctl(op: 'next' | 'previous' | 'pause' | 'resume') {
   if (!r.ok) say(r.error ?? '')
 }
 const toggle = () => ctl(playing.value ? 'pause' : 'resume')
+// "Mer": the same menu as a right-click on a record (queue, save, artist, Spotify link …)
+function more(e: MouseEvent) {
+  const a = held.value
+  if (!a) return
+  const items = itemMenu({ uri: a.uri, name: a.name, sub: a.artist, image: a.image, artist_id: a.artist_id }, () => {}).filter((x) => !x.label?.startsWith('Åpne albumet'))
+  showMenu(e, a.name, items)
+}
 </script>
 
 <template>
   <div class="ld" role="toolbar" aria-label="Lytteplassen">
     <transition name="tt"><div v-if="toast" class="toast glass">{{ toast }}</div></transition>
+    <button v-if="state === 'held'" class="more glass" aria-label="Flere valg for platen" @click="more"><Ellipsis :size="18" /><span>Mer</span></button>
     <div class="bar glass">
       <!-- a record in hand -->
       <template v-if="state === 'held'">
@@ -161,6 +171,7 @@ const toggle = () => ctl(playing.value ? 'pause' : 'resume')
 .pk { display: grid; justify-items: center; min-width: 0; width: clamp(64px, 22vw, 110px); padding: 0 2px; text-align: center; line-height: 1.15; }
 .pk b { max-width: 100%; font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pk small { font-size: 0.66rem; color: var(--text-3); }
+.more { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 0; border-radius: 999px; color: var(--text); font: 600 0.8rem/1 inherit; cursor: pointer; }
 .toast { padding: 8px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; max-width: calc(100vw - 32px); text-align: center; }
 .tt-enter-active, .tt-leave-active { transition: opacity 0.2s, transform 0.2s; }
 .tt-enter-from, .tt-leave-to { opacity: 0; transform: translateY(6px); }
