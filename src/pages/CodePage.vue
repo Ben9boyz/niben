@@ -28,6 +28,7 @@ const reading = ref(null)
         </div>
       </article>
     </div>
+    <div v-if="!data.prosjekter?.length" class="empty">{{ data.projectsLoading ? 'Henter prosjektene fra GitHub …' : 'Fant ingen prosjekter på GitHub.' }}</div>
     <RepoBrowser v-if="reading" :repo="reading" @close="reading = null" />
   </div>
 </template>

@@ -57,23 +57,22 @@ function mapRecording(r) {
 /** GitHub repos → the project shape. A repo that is already listed by hand only adds its code link. */
 function mergeRepos(projects, repos) {
   const list = projects.map((p) => ({ ...p }))
+  // the projects ARE my GitHub repos; a hand-written entry in data.json only adds to the repo it matches
+  // (a nicer description, the link to the live site, the year)
   const norm = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-  const extra = []
-  for (const r of repos) {
-    const mine = list.find((p) => norm(p.navn) === norm(r.name) || norm(p.navn) === norm(`${r.name}no`) || (r.homepage && p.lenke === r.homepage))
-    if (mine) { mine.kode ||= r.url; mine.stjerner ??= r.stars; continue }
-    extra.push({
-      navn: r.name,
-      aar: r.created ? +r.created : null,
-      beskrivelse: r.description || '',
-      teknologi: [r.language, ...r.topics].filter(Boolean),
-      lenke: r.homepage || null,
+  return repos.map((r) => {
+    const mine = list.find((p) => norm(p.navn) === norm(r.name) || norm(p.navn) === norm(`${r.name}no`) || (r.homepage && p.lenke === r.homepage)) || {}
+    return {
+      navn: mine.navn || r.name,
+      aar: mine.aar || (r.created ? +r.created : null),
+      beskrivelse: mine.beskrivelse || r.description || '',
+      teknologi: mine.teknologi?.length ? mine.teknologi : [r.language, ...r.topics].filter(Boolean),
+      lenke: mine.lenke || r.homepage || null,
       kode: r.url,
       stjerner: r.stars,
       github: true,
-    })
-  }
-  return [...list, ...extra]
+    }
+  })
 }
 
 async function load() {
@@ -109,6 +108,9 @@ async function load() {
     // no API (local dev without mock, or server not set up yet): keep data.json content
   }
 
+  const handWritten = merged.prosjekter || []
+  merged.prosjekter = [] // filled from GitHub below
+  state.projectsLoading = true
   Object.assign(state, merged)
   state.loaded = true
   state.version++
@@ -117,11 +119,11 @@ async function load() {
   fetch('api.php?action=github_repos')
     .then((r) => (r.ok ? r.json() : null))
     .then((g) => {
-      if (!g?.repos?.length) return
-      state.prosjekter = mergeRepos(merged.prosjekter || [], g.repos)
+      if (g?.repos?.length) state.prosjekter = mergeRepos(handWritten, g.repos)
       state.version++
     })
     .catch(() => {})
+    .finally(() => { state.projectsLoading = false })
 }
 
 let promise = null

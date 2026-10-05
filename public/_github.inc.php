@@ -72,6 +72,8 @@ function gh_handle(string $action): void {
     if ($action === 'github_tree') {
         $repo = (string)($_GET['repo'] ?? '');
         if (!preg_match('~^[A-Za-z0-9._-]{1,100}$~', $repo)) fail('Ugyldig repo.');
+        // only my own listed repositories – random names would each cost a call to GitHub
+        if (!in_array($repo, array_column(gh_repos() ?? [], 'name'), true)) fail('Fant ikke repoet.', 404);
         $t = gh_tree($repo);
         if ($t === null) fail('Fant ikke repoet på GitHub.', 404);
         out($t);

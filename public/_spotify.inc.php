@@ -289,6 +289,14 @@ function sp_handle(string $action, bool $post): void {
         $type = (string)($_GET['type'] ?? '');
         $id = (string)($_GET['id'] ?? '');
         if (!in_array($type, ['album', 'playlist'], true) || !preg_match('~^[A-Za-z0-9]{10,40}$~', $id)) fail('Ugyldig forespørsel.');
+        // visitors: only what's in my library (any other id would cost a call to Spotify and a cache row);
+        // the admin also opens albums/playlists found by search
+        if (!is_admin()) {
+            $mine = array_column($type === 'album' ? (sp_albums() ?? []) : (sp_playlists() ?? []), 'id');
+            $ctx = (string)(sp_now()['context'] ?? ''); // and whatever is playing right now
+            if ($ctx !== '') $mine[] = substr($ctx, strrpos($ctx, ':') + 1);
+            if (!in_array($id, $mine, true)) fail('Ukjent ' . ($type === 'album' ? 'album' : 'spilleliste') . '.', 404);
+        }
         out(sp_tracks($type, $id));
     }
 

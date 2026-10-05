@@ -441,7 +441,7 @@ html.player-shell { --rail: 0px; }
 .cpage-head p { color: var(--text-2); margin-top: 8px; font-size: 1.05rem; max-width: 60ch; }
 .card { border-radius: 24px; padding: 20px; }
 .grid { display: grid; gap: 16px; }
-@media (max-width: 720px) { .cpage { padding: 84px 16px 120px; } }
+@media (max-width: 720px) { .cpage { padding: calc(76px + env(safe-area-inset-top)) 16px 120px; } }
 
 /* panels grow when something is selected – let their content grow with them */
 .panel { container-type: inline-size; }
@@ -478,3 +478,26 @@ html.player-shell .cpage { padding-top: 80px; padding-bottom: 130px; }
   .dock .panel-head { padding: 12px 18px 6px; }
   .dock .panel-head h2 { font-size: 1.25rem; }
 }
+
+/* ── phones, plain version: an app-like top bar (NavBar's .mtop) with the page name and the buttons ── */
+@media (max-width: 720px) {
+  html.classic .mtop {
+    position: fixed; z-index: 39; top: 0; left: 0; right: 0;
+    display: flex; align-items: center; gap: 10px;
+    height: calc(60px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 120px 0 16px;
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%);
+    border-bottom: 1px solid transparent; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  html.classic .mtop.scrolled { border-bottom-color: var(--glass-border); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06); }
+  .mtop-brand { display: flex; align-items: center; height: 30px; pointer-events: auto; }
+  .mtop-brand svg { height: 30px; }
+  .mtop b { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* the buttons sit in the bar: smaller, flat */
+  html.classic .nav-wrap .theme, html.classic .nav-wrap .mode { top: calc(10px + env(safe-area-inset-top)); width: 40px; height: 40px; padding: 0; justify-content: center; box-shadow: none; }
+  html.classic .nav-wrap .theme { right: 12px; }
+  html.classic .nav-wrap .mode { right: 58px; }
+  html.classic .nav-wrap .mode span { display: none; }
+  html.classic .nav-wrap .admin-chip { top: calc(10px + env(safe-area-inset-top)); left: auto; right: 104px; width: 40px; height: 40px; }
+}
+@media (max-width: 720px) { .flat-tabs ~ .cpage { padding-top: 16px; } }

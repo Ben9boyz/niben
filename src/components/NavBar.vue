@@ -25,6 +25,8 @@ const { theme, toggle } = useTheme()
 // sub-tab you were last on.
 const links = computed(() => GROUPS.map((g) => ({ name: g.id, label: g.label, icon: g.icon, to: groupTarget(g) })))
 const activeGroup = computed(() => groupOf(route.name)?.id)
+// phones (plain version): a top bar with the page's name – the group (its sub-tabs sit just below)
+const barTitle = computed(() => (route.name === 'hjem' ? '' : route.name === 'admin' ? 'Admin' : groupOf(route.name)?.label || route.meta?.title || ''))
 
 const track = ref(null)
 const itemEls = ref([])
@@ -63,6 +65,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <!-- phones, plain version: the bar behind the page name and the buttons on the right -->
+  <div class="mtop" :class="{ scrolled }" aria-hidden="true">
+    <router-link to="/" class="mtop-brand" tabindex="-1" @dblclick.prevent="toAdmin" @pointerdown="pressStart" @pointerup="pressEnd" @pointerleave="pressEnd"><BrandLogo :mark="!!barTitle" /></router-link>
+    <b v-if="barTitle">{{ barTitle }}</b>
+  </div>
   <header class="nav-wrap" :class="{ scrolled }">
     <router-link
       to="/"
@@ -362,5 +369,12 @@ onBeforeUnmount(() => {
   .item { padding: 11px 0; }
   .item:hover .tip { opacity: 1; transform: translate(0, -50%); }
   .nav { overflow: visible; }
+}
+
+/* phones: labels under the icons, so the tabs say what they are (the top bar of the plain version is in style.css) */
+.mtop { display: none; }
+@media (max-width: 720px) {
+  .item { flex-direction: column; gap: 2px; padding: 7px 0 6px; }
+  .item .label { display: block; font-size: 0.6rem; font-weight: 600; line-height: 1; }
 }
 </style>

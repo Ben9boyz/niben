@@ -29,6 +29,13 @@ const data = useData()
 h1 { font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 800; }
 .lead { margin-top: 10px; }
 .now-title { margin: 0 0 12px 4px; font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
-@media (max-width: 720px) { .hero { flex-direction: column; align-items: flex-start; gap: 16px; } .avatar { width: 96px; height: 96px; } }
+/* phones: compact – the logo is in the top bar, the photo sits beside the greeting, "Akkurat nå" is on the first screen */
+@media (max-width: 720px) {
+  .hero { gap: 14px; margin: 4px 0 22px; align-items: flex-start; }
+  .avatar { width: 64px; height: 64px; border-width: 3px; }
+  .home-logo, .hero .eyebrow { display: none; }
+  h1 { font-size: 1.9rem; line-height: 1.1; }
+  .lead { font-size: 0.95rem; margin-top: 6px; }
+}
 .home-logo { height: 64px; margin-bottom: 16px; }
 </style>

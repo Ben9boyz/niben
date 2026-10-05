@@ -30,7 +30,7 @@ const p = computed(() => list.value[room.sel.prosjekt])
             <span class="sub">{{ (item.teknologi || []).join(' · ') }}</span>
           </span>
         </button>
-        <div v-if="!list.length" class="empty">Ingen prosjekter lagt inn ennå.</div>
+        <div v-if="!list.length" class="empty">{{ data.projectsLoading ? 'Henter prosjektene fra GitHub …' : 'Fant ingen prosjekter på GitHub.' }}</div>
       </div>
 
       <transition name="fade" mode="out-in">

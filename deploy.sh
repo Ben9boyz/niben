@@ -64,7 +64,7 @@ upload_ftp() {
     local f="$1" attempt tmp want got
     for attempt in 1 2 3 4 5; do
       tmp=".up-$f.$$.$attempt.tmp" # a fresh temporary name each try: a leftover from a cut-off try can't block the next
-      if printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sS -K - -T "$f" "$FTP_HOST/$tmp" -Q "-RNFR $tmp" -Q "-RNTO $f"; then return 0; fi
+      if printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sS --connect-timeout 20 --max-time 300 -K - -T "$f" "$FTP_HOST/$tmp" -Q "-RNFR $tmp" -Q "-RNTO $f"; then return 0; fi
       echo "    prøver igjen ($attempt/5) …"; sleep $((attempt * 2))
     done
     # (never upload straight to the live name as a fallback: when the host refuses the file, a half-written
@@ -72,8 +72,12 @@ upload_ftp() {
     return 1
   }
 
+  # index.html goes up LAST, and only when everything else arrived: it points at the new script
+  # files, so with one of them missing the whole site would be blank (happened 2026-10-05)
+  local page=""
   for f in ${ONLY:-* .user.ini}; do
     [ -f "$f" ] || continue
+    if [ "$f" = "index.html" ]; then page="$f"; continue; fi
     if upload_one "$f"; then echo "  ✓ $f"; else echo "  ✗ $f"; failed+=("$f"); fi
   done
 
@@ -87,9 +91,14 @@ upload_ftp() {
     done
     failed=("${still[@]}")
   fi
+  if [ -n "$page" ]; then
+    if [ "${#failed[@]}" -gt 0 ]; then
+      echo "  ! index.html er IKKE lastet opp (filer mangler) – siden viser fortsatt forrige versjon."
+    elif upload_one "$page"; then echo "  ✓ $page"; else echo "  ✗ $page"; failed+=("$page"); fi
+  fi
   unset PASS
   if [ "${#failed[@]}" -gt 0 ]; then
-    echo "  Disse mangler fortsatt – kjør: ./deploy.sh ftp ${failed[*]}"
+    echo "  Disse mangler fortsatt – kjør: ./deploy.sh ftp ${failed[*]}${page:+ index.html}"
     return 1
   fi
 }

@@ -17,6 +17,8 @@ declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header_remove('X-Powered-By');
 header('Referrer-Policy: same-origin');
 header('Cache-Control: no-store');
 
@@ -244,11 +246,14 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($method !== 'GET' && $method !== 'POST') fail('Metode ikke tillatt.', 405);
 $post = $method === 'POST';
 
+require_once __DIR__ . '/_guard.inc.php';
+guard_request($action);
 require_once __DIR__ . '/_spotify.inc.php';
 require_once __DIR__ . '/_jpdb.inc.php';
 require_once __DIR__ . '/_songs.inc.php';
 require_once __DIR__ . '/_steam.inc.php';
 require_once __DIR__ . '/_about.inc.php';
+require_once __DIR__ . '/_site.inc.php';
 require_once __DIR__ . '/_github.inc.php';
 
 try {
@@ -279,6 +284,7 @@ try {
     switch ($action) {
 
     case 'content': {
+        try { site_ensure_htaccess(); } catch (Throwable $e) { error_log('niben htaccess: ' . $e->getMessage()); }
         $pdo = db();
         try {
             $trips = $pdo->query('SELECT id, country, place, title, year, date_from, date_to, body FROM trips ORDER BY COALESCE(date_from, MAKEDATE(year, 1)) DESC, id DESC')->fetchAll();

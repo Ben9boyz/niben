@@ -199,6 +199,11 @@ function jp_handle(string $action, bool $post): void {
         if (!$post) fail('Bruk POST.', 405);
         $text = trim((string)(body()['text'] ?? ''));
         $max = is_admin() ? 6000 : 800; // visitors try it on a short text
+        // every new text costs a call to jpdb on my key: visitors get a handful, and all of them together a few hundred an hour
+        if (!is_admin()) {
+            rl_or_fail('jpparse:' . client_ip(), 20, 600, 'Du har lest mange tekster nå – prøv igjen om litt.');
+            rl_or_fail('jpparse:all', 300, 3600, 'Tekstleseren er mye brukt akkurat nå – prøv igjen senere.');
+        }
         if ($text === '') fail('Skriv eller lim inn en japansk tekst.');
         if (mb_strlen($text) > $max) fail("Teksten er for lang (maks $max tegn).");
         $data = sp_cached('jp_parse_' . md5($text), 600, function () use ($text) {
