@@ -26,6 +26,7 @@ export async function fetchArtist({ id, name }) {
   const saved = await pget(key, 24 * 3600000) // an artist page is fetched once a day at most
   if (saved) return saved
   const j = await fetchArtistNow({ id, name })
+  if (j._empty || !j.albums?.length) return j // nothing found: ask again next time, don't remember it
   pset(key, j)
   if (j.id) pset(`artist:${j.id}`, j)
   return j

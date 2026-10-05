@@ -60,7 +60,7 @@ export function trackMenu(t, { onPlay, albumUri, playlists = true } = {}) {
     if (playlists) {
       items.push({
         label: 'Legg til i spilleliste', icon: ListPlus,
-        sub: spotify.playlists.filter((p) => p.editable !== false).map((p) => ({ label: p.name, run: async () => { const r = await addToPlaylist(p.uri, t.uri); say(r.ok ? { text: `«${t.name}» er lagt til i «${p.name}».` } : { error: true, text: r.error }) } })),
+        sub: spotify.playlists.filter((p) => p.editable !== false).map((p) => ({ label: p.name, img: p.thumb || p.image, run: async () => { const r = await addToPlaylist(p.uri, t.uri); say(r.ok ? { text: `«${t.name}» er lagt til i «${p.name}».` } : { error: true, text: r.error }) } })),
       })
     }
     items.push({ label: 'Lagre i Likte sanger', icon: Heart, run: async () => { const liked = await isLiked(t.uri); setLiked(t.uri, !liked) } })

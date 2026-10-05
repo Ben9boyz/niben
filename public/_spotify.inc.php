@@ -241,27 +241,50 @@ function sp_artist(string $id, string $name): ?array {
         $id = $s === 200 ? (string)($j['artists']['items'][0]['id'] ?? '') : '';
     }
     if (!preg_match('~^[A-Za-z0-9]{10,40}$~', $id)) return null;
-    return sp_cached("artist1_{$id}", 21600, function () use ($id) {
+    $res = sp_cached("artist2_{$id}", 21600, function () use ($id) {
         [$s, $a] = sp_api('GET', "/artists/{$id}");
         if ($s !== 200) return null;
         $albums = []; $seen = [];
-        for ($offset = 0; $offset < 100; $offset += 50) {
-            [$s2, $j] = sp_api('GET', "/artists/{$id}/albums?include_groups=album,single&limit=50&offset={$offset}");
-            if ($s2 !== 200) break;
-            foreach ($j['items'] ?? [] as $x) {
-                $key = mb_strtolower($x['name'] ?? '');
-                if (!$x || isset($seen[$key])) continue; // the same record re-released in several markets
-                $seen[$key] = 1;
-                $albums[] = [
-                    'id' => $x['id'], 'uri' => $x['uri'], 'name' => $x['name'],
-                    'artist' => implode(', ', array_map(fn($y) => $y['name'], $x['artists'] ?? [])),
-                    'year' => substr((string)($x['release_date'] ?? ''), 0, 4), 'type' => $x['album_type'] ?? 'album',
-                    'image' => sp_img($x['images'] ?? [], 300), 'image_large' => sp_img($x['images'] ?? [], 640), 'thumb' => sp_img($x['images'] ?? [], 64),
-                    'url' => $x['external_urls']['spotify'] ?? null, 'tracks' => $x['total_tracks'] ?? null,
-                ];
+        $add = function (array $x) use (&$albums, &$seen) {
+            $key = mb_strtolower($x['name'] ?? '');
+            if (!$x || !isset($x['id']) || isset($seen[$key])) return; // the same record re-released in several markets
+            $seen[$key] = 1;
+            $albums[] = [
+                'id' => $x['id'], 'uri' => $x['uri'], 'name' => $x['name'],
+                'artist' => implode(', ', array_map(fn($y) => $y['name'], $x['artists'] ?? [])),
+                'year' => substr((string)($x['release_date'] ?? ''), 0, 4), 'type' => $x['album_type'] ?? 'album',
+                'image' => sp_img($x['images'] ?? [], 300), 'image_large' => sp_img($x['images'] ?? [], 640), 'thumb' => sp_img($x['images'] ?? [], 64),
+                'url' => $x['external_urls']['spotify'] ?? null, 'tracks' => $x['total_tracks'] ?? null,
+            ];
+        };
+        // Spotify has lowered the page size for apps in development mode, so a too-big "limit" is refused (400):
+        // try 50, then 20, then 10, and read as many pages as it takes.
+        foreach ([50, 20, 10] as $lim) {
+            $ok = true;
+            for ($offset = 0; $offset < 200; $offset += $lim) {
+                [$s2, $j] = sp_api('GET', "/artists/{$id}/albums?include_groups=album,single&limit={$lim}&offset={$offset}");
+                if ($s2 !== 200) { $ok = false; if ($offset === 0 && $s2 === 400) continue 2; break; }
+                foreach ($j['items'] ?? [] as $x) $add($x);
+                if (empty($j['next'])) break;
             }
-            if (empty($j['next'])) break;
+            if ($ok || $albums) break;
         }
+        // still nothing (the endpoint is closed to this app?): look the artist's albums up by searching for them
+        if (!$albums) {
+            $nm = (string)($a['name'] ?? '');
+            for ($offset = 0; $nm !== '' && $offset < 40; $offset += 10) {
+                [$s3, $j] = sp_api('GET', '/search?type=album&limit=10&offset=' . $offset . '&q=' . rawurlencode('artist:"' . mb_substr($nm, 0, 80) . '"'));
+                if ($s3 !== 200) break;
+                $items = $j['albums']['items'] ?? [];
+                foreach ($items as $x) {
+                    if (!in_array($id, array_map(fn($y) => $y['id'] ?? '', $x['artists'] ?? []), true)) continue;
+                    if (($x['album_type'] ?? '') === 'compilation') continue;
+                    $add($x);
+                }
+                if (count($items) < 10) break;
+            }
+        }
+        if (!$albums) return ['_empty' => true, 'id' => $a['id'], 'uri' => $a['uri'], 'name' => $a['name'], 'genres' => array_slice($a['genres'] ?? [], 0, 4), 'image' => sp_img($a['images'] ?? [], 300), 'image_large' => sp_img($a['images'] ?? [], 640), 'url' => $a['external_urls']['spotify'] ?? null, 'albums' => []];
         usort($albums, fn($p, $q) => strcmp($q['year'], $p['year']));
         return [
             'id' => $a['id'], 'uri' => $a['uri'], 'name' => $a['name'], 'genres' => array_slice($a['genres'] ?? [], 0, 4),
@@ -269,6 +292,9 @@ function sp_artist(string $id, string $name): ?array {
             'url' => $a['external_urls']['spotify'] ?? null, 'albums' => $albums,
         ];
     });
+    // an empty answer is not remembered – try again next time (the old code cached "no albums" for 6 hours)
+    if (is_array($res) && !empty($res['_empty'])) kv_del("artist2_{$id}");
+    return $res;
 }
 
 /** Track list for an album or playlist (fetched on demand, cached for 6 hours). */
@@ -623,16 +649,16 @@ function sp_handle(string $action, bool $post): void {
         if (!preg_match('~^spotify:playlist:([A-Za-z0-9]{10,40})$~', $pl, $m)) fail('Ugyldig spilleliste.');
         if (!preg_match('~^spotify:track:[A-Za-z0-9]{10,40}$~', $track)) fail('Ugyldig låt.');
         if (!sp_has_scope('playlist-modify-private')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
-        // "add items to playlist"; the newer /items path as a fallback
-        [$s, $j] = sp_api('POST', '/playlists/' . $m[1] . '/tracks', ['uris' => [$track]]);
+        // "add items to playlist": the newer /items path first (reading uses it too), the old /tracks path as a fallback
+        [$s, $j] = sp_api('POST', '/playlists/' . $m[1] . '/items', ['uris' => [$track]]);
         if ($s >= 400 && $s !== 401) {
-            [$s2, $j2] = sp_api('POST', '/playlists/' . $m[1] . '/items', ['uris' => [$track]]);
+            [$s2, $j2] = sp_api('POST', '/playlists/' . $m[1] . '/tracks', ['uris' => [$track]]);
             if ($s2 < 300) [$s, $j] = [$s2, $j2];
         }
         if ($s === 403) out(['error' => 'Spotify sier nei – du kan bare legge til i lister du har laget selv (eller som er samarbeidslister).', 'code' => 'forbidden'], 403);
         if ($s === 401) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
         if ($s >= 300) fail('Spotify svarte med feil (' . $s . ').', 502);
-        kv_del('cache_playlists_v3', 'tracks2_playlist_' . $m[1]);
+        kv_del('cache_playlists_v3', 'cache_playlists_v4', 'tracks2_playlist_' . $m[1], 'tracks3_playlist_' . $m[1]);
         out(['ok' => true]);
     }
 
