@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { ArrowUpRight, RotateCcw, X } from 'lucide-vue-next'
+import { ArrowUpRight, RotateCcw, X, Volume2 } from 'lucide-vue-next'
+import { speak, canSpeak } from '../lib/speak'
 import { fetchQueue, gradeCard, GRADES, jpdbUrl, pitchMorae, loadJapanese, newPerSession, setNewPerSession } from '../composables/useJapanese'
 
 // Flashcard review against jpdb: word → (space) reading, pitch, meanings → grade 1–5.
@@ -60,12 +61,20 @@ async function grade(g) {
 function onKey(e) {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return
   if (e.code === 'Space' || e.key === 'Enter') {
-    if (card.value && !revealed.value) { revealed.value = true; e.preventDefault() }
+    if (card.value && !revealed.value) { reveal(); e.preventDefault() }
   } else if (revealed.value && /^[1-5]$/.test(e.key)) {
     grade(GRADES[+e.key - 1].id)
     e.preventDefault()
-  } else if (e.key === 'Escape') emit('close')
+  } else if ((e.key === 's' || e.key === 'S') && card.value) say()
+  else if (e.key === 'Escape') emit('close')
 }
+
+// show the answer and say the word (the reading is what's spoken)
+function reveal() {
+  revealed.value = true
+  say()
+}
+function say() { if (card.value) speak(card.value.reading || card.value.spelling) }
 
 function changeNew(n) {
   newCount.value = n
@@ -107,9 +116,10 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); loadJapane
     </div>
 
     <!-- the card -->
-    <article v-else class="card" :class="{ revealed }" @click="!revealed && (revealed = true)">
+    <article v-else class="card" :class="{ revealed }" @click="!revealed && reveal()">
       <span class="kind" :class="card.kind">{{ card.kind === 'due' ? 'Repetisjon' : card.kind === 'again' ? 'Én gang til' : 'Nytt ord' }}</span>
       <div class="word" :lang="'ja'">{{ card.spelling }}</div>
+      <button v-if="revealed && canSpeak()" class="say" aria-label="Hør ordet" title="Hør ordet (S)" @click.stop="say"><Volume2 :size="18" /></button>
 
       <template v-if="revealed">
         <div class="reading" lang="ja">
@@ -127,7 +137,7 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); loadJapane
           <a :href="jpdbUrl(card)" target="_blank" rel="noopener" class="jl" @click.stop>jpdb <ArrowUpRight :size="13" /></a>
         </div>
       </template>
-      <button v-else class="reveal" @click.stop="revealed = true">Vis svar <kbd>mellomrom</kbd></button>
+      <button v-else class="reveal" @click.stop="reveal()">Vis svar <kbd>mellomrom</kbd></button>
     </article>
 
     <div v-if="card && revealed" class="grades">
@@ -169,7 +179,7 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); loadJapane
 .kind { position: absolute; top: 12px; left: 14px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #9b2c22; }
 .kind.new { color: #2b6fd6; }
 .kind.again { color: #b8711a; }
-.word { font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif; font-size: clamp(2.6rem, 9cqi, 4.4rem); font-weight: 700; line-height: 1.15; word-break: keep-all; }
+.word { font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif; font-size: clamp(2.6rem, 9cqi, 4.4rem); font-weight: 700; line-height: 1.15; word-break: keep-all; }
 .reveal { margin-top: 18px; display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border: 0; border-radius: 999px; background: #1a1a1a; color: #fff; font: 600 0.9rem var(--font); cursor: pointer; }
 .reveal kbd, .g kbd { font: 600 0.65rem var(--font); padding: 2px 6px; border-radius: 5px; background: rgba(255, 255, 255, 0.18); }
 .reading { display: flex; gap: 1px; font-family: "Hiragino Sans", "Noto Sans JP", sans-serif; font-size: 1.35rem; color: #333; }
@@ -203,4 +213,6 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); loadJapane
 .row { display: flex; gap: 8px; }
 .row .btn { display: inline-flex; align-items: center; gap: 6px; }
 @media (max-width: 520px) { .g b { font-size: 0.7rem; } .g { padding: 9px 2px; } }
+.say { display: grid; place-items: center; width: 36px; height: 36px; margin-top: -4px; border: 0; border-radius: 50%; background: rgba(155, 44, 34, 0.1); color: #9b2c22; cursor: pointer; }
+.say:hover { background: rgba(155, 44, 34, 0.18); }
 </style>

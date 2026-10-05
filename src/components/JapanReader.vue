@@ -13,6 +13,16 @@ const busy = ref(false)
 const error = ref('')
 const furigana = ref(true)
 const picked = ref(null)
+const pickedAt = ref(0) // position of the picked word in the text
+// the sentence around the picked word (for "use the sentence on the card")
+const sentence = computed(() => {
+  const t = result.value?.text || ''
+  const at = pickedAt.value
+  const start = Math.max(...['。', '！', '？', '\n'].map((c) => t.lastIndexOf(c, at - 1))) + 1
+  const ends = ['。', '！', '？', '\n'].map((c) => t.indexOf(c, at)).filter((n) => n >= 0)
+  const end = ends.length ? Math.min(...ends) + 1 : t.length
+  return t.slice(start, end).trim()
+})
 
 async function read() {
   const t = text.value.trim() || EXAMPLE
@@ -76,13 +86,13 @@ const coverage = computed(() => {
       <p class="out" lang="ja" :class="{ nofuri: !furigana }">
         <template v-for="(r, i) in runs" :key="i">
           <span v-if="r.plain">{{ r.plain }}</span>
-          <button v-else class="tok" :class="[r.state, { on: picked === r.word }]" @click="picked = picked === r.word ? null : r.word">
+          <button v-else class="tok" :class="[r.state, { on: picked === r.word }]" @click="picked = picked === r.word ? null : r.word; pickedAt = r.key">
             <template v-for="(p, k) in r.parts" :key="k"><ruby v-if="p.rt">{{ p.base }}<rt>{{ p.rt }}</rt></ruby><template v-else>{{ p.base }}</template></template>
           </button>
         </template>
       </p>
       <div class="legend"><span class="known">kan</span><span class="learning">lærer</span><span class="due">repetisjon</span><span class="new">ny</span><span class="none">ikke i kortstokk</span></div>
-      <JapanWord v-if="picked" :key="picked.vid + ':' + picked.sid" :word="picked" @close="picked = null" />
+      <JapanWord v-if="picked" :key="picked.vid + ':' + picked.sid" :word="picked" :sentence="sentence" @close="picked = null" />
     </template>
   </div>
 </template>

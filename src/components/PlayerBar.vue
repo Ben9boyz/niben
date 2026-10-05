@@ -22,7 +22,7 @@ function seek(e) {
   const r = e.currentTarget.getBoundingClientRect()
   run('seek', Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * now.value.duration_ms)
 }
-const where = computed(() => (web.unavailable ? 'Annen enhet' : web.status === 'ready' ? 'Spiller her' : web.status === 'loading' ? 'Kobler til …' : web.status === 'reconnect' ? 'Koble til Spotify på nytt' : web.status === 'error' ? web.error : 'Annen enhet'))
+const where = computed(() => (web.unavailable ? 'Annen enhet' : web.status === 'ready' ? 'Spiller her' : web.status === 'loading' ? 'Kobler til …' : web.status === 'reconnect' ? 'Koble til Spotify på nytt' : web.status === 'elsewhere' ? 'Spiller i en annen fane' : web.status === 'error' ? web.error : 'Annen enhet'))
 </script>
 
 <template>

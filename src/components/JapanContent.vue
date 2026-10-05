@@ -7,13 +7,14 @@ import { room } from '../composables/useRoom'
 import JapanPractice from './JapanPractice.vue'
 import JapanReader from './JapanReader.vue'
 import JapanWords from './JapanWords.vue'
+import KanjiPractice from './KanjiPractice.vue'
 
 // The Japanese corner's content (3D panel and plain page): progress from jpdb, the word of the day,
 // and – for the admin – flashcard practice.
 loadJapanese()
 checkLogin()
 
-const view = ref('home') // 'home' | 'les' | 'ord'
+const view = ref('home') // 'home' | 'les' | 'ord' | 'kanji'
 const practicing = computed({ get: () => room.jpPractice, set: (v) => (room.jpPractice = v) })
 const total = computed(() => jp.count.due + jp.count.learning + jp.count.known + jp.count.new)
 const word = computed(() => jp.word)
@@ -42,13 +43,15 @@ watch(() => room.jpAnime, async (i) => {
 
       <template v-if="jp.configured && !jp.error">
         <!-- what to do here: overview, read a text, browse my words -->
-        <nav class="jtabs" role="tablist" :style="{ '--n': 3 }">
-          <span class="jpill" :style="{ transform: `translateX(${['home', 'les', 'ord'].indexOf(view) * 100}%)` }"></span>
+        <nav class="jtabs" role="tablist" :style="{ '--n': 4 }">
+          <span class="jpill" :style="{ transform: `translateX(${['home', 'les', 'ord', 'kanji'].indexOf(view) * 100}%)` }"></span>
           <button role="tab" :class="{ on: view === 'home' }" @click="view = 'home'"><LayoutDashboard :size="15" />Oversikt</button>
           <button role="tab" :class="{ on: view === 'les' }" @click="view = 'les'"><ScanText :size="15" />Les tekst</button>
           <button role="tab" :class="{ on: view === 'ord' }" @click="view = 'ord'"><BookA :size="15" />Ordliste</button>
+          <button role="tab" :class="{ on: view === 'kanji' }" @click="view = 'kanji'"><span class="kj" lang="ja">字</span>Kanji</button>
         </nav>
-        <JapanReader v-if="view === 'les'" />
+        <KanjiPractice v-if="view === 'kanji'" />
+        <JapanReader v-else-if="view === 'les'" />
         <JapanWords v-else-if="view === 'ord'" />
         <template v-else>
         <!-- word of the day -->
@@ -119,6 +122,8 @@ watch(() => room.jpAnime, async (i) => {
 .jpill { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / var(--n)); border-radius: 999px; background: var(--glass-strong); box-shadow: inset 0 1px 0 var(--glass-hi), 0 4px 12px rgba(43, 140, 255, 0.18); transition: transform 0.45s var(--spring); }
 .jtabs button { position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 6px; border: 0; background: none; color: var(--text-2); font: 600 0.84rem var(--font); cursor: pointer; white-space: nowrap; }
 .jtabs button.on { color: var(--accent); }
+.jtabs .kj { font: 700 0.95rem "Hiragino Sans", "Noto Sans JP", sans-serif; }
+@media (max-width: 480px) { .jtabs button { flex-direction: column; gap: 2px; font-size: 0.72rem; padding: 6px 2px; } }
 .jpc { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .wotd {
   display: grid;

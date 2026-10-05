@@ -16,10 +16,28 @@ const noDrm = !!window.nibenApp && !window.nibenApp.drm
 export const web = reactive({
   unavailable: noDrm,
   enabled: !noDrm && stored(),
-  status: 'off', // off | loading | ready | reconnect | error
+  status: 'off', // off | loading | ready | reconnect | error | elsewhere (another tab is the player)
   error: null,
   paused: true,
   volume: 0.7,
+})
+
+// ── one "niben.no" player per browser ──
+// Every tab (and every reload) used to register its own player with Spotify, so Spotify listed several
+// "niben.no" devices and music went to one that no longer existed. Now one tab holds a lease (renewed every
+// few seconds); the others don't start a player. Playing from another tab takes the lease over.
+const TAB = Math.random().toString(36).slice(2)
+const LEASE_KEY = 'niben-player-lease'
+const LEASE_MS = 12000
+const chan = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('niben-player') : null
+function lease() { try { return JSON.parse(localStorage.getItem(LEASE_KEY) || 'null') } catch { return null } }
+function takeLease() { try { localStorage.setItem(LEASE_KEY, JSON.stringify({ tab: TAB, t: Date.now() })) } catch {} }
+function freeLease() { try { if (lease()?.tab === TAB) localStorage.removeItem(LEASE_KEY) } catch {} }
+const leaseFree = () => { const l = lease(); return !l || l.tab === TAB || Date.now() - l.t > LEASE_MS }
+let leaseTimer = 0
+chan?.addEventListener('message', (e) => {
+  // another tab is taking over: let go of our player so Spotify only has one "niben.no"
+  if (e.data?.type === 'take' && e.data.tab !== TAB && player) { stop(); web.status = 'elsewhere' }
 })
 
 let player = null
@@ -48,8 +66,13 @@ function fail(msg) {
   playDevice.id = null
 }
 
-export async function start() {
+export async function start({ force = false } = {}) {
   if (player || !admin.loggedIn || web.unavailable) return
+  if (!leaseFree() && !force) { web.status = 'elsewhere'; return } // another tab is the player
+  takeLease()
+  chan?.postMessage({ type: 'take', tab: TAB })
+  clearInterval(leaseTimer)
+  leaseTimer = setInterval(() => { if (player) takeLease() }, 4000)
   web.status = 'loading'
   web.error = null
   try {
@@ -140,11 +163,13 @@ export async function start() {
 playDevice.start = async () => {
   if (web.unavailable || !admin.loggedIn) return null
   if (!web.enabled) return null
-  if (!player) await start()
+  if (!player) await start({ force: true })
   return playDevice.waitReady ? playDevice.waitReady(8000) : null
 }
 
 export function stop() {
+  clearInterval(leaseTimer)
+  freeLease()
   player?.disconnect()
   player = null
   playDevice.id = null
@@ -183,6 +208,8 @@ window.addEventListener('pagehide', () => {
     })
   } catch {}
   player.disconnect()
+  clearInterval(leaseTimer)
+  freeLease()
 })
 
 // start as soon as the admin is known to be logged in; drop the player on logout

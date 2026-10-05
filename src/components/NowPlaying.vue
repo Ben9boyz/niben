@@ -36,6 +36,7 @@ const webLabel = computed(() => ({
   loading: 'Kobler til …',
   ready: 'Her på siden',
   reconnect: 'Koble til på nytt',
+  elsewhere: 'Spiller i en annen fane',
   error: web.error || 'Noe gikk galt',
 }[web.status]))
 </script>

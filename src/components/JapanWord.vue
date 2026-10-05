@@ -1,12 +1,16 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ArrowUpRight, Plus, Check, X } from 'lucide-vue-next'
-import { jpdbUrl, pitchMorae, stateOf, STATE_LABEL, fetchWords, addWord } from '../composables/useJapanese'
+import { ArrowUpRight, Plus, Check, X, Volume2, Infinity as Forever, EyeOff, Trash2, Quote } from 'lucide-vue-next'
+import { jpdbUrl, pitchMorae, stateOf, STATE_LABEL, fetchWords, addWord, cardAction } from '../composables/useJapanese'
+import { speak, canSpeak } from '../lib/speak'
 import { admin } from '../composables/useAdmin'
 
 // One word in detail (from the reader or the word list): spelling, reading with pitch accent,
 // meanings, frequency, my card state – and for me, "add to a deck".
-const props = defineProps({ word: { type: Object, required: true } })
+const props = defineProps({
+  word: { type: Object, required: true },
+  sentence: { type: String, default: '' }, // the sentence the word was found in (reader) – can go on its card
+})
 const emit = defineEmits(['close', 'added'])
 
 const st = computed(() => stateOf(props.word.state))
@@ -24,6 +28,20 @@ onMounted(async () => {
     deck.value = decks.value[0]?.id ?? 'new'
   } catch {}
 })
+// what jpdb lets me do with a word I already have
+const myDecks = computed(() => decks.value.filter((d) => (props.word.decks || []).includes(d.id)))
+async function act(op, extra = {}, done = 'Gjort.') {
+  busy.value = true
+  msg.value = null
+  try {
+    await cardAction(props.word, op, extra)
+    msg.value = { ok: done }
+  } catch (e) {
+    msg.value = { error: e.message }
+  } finally {
+    busy.value = false
+  }
+}
 async function add() {
   busy.value = true
   msg.value = null
@@ -47,6 +65,8 @@ async function add() {
       <template v-if="morae"><span v-for="(p, k) in morae" :key="k" class="mora" :class="{ high: p.high, drop: p.drop }">{{ p.m }}</span></template>
       <template v-else>{{ word.reading }}</template>
     </div>
+    <button v-if="canSpeak()" class="say" aria-label="Hør ordet" title="Hør ordet" @click="speak(word.reading || word.spelling)"><Volume2 :size="16" /></button>
+    <p v-if="word.alt?.length" class="alt">Skrives også {{ word.alt.slice(0, 4).join('、') }}</p>
     <div class="tags" lang="nb">
       <span class="state" :class="st">{{ STATE_LABEL[st] }}</span>
       <span v-if="word.freq" class="tag">#{{ word.freq.toLocaleString('nb-NO') }} vanligst</span>
@@ -65,6 +85,14 @@ async function add() {
         <button class="add" :disabled="busy || !!msg?.ok" @click="add"><Check v-if="msg?.ok" :size="14" /><Plus v-else :size="14" />{{ msg?.ok ? 'Lagt til' : 'Legg til' }}</button>
       </template>
     </div>
+    <!-- more from jpdb, for me -->
+    <div v-if="admin.loggedIn && st !== 'none'" class="more" lang="nb">
+      <button v-if="st !== 'known'" :disabled="busy" title="Kortet regnes som lært for godt" @click="act('never-forget', {}, 'Merket som «glemmer aldri».')"><Forever :size="13" />Glemmer aldri</button>
+      <button v-if="st !== 'blacklisted'" :disabled="busy" title="jpdb hopper over dette ordet" @click="act('blacklist', {}, 'Ordet ignoreres nå.')"><EyeOff :size="13" />Ignorer</button>
+      <button v-else :disabled="busy" @click="act('unmark', {}, 'Ikke ignorert lenger.')">Ikke ignorer</button>
+      <button v-for="d in myDecks" :key="d.id" :disabled="busy" @click="act('remove', { deck: d.id }, `Fjernet fra «${d.name}».`)"><Trash2 :size="13" />Fjern fra {{ d.name }}</button>
+      <button v-if="sentence" :disabled="busy" title="Setningen fra teksten blir eksempelsetningen på kortet" @click="act('sentence', { sentence }, 'Setningen ligger nå på kortet.')"><Quote :size="13" />Bruk setningen på kortet</button>
+    </div>
     <p v-if="msg?.ok" class="ok" lang="nb">{{ msg.ok }}</p>
     <p v-if="msg?.error" class="err" lang="nb">{{ msg.error }}</p>
   </article>
@@ -72,8 +100,13 @@ async function add() {
 
 <style scoped>
 .jw { position: relative; display: grid; gap: 6px; padding: 16px 18px; border-radius: 18px; background: #fbf7ee; color: #1a1a1a; border: 1px solid rgba(155, 44, 34, 0.2); box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2); }
+.say { position: absolute; top: 8px; right: 42px; display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 50%; background: rgba(155, 44, 34, 0.1); color: #9b2c22; cursor: pointer; }
+.alt { margin: 0; font-size: 0.78rem; color: #666; }
+.more { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+.more button { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border: 1px solid rgba(0, 0, 0, 0.12); border-radius: 999px; background: #fff; color: #333; font: 600 0.74rem system-ui, sans-serif; cursor: pointer; }
+.more button:hover:not(:disabled) { border-color: #9b2c22; color: #9b2c22; }
 .x { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 50%; background: rgba(0, 0, 0, 0.06); color: #555; cursor: pointer; }
-.sp { font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif; font-size: 2.2rem; font-weight: 700; line-height: 1.15; padding-right: 30px; }
+.sp { font-family: "Hiragino Sans", "Noto Sans JP", sans-serif; font-size: 2.1rem; font-weight: 700; line-height: 1.15; padding-right: 74px; }
 .rd { display: flex; gap: 1px; font-family: "Hiragino Sans", "Noto Sans JP", sans-serif; font-size: 1rem; color: #444; }
 .mora { position: relative; padding-top: 4px; border-top: 2px solid transparent; }
 .mora.high { border-top-color: #2b6fd6; }

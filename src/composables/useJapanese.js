@@ -109,3 +109,16 @@ export async function addWord(word, deck) {
   wordsCache = null
   return r
 }
+
+/** jpdb on one word (admin): 'remove' (from deck) | 'never-forget' | 'blacklist' | 'unmark' | 'sentence'. */
+export async function cardAction(word, op, extra = {}) {
+  const r = await api('jpdb_card', { vid: word.vid, sid: word.sid, op, ...extra })
+  wordsCache = null
+  return r
+}
+/** My decks on jpdb (admin): 'create' | 'rename' | 'clear' | 'delete'. */
+export async function deckAction(op, extra = {}) {
+  const r = await api('jpdb_deck', { op, ...extra })
+  wordsCache = null
+  return r
+}
