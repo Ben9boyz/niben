@@ -383,6 +383,10 @@ export function mockApi() {
           case 'spotify_token':
             if (!needAdmin()) return
             return send(res, 200, { token: 'mock', expires: 0, streaming: false }) // no real Spotify in dev
+          case 'discover_hide':
+            if (!needAdmin()) return
+            db.recs = (db.recs || []).filter((r) => r.uri !== b.uri)
+            return send(res, 200, { ok: true })
           case 'discover_daily':
             return send(res, 200, { d: new Date().toISOString().slice(0, 10), uri: null, rec: { uri: 'spotify:album:recmock0000000001', name: 'Moon Safari', artist: 'Air', year: '1998', why: 'Ligner på Röyksopp', image: mockCover(77), thumb: mockCover(77) } })
           case 'discover_get':

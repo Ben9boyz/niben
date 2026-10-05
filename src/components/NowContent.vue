@@ -10,7 +10,9 @@ import { steam, watchSteam, headerImg, fmtHours } from '../composables/useSteam'
 import { jp, loadJapanese } from '../composables/useJapanese'
 import { parseProgression } from '../lib/chords'
 import { room } from '../composables/useRoom'
-import { dailyAlbum, dailyRec } from '../composables/useDaily'
+import { dailyAlbum, dailyRec, loadDaily } from '../composables/useDaily'
+import { hideRec } from '../composables/useDiscover'
+import { admin } from '../composables/useAdmin'
 
 // "Nå": what I'm doing right now – listening, reading, Japanese, a song on the guitar, games and
 // travel. Everything comes from the places that already hold it, so there is nothing extra to keep up.
@@ -119,10 +121,13 @@ const inDays = (t) => {
         <img v-if="dailyAlbum.thumb || dailyAlbum.image" :src="dailyAlbum.thumb || dailyAlbum.image" alt="" class="art" crossorigin="anonymous" />
         <span class="txt"><b>{{ dailyAlbum.name }}</b><small>{{ dailyAlbum.artist }}<template v-if="dailyAlbum.year"> · {{ dailyAlbum.year }}</template></small></span>
       </button>
-      <button v-if="dailyRec" class="row daily rec" @click="openRec">
+      <div v-if="dailyRec" class="recrow">
+      <button class="row daily rec" @click="openRec">
         <img v-if="dailyRec.thumb || dailyRec.image" :src="dailyRec.thumb || dailyRec.image" alt="" class="art" crossorigin="anonymous" />
         <span class="txt"><small class="lbl">Anbefalt i dag</small><b>{{ dailyRec.name }}</b><small>{{ dailyRec.artist }}<template v-if="dailyRec.why"> · {{ dailyRec.why }}</template></small></span>
       </button>
+      <button v-if="admin.loggedIn" class="hide" title="Skjul dette forslaget" aria-label="Skjul dette forslaget" @click="hideRec(dailyRec.uri).then(() => loadDaily(true))">✕</button>
+      </div>
     </section>
 
     <!-- book -->
@@ -211,6 +216,10 @@ const inDays = (t) => {
 .ms.fresh { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, var(--glass-strong)), var(--glass-strong)); border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 10%, transparent); }
 .ms.fresh h3 { color: var(--accent); }
 h3 { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
+.recrow { display: flex; align-items: center; gap: 6px; }
+.recrow .row { flex: 1; min-width: 0; }
+.hide { flex: none; width: 24px; height: 24px; border: 0; border-radius: 50%; background: var(--glass); color: var(--text-3); cursor: pointer; font-size: 0.75rem; }
+.hide:hover { color: #d24b4b; }
 .row.daily { width: 100%; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; font: inherit; }
 .row, .word { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; min-width: 0; }
 .art { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex: none; }

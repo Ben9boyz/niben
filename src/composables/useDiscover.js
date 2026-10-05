@@ -23,5 +23,7 @@ export const addPick = (url, note) => run('add', async () => {
   return r.pick
 })
 export const delPick = (uri) => run('del', async () => { await api('discover_del', { uri }); discover.picks = discover.picks.filter((p) => p.uri !== uri) })
+/** Hide a suggestion for good (admin). */
+export const hideRec = (uri) => run('hide', async () => { await api('discover_hide', { uri }); discover.recs = discover.recs.filter((p) => p.uri !== uri) })
 export const saveKey = (key) => run('key', async () => { const r = await api('discover_key', { key }); discover.hasKey = r.hasKey })
 export const refreshRecs = () => run('refresh', async () => { const r = await api('discover_refresh', {}); discover.recs = r.recs || []; discover.at = r.at || 0 })

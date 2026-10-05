@@ -9,8 +9,8 @@ const dayKey = () => { const d = new Date(); return `${d.getFullYear()}-${d.getM
 // The server picks it once a day (so every device agrees, and it doesn't jump when the library changes) – the date-based
 // pick is only the fallback while the server hasn't answered / has nothing.
 const pick = reactive({ day: '', uri: null, rec: null, loaded: false })
-async function loadDaily() {
-  if (pick.day === dayKey() && pick.loaded) return
+export async function loadDaily(force = false) {
+  if (!force && pick.day === dayKey() && pick.loaded) return
   try {
     const j = await (await fetch('api.php?action=discover_daily', { cache: 'no-cache' })).json()
     pick.uri = j.uri || null

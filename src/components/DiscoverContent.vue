@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { Plus, RefreshCw, Trash2, ArrowUpRight, Play, KeyRound, Sparkles } from 'lucide-vue-next'
 import { tx } from '../composables/useTexts'
 import { admin } from '../composables/useAdmin'
-import { discover, loadDiscover, addPick, delPick, saveKey, refreshRecs } from '../composables/useDiscover'
+import { discover, loadDiscover, addPick, delPick, saveKey, refreshRecs, hideRec } from '../composables/useDiscover'
 import { openAlbumPage, openArtistPage, peek } from '../composables/useBrowse'
 import { play, notify } from '../composables/useSpotify'
 import { itemMenu, playItem } from '../lib/menus'
@@ -21,7 +21,7 @@ const showKey = ref(false)
 const albums = (list) => list.filter((p) => p.type !== 'track').map((p) => ({ ...p, sub: p.artist + (p.year ? ` · ${p.year}` : '') }))
 const pickAlbums = computed(() => albums(discover.picks))
 const pickTracks = computed(() => discover.picks.filter((p) => p.type === 'track'))
-const recs = computed(() => albums(discover.recs))
+const recs = computed(() => albums(discover.recs).map((p) => ({ ...p, onHide: admin.loggedIn ? () => hideRec(p.uri) : null })))
 const noteOf = (it) => discover.picks.find((p) => p.uri === it.uri)?.note || ''
 const whyOf = (it) => discover.recs.find((p) => p.uri === it.uri)?.why || ''
 const open = (it) => openAlbumPage({ ...it, image_large: it.image_large || it.image })

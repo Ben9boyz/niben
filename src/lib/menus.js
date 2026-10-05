@@ -1,4 +1,4 @@
-import { Play, Pause, ListEnd, ListPlus, FolderInput, ExternalLink, Link, User, Disc3, Heart, HeartOff, FolderOpen } from 'lucide-vue-next'
+import { Play, Pause, ListEnd, ListPlus, FolderInput, ExternalLink, Link, User, Disc3, Heart, HeartOff, FolderOpen, EyeOff } from 'lucide-vue-next'
 import { spotify, play, control, lockLeft, fmtClock, lockNote, notify, enqueue, enqueueAlbum, addToPlaylist, isSaved, toggleAlbumSaved, isLiked, setLiked, addGuest } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 import { groups, flatGroups, moveTo } from '../composables/useGroups'
@@ -32,6 +32,7 @@ export function itemMenu(it, open) {
   if (admin.loggedIn) {
     items.push({ label: here && spotify.now?.playing ? 'Pause' : 'Spill', icon: here && spotify.now?.playing ? Pause : Play, run: () => playItem(it) })
     items.push({ label: 'Legg i køen', icon: ListEnd, run: () => enqueueAlbum(it.uri, it.name) })
+    if (it.onHide) items.push({ label: 'Skjul dette forslaget', icon: EyeOff, run: it.onHide })
   }
   items.push({ label: isAlbum ? 'Åpne albumet' : 'Åpne spillelisten', icon: FolderOpen, run: open })
   if (isAlbum && it.sub) items.push({ label: 'Gå til artist', icon: User, run: () => openArtistPage({ id: it.artist_id, name: firstArtist(it.sub) }) })

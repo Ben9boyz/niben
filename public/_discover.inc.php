@@ -42,6 +42,9 @@ function dc_parse(string $s): ?array {
     return null;
 }
 
+/** Suggestions I have hidden (their Spotify uris) – they never come back, not even after "Finn nye forslag". */
+function dc_hidden(): array { $l = json_decode((string)kv_get('discover_hidden'), true); return is_array($l) ? $l : []; }
+
 function dc_recs_build(): array {
     @set_time_limit(120);
     $lib = sp_albums() ?: [];
@@ -100,6 +103,8 @@ function dc_recs_build(): array {
         }
     }
     usort($out, fn($a, $b) => $b['score'] <=> $a['score']);
+    $hid = array_flip(dc_hidden());
+    $out = array_values(array_filter($out, fn($r) => !isset($hid[$r['uri'] ?? ''])));
     return ['recs' => array_slice($out, 0, 30), 'at' => time()];
 }
 
@@ -157,6 +162,28 @@ function dc_handle(string $action, bool $post): void {
         $uri = (string)(body()['uri'] ?? '');
         $picks = json_decode((string)kv_get(DC_PICKS), true) ?: [];
         kv_set(DC_PICKS, json_encode(array_values(array_filter($picks, fn($q) => ($q['uri'] ?? '') !== $uri)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        out(['ok' => true]);
+    }
+    case 'discover_hide': {
+        // hide a suggestion (an album or song): it leaves the list and today's "Anbefalt i dag" gets another one
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $uri = (string)(body()['uri'] ?? '');
+        if (!preg_match('~^spotify:(album|track):[A-Za-z0-9]{10,40}$~', $uri)) fail('Ugyldig uri.');
+        $hid = dc_hidden();
+        if (!in_array($uri, $hid, true)) $hid[] = $uri;
+        kv_set('discover_hidden', json_encode(array_slice($hid, -500)));
+        $recs = json_decode((string)kv_get(DC_RECS), true);
+        if (is_array($recs)) {
+            $recs['recs'] = array_values(array_filter($recs['recs'] ?? [], fn($r) => ($r['uri'] ?? '') !== $uri));
+            kv_set(DC_RECS, json_encode($recs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        }
+        $d = json_decode((string)kv_get('daily_pick'), true);
+        if (is_array($d) && (($d['rec']['uri'] ?? '') === $uri)) {
+            $left = $recs['recs'] ?? [];
+            $d['rec'] = $left ? $left[hexdec(substr(md5($d['d'] . $uri), 0, 8)) % count($left)] : null;
+            kv_set('daily_pick', json_encode($d, JSON_UNESCAPED_UNICODE));
+        }
         out(['ok' => true]);
     }
     case 'discover_key': {
