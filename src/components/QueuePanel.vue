@@ -11,7 +11,7 @@ const pos = ref(null) // { n, of } while an album plays
 let timer = 0
 const props = defineProps({ flat: Boolean, collapsible: Boolean }) // playlists: always the plain song list · collapsible: the list can be folded away (3D panel, mini player)
 const KEY = 'niben-queue-open'
-const shut = ref(props.collapsible && (() => { try { return localStorage.getItem(KEY) === '0' } catch { return false } })())
+const shut = ref(props.collapsible && (() => { try { return localStorage.getItem(KEY) !== '1' } catch { return true } })()) // folded away until I open it
 function toggleShut() { if (!props.collapsible) return; shut.value = !shut.value; try { localStorage.setItem(KEY, shut.value ? '0' : '1') } catch {} }
 const open = ref(new Set()) // album groups that are unfolded
 let soon = 0
