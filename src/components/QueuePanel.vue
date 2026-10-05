@@ -150,7 +150,7 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
         <p v-if="!queue" class="muted">Henter …</p>
         <p v-else-if="!spotQueue.length" class="muted">Ingenting mer i køen.</p>
         <ol v-else-if="asAlbums" class="albums">
-          <li v-for="(g, i) in groups.slice(0, 14)" :key="(g.uri || g.name) + i" class="grp" :class="{ one: !isAlbum(g) }">
+          <li v-for="(g, i) in groups.slice(0, 20)" :key="(g.uri || g.name) + i" class="grp" :class="{ one: !isAlbum(g) }">
             <button v-if="isAlbum(g)" class="gh" :aria-expanded="open.has('s' + i)" @click="toggle('s' + i)">
               <img v-if="g.image" crossorigin="anonymous" :src="g.image" alt="" /><span v-else class="ph"><Music :size="13" /></span>
               <span class="t" translate="no"><b>{{ rest(g) ? 'Resten av ' + g.name : g.name }}</b><small><i class="tag">Album</i>{{ g.tracks.length }} låter · {{ minutes(g) }}</small></span>

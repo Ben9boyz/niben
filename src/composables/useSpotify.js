@@ -1,7 +1,7 @@
 import { reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { api } from './useAdmin'
 import { pget, pset, pdel } from '../lib/pcache'
-import { addSongs, addCollection, startQueueDriver, releaseSent, myQueue } from './useQueue'
+import { CUSTOM_QUEUE, addSongs, addCollection, startQueueDriver, releaseSent, myQueue } from './useQueue'
 
 // Shared Spotify state: what's saved, what's playing, and the 10-minute switch lock.
 export const spotify = reactive({
@@ -489,15 +489,53 @@ export async function cycleRepeat() {
   if (!r.ok && spotify.now) spotify.now.repeat = before
   return r
 }
-/** Put a song last in MY queue (useQueue: kept here, handed to Spotify one song at a time). `t` is the song ({ uri, name, … }) or just its uri. */
+// What I queued, in groups: songs queued right after each other from the same album are an ALBUM (it plays on the
+// turntable); a lone song is "from a playlist" (the iPod). Remembered while the page is open, to know where a queued song plays.
+const qRuns = [] // [{ album: uri|null, uris: Set }]
+function noteQueued(tracks, album = null, fresh = false) {
+  tracks.forEach((t, i) => {
+    const a = album || t.album_uri || null
+    const last = qRuns[qRuns.length - 1]
+    if (last && a && last.album === a && !(fresh && i === 0)) last.uris.add(t.uri)
+    else qRuns.push({ album: a, uris: new Set([t.uri]) })
+  })
+  while (qRuns.length > 40) qRuns.shift()
+}
+/** 'album' | 'single' | null: what is this song, if I queued it from here. */
+export function queuedKind(uri) {
+  for (let i = qRuns.length - 1; i >= 0; i--) if (qRuns[i].uris.has(uri)) return qRuns[i].uris.size > 1 ? 'album' : 'single'
+  return null
+}
+
+/** The queue panel / the 3D table read the queue again: at once, and once more when Spotify has caught up. */
+function queueChanged() {
+  spotify.queueV++
+  setTimeout(() => spotify.queueV++, 1500)
+}
+/** Put a song last in Spotify's queue. `t` is the song ({ uri, name, … }) or just its uri. */
 export async function enqueue(t) {
   const track = typeof t === 'string' ? { uri: t } : t
-  if (!track.name && spotify.now?.uri === track.uri) Object.assign(track, { name: spotify.now.name, artist: spotify.now.artist, ms: spotify.now.duration_ms, album: spotify.now.album, album_image: spotify.now.image, img: spotify.now.image })
-  return addSongs([track])
+  if (CUSTOM_QUEUE) {
+    if (!track.name && spotify.now?.uri === track.uri) Object.assign(track, { name: spotify.now.name, artist: spotify.now.artist, ms: spotify.now.duration_ms, album: spotify.now.album, album_image: spotify.now.image, img: spotify.now.image })
+    return addSongs([track])
+  }
+  const r = await act('spotify_enqueue', { uri: track.uri })
+  if (r.ok) { noteQueued([track]); notify(track.name ? `«${track.name}» er lagt i køen.` : 'Lagt i køen.'); queueChanged() }
+  else notify(r.error || 'Klarte ikke å legge i køen.', true)
+  return r
 }
-/** A whole album / playlist at the end of my queue (its songs, in order). */
-export function enqueueAlbum(uri, name = '') {
-  return addCollection(uri, name)
+/** A whole album / playlist at the end of the queue (its songs, in order, in one request). */
+export async function enqueueAlbum(uri, name = '') {
+  if (CUSTOM_QUEUE) return addCollection(uri, name)
+  const t = await fetchTracks(uri)
+  if (!t.tracks.length) { notify(t.hidden ? 'Spotify lar oss ikke se låtene i denne spillelista, så den kan ikke legges i køen.' : 'Fant ingen låter i albumet.', true); return { ok: false } }
+  const r = await act('spotify_enqueue_many', { uris: t.tracks.map((x) => x.uri) })
+  if (r.ok) noteQueued(t.tracks.map((x) => ({ uri: x.uri, album_uri: x.album_uri })), uri.startsWith('spotify:album:') ? uri : null, true)
+  queueChanged()
+  if (!r.ok) { notify(r.error || 'Klarte ikke å legge albumet i køen.', true); return r }
+  if (r.failed) { notify(`Bare ${r.added} av ${r.total} låter kom inn i køen – prøv en gang til.`, true); return { ok: false, error: 'partial' } }
+  notify(name ? `«${name}» er lagt i køen (${r.added} låter).` : 'Albumet er lagt i køen.')
+  return { ok: true }
 }
 /** Is this song among my liked songs? / save or remove it. */
 const likedCache = new Map() // uri -> { t, v }: asked once per song (10 minutes), changed at once by the heart

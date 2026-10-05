@@ -7,6 +7,9 @@ import { spotify, progressMs, notify, fetchTracks, findAlbum, playDevice } from 
 // seconds of the song that plays (or at once if the page is being put away – a phone about to lock). Everything before
 // that can be dragged around and deleted freely. When a song from the list starts playing it leaves the list.
 // What plays after the list is empty is whatever the album / playlist does next (shuffled, if Spotify's shuffle is on).
+// OFF: the app uses Spotify's own queue (add to it, read it). The code below stays for later, but does nothing while this is false.
+export const CUSTOM_QUEUE = false
+
 export const myQueue = reactive({
   items: [], // [{ uri, name, artist, img, ms, album_uri, album, album_image, no, disc }]
   loaded: false,
@@ -15,7 +18,7 @@ export const myQueue = reactive({
 
 const LEAD_MS = 15000 // send the next song this long before the current one ends
 const SENT_KEY = 'niben-queue-sent'
-try { myQueue.sent = JSON.parse(sessionStorage.getItem(SENT_KEY) || 'null') } catch {}
+if (CUSTOM_QUEUE) { try { myQueue.sent = JSON.parse(sessionStorage.getItem(SENT_KEY) || 'null') } catch {} }
 const keepSent = () => { try { sessionStorage.setItem(SENT_KEY, JSON.stringify(myQueue.sent)) } catch {} }
 
 let saveT = 0
@@ -26,7 +29,7 @@ let sending = false
 const slim = (t) => ({ uri: t.uri, name: t.name || '', artist: t.artist || '', img: t.img || t.album_image || '', ms: t.ms || 0, album_uri: t.album_uri || null, album: t.album || '', album_image: t.album_image || t.img || '', no: t.no ?? t.n ?? null, disc: t.disc ?? null })
 
 export async function loadMyQueue() {
-  if (!admin.loggedIn) return
+  if (!CUSTOM_QUEUE || !admin.loggedIn) return
   try {
     const j = await api('myqueue_get')
     // what I'm editing right now wins over a slow answer
@@ -154,7 +157,7 @@ function drive() {
 
 /** Start watching (once): called when I'm logged in and the page runs. */
 export function startQueueDriver() {
-  if (started || !admin.loggedIn) return
+  if (!CUSTOM_QUEUE || started || !admin.loggedIn) return
   started = true
   loadMyQueue()
   watch(() => spotify.tick, drive)

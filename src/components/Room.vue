@@ -145,17 +145,14 @@ watch(() => [spotify.now?.uri, spotify.queueV, spotify.connected, myQueue.items.
 // "next": an album is only next when ALL of it has been put in the queue (not just one song from it)
 const nextAlbum = computed(() => {
   const ctx = String(spotify.now?.context || '')
-  const by = new Map()
-  for (const t of queuedTracks.value) {
-    if (!t.album_uri || t.album_uri === ctx || t.album === spotify.now?.album) continue
-    const e = by.get(t.album_uri) || { n: 0, t }
-    e.n++
-    by.set(t.album_uri, e)
-  }
-  for (const [uri, e] of by) {
-    const total = findAlbum(uri)?.tracks
-    const need = total ? Math.max(3, Math.ceil(Math.min(total, 20) * 0.8)) : 4
-    if (e.n >= need) return { uri, name: e.t.album, artist: e.t.album_artist, image: e.t.album_image, image_large: e.t.album_image, queued: true }
+  // the next ALBUM = the first run of songs (2 or more) that follow each other from the same album. A lone song is "from a playlist".
+  const q = queuedTracks.value
+  for (let i = 0; i < q.length; ) {
+    let j = i + 1
+    while (j < q.length && q[j].album_uri && q[j].album_uri === q[i].album_uri) j++
+    const t = q[i]
+    if (j - i >= 2 && t.album_uri && t.album_uri !== ctx && t.album !== spotify.now?.album) return { uri: t.album_uri, name: t.album, artist: t.album_artist, image: t.album_image, image_large: t.album_image, queued: true }
+    i = j
   }
   return null
 })
