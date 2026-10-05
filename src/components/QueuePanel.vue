@@ -25,7 +25,9 @@ const groups = computed(() => {
     // only songs that follow each other: same album, right after one another in the queue AND in the album's order
     const prev = last?.tracks[last.tracks.length - 1]
     const inOrder = !prev || prev.no == null || t.no == null || (t.disc === prev.disc ? t.no === prev.no + 1 : t.no === 1)
-    if (last && t.album_uri && last.uri === t.album_uri && inOrder) last.tracks.push(t)
+    // the same song twice in one tile = the album was queued again → a new tile
+    const again = last?.tracks.some((x) => x.uri === t.uri)
+    if (last && t.album_uri && last.uri === t.album_uri && inOrder && !again) last.tracks.push(t)
     else out.push({ uri: t.album_uri, name: t.album || t.name, image: t.album_image || t.img, tracks: [t] })
   }
   return out
