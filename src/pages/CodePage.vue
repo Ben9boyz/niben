@@ -1,4 +1,5 @@
 <script setup>
+import { tx } from '../composables/useTexts'
 import { ref } from 'vue'
 import { ArrowUpRight, BookOpenText } from 'lucide-vue-next'
 import RepoBrowser from '../components/RepoBrowser.vue'
@@ -12,8 +13,8 @@ const reading = ref(null)
 <template>
   <div class="cpage">
     <header class="cpage-head">
-      <div class="eyebrow">Kode</div>
-      <h1>Prosjekter</h1>
+      <div class="eyebrow">{{ tx('code.eyebrow') }}</div>
+      <h1>{{ tx('code.title') }}</h1>
     </header>
     <div class="grid projects">
       <article v-for="(p, i) in data.prosjekter" :key="i" class="glass card proj rise" :style="{ '--i': i }">

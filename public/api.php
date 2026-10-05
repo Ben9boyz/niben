@@ -289,6 +289,20 @@ try {
         fail('Ukjent handling.', 404);
     }
     if ($action === 'translate') tr_handle();
+    if ($action === 'texts_save') {
+        // the site's own wording (headings, intro lines …): { texts: { key: text } }. An empty text = back to the default.
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $in = (array)(body()['texts'] ?? []);
+        $clean = [];
+        foreach (array_slice($in, 0, 400, true) as $k => $v) {
+            if (!is_string($k) || !preg_match('~^[a-z0-9_.]{1,60}$~', $k) || !is_string($v)) continue;
+            $v = mb_substr(trim($v), 0, 1500);
+            if ($v !== '') $clean[$k] = $v;
+        }
+        kv_set('site_texts', json_encode($clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        out(['ok' => true, 'texts' => (object)$clean]);
+    }
     if (in_array($action, ['guestbook_list', 'guestbook_add', 'admin_guestbook', 'admin_guestbook_set', 'practice_calendar', 'wrapped', 'admin_backup'], true)) ex_handle($action, $post);
     if (in_array($action, ['home_live', 'home_search', 'home_set', 'home_get'], true)) hm_handle($action, $post);
     if ($action === 'milestones' || $action === 'milestone_add' || $action === 'milestone_delete') ms_handle($action, $post);
@@ -354,7 +368,7 @@ try {
             $books = $pdo->query('SELECT ' . $bookCols . $bookOrder)->fetchAll(); // "reading" column not added yet
         }
         $recs = $pdo->query('SELECT id, guitar, title, recorded_on, youtube, audio_path, notes FROM recordings ORDER BY COALESCE(recorded_on, created_at) DESC, id DESC')->fetchAll();
-        $payload = json_encode(['trips' => $trips, 'books' => $books, 'recordings' => $recs, 'songs' => songs_list($pdo), 'about' => json_decode((string)kv_get('about'), true)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $payload = json_encode(['trips' => $trips, 'books' => $books, 'recordings' => $recs, 'songs' => songs_list($pdo), 'about' => json_decode((string)kv_get('about'), true), 'texts' => (object)(json_decode((string)kv_get('site_texts'), true) ?: [])], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         // unchanged content: the browser keeps its copy (304, no body)
         $etag = '"' . md5($payload) . '"';
         header('ETag: ' . $etag);

@@ -1,4 +1,5 @@
 <script setup>
+import { tx } from '../composables/useTexts'
 import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { Music, BookOpen, Languages, Guitar, Gamepad2, Plane, ArrowRight, Radio, PartyPopper, Mic, Tv, Trophy, Disc3 } from 'lucide-vue-next'
 import { milestones, loadMilestones } from '../composables/useMilestones'
@@ -87,28 +88,28 @@ const inDays = (t) => {
 
     <!-- listening -->
     <section class="card">
-      <h3><Music :size="15" />Hører på</h3>
+      <h3><Music :size="15" />{{ tx('now.listen') }}</h3>
       <router-link v-if="track" to="/lytte" class="row">
         <img v-if="track.image" :src="track.image" alt="" class="art" />
         <span class="txt"><b>{{ track.name }}</b><small>{{ track.artist }}<template v-if="track.album"> · {{ track.album }}</template></small></span>
         <span v-if="track.playing" class="live"><Radio :size="12" />spiller</span>
       </router-link>
-      <p v-else class="none">Ingenting akkurat nå.</p>
+      <p v-else class="none">{{ tx('now.listen.none') }}</p>
     </section>
 
     <!-- book -->
     <section class="card">
-      <h3><BookOpen :size="15" />Leser</h3>
+      <h3><BookOpen :size="15" />{{ tx('now.read') }}</h3>
       <router-link v-for="b in reading" :key="b.id" to="/boker" class="row">
         <img v-if="b.omslag" :src="b.omslag" alt="" class="art book" />
         <span class="txt"><b>{{ b.tittel }}</b><small>{{ b.forfatter }}</small></span>
       </router-link>
-      <p v-if="!reading.length" class="none">Ingen bok i gang.</p>
+      <p v-if="!reading.length" class="none">{{ tx('now.read.none') }}</p>
     </section>
 
     <!-- Japanese -->
     <section class="card">
-      <h3><Languages :size="15" />Japansk</h3>
+      <h3><Languages :size="15" />{{ tx('now.jp') }}</h3>
       <router-link v-if="anime" to="/japansk" class="row">
         <img v-if="anime.cover" :src="anime.cover" alt="" class="art book" />
         <span class="txt"><b translate="no">{{ anime.title }}</b><small>Anime · {{ Math.round(anime.known) }} % av ordene kan jeg</small></span>
@@ -123,25 +124,25 @@ const inDays = (t) => {
 
     <!-- guitar -->
     <section class="card">
-      <h3><Guitar :size="15" />Øver på gitar</h3>
+      <h3><Guitar :size="15" />{{ tx('now.guitar') }}</h3>
       <div v-for="s in songs" :key="s.id" class="song">
         <span class="txt"><b>{{ s.tittel }}</b><small>{{ s.artist }}<template v-if="s.capo"> · capo {{ s.capo }}</template></small></span>
         <span class="chips"><i v-for="(c, i) in [...new Set(parseProgression(s.akkorder))]" :key="i">{{ c }}</i></span>
         <button class="go" @click="practise(s)">Øv <ArrowRight :size="13" /></button>
       </div>
-      <p v-if="!songs.length" class="none">Ingen låt valgt.</p>
+      <p v-if="!songs.length" class="none">{{ tx('now.guitar.none') }}</p>
     </section>
 
     <!-- games -->
     <section class="card wide">
-      <h3><Gamepad2 :size="15" />Spill</h3>
+      <h3><Gamepad2 :size="15" />{{ tx('now.games') }}</h3>
       <router-link v-if="playing || lastGame" to="/gaming" class="row">
         <img :src="headerImg((playing || lastGame).appid)" alt="" class="art wideimg" />
         <span class="txt"><b>{{ playing ? playing.name : lastGame.name }}</b><small>{{ playing ? 'Spiller nå' : 'Sist spilt' }}</small></span>
         <span v-if="playing" class="live"><Radio :size="12" />live</span>
       </router-link>
       <div v-if="topGames.length" class="top">
-        <small>Mest spilt</small>
+        <small>{{ tx('now.games.top') }}</small>
         <router-link v-for="(g, i) in topGames" :key="g.appid" to="/gaming"><b>{{ i + 1 }}</b>{{ g.name }}<em>{{ fmtHours(g.hours) }}</em></router-link>
       </div>
       <p v-if="steam.loaded && !steam.configured" class="none">Steam er ikke koblet til ennå.</p>

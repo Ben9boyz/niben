@@ -1,4 +1,5 @@
 <script setup>
+import { tx } from '../composables/useTexts'
 import { Plane, X } from 'lucide-vue-next'
 import { ref, computed } from 'vue'
 import { useData } from '../composables/useData'
@@ -38,8 +39,8 @@ function select(c) {
 <template>
   <div class="cpage">
     <header class="cpage-head">
-      <div class="eyebrow">Reiser</div>
-      <h1>Verden</h1>
+      <div class="eyebrow">{{ tx('travel.eyebrow') }}</div>
+      <h1>{{ tx('travel.title') }}</h1>
       <p>{{ countries.length }} land · {{ (data.reiser || []).length }} reiser. Trykk på et land på kartet, eller søk.</p>
     </header>
 
@@ -57,7 +58,7 @@ function select(c) {
             <span class="meta"><span class="name">{{ c.no }}</span><span class="sub">{{ c.years.join(', ') }}</span></span>
           </button>
         </div>
-        <div v-if="!countries.length" class="empty">Ingen reiser ennå.</div>
+        <div v-if="!countries.length" class="empty">{{ tx('travel.none') }}</div>
       </aside>
 
       <section ref="detail" class="detail-col" :class="{ card: !!selected, glass: !!selected }">
@@ -67,9 +68,9 @@ function select(c) {
             <button class="xbtn" aria-label="Lukk" title="Lukk" @click="selected = null"><X :size="18" /></button>
           </div>
           <TripCards v-if="trips.length" :trips="trips" />
-          <div v-else class="empty">Ikke vært her ennå – kanskje neste tur? <Plane :size="16" class="inline-ic" /></div>
+          <div v-else class="empty">{{ tx('travel.notyet') }} <Plane :size="16" class="inline-ic" /></div>
         </template>
-        <div v-else class="empty big">Velg et land for å se reisene og bildene.</div>
+        <div v-else class="empty big">{{ tx('travel.pick') }}</div>
       </section>
     </div>
   </div>

@@ -1,4 +1,5 @@
 <script setup>
+import { tx } from '../composables/useTexts'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Gamepad2, Clock, Trophy, Library, ArrowUpRight, ChevronDown, Radio, Users, Newspaper, Heart, Flame, Archive, Monitor } from 'lucide-vue-next'
 import { steam, watchSteam, headerImg, coverImg, storeUrl, ago, fmtHours, sessionLen, fmtDate, fmtYears } from '../composables/useSteam'
@@ -107,14 +108,14 @@ const coverFailed = (g) => { noCover.value = new Set(noCover.value).add(g.appid)
       </div>
       <!-- what I play: genres + where -->
       <section v-if="lib?.genres?.length || plat.length" class="sec">
-        <b class="label-caps">Slik spiller jeg</b>
+        <b class="label-caps">{{ tx('gaming.how') }}</b>
         <ul v-if="lib?.genres?.length" class="genres">
           <li v-for="g in lib.genres" :key="g.name"><span>{{ g.name }}</span><span class="bar"><i :style="{ width: `${(g.hours / maxGenre) * 100}%` }"></i></span><small>{{ fmtHours(g.hours) }}</small></li>
         </ul>
         <p v-if="plat.length" class="platform"><Monitor :size="13" />{{ plat.map((x) => `${x.n} ${x.pct} %`).join(' · ') }}</p>
         <p v-if="lib?.longest" class="platform"><Trophy :size="13" />Mest spilt: <b>{{ lib.longest.name }}</b> – {{ fmtHours(lib.longest.hours) }}</p>
       </section>
-      <p v-else-if="lib?.hidden" class="muted">Spillbiblioteket er privat på Steam.</p>
+      <p v-else-if="lib?.hidden" class="muted">{{ tx('gaming.private') }}</p>
 
       </div>
       <div class="gl-col">

@@ -1,4 +1,5 @@
 <script setup>
+import { tx } from '../composables/useTexts'
 import { ref, computed, watch, onMounted } from 'vue'
 import { Share2, Download, Music, BookOpen, Plane, Gamepad2, Languages, Guitar, Loader } from 'lucide-vue-next'
 import { toPng } from 'html-to-image'
@@ -71,7 +72,7 @@ async function saveImage(share) {
         <ul class="stats"><li v-for="s in stats" :key="s[1]"><b>{{ s[0] }}</b><span>{{ s[1] }}</span></li></ul>
         <p v-if="d.travel?.countries?.length" class="line"><Plane :size="16" />{{ d.travel.countries.slice(0, 4).join(' · ') }}</p>
         <p v-if="d.books?.best" class="line"><BookOpen :size="16" />Favorittboka: <b>{{ d.books.best.title }}</b></p>
-        <p v-if="!stats.length && noMusic" class="line dim">Året er ikke så langt – kom tilbake når det har skjedd mer.</p>
+        <p v-if="!stats.length && noMusic" class="line dim">{{ tx('year.empty') }}</p>
       </div>
 
       <!-- the details -->

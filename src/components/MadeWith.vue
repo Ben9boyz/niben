@@ -1,9 +1,10 @@
 <script setup>
+import { tx } from '../composables/useTexts'
 import { Sparkles } from 'lucide-vue-next'
 </script>
 
 <template>
-  <p class="made" translate="no"><Sparkles :size="13" aria-hidden="true" />Laget med <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code</a></p>
+  <p class="made" translate="no"><Sparkles :size="13" aria-hidden="true" />{{ tx('home.made') }} <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code</a></p>
 </template>
 
 <style scoped>

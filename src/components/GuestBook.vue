@@ -1,4 +1,5 @@
 <script setup>
+import { tx } from '../composables/useTexts'
 import { ref, onMounted } from 'vue'
 import { MessageCircle, Send } from 'lucide-vue-next'
 
@@ -25,19 +26,19 @@ const when = (t) => new Date(t * 1000).toLocaleDateString('nb-NO', { day: 'numer
 
 <template>
   <section class="gb">
-    <h3><MessageCircle :size="16" aria-hidden="true" />Gjestebok</h3>
+    <h3><MessageCircle :size="16" aria-hidden="true" />{{ tx('guest.title') }}</h3>
     <form v-if="state !== 'sent'" class="form" @submit.prevent="send">
       <input v-model="name" maxlength="60" placeholder="Navnet ditt" aria-label="Navn" required />
       <textarea v-model="message" maxlength="600" rows="3" placeholder="Legg igjen en hilsen …" aria-label="Hilsen" required></textarea>
       <input v-model="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
       <p v-if="err" class="err">{{ err }}</p>
-      <div class="row"><small>Hilsenen vises etter at jeg har lest den.</small><button class="btn primary small" :disabled="state === 'sending' || !name.trim() || !message.trim()"><Send :size="14" />Send</button></div>
+      <div class="row"><small>{{ tx('guest.note') }}</small><button class="btn primary small" :disabled="state === 'sending' || !name.trim() || !message.trim()"><Send :size="14" />Send</button></div>
     </form>
-    <p v-else class="thanks">Takk for hilsenen! Den dukker opp her så snart jeg har lest den.</p>
+    <p v-else class="thanks">{{ tx('guest.thanks') }}</p>
     <ul v-if="items.length" class="list">
       <li v-for="g in items" :key="g.id"><p translate="no">{{ g.msg }}</p><small><b translate="no">{{ g.name }}</b> · {{ when(g.t) }}</small></li>
     </ul>
-    <p v-else class="empty">Ingen hilsener ennå – bli den første.</p>
+    <p v-else class="empty">{{ tx('guest.none') }}</p>
   </section>
 </template>
 

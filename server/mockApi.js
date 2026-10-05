@@ -95,7 +95,15 @@ export function mockApi() {
               recordings: [...db.recordings].reverse(),
               songs: db.songs,
               about: db.about || null,
+              texts: db.texts || {},
             })
+          case 'texts_save': {
+            if (!needAdmin()) return
+            const out = {}
+            for (const [k, v] of Object.entries(b.texts || {})) if (/^[a-z0-9_.]{1,60}$/.test(k) && typeof v === 'string' && v.trim()) out[k] = v.trim().slice(0, 1500)
+            db.texts = out
+            return send(res, 200, { ok: true, texts: out })
+          }
           case 'song_save': {
             if (!needAdmin()) return
             const row = { id: b.id || Date.now(), title: b.title, artist: b.artist || null, chords: b.chords, bpm: b.bpm || null, beats: b.beats || null, capo: b.capo || null, ug_url: b.ug_url || null, notes: b.notes || null, sheet: b.sheet || null }

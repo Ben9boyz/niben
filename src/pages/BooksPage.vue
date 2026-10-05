@@ -1,4 +1,5 @@
 <script setup>
+import { tx } from '../composables/useTexts'
 import { X } from 'lucide-vue-next'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useData } from '../composables/useData'
@@ -17,8 +18,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 <template>
   <div class="cpage">
     <header class="cpage-head">
-      <div class="eyebrow">Bøker</div>
-      <h1>Bokhylla</h1>
+      <div class="eyebrow">{{ tx('books.eyebrow') }}</div>
+      <h1>{{ tx('books.title') }}</h1>
       <p>{{ books.length }} bøker lest. Trykk på en bok for å se hva jeg syntes.</p>
     </header>
     <div class="shelf">
@@ -31,7 +32,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <small>{{ b.forfatter }}</small>
         <Stars v-if="b.vurdering" :value="b.vurdering" class="st" />
       </button>
-      <div v-if="!books.length" class="empty">Ingen bøker ennå.</div>
+      <div v-if="!books.length" class="empty">{{ tx('books.none') }}</div>
     </div>
 
     <teleport to="body">

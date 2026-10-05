@@ -1,4 +1,5 @@
 <script setup>
+import { tx } from '../composables/useTexts'
 import { ArrowUpRight, BookOpenText } from 'lucide-vue-next'
 import RepoBrowser from '../components/RepoBrowser.vue'
 import { computed, ref } from 'vue'
@@ -16,9 +17,9 @@ const p = computed(() => list.value[room.sel.prosjekt])
 <template>
   <section class="panel glass">
     <header class="panel-head">
-      <div class="eyebrow">Kode</div>
-      <h2>Prosjekter</h2>
-      <p>Velg et prosjekt – det vises på skjermen.</p>
+      <div class="eyebrow">{{ tx('code.eyebrow') }}</div>
+      <h2>{{ tx('code.title') }}</h2>
+      <p>{{ tx('code.hint') }}</p>
     </header>
 
     <div class="panel-body">

@@ -1,4 +1,5 @@
 <script setup>
+import { tx } from '../composables/useTexts'
 import RecordingList from '../components/RecordingList.vue'
 import { Timer } from 'lucide-vue-next'
 import { ref, computed } from 'vue'
@@ -13,8 +14,8 @@ const g = computed(() => data.gitarer?.[idx.value])
 <template>
   <div class="cpage">
     <header class="cpage-head">
-      <div class="eyebrow">Gitar</div>
-      <h1>Gitarene mine</h1>
+      <div class="eyebrow">{{ tx('guitar.eyebrow') }}</div>
+      <h1>{{ tx('guitar.pageTitle') }}</h1>
     </header>
 
     <div class="tabs">
@@ -34,7 +35,7 @@ const g = computed(() => data.gitarer?.[idx.value])
         </div>
         <div class="glass card">
           <h3>Opptak</h3>
-          <div v-if="!g.opptak?.length" class="empty">Ingen opptak ennå.</div>
+          <div v-if="!g.opptak?.length" class="empty">{{ tx('guitar.none') }}</div>
           <RecordingList :items="g.opptak || []" />
         </div>
         <p v-if="g.kreditt" class="credit">3D-modell: <a :href="g.kreditt.url" target="_blank" rel="noopener">{{ g.kreditt.tekst }}</a>, fargelagt for denne siden.</p>

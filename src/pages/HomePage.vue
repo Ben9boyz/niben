@@ -1,4 +1,5 @@
 <script setup>
+import { tx } from '../composables/useTexts'
 import NowContent from '../components/NowContent.vue'
 import MadeWith from '../components/MadeWith.vue'
 import { useData } from '../composables/useData'
@@ -11,13 +12,13 @@ const data = useData()
     <section class="hero">
       <img v-if="data.om?.bilde" :src="data.om.bilde" alt="" class="avatar rise" />
       <div>
-        <div class="eyebrow rise" style="--i: 0">{{ data.site?.undertittel || 'Velkommen' }}</div>
-        <h1 class="rise" style="--i: 1">Hei, jeg er <span class="grad">{{ data.site?.navn || 'niben' }}</span></h1>
-        <p class="lead rise" style="--i: 2">{{ data.site?.intro }}</p>
+        <div class="eyebrow rise" style="--i: 0">{{ tx('home.eyebrow', data.site?.undertittel) }}</div>
+        <h1 class="rise" style="--i: 1">{{ tx('home.hello') }} <span class="grad">{{ tx('home.name', data.site?.navn) }}</span></h1>
+        <p class="lead rise" style="--i: 2">{{ tx('home.intro', data.site?.intro) }}</p>
       </div>
     </section>
 
-    <h2 class="now-title rise" style="--i: 3">Akkurat nå</h2>
+    <h2 class="now-title rise" style="--i: 3">{{ tx('home.now') }}</h2>
     <div class="rise" style="--i: 4"><NowContent /></div>
     <MadeWith />
   </div>

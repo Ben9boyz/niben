@@ -1,0 +1,81 @@
+// The site's own wording – every line here can be changed in Admin → Tekster. `d` is the standard text (what shows
+// until I write something else). Add a line here + use tx('key') in the page, and it appears in the admin list.
+export const TEXT_GROUPS = [
+  { title: 'Hjem', items: [
+    { k: 'home.eyebrow', label: 'Lille tekst over hilsenen', d: 'Velkommen inn' },
+    { k: 'home.hello', label: 'Hilsen (før navnet)', d: 'Hei, jeg er' },
+    { k: 'home.name', label: 'Navnet', d: 'niben' },
+    { k: 'home.intro', label: 'Innledning', d: 'Dette er rommet mitt på nettet – gitarene, bøkene jeg har lest, stedene jeg har reist og ting jeg har kodet.', long: true },
+    { k: 'home.now', label: 'Overskrift «Akkurat nå»', d: 'Akkurat nå' },
+    { k: 'home.tap', label: 'Hint i 3D-rommet', d: 'Trykk på noe i rommet, eller bruk menyen' },
+    { k: 'home.made', label: 'Kreditt («Laget med …»)', d: 'Laget med' },
+  ] },
+  { title: 'Akkurat nå-kortene', items: [
+    { k: 'now.listen', label: 'Overskrift: musikk', d: 'Hører på' },
+    { k: 'now.listen.none', label: 'Når ingenting spilles', d: 'Ingenting akkurat nå.' },
+    { k: 'now.read', label: 'Overskrift: bok', d: 'Leser' },
+    { k: 'now.read.none', label: 'Når jeg ikke leser', d: 'Ingen bok i gang.' },
+    { k: 'now.jp', label: 'Overskrift: japansk', d: 'Japansk' },
+    { k: 'now.guitar', label: 'Overskrift: gitar', d: 'Øver på gitar' },
+    { k: 'now.guitar.none', label: 'Når ingen låt er valgt', d: 'Ingen låt valgt.' },
+    { k: 'now.games', label: 'Overskrift: spill', d: 'Spill' },
+    { k: 'now.games.top', label: 'Liste: mest spilt', d: 'Mest spilt' },
+  ] },
+  { title: 'Reiser', items: [
+    { k: 'travel.eyebrow', label: 'Lille tekst over tittelen', d: 'Reiser' },
+    { k: 'travel.title', label: 'Tittel', d: 'Verden' },
+    { k: 'travel.pick', label: 'Hint når ingen land er valgt', d: 'Velg et land for å se reisene og bildene.' },
+    { k: 'travel.none', label: 'Når det ikke er noen reiser', d: 'Ingen reiser ennå.' },
+    { k: 'travel.notyet', label: 'Land uten reiser', d: 'Ikke vært her ennå – kanskje neste tur?' },
+  ] },
+  { title: 'Bøker', items: [
+    { k: 'books.eyebrow', label: 'Lille tekst over tittelen', d: 'Bøker' },
+    { k: 'books.title', label: 'Tittel', d: 'Bokhylla' },
+    { k: 'books.hint', label: 'Hint under tittelen', d: 'Trykk på en bok for å lese hva jeg synes.' },
+    { k: 'books.none', label: 'Når det ikke er noen bøker', d: 'Ingen bøker ennå.' },
+  ] },
+  { title: 'Gitar', items: [
+    { k: 'guitar.eyebrow', label: 'Lille tekst over tittelen', d: 'Gitar' },
+    { k: 'guitar.title', label: 'Tittel (3D-rommet)', d: 'Gitarveggen' },
+    { k: 'guitar.pageTitle', label: 'Tittel (enkel side)', d: 'Gitarene mine' },
+    { k: 'guitar.hint', label: 'Hint', d: 'Trykk på en gitar for å se den og høre opptak.' },
+    { k: 'guitar.none', label: 'Når det ikke er opptak', d: 'Ingen opptak ennå.' },
+  ] },
+  { title: 'Japansk', items: [
+    { k: 'japan.eyebrow', label: 'Lille tekst over tittelen', d: '日本語' },
+    { k: 'japan.title', label: 'Tittel', d: 'Japansk' },
+    { k: 'japan.hint', label: 'Hint under tittelen', d: 'Det jeg lærer på jpdb – dagens ord ligger på bordet.' },
+  ] },
+  { title: 'Kode', items: [
+    { k: 'code.eyebrow', label: 'Lille tekst over tittelen', d: 'Kode' },
+    { k: 'code.title', label: 'Tittel', d: 'Prosjekter' },
+    { k: 'code.hint', label: 'Hint under tittelen', d: 'Velg et prosjekt – det vises på skjermen.' },
+  ] },
+  { title: 'Gaming', items: [
+    { k: 'gaming.eyebrow', label: 'Lille tekst over tittelen', d: 'Gaming' },
+    { k: 'gaming.title', label: 'Tittel', d: 'Spillhjørnet' },
+    { k: 'gaming.hint', label: 'Hint under tittelen', d: 'Hva jeg spiller på Steam – skjermen på pulten viser det også.' },
+    { k: 'gaming.private', label: 'Når biblioteket er privat', d: 'Spillbiblioteket er privat på Steam.' },
+    { k: 'gaming.how', label: 'Overskrift: slik spiller jeg', d: 'Slik spiller jeg' },
+  ] },
+  { title: 'Året', items: [
+    { k: 'year.eyebrow', label: 'Lille tekst over tittelen', d: 'Året' },
+    { k: 'year.title', label: 'Tittel', d: 'Mitt år' },
+    { k: 'year.hint', label: 'Hint under tittelen', d: 'Samlet og klart til å deles som bilde.' },
+    { k: 'year.empty', label: 'Når året er tomt', d: 'Året er ikke så langt – kom tilbake når det har skjedd mer.' },
+  ] },
+  { title: 'Om meg og øving', items: [
+    { k: 'about.eyebrow', label: 'Om meg: lille tekst', d: 'Om meg' },
+    { k: 'about.title', label: 'Om meg: tittel', d: 'Benjamin' },
+    { k: 'practice.eyebrow', label: 'Øving: lille tekst', d: 'Øving' },
+    { k: 'practice.title', label: 'Øving: tittel', d: 'Øvingshjørnet' },
+    { k: 'practice.cal', label: 'Øvingskalender: forklaring', d: 'Kalenderen fylles når du øver her på siden – hver dag du gjør kort, får den en farge.', long: true },
+  ] },
+  { title: 'Gjestebok', items: [
+    { k: 'guest.title', label: 'Tittel', d: 'Gjestebok' },
+    { k: 'guest.note', label: 'Under skjemaet', d: 'Hilsenen vises etter at jeg har lest den.' },
+    { k: 'guest.thanks', label: 'Etter innsending', d: 'Takk for hilsenen! Den dukker opp her så snart jeg har lest den.', long: true },
+    { k: 'guest.none', label: 'Når ingen har skrevet', d: 'Ingen hilsener ennå – bli den første.' },
+  ] },
+]
+export const TEXT_DEFAULTS = Object.fromEntries(TEXT_GROUPS.flatMap((g) => g.items.map((i) => [i.k, i.d])))

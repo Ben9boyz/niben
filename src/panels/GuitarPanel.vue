@@ -1,4 +1,5 @@
 <script setup>
+import { tx } from '../composables/useTexts'
 import RecordingList from '../components/RecordingList.vue'
 import { Guitar } from 'lucide-vue-next'
 import { computed } from 'vue'
@@ -15,9 +16,9 @@ function strum() { room.api?.strum(room.sel.gitar) }
 <template>
   <section class="panel glass">
     <header class="panel-head">
-      <div class="eyebrow">Gitar</div>
-      <h2>{{ g ? g.navn : 'Gitarveggen' }}</h2>
-      <p v-if="!g">Trykk på en gitar for å se den og høre opptak.</p>
+      <div class="eyebrow">{{ tx('guitar.eyebrow') }}</div>
+      <h2>{{ g ? g.navn : tx('guitar.title') }}</h2>
+      <p v-if="!g">{{ tx('guitar.hint') }}</p>
     </header>
 
     <div class="panel-body">

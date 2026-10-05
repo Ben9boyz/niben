@@ -1,4 +1,5 @@
 <script setup>
+import { tx } from '../composables/useTexts'
 import { ref, computed, onMounted } from 'vue'
 import { Flame } from 'lucide-vue-next'
 
@@ -42,7 +43,7 @@ const months = computed(() => cells.value.map((col, i) => { const f = col.find(B
         <div v-for="(col, i) in cells" :key="i" class="col"><i v-for="(c, j) in col" :key="j" :class="c ? 'l' + level(c.n) : 'none'" :title="c ? `${c.label}: ${c.n} kort` : ''"></i></div>
       </div>
     </div>
-    <p v-if="!d.total" class="note">Kalenderen fylles når du øver her på siden – hver dag du gjør kort, får den en farge.</p>
+    <p v-if="!d.total" class="note">{{ tx('practice.cal') }}</p>
   </section>
 </template>
 

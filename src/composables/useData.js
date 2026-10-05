@@ -1,3 +1,4 @@
+import { setTexts } from './useTexts'
 import { reactive } from 'vue'
 
 // Static content (site text, guitars with their 3D models) lives in public/data.json.
@@ -103,6 +104,7 @@ async function load() {
         }))
         // my own photo and text from the about page (uploaded, not in the repo)
         if (db.about?.bilde) merged.om = { ...(merged.om || {}), bilde: db.about.bilde }
+        setTexts(db.texts)
         state.fromDb = true
       }
     }

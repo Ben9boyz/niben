@@ -1,4 +1,5 @@
 <script setup>
+import { tx } from '../composables/useTexts'
 import BrandLogo from '../components/BrandLogo.vue'
 import NowContent from '../components/NowContent.vue'
 import MadeWith from '../components/MadeWith.vue'
@@ -10,13 +11,13 @@ const data = useData()
 <template>
   <section class="hero glass">
     <BrandLogo class="home-logo rise" style="--i: 0" />
-    <div class="eyebrow rise" style="--i: 0">{{ data.site?.undertittel || 'Velkommen inn' }}</div>
-    <h1 class="rise" style="--i: 1">Hei, jeg er <span class="grad">{{ data.site?.navn || 'niben' }}</span></h1>
-    <p class="lead rise" style="--i: 2">{{ data.site?.intro }}</p>
+    <div class="eyebrow rise" style="--i: 0">{{ tx('home.eyebrow', data.site?.undertittel) }}</div>
+    <h1 class="rise" style="--i: 1">{{ tx('home.hello') }} <span class="grad">{{ tx('home.name', data.site?.navn) }}</span></h1>
+    <p class="lead rise" style="--i: 2">{{ tx('home.intro', data.site?.intro) }}</p>
     <div class="now-wrap rise" style="--i: 3"><NowContent /></div>
     <p class="tap rise" style="--i: 8">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V5a2 2 0 0 1 4 0v6m0-1a2 2 0 0 1 4 0v3a7 7 0 0 1-7 7h-.5a6 6 0 0 1-5-2.7L3 15.5a1.8 1.8 0 0 1 2.9-2.1L9 16" /></svg>
-      Trykk på noe i rommet, eller bruk menyen
+      {{ tx('home.tap') }}
     </p>
     <MadeWith />
   </section>

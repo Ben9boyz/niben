@@ -1,4 +1,5 @@
 <script setup>
+import { tx } from '../composables/useTexts'
 import { Plane } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { useData } from '../composables/useData'
@@ -36,8 +37,8 @@ const yearsLabel = (ys) => (ys.length > 3 ? `${ys[0]}–${ys.at(-1)}` : ys.join(
 <template>
   <section class="panel glass">
     <header class="panel-head">
-      <div class="eyebrow">Reiser</div>
-      <h2>{{ room.sel.land ? norskNavn(room.sel.land) : 'Verden' }}</h2>
+      <div class="eyebrow">{{ tx('travel.eyebrow') }}</div>
+      <h2>{{ room.sel.land ? norskNavn(room.sel.land) : tx('travel.title') }}</h2>
       <p v-if="!room.sel.land">{{ countries.length }} land · {{ (data.reiser || []).length }} reiser<template v-if="totalPhotos"> · {{ totalPhotos }} bilder</template></p>
     </header>
 

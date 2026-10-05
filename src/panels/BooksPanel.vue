@@ -1,4 +1,5 @@
 <script setup>
+import { tx } from '../composables/useTexts'
 import { computed } from 'vue'
 import { useData } from '../composables/useData'
 import { room } from '../composables/useRoom'
@@ -18,9 +19,9 @@ const avg = computed(() => {
 <template>
   <section class="panel glass">
     <header class="panel-head">
-      <div class="eyebrow">Bøker</div>
-      <h2>{{ b ? b.tittel : 'Bokhylla' }}</h2>
-      <p v-if="!b">{{ list.length }} bøker lest<span v-if="avg"> · snitt {{ avg }} / 5</span>. Trykk på en bok for å lese hva jeg synes.</p>
+      <div class="eyebrow">{{ tx('books.eyebrow') }}</div>
+      <h2>{{ b ? b.tittel : tx('books.title') }}</h2>
+      <p v-if="!b">{{ list.length }} bøker lest<span v-if="avg"> · snitt {{ avg }} / 5</span>. {{ tx('books.hint') }}</p>
     </header>
 
     <div class="panel-body">
