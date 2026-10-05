@@ -73,19 +73,28 @@ function sp_more_handle(string $action, bool $post): bool {
         out(['ok' => true]);
     }
     case 'spotify_liked': {
-        // is the song saved in my "Liked songs"? (GET ?uri=) – and save / remove it (POST)
+        // is the song saved in my "Liked songs"? (GET ?uri=) – and save / remove it (POST).
+        // Spotify has moved these to /me/library (by uri); the older /me/tracks (by id) is the fallback.
         require_admin();
         $uri = (string)($post ? (body()['uri'] ?? '') : ($_GET['uri'] ?? ''));
         $tid = $id($uri, 'track');
         if (!$tid) fail('Ugyldig låt.');
         if (!$post) {
-            [$s, $j] = sp_api('GET', '/me/tracks/contains?ids=' . $tid);
+            [$s, $j] = sp_api('GET', '/me/library/contains?uris=' . rawurlencode($uri));
+            if ($s !== 200) [$s, $j] = sp_api('GET', '/me/tracks/contains?ids=' . $tid);
             out(['liked' => $s === 200 && !empty($j[0])]);
         }
         if (!sp_has_scope('user-library-modify')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
         $on = !empty(body()['on']);
-        [$s, $j] = sp_api($on ? 'PUT' : 'DELETE', '/me/tracks?ids=' . $tid);
-        if ($s >= 300) fail('Spotify svarte med feil (' . $s . ').', 502);
+        $verb = $on ? 'PUT' : 'DELETE';
+        [$s, $j] = sp_api($verb, '/me/library?uris=' . rawurlencode($uri));
+        if ($s >= 400 && $s !== 401) [$s, $j] = sp_api($verb, '/me/tracks?ids=' . $tid);
+        if ($s === 401) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
+        if ($s >= 300) {
+            $why = (string)($j['error']['message'] ?? '');
+            if ($s === 403 && stripos($why, 'scope') !== false) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
+            fail('Spotify svarte med feil (' . $s . ')' . ($why !== '' ? ': ' . $why : '') . '.', 502);
+        }
         out(['ok' => true, 'liked' => $on]);
     }
     }

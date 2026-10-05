@@ -30,7 +30,7 @@ async function like() {
   if (!now.value?.uri) return
   liked.value = !liked.value
   const r = await setLiked(now.value.uri, liked.value)
-  if (!r.ok) liked.value = !liked.value
+  if (!r.ok) { liked.value = !liked.value; notify(r.error || 'Klarte ikke å lagre låta.', true) }
 }
 
 // ── popovers: queue / devices ──
