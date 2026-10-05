@@ -110,7 +110,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
 </script>
 
 <template>
-  <div ref="root" class="sheet" :style="{ '--s': size }">
+  <div ref="root" class="sheet" translate="no" :style="{ '--s': size }">
     <header>
       <button class="back" @click="$emit('back')"><ChevronLeft :size="16" />Sanger</button>
       <div class="sh-title">

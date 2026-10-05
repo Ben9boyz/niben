@@ -171,8 +171,8 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); clearInter
       <div v-if="!songs.length" class="empty">Ingen sanger ennå – legg dem til under «Sanger» på admin-siden.</div>
       <article v-for="s in songs" :key="s.id" class="song">
         <div class="sm">
-          <b>{{ s.tittel }}</b>
-          <small>{{ s.artist }}<template v-if="s.capo"> · capo {{ s.capo }}</template><template v-if="s.bpm"> · {{ s.bpm }} BPM</template></small>
+          <b translate="no">{{ s.tittel }}</b>
+          <small translate="no">{{ s.artist }}<template v-if="s.capo"> · capo {{ s.capo }}</template><template v-if="s.bpm"> · {{ s.bpm }} BPM</template></small>
           <div class="chips small"><span v-for="(c, i) in parseProgression(s.akkorder)" :key="i">{{ c }}</span></div>
           <p v-if="s.notat" class="note">{{ s.notat }}</p>
         </div>

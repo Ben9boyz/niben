@@ -29,7 +29,7 @@ function play(o, i) { playing.value = new Set(playing.value).add(key(o, i)) }
   <div class="recs">
     <div v-for="(o, i) in shown" :key="key(o, i)" class="rec" :style="{ '--i': i }">
       <div class="rec-head">
-        <b>{{ o.tittel }}</b>
+        <b translate="no">{{ o.tittel }}</b>
         <span v-if="o.dato" class="date">{{ fmt(o.dato) }}</span>
       </div>
       <div v-if="ytId(o.youtube)" class="video">
