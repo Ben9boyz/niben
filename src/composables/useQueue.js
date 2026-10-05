@@ -60,7 +60,7 @@ export function addSongs(tracks, { silent = false } = {}) {
 /** A whole album / playlist at the end of my list. */
 export async function addCollection(uri, name = '') {
   const t = await fetchTracks(uri)
-  if (!t.tracks?.length) { notify('Fant ingen låter.', true); return { ok: false } }
+  if (!t.tracks?.length) { notify(t.hidden ? 'Spotify lar oss ikke se låtene i denne spillelista, så den kan ikke legges i køen. Du kan spille den, og køen din spilles som vanlig etter låten som går.' : 'Fant ingen låter.', true); return { ok: false } }
   const al = findAlbum(uri)
   const tracks = uri.startsWith('spotify:album:')
     ? t.tracks.map((x) => ({ ...x, album_uri: x.album_uri || uri, album: x.album || al?.name || name, album_image: x.album_image || al?.image || al?.thumb || '', img: x.img || al?.thumb || al?.image || '' }))
