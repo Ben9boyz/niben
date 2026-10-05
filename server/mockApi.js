@@ -275,6 +275,26 @@ export function mockApi() {
               at: now,
             })
           }
+          case 'jpdb_parse': {
+            // dev: the real jpdb (read only) with the key from public/_jpdb.php, if it's there
+            const fs = await import('node:fs')
+            const key = (fs.existsSync('public/_jpdb.php') ? fs.readFileSync('public/_jpdb.php', 'utf8') : '').match(/'api_key'\s*=>\s*'([^']+)'/)?.[1]
+            if (!key) return send(res, 502, { error: 'Ingen jpdb-nøkkel lokalt.' })
+            const r = await fetch('https://jpdb.io/api/v1/parse', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text: b.text, position_length_encoding: 'utf16', token_fields: ['vocabulary_index', 'position', 'length', 'furigana'], vocabulary_fields: ['vid', 'sid', 'spelling', 'reading', 'frequency_rank', 'meanings', 'card_state', 'part_of_speech', 'pitch_accent'] }) })
+            const j = await r.json()
+            if (!r.ok) return send(res, 502, { error: j.error_message || 'jpdb-feil' })
+            return send(res, 200, {
+              tokens: j.tokens.map((t) => ({ v: t[0], pos: t[1], len: t[2], furi: t[3] })),
+              vocab: j.vocabulary.map(([vid, sid, spelling, reading, freq, meanings, state, pos, pitch]) => ({ vid, sid, spelling, reading, freq, meanings: (meanings || []).slice(0, 5), state: state || [], pos: pos || [], pitch: pitch?.[0] || null })),
+            })
+          }
+          case 'jpdb_words': {
+            const W = [['可愛い', 'かわいい', 'cute; adorable', ['known'], 1400, 'LHHLL'], ['猫', 'ねこ', 'cat', ['learning'], 1600, 'HLL'], ['今日', 'きょう', 'today', ['due'], 200, 'HHLL'], ['服', 'ふく', 'clothes', ['new'], 1200, 'LH'], ['人形', 'にんぎょう', 'doll', ['new'], 3200, 'LHHH'], ['作る', 'つくる', 'to make', ['known'], 300, 'LHL'], ['学校', 'がっこう', 'school', ['learning'], 400, 'LHHH'], ['恋', 'こい', 'love', ['failed'], 2100, 'HL'], ['衣装', 'いしょう', 'costume', ['new'], 5000, 'LHHH'], ['写真', 'しゃしん', 'photograph', ['known'], 900, 'LHH']]
+            return send(res, 200, { words: W.map(([spelling, reading, meaning, state, freq, pitch], i) => ({ vid: 1000 + i, sid: 2000 + i, spelling, reading, meaning, state, freq, pitch })), decks: [{ id: 7, name: 'Egne ord' }] })
+          }
+          case 'jpdb_add':
+            if (!needAdmin()) return
+            return send(res, 200, { ok: true, deck: b.deck === 'new' ? 8 : b.deck })
           case 'jpdb_public':
             return send(res, 200, { configured: true, decks: [{ id: 1, name: 'Sono Bisque Doll wa Koi wo Suru - Episode 1', words: 448, known: 2.8, learning: 4.5 }], anime: [
               { title: 'Yuru Camp△', parts: 12, known: 91.4, learning: 94, anilist: 98444, url: 'https://anilist.co/anime/98444', en: 'Laid-Back Camp', native: 'ゆるキャン△', year: 2018, cover: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx98444-Vzysp1EsrzgD.jpg', color: '#f1ae5d' },

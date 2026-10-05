@@ -193,5 +193,84 @@ function jp_handle(string $action, bool $post): void {
         $info = $lj['vocabulary_info'][0] ?? null;
         out(['ok' => true, 'state' => $info[0] ?? null, 'due' => $info[1] ?? null]);
     }
+
+    case 'jpdb_parse': {
+        // a Japanese text split into words, each with reading, meanings, pitch and my card state
+        if (!$post) fail('Bruk POST.', 405);
+        $text = trim((string)(body()['text'] ?? ''));
+        $max = is_admin() ? 6000 : 800; // visitors try it on a short text
+        if ($text === '') fail('Skriv eller lim inn en japansk tekst.');
+        if (mb_strlen($text) > $max) fail("Teksten er for lang (maks $max tegn).");
+        $data = sp_cached('jp_parse_' . md5($text), 600, function () use ($text) {
+            [$s, $j] = jp_api('parse', [
+                'text' => $text,
+                'position_length_encoding' => 'utf16', // positions that match JavaScript strings
+                'token_fields' => ['vocabulary_index', 'position', 'length', 'furigana'],
+                'vocabulary_fields' => ['vid', 'sid', 'spelling', 'reading', 'frequency_rank', 'meanings', 'card_state', 'part_of_speech', 'pitch_accent'],
+            ]);
+            if ($s !== 200) return null;
+            $vocab = [];
+            foreach ($j['vocabulary'] ?? [] as $v) {
+                [$vid, $sid, $spelling, $reading, $freq, $meanings, $state, $pos, $pitch] = $v;
+                $vocab[] = ['vid' => $vid, 'sid' => $sid, 'spelling' => $spelling, 'reading' => $reading, 'freq' => $freq,
+                    'meanings' => array_slice($meanings ?? [], 0, 5), 'state' => $state ?? [], 'pos' => $pos ?? [], 'pitch' => $pitch[0] ?? null];
+            }
+            $tokens = array_map(fn($t) => ['v' => $t[0], 'pos' => $t[1], 'len' => $t[2], 'furi' => $t[3]], $j['tokens'] ?? []);
+            return ['tokens' => $tokens, 'vocab' => $vocab];
+        });
+        if (!$data) fail('jpdb klarte ikke å lese teksten.', 502);
+        out($data);
     }
+
+    case 'jpdb_words': {
+        // every word in my decks, for the word list (cached for 10 minutes)
+        $words = sp_cached('jp_words', 600, function () {
+            $all = jp_all_cards();
+            if (!$all) return null;
+            $out = [];
+            foreach ($all['cards'] as $c) {
+                if (jp_is($c, 'redundant')) continue;
+                $out[] = ['vid' => $c['vid'], 'sid' => $c['sid'], 'spelling' => $c['spelling'], 'reading' => $c['reading'],
+                    'meaning' => implode('; ', array_slice($c['meanings'][0] ?? [], 0, 3)), 'state' => $c['state'], 'freq' => $c['freq'], 'pitch' => $c['pitch']];
+            }
+            return $out;
+        });
+        if ($words === null) fail('Fikk ikke kontakt med jpdb.', 502);
+        $all = jp_all_cards_decks_cached();
+        out(['words' => $words, 'decks' => $all]);
+    }
+
+    case 'jpdb_add': {
+        // put a word into one of my own decks (or a new "niben.no" deck)
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $b = body();
+        $vid = (int)($b['vid'] ?? 0);
+        $sid = (int)($b['sid'] ?? 0);
+        if ($vid <= 0 || $sid <= 0) fail('Ugyldig ord.');
+        $deck = $b['deck'] ?? null;
+        if ($deck === 'new') {
+            [$s, $j] = jp_api('deck/create-empty', ['name' => 'niben.no']);
+            if ($s !== 200 || empty($j['id'])) fail('Klarte ikke å lage en ny kortstokk på jpdb.', 502);
+            $deck = (int)$j['id'];
+        }
+        $deck = (int)$deck;
+        if ($deck <= 0) fail('Velg en kortstokk.');
+        [$s, $j] = jp_api('deck/add-vocabulary', ['id' => $deck, 'vocabulary' => [[$vid, $sid]]]);
+        if ($s !== 200) fail('jpdb svarte: ' . ($j['error_message'] ?? $s), 502);
+        kv_del('jp_public_v2', 'jp_words', 'jp_decks_own');
+        out(['ok' => true, 'deck' => $deck]);
+    }
+    }
+}
+
+/** My own (not built-in) decks – the ones words can be added to. Cached for 10 minutes. */
+function jp_all_cards_decks_cached(): array {
+    return sp_cached('jp_decks_own', 600, function () {
+        [$s, $j] = jp_api('list-user-decks', ['fields' => ['id', 'name', 'is_built_in']]);
+        if ($s !== 200) return null;
+        $out = [];
+        foreach ($j['decks'] ?? [] as [$id, $name, $builtIn]) if (!$builtIn) $out[] = ['id' => $id, 'name' => $name];
+        return $out;
+    }) ?? [];
 }

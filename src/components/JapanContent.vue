@@ -1,16 +1,19 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-import { GraduationCap, ArrowUpRight, Tv, Check } from 'lucide-vue-next'
+import { GraduationCap, ArrowUpRight, Tv, Check, LayoutDashboard, ScanText, BookA } from 'lucide-vue-next'
 import { jp, loadJapanese, jpdbUrl, pitchMorae, ANIME_READY } from '../composables/useJapanese'
 import { admin, checkLogin } from '../composables/useAdmin'
 import { room } from '../composables/useRoom'
 import JapanPractice from './JapanPractice.vue'
+import JapanReader from './JapanReader.vue'
+import JapanWords from './JapanWords.vue'
 
 // The Japanese corner's content (3D panel and plain page): progress from jpdb, the word of the day,
 // and – for the admin – flashcard practice.
 loadJapanese()
 checkLogin()
 
+const view = ref('home') // 'home' | 'les' | 'ord'
 const practicing = computed({ get: () => room.jpPractice, set: (v) => (room.jpPractice = v) })
 const total = computed(() => jp.count.due + jp.count.learning + jp.count.known + jp.count.new)
 const word = computed(() => jp.word)
@@ -38,6 +41,16 @@ watch(() => room.jpAnime, async (i) => {
       <p v-else-if="jp.error" class="notice error">{{ jp.error }}</p>
 
       <template v-if="jp.configured && !jp.error">
+        <!-- what to do here: overview, read a text, browse my words -->
+        <nav class="jtabs" role="tablist" :style="{ '--n': 3 }">
+          <span class="jpill" :style="{ transform: `translateX(${['home', 'les', 'ord'].indexOf(view) * 100}%)` }"></span>
+          <button role="tab" :class="{ on: view === 'home' }" @click="view = 'home'"><LayoutDashboard :size="15" />Oversikt</button>
+          <button role="tab" :class="{ on: view === 'les' }" @click="view = 'les'"><ScanText :size="15" />Les tekst</button>
+          <button role="tab" :class="{ on: view === 'ord' }" @click="view = 'ord'"><BookA :size="15" />Ordliste</button>
+        </nav>
+        <JapanReader v-if="view === 'les'" />
+        <JapanWords v-else-if="view === 'ord'" />
+        <template v-else>
         <!-- word of the day -->
         <article v-if="word" class="wotd">
           <small>今日の言葉 · dagens ord</small>
@@ -93,6 +106,7 @@ watch(() => room.jpAnime, async (i) => {
             <small class="dp">{{ d.known }} % kjent · {{ d.learning }} % påbegynt</small>
           </div>
         </section>
+        </template>
         <p class="src">Ordene og fremgangen kommer fra <a href="https://jpdb.io" target="_blank" rel="noopener">jpdb.io</a>.</p>
       </template>
     </template>
@@ -100,6 +114,11 @@ watch(() => room.jpAnime, async (i) => {
 </template>
 
 <style scoped>
+/* the same sliding pill as the sub-tabs */
+.jtabs { position: relative; display: grid; grid-template-columns: repeat(var(--n), 1fr); padding: 4px; border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-border); }
+.jpill { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / var(--n)); border-radius: 999px; background: var(--glass-strong); box-shadow: inset 0 1px 0 var(--glass-hi), 0 4px 12px rgba(43, 140, 255, 0.18); transition: transform 0.45s var(--spring); }
+.jtabs button { position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 6px; border: 0; background: none; color: var(--text-2); font: 600 0.84rem var(--font); cursor: pointer; white-space: nowrap; }
+.jtabs button.on { color: var(--accent); }
 .jpc { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .wotd {
   display: grid;
