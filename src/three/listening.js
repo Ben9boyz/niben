@@ -513,6 +513,48 @@ export function buildListeningCorner() {
   ipod.add(body)
   const W = 0.1, H = 0.166, D = 0.018
   add(new RoundedBoxGeometry(W, H, D, 4, 0.008), new THREE.MeshPhysicalMaterial({ color: 0xe2e4e8, roughness: 0.18, clearcoat: 1, metalness: 0.05 }), 0, 0, 0, body)
+  // sound coming out of the iPod: soft rings spreading from it and a few music notes drifting up (only while it plays)
+  const soundFx = new THREE.Group()
+  soundFx.position.copy(ipodHome.pos).add(new THREE.Vector3(0, 0.13, 0.02))
+  soundFx.visible = false
+  group.add(soundFx)
+  const ringGeo = new THREE.RingGeometry(0.93, 1, 48)
+  const rings = [0, 1, 2].map((i) => {
+    const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0x4ea1ff, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }))
+    m.userData.phase = i / 3
+    soundFx.add(m)
+    return m
+  })
+  const noteTex = ['\u266A', '\u266B'].map((ch) => canvasTex(64, 64, (x, w, h) => {
+    x.font = '700 52px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'
+    x.fillStyle = '#ffffff'; x.fillText(ch, w / 2, h / 2 + 4)
+  }))
+  const notes = [0, 1, 2, 3].map((i) => {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: noteTex[i % 2], color: i % 2 ? 0xffd27a : 0x8fc6ff, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }))
+    sp.userData = { phase: i / 4, side: i % 2 ? 1 : -1, sway: 0.6 + i * 0.35 }
+    soundFx.add(sp)
+    return sp
+  })
+  let soundA = 0 // fades in and out
+  /** Returns true while the effect is visible (the room must keep drawing). */
+  function updateSound(dt, t, camera, on) {
+    soundA += ((on ? 1 : 0) - soundA) * Math.min(1, dt * (on ? 3 : 4))
+    soundFx.visible = soundA > 0.02
+    if (!soundFx.visible) return false
+    for (const r of rings) {
+      const k = (t * 0.55 + r.userData.phase) % 1
+      r.scale.setScalar(0.05 + k * 0.2)
+      r.material.opacity = soundA * 0.5 * (1 - k) * Math.min(1, k * 6)
+      r.quaternion.copy(camera.quaternion)
+    }
+    for (const n of notes) {
+      const k = (t * 0.32 + n.userData.phase) % 1
+      n.position.set(n.userData.side * (0.03 + k * 0.1) + Math.sin(t * 1.6 + n.userData.sway * 6) * 0.012 * n.userData.sway, 0.03 + k * 0.25, 0.02)
+      n.scale.setScalar(0.04 + 0.012 * Math.sin(k * Math.PI))
+      n.material.opacity = soundA * Math.sin(Math.PI * k) * 0.9
+    }
+    return true
+  }
   const screenCanvas = document.createElement('canvas')
   screenCanvas.width = 2048
   screenCanvas.height = 1680 // same shape as the screen (SW : SH), at 4× – sharp even when the iPod stands there and the camera is close
@@ -1032,6 +1074,7 @@ export function buildListeningCorner() {
     arm.rotation.y = armAngle
     // the iPod's progress bar moves on once a second while something plays
     if (screenNow?.playing && performance.now() - screenDrawn > 1000) redrawScreen()
+    if (updateSound(dt, t, camera, !!screenNow?.playing && !holdIpod && !calm)) moving = true
 
     // the disc travels: out of the sleeve, in an arc, down onto the platter
     if (recFlight) {

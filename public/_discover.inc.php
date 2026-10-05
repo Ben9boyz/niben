@@ -110,6 +110,21 @@ function dc_handle(string $action, bool $post): void {
         $recs = json_decode((string)kv_get(DC_RECS), true) ?: ['recs' => [], 'at' => 0];
         out(['picks' => $picks, 'recs' => $recs['recs'] ?? [], 'at' => $recs['at'] ?? 0, 'hasKey' => (string)kv_get('lastfm_key') !== '']);
     }
+    case 'discover_daily': {
+        // "Dagens plate": picked ONCE per day on the server, so it is the same on every device (and doesn't change when
+        // the library does). A record from my library, plus one of the Last.fm suggestions ("Anbefalt i dag").
+        $today = date('Y-m-d');
+        $d = json_decode((string)kv_get('daily_pick'), true);
+        if (!is_array($d) || ($d['d'] ?? '') !== $today) {
+            $lib = sp_albums() ?: [];
+            $uri = $lib ? ($lib[hexdec(substr(md5($today), 0, 8)) % count($lib)]['uri'] ?? null) : null;
+            $recs = (json_decode((string)kv_get(DC_RECS), true) ?: [])['recs'] ?? [];
+            $rec = $recs ? $recs[hexdec(substr(md5($today . 'rec'), 0, 8)) % count($recs)] : null;
+            $d = ['d' => $today, 'uri' => $uri, 'rec' => $rec];
+            if ($uri || $rec) kv_set('daily_pick', json_encode($d, JSON_UNESCAPED_UNICODE)); // (nothing to pick from yet: ask again next time)
+        }
+        out($d);
+    }
     case 'discover_add': {
         if (!$post) fail('Bruk POST.', 405);
         require_admin();

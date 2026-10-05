@@ -10,7 +10,7 @@ import { steam, watchSteam, headerImg, fmtHours } from '../composables/useSteam'
 import { jp, loadJapanese } from '../composables/useJapanese'
 import { parseProgression } from '../lib/chords'
 import { room } from '../composables/useRoom'
-import { dailyAlbum } from '../composables/useDaily'
+import { dailyAlbum, dailyRec } from '../composables/useDaily'
 
 // "Nå": what I'm doing right now – listening, reading, Japanese, a song on the guitar, games and
 // travel. Everything comes from the places that already hold it, so there is nothing extra to keep up.
@@ -46,6 +46,11 @@ function openDaily() {
   if (!a) return
   room.musicView = 'vinyl'
   room.sel.musikk = { kind: 'album', uri: a.uri, t: Date.now() }
+  router.push('/lytte')
+}
+
+function openRec() {
+  room.discover = true
   router.push('/lytte')
 }
 
@@ -113,6 +118,10 @@ const inDays = (t) => {
       <button class="row daily" @click="openDaily">
         <img v-if="dailyAlbum.thumb || dailyAlbum.image" :src="dailyAlbum.thumb || dailyAlbum.image" alt="" class="art" crossorigin="anonymous" />
         <span class="txt"><b>{{ dailyAlbum.name }}</b><small>{{ dailyAlbum.artist }}<template v-if="dailyAlbum.year"> · {{ dailyAlbum.year }}</template></small></span>
+      </button>
+      <button v-if="dailyRec" class="row daily rec" @click="openRec">
+        <img v-if="dailyRec.thumb || dailyRec.image" :src="dailyRec.thumb || dailyRec.image" alt="" class="art" crossorigin="anonymous" />
+        <span class="txt"><small class="lbl">Anbefalt i dag</small><b>{{ dailyRec.name }}</b><small>{{ dailyRec.artist }}<template v-if="dailyRec.why"> · {{ dailyRec.why }}</template></small></span>
       </button>
     </section>
 

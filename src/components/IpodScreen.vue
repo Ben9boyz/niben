@@ -1,5 +1,5 @@
 <script setup>
-import { ChevronLeft, ChevronRight, Play, Lock, Shuffle, Folder } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, Play, Lock, Shuffle, Folder, X } from 'lucide-vue-next'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { room } from '../composables/useRoom'
 import { ipodRows, ipodFolderName } from '../composables/useIpodList'
@@ -128,7 +128,10 @@ onBeforeUnmount(() => {
     <header>
       <button class="back" @click="back" :aria-label="view === 'menu' ? 'Legg fra deg iPoden' : 'Tilbake'"><ChevronLeft size="1em" /></button>
       <span><Shuffle v-if="now?.shuffle" size="0.75em" class="shf" />{{ title }}</span>
-      <button class="np" :class="{ on: now?.playing }" @click="view = 'now'" aria-label="Spilles nå"><Play size="1em" fill="currentColor" /></button>
+      <span class="rt">
+        <button class="np" :class="{ on: now?.playing }" @click="view = 'now'" aria-label="Spilles nå"><Play size="1em" fill="currentColor" /></button>
+        <button class="np px" @click="room.musicView = 'ipodDock'" aria-label="Legg fra deg iPoden" title="Legg fra deg iPoden"><X size="1em" /></button>
+      </span>
     </header>
 
     <div v-if="view === 'now'" class="nowview">
@@ -177,9 +180,6 @@ onBeforeUnmount(() => {
     <button class="w-center" aria-label="Velg" @click="open(rows[active])"></button>
   </div>
 
-  <button v-if="rect" class="putdown glass" :style="{ left: `${rect.x + rect.w / 2}px`, top: `${Math.min(rect.y + rect.h * 2.3 + 12, innerHeight - 56)}px` }" @click="room.musicView = 'ipodDock'">
-    Legg fra deg iPoden
-  </button>
 </template>
 
 <style scoped>
@@ -200,7 +200,7 @@ onBeforeUnmount(() => {
 @keyframes on { from { filter: brightness(0.2); } }
 header {
   display: grid;
-  grid-template-columns: calc(var(--u) * 16) minmax(0, 1fr) calc(var(--u) * 16);
+  grid-template-columns: calc(var(--u) * 16) minmax(0, 1fr) calc(var(--u) * 24);
   padding: 0 calc(var(--u) * 1.5);
   align-items: center;
   height: calc(var(--u) * 13);
@@ -213,6 +213,8 @@ header {
 header span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .np { display: grid; place-items: center; border: 0; background: none; cursor: pointer; color: #9aa; font-size: 0.8em; padding: 0; height: 100%; }
 .np.on { color: #1db954; }
+.rt { display: grid; grid-template-columns: 1fr 1fr; height: 100%; }
+.np.px:hover { color: #d24b4b; }
 .back {
   display: grid;
   place-items: center;
