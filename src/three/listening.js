@@ -967,7 +967,7 @@ export function buildListeningCorner() {
       const r = l.rec
       const sel = uri === selectedUri && !l.returning
       const isPlaying = uri === playingUri && !sel && !l.returning
-      const peek = uri === peekUri && !sel && !l.returning
+      const peek = uri === peekUri && uri !== playingUri && !sel && !l.returning // the album that's playing already lies on the table: browsing past it must not pull it back to the shelf
       let scale = 1
       if (sel) {
         // hold still in front of the camera, cover (local +x) facing it – or flipped over to its back
