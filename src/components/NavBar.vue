@@ -8,7 +8,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { useTheme } from '../composables/useTheme'
 import { mode, toggleMode } from '../composables/useMode'
 import { admin, checkLogin } from '../composables/useAdmin'
-import { pwa, install, desktopApp } from '../composables/usePwa'
 import BrandLogo from './BrandLogo.vue'
 
 const route = useRoute()
@@ -128,15 +127,6 @@ onBeforeUnmount(() => {
     </a>
     <!-- only when logged in; the way in is a double-click (or long-press) on the logo -->
     <span v-if="admin.loggedIn" class="admin-chip glass on"><AdminAvatar /></span>
-
-    <a v-if="desktopApp" class="install glass" :href="desktopApp.url" download :title="`Last ned niben-appen for ${desktopApp.os} – alltid oppdatert, med tyngre grafikk`">
-      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14" /></svg>
-      <span>Last ned app</span>
-    </a>
-    <button v-else-if="pwa.canInstall && !pwa.installed" class="install glass" @click="install" title="Installer niben som app">
-      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14" /></svg>
-      <span>Installer app</span>
-    </button>
 
     <button class="mode glass" @click="toggleMode" :title="mode === 'rom' ? 'Bytt til enkel versjon' : 'Bytt til 3D-rommet'">
       <svg v-if="mode === 'rom'" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10" /></svg>
@@ -377,7 +367,7 @@ onBeforeUnmount(() => {
     justify-content: center; display: grid; place-items: center;
     animation: none;
   }
-  .admin-chip { opacity: 1; }
+  .admin-chip { opacity: 1; border-radius: 50% !important; aspect-ratio: 1 / 1; width: 48px; height: 48px; padding: 3px; }
   .mode span, .install span { display: none; }
   .kbdbtn { display: grid; color: var(--text-2); border: 0; cursor: pointer; }
   .kbdbtn:hover { color: var(--accent); }

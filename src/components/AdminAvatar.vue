@@ -16,7 +16,9 @@ const src = computed(() => data.om?.bilde || null)
 </template>
 
 <style scoped>
-.adm { overflow: hidden; place-self: stretch; position: relative; display: grid; place-items: center; width: 100%; height: 100%; min-width: 40px; min-height: 40px; border-radius: 50%; color: var(--accent); }
+.adm { overflow: visible; place-self: stretch; position: relative; display: grid; place-items: center; width: 100%; height: 100%; aspect-ratio: 1 / 1; border-radius: 50%; color: var(--accent); }
+.adm { }
 .adm img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px var(--accent); }
+.dot { z-index: 1; }
 .dot { position: absolute; right: 0; bottom: 0; width: 11px; height: 11px; border-radius: 50%; background: #1db954; border: 2px solid var(--bg); }
 </style>

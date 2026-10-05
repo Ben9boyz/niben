@@ -7,6 +7,8 @@ export const steam = reactive({
   error: null,
   profile: null,
   library: null,
+  live: null, // details about the game being played now (or the last one): players online, news, my newest unlocks
+  friends: null, // { best, list, online, count } or { hidden }
 })
 
 let loading = null
@@ -22,6 +24,8 @@ export function loadSteam(force = false) {
         steam.error = null
         steam.profile = j.profile || null
         steam.library = j.library || null
+        steam.live = j.live || null
+        steam.friends = j.friends || null
       }
     })
     .catch(() => { steam.error = 'Fikk ikke kontakt med Steam.' })
@@ -57,3 +61,12 @@ export function ago(unix) {
 }
 
 export const fmtHours = (h) => (h >= 100 ? Math.round(h).toLocaleString('nb-NO') : String(h).replace('.', ',')) + ' t'
+
+/** "1 t 23 min" for a session that began at `unix`. */
+export function sessionLen(unix) {
+  if (!unix) return ''
+  const m = Math.max(1, Math.round((Date.now() / 1000 - unix) / 60))
+  return m >= 60 ? `${Math.floor(m / 60)} t ${m % 60} min` : `${m} min`
+}
+export const fmtDate = (unix) => (unix ? new Date(unix * 1000).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
+export const fmtYears = (unix) => (unix ? `${Math.max(1, Math.round((Date.now() / 1000 - unix) / 31557600))} år` : '')

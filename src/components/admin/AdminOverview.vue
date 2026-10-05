@@ -1,9 +1,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Users, Music2, Gamepad2, Languages, Globe2, BookOpen, Plane, Mic, RefreshCw, Unplug, Plug, Trash2, Check, AlertTriangle } from 'lucide-vue-next'
+import { Download, Users, Music2, Gamepad2, Languages, Globe2, BookOpen, Plane, Mic, RefreshCw, Unplug, Plug, Trash2, Check, AlertTriangle } from 'lucide-vue-next'
 import { api } from '../../composables/useAdmin'
 import { spotify, setLockSeconds, refreshSpotify, fmtLock, notify } from '../../composables/useSpotify'
 import { byCode } from '../../lib/languages'
+import { pwa, install, desktopApp } from '../../composables/usePwa'
 
 // The first admin tab: what is connected and how things are set up, in plain words – with the buttons to fix it.
 const emit = defineEmits(['goto'])
@@ -61,6 +62,18 @@ const langName = (c) => byCode[c]?.en || c
         <button class="stat" @click="emit('goto', 'reiser')"><Plane :size="18" /><b>{{ st.counts.trips }}</b><span>reiser</span><small>{{ st.counts.photos }} bilder</small></button>
         <button class="stat" @click="emit('goto', 'boker')"><BookOpen :size="18" /><b>{{ st.counts.books }}</b><span>bøker</span></button>
         <button class="stat" @click="emit('goto', 'opptak')"><Mic :size="18" /><b>{{ st.counts.recordings }}</b><span>gitaropptak</span></button>
+      </section>
+
+      <!-- the desktop app (only I need it, so it lives here and not in the menu) -->
+      <section class="card">
+        <header><Download :size="18" /><h3>Program på pcen</h3></header>
+        <p class="help">niben som eget program: alltid oppdatert, med tyngre grafikk i 3D-rommet. Last ned for maskinen du sitter på, eller installer den som app rett fra nettleseren.</p>
+        <div class="row">
+          <a class="btn primary small" :class="{ rec: desktopApp?.os === 'Mac' }" href="app/niben-mac-arm64.dmg" download><Download :size="14" />Mac (Apple Silicon){{ desktopApp?.os === 'Mac' ? ' – din maskin' : '' }}</a>
+          <a class="btn primary small" :class="{ rec: desktopApp?.os === 'Windows' }" href="app/niben-win-x64.exe" download><Download :size="14" />Windows{{ desktopApp?.os === 'Windows' ? ' – din maskin' : '' }}</a>
+          <button v-if="pwa.canInstall && !pwa.installed" class="btn small" @click="install"><Download :size="14" />Installer som app</button>
+        </div>
+        <p v-if="pwa.installed" class="help">Du bruker allerede niben som app her.</p>
       </section>
 
       <!-- visitors -->
