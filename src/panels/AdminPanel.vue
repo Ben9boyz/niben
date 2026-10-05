@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue'
-import { LayoutDashboard, Plane, BookOpen, Mic, Music, Type, Box, Eye, EyeOff, LogOut, Lock } from 'lucide-vue-next'
+import { LayoutDashboard, Plane, BookOpen, Mic, Music, Type, Box, Mail, Eye, EyeOff, LogOut, Lock } from 'lucide-vue-next'
 import { admin, checkLogin, login, logout } from '../composables/useAdmin'
 import AdminTrips from '../components/admin/AdminTrips.vue'
 import AdminBooks from '../components/admin/AdminBooks.vue'
@@ -9,6 +9,7 @@ import AdminSongs from '../components/admin/AdminSongs.vue'
 import AdminOverview from '../components/admin/AdminOverview.vue'
 import AdminTexts from '../components/admin/AdminTexts.vue'
 import AdminRoom from '../components/admin/AdminRoom.vue'
+import AdminNews from '../components/admin/AdminNews.vue'
 
 const TABS = [
   { id: 'oversikt', label: 'Oversikt', icon: LayoutDashboard },
@@ -17,6 +18,7 @@ const TABS = [
   { id: 'opptak', label: 'Gitaropptak', icon: Mic },
   { id: 'sanger', label: 'Sanger', icon: Music },
   { id: 'rom', label: 'Rom', icon: Box },
+  { id: 'nyhetsbrev', label: 'Nyhetsbrev', icon: Mail },
   { id: 'tekster', label: 'Tekster', icon: Type },
 ]
 const KEY = 'niben-admin-tab'
@@ -83,6 +85,7 @@ async function submit() {
           <AdminBooks v-else-if="tab === 'boker'" key="b" />
           <AdminSongs v-else-if="tab === 'sanger'" key="s" />
           <AdminRoom v-else-if="tab === 'rom'" key="m" />
+          <AdminNews v-else-if="tab === 'nyhetsbrev'" key="n" />
           <AdminTexts v-else-if="tab === 'tekster'" key="t" />
           <AdminRecordings v-else key="o" />
         </transition>

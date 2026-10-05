@@ -1,6 +1,7 @@
 <script setup>
 import { tx } from '../composables/useTexts'
 import RecordingList from '../components/RecordingList.vue'
+import NewsletterSignup from '../components/NewsletterSignup.vue'
 import { Guitar } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { useData } from '../composables/useData'
@@ -37,6 +38,7 @@ function strum() { room.api?.strum(room.sel.gitar) }
           <div class="section-label">Opptak</div>
           <div v-if="!g.opptak?.length" class="empty">Ingen opptak lagt inn ennå.</div>
           <RecordingList :items="g.opptak || []" />
+          <NewsletterSignup />
           <p v-if="g.kreditt" class="credit">
             3D-modell: <a :href="g.kreditt.url" target="_blank" rel="noopener">{{ g.kreditt.tekst }}</a>, fargelagt for denne siden.
           </p>

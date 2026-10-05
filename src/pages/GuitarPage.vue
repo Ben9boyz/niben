@@ -1,6 +1,7 @@
 <script setup>
 import { tx } from '../composables/useTexts'
 import RecordingList from '../components/RecordingList.vue'
+import NewsletterSignup from '../components/NewsletterSignup.vue'
 import { Timer } from 'lucide-vue-next'
 import { ref, computed } from 'vue'
 import { useData } from '../composables/useData'
@@ -38,6 +39,7 @@ const g = computed(() => data.gitarer?.[idx.value])
           <div v-if="!g.opptak?.length" class="empty">{{ tx('guitar.none') }}</div>
           <RecordingList :items="g.opptak || []" />
         </div>
+        <NewsletterSignup />
         <p v-if="g.kreditt" class="credit">3D-modell: <a :href="g.kreditt.url" target="_blank" rel="noopener">{{ g.kreditt.tekst }}</a>, fargelagt for denne siden.</p>
       </div>
     </div>

@@ -410,6 +410,29 @@ export function mockApi() {
             if (!needAdmin()) return
             db.decor = (db.decor || []).filter((d) => d.id !== b.id)
             return send(res, 200, { ok: true })
+          case 'news_subscribe': {
+            if (b.website) return send(res, 200, { ok: true })
+            const em = String(b.email || '').trim().toLowerCase()
+            if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return send(res, 400, { error: 'Det ser ikke ut som en e-postadresse.' })
+            db.subs = db.subs || []
+            if (!db.subs.some((x) => x.email === em)) db.subs.push({ id: db.subs.length + 1, email: em, confirmed: db.subs.length % 2, created: Math.floor(Date.now() / 1000) })
+            return send(res, 200, { ok: true })
+          }
+          case 'news_admin':
+            if (!needAdmin()) return
+            return send(res, 200, { confirmed: (db.subs || []).filter((x) => +x.confirmed).length, pending: (db.subs || []).filter((x) => !+x.confirmed).length, list: db.subs || [], last: db.newsLast || null })
+          case 'news_remove':
+            if (!needAdmin()) return
+            db.subs = (db.subs || []).filter((x) => x.id !== b.id)
+            return send(res, 200, { ok: true })
+          case 'news_send': {
+            if (!needAdmin()) return
+            if (!b.subject || !b.body) return send(res, 400, { error: 'Skriv både emne og tekst.' })
+            if (b.to) return send(res, 200, { ok: true, sent: 1, test: true })
+            const n = (db.subs || []).filter((x) => +x.confirmed).length
+            db.newsLast = { t: Math.floor(Date.now() / 1000), subject: b.subject, sent: n, failed: 0 }
+            return send(res, 200, { ok: true, sent: n, failed: 0 })
+          }
           case 'about_get':
             return send(res, 200, { about: db.about || null })
           case 'about_photo': {

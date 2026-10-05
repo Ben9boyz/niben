@@ -83,6 +83,13 @@ export const TEXT_GROUPS = [
     { k: 'discover.recs.hint', label: 'Forklaring til forslagene', d: 'Kjente album fra artister som ligner på dem jeg har mest av, men som ikke er i samlingen min.', long: true },
     { k: 'discover.none', label: 'Når det ikke er forslag ennå', d: 'Ingen forslag ennå.' },
   ] },
+  { title: 'Nyhetsbrev', items: [
+    { k: 'news.title', label: 'Tittel', d: 'Nye opptak på e-post' },
+    { k: 'news.hint', label: 'Forklaring', d: 'Få en e-post når jeg legger ut et nytt gitaropptak – sjelden, og du kan melde deg av med ett klikk. Adressen brukes bare til dette.', long: true },
+    { k: 'news.placeholder', label: 'Tekst i feltet', d: 'din@epost.no' },
+    { k: 'news.button', label: 'Knapp', d: 'Meld meg på' },
+    { k: 'news.thanks', label: 'Etter påmelding', d: 'Sjekk innboksen din og trykk på lenka i e-posten for å bekrefte. (Se i søppelposten hvis den ikke kommer.)', long: true },
+  ] },
   { title: 'Gjestebok', items: [
     { k: 'guest.title', label: 'Tittel', d: 'Gjestebok' },
     { k: 'guest.note', label: 'Under skjemaet', d: 'Hilsenen vises etter at jeg har lest den.' },
