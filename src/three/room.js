@@ -99,7 +99,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   renderer.toneMapping = THREE.AgXToneMapping
   renderer.shadowMap.enabled = true
   renderer.shadowMap.autoUpdate = false // redrawn only when something moves
-  renderer.shadowMap.type = THREE.PCFShadowMap
+  renderer.shadowMap.type = inApp ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap // app: softer penumbra
   host.appendChild(renderer.domElement)
 
   const scene = new THREE.Scene()
@@ -115,6 +115,22 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     samples: quality === 'low' ? 2 : quality === 'ultra' ? Math.min(8, renderer.capabilities.maxSamples || 4) : 4,
   }))
   composer.addPass(new RenderPass(scene, camera))
+  // Heavy shaders (ambient occlusion, light shafts, lamp shadows, full-size bloom) only in the downloaded app.
+  // The web version stays light: no extra code is even downloaded for it.
+  const fancy = inApp
+  let ao = null
+  if (fancy) {
+    import('three/examples/jsm/postprocessing/GTAOPass.js').then(({ GTAOPass }) => {
+      ao = new GTAOPass(scene, camera, 256, 256)
+      ao.output = GTAOPass.OUTPUT.Default
+      ao.updateGtaoMaterial({ radius: 0.35, distanceExponent: 1.5, thickness: 1.2, scale: 1.1, samples: 24, distanceFallOff: 1, screenSpaceRadius: false })
+      ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 3, samples: 16 })
+      composer.insertPass(ao, 1)
+      ao.enabled = level <= 3
+      resize()
+      invalidate(0.5)
+    })
+  }
   const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.5, 0.55, 0.88)
   composer.addPass(bloom)
   composer.addPass(new OutputPass())
@@ -166,6 +182,50 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   sky.position.set(4.2, 1.6, 1.7)
   sky.rotation.y = -Math.PI / 2
   scene.add(sky)
+  // ── light shafts from the window (ultra only): a soft, dusty volume along the sun's direction ──
+  const shaftU = { uTime: { value: 0 }, uStrength: { value: 0 }, uColor: { value: new THREE.Color(0xfff1dc) } }
+  let shafts = null
+  if (fancy) {
+    const dir = new THREE.Vector3(-10, -5.2, -3.2).normalize()
+    const L = 6.5
+    const c = [[0.9, 2.3, 1.0], [0.9, 0.9, 1.0], [0.9, 0.9, 2.4], [0.9, 2.3, 2.4]].map(([, y, z]) => new THREE.Vector3(3.95, y, z))
+    const far = c.map((v) => v.clone().addScaledVector(dir, L))
+    const pos = [], uv = []
+    const tri = (a, b, d, ua, ub, ud) => { pos.push(...a.toArray(), ...b.toArray(), ...d.toArray()); uv.push(ua, ub, ud) }
+    for (let i = 0; i < 4; i++) {
+      const j = (i + 1) % 4
+      tri(c[i], c[j], far[j], 0, 0, 1); tri(c[i], far[j], far[i], 0, 1, 1)
+    }
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+    g.setAttribute('along', new THREE.Float32BufferAttribute(uv, 1))
+    g.computeVertexNormals()
+    const m = new THREE.ShaderMaterial({
+      uniforms: shaftU, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, toneMapped: false,
+      vertexShader: `varying float vA; varying vec3 vW; varying vec3 vN;
+        attribute float along;
+        void main(){ vA = along; vec4 w = modelMatrix * vec4(position,1.); vW = w.xyz; vN = normalize(mat3(modelMatrix)*normal); gl_Position = projectionMatrix*viewMatrix*w; }`,
+      fragmentShader: `uniform float uTime; uniform float uStrength; uniform vec3 uColor;
+        varying float vA; varying vec3 vW; varying vec3 vN;
+        float h(vec3 p){ return fract(sin(dot(p, vec3(12.9898,78.233,37.719)))*43758.5453); }
+        float n(vec3 p){ vec3 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+          return mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),
+                     mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z); }
+        void main(){
+          vec3 V = normalize(cameraPosition - vW);
+          float edge = pow(abs(dot(normalize(vN), V)), 1.6);          // soft sides, no hard silhouette
+          float fade = pow(1. - vA, 1.4) * smoothstep(0., .06, vA);   // fades with distance from the window
+          float dust = .55 + .45 * n(vW*2.2 + vec3(uTime*.05, uTime*.03, 0.));
+          dust *= .75 + .25 * n(vW*7. - vec3(0., uTime*.08, 0.));
+          gl_FragColor = vec4(uColor * uStrength * edge * fade * dust, 1.);
+        }`,
+    })
+    shafts = new THREE.Mesh(g, m)
+    shafts.frustumCulled = false
+    shafts.renderOrder = 5
+    shafts.visible = false
+    scene.add(shafts)
+  }
   // ── weather outside the window: rain / snow falling in front of the sky, lightning, grey clouds ──
   let weather = { kind: 'clear', day: true }
   const RAIN_N = 110
@@ -256,6 +316,12 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   const lampLight = new THREE.PointLight(0xffd7a8, 0.4, 7, 1.6)
   lampLight.position.set(0.9, 1.78, 0)
   lampGroup.add(lampLight)
+  if (inApp) { // the lamp casts real shadows in the app
+    lampLight.castShadow = true
+    lampLight.shadow.mapSize.set(1024, 1024)
+    lampLight.shadow.bias = -0.002
+    lampLight.shadow.radius = 4
+  }
 
   // corner plant
   const plant = new THREE.Group()
@@ -675,6 +741,18 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     windowLight.intensity = t.window * d
     sun.intensity = t.sun * d
     hemi.intensity = t.hemi * (t.night ? 1 : 0.7 + 0.3 * d)
+    // golden hour: the sun is warmer early and late in the day (free – just a colour)
+    if (!t.night) {
+      const hr = new Date().getHours() + new Date().getMinutes() / 60
+      const warm = Math.min(1, Math.max(0, Math.abs(hr - 13) - 3.5) / 3) // 0 around midday, 1 at ~19:30 / ~6:30
+      sun.color.set(t.sunColor).lerp(new THREE.Color(0xff9a52), warm * 0.7)
+      windowLight.color.set(t.windowColor).lerp(new THREE.Color(0xffb27a), warm * 0.6)
+    }
+    if (shafts) {
+      shafts.visible = !reduced && (t.night ? true : weather.kind === 'clear' || weather.kind === 'cloud')
+      shaftU.uStrength.value = t.night ? 0.035 : 0.16 * d * d
+      shaftU.uColor.value.copy(t.night ? new THREE.Color(0x9fc0ff) : sun.color)
+    }
   }
   function setTheme(name) {
     themeName = THEMES[name] ? name : 'light'
@@ -743,7 +821,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     renderer.setSize(w, h, false)
     composer.setPixelRatio(renderer.getPixelRatio())
     composer.setSize(w, h)
-    bloom.resolution.set(w / 2, h / 2)
+    bloom.resolution.set(fancy ? w : w / 2, fancy ? h : h / 2) // ultra: bloom at full resolution
     camera.aspect = w / h
     // narrow screens: widen the lens so the subject fits
     camera.fov = w / h < 0.8 ? 62 : w / h < 1.2 ? 52 : 42
@@ -780,6 +858,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   function applyLevel() {
     const l = LEVELS[level]
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, l.pr))
+    if (ao) ao.enabled = level <= 3 // AO is the first thing to go when frames get slow
     resize()
   }
   applyLevel()
@@ -824,6 +903,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     // little things move on their own (the cat breathes, dust drifts, steam rises …): a gentle ~20 frames a second while you can see them
     if (!active && !shadowsDirty && !(ambient && now - lastRender > 48) && now - lastRender < 1000) return
     if (active) measure(raw)
+    shaftU.uTime.value = simT
     if (shadowsDirty || ++shadowTick % 30 === 0) renderer.shadowMap.needsUpdate = true
     shadowsDirty = false
     composer.render()

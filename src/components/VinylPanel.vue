@@ -1,8 +1,8 @@
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import { spotify, useSpotify, refreshSpotify, prefetchTracks, findAlbum } from '../composables/useSpotify'
-import { admin, checkLogin, api } from '../composables/useAdmin'
+import { spotify, useSpotify, prefetchTracks, findAlbum } from '../composables/useSpotify'
+import { admin, checkLogin } from '../composables/useAdmin'
 import { room } from '../composables/useRoom'
 import { mode } from '../composables/useMode'
 import GroupedGrid from './GroupedGrid.vue'
@@ -57,11 +57,6 @@ watch(selectedUri, async () => {
   else if (rootEl.value && rootEl.value.getBoundingClientRect().top < 0) rootEl.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
 })
 
-async function disconnect() {
-  if (!confirm('Koble fra Spotify?')) return
-  await api('spotify_disconnect', {})
-  refreshSpotify()
-}
 </script>
 
 <template>
@@ -102,10 +97,6 @@ async function disconnect() {
             <GroupedGrid by-artist :flat="!!q.trim()" :items="items" :playing-uri="spotify.now?.context" @pick="pick" @hover="(it) => prefetchTracks(it.uri)" />
             <p v-if="!items.length" class="muted">Ingen treff.</p>
           </template>
-          <div v-if="admin.loggedIn" class="admin-row">
-            <button class="btn small" @click="api('spotify_refresh', {}).then(refreshSpotify)">Oppdater fra Spotify</button>
-            <button class="btn small danger" @click="disconnect">Koble fra</button>
-          </div>
         </div>
       </transition>
     </template>
@@ -129,7 +120,6 @@ async function disconnect() {
 .search.wide { width: auto; flex: 1 1 auto; }
 .spot { display: inline-flex; align-items: center; gap: 4px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--glass-border); background: var(--glass-strong); color: var(--text-2); font: 600 0.78rem var(--font); cursor: pointer; flex: none; }
 .spot:hover, .spot.on { color: var(--accent); border-color: var(--accent); }
-.admin-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 @media (max-width: 820px) {
   /* phones: the name on top, the buttons spread over the whole width underneath */
   .stick { flex-direction: column; align-items: stretch; gap: 8px; }
