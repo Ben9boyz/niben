@@ -6,19 +6,19 @@ function songs_ensure(): void {
 CREATE TABLE IF NOT EXISTS songs (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT, title VARCHAR(200) NOT NULL, artist VARCHAR(200) NULL,
   chords VARCHAR(400) NOT NULL, bpm SMALLINT UNSIGNED NULL, beats TINYINT UNSIGNED NULL, capo TINYINT UNSIGNED NULL,
-  ug_url VARCHAR(255) NULL, notes TEXT NULL, sheet TEXT NULL, practising TINYINT(1) NOT NULL DEFAULT 0,
+  ug_url VARCHAR(255) NULL, notes TEXT NULL, sheet TEXT NULL, practising TINYINT(1) NOT NULL DEFAULT 0, strum VARCHAR(32) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 SQL);
     // tables made before the chord sheet existed get the column added once
-    foreach (['sheet TEXT NULL', 'practising TINYINT(1) NOT NULL DEFAULT 0'] as $col) {
+    foreach (['sheet TEXT NULL', 'practising TINYINT(1) NOT NULL DEFAULT 0', 'strum VARCHAR(32) NULL'] as $col) {
         try { db()->exec('ALTER TABLE songs ADD COLUMN ' . $col); } catch (PDOException $e) { /* already there */ }
     }
 }
 
 function songs_list(PDO $pdo): array {
-    $sql = 'SELECT id, title, artist, chords, bpm, beats, capo, ug_url, notes, sheet, practising FROM songs ORDER BY title, id';
+    $sql = 'SELECT id, title, artist, chords, bpm, beats, capo, ug_url, notes, sheet, practising, strum FROM songs ORDER BY title, id';
     try {
         $rows = $pdo->query($sql)->fetchAll();
     } catch (PDOException $e) {
@@ -40,7 +40,7 @@ function songs_handle(string $action, bool $post): void {
         // a song to practise: its chords (e.g. "G D Em C"), tempo, capo and a link to Ultimate Guitar
         if (!$post) fail('Bruk POST.', 405);
         require_admin();
-        songs_ensure();
+        songs_ensure(); // (adds the newest columns, e.g. strum, to an older table)
         $b = body();
         $title = str_or_null($b['title'] ?? null, 200) ?? fail('Skriv en tittel.');
         $chords = preg_replace('/\s+/', ' ', trim((string)($b['chords'] ?? '')));
@@ -59,12 +59,14 @@ function songs_handle(string $action, bool $post): void {
             str_or_null($b['notes'] ?? null, 4000),
             str_or_null($b['sheet'] ?? null, 8000),
             empty($b['practising']) ? 0 : 1,
+            // strumming: one character per eighth note – D (down), U (up), X (muted), - (nothing)
+            preg_match('~^[DUX-]{4,32}$~', strtoupper((string)($b['strum'] ?? ''))) ? strtoupper((string)$b['strum']) : null,
         ];
         $id = int_or_null($b['id'] ?? null, 1, PHP_INT_MAX);
         if ($id) {
-            db()->prepare('UPDATE songs SET title=?, artist=?, chords=?, bpm=?, beats=?, capo=?, ug_url=?, notes=?, sheet=?, practising=? WHERE id=?')->execute([...$vals, $id]);
+            db()->prepare('UPDATE songs SET title=?, artist=?, chords=?, bpm=?, beats=?, capo=?, ug_url=?, notes=?, sheet=?, practising=?, strum=? WHERE id=?')->execute([...$vals, $id]);
         } else {
-            db()->prepare('INSERT INTO songs (title, artist, chords, bpm, beats, capo, ug_url, notes, sheet, practising) VALUES (?,?,?,?,?,?,?,?,?,?)')->execute($vals);
+            db()->prepare('INSERT INTO songs (title, artist, chords, bpm, beats, capo, ug_url, notes, sheet, practising, strum) VALUES (?,?,?,?,?,?,?,?,?,?,?)')->execute($vals);
             $id = (int)db()->lastInsertId();
         }
         out(['ok' => true, 'id' => $id]);

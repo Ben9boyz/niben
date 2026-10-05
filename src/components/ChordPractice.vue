@@ -190,7 +190,7 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); clearInter
           <p v-if="s.notat" class="note">{{ s.notat }}</p>
         </div>
         <div class="sa">
-          <button v-if="s.ark" class="btn small" @click="sheetId = s.id"><BookOpen :size="14" />Ark</button>
+          <button class="btn small" :title="s.ark ? 'Akkordarket – med slagmønster og avspilling' : 'Slagmønster og avspilling av akkordene'" @click="sheetId = s.id"><BookOpen :size="14" />{{ s.ark ? 'Ark' : 'Slag' }}</button>
           <button class="btn primary small" @click="practiseSong(s)"><Play :size="14" fill="currentColor" />Øv</button>
           <a class="btn small" :href="ugLink(s)" target="_blank" rel="noopener">Ultimate Guitar <ArrowUpRight :size="14" /></a>
         </div>
