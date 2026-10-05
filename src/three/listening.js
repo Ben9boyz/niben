@@ -10,6 +10,8 @@ import { canvasTex, wrapText } from './textures'
 
 const SLEEVE = 0.31
 const THICK = 0.0095
+const SLEEVE_T = 0.0045 // a record sleeve that has left the shelf: thin, like the real thing (the shelf slots are wider)
+const DISC_R = 0.147 // the vinyl: a 12-inch disc in a 12.4-inch sleeve
 const BOARD_W = 1.5
 const BOTTOM_Y = 0.0925 // top of the bottom board
 const TOP_Y = 0.61 // top of the sideboard
@@ -827,7 +829,26 @@ export function buildListeningCorner() {
     const backMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(r.color), roughness: 0.6 })
     const spineMat = new THREE.MeshStandardMaterial({ map: spineTex(r.album, r.color), roughness: 0.6 })
     // faces: +x front cover, -x back, +y/-y edges, +z spine, -z back edge
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(THICK, SLEEVE, SLEEVE), [coverMat, backMat, pageMat, pageMat, spineMat, pageMat])
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(SLEEVE_T, SLEEVE, SLEEVE), [coverMat, backMat, pageMat, pageMat, spineMat, pageMat])
+    // the vinyl itself, inside the sleeve: it slides a little way out of the top when the record is held, browsed or playing
+    const labelCol = r.color || '#c9553a'
+    const discTex = canvasTex(512, 512, (x, w, h) => {
+      x.fillStyle = '#0c0c0e'; x.fillRect(0, 0, w, h)
+      const c = w / 2
+      for (let g = 0.36; g < 0.99; g += 0.011) { x.strokeStyle = `rgba(255,255,255,${0.025 + ((g * 977) % 1) * 0.05})`; x.lineWidth = 1; x.beginPath(); x.arc(c, c, c * g, 0, Math.PI * 2); x.stroke() }
+      x.strokeStyle = 'rgba(255,255,255,0.09)'; x.lineWidth = 3; x.beginPath(); x.arc(c, c, c * 0.355, 0, Math.PI * 2); x.stroke()
+      x.fillStyle = labelCol; x.beginPath(); x.arc(c, c, c * 0.33, 0, Math.PI * 2); x.fill()
+      x.fillStyle = 'rgba(255,255,255,0.18)'; x.beginPath(); x.arc(c, c, c * 0.33, 0, Math.PI * 2); x.arc(c, c, c * 0.27, 0, Math.PI * 2, true); x.fill()
+      x.fillStyle = '#0c0c0e'; x.beginPath(); x.arc(c, c, c * 0.028, 0, Math.PI * 2); x.fill()
+    })
+    const discMat = new THREE.MeshStandardMaterial({ map: discTex, roughness: 0.32, metalness: 0.15 })
+    const discEdge = new THREE.MeshStandardMaterial({ color: 0x0c0c0e, roughness: 0.4 })
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(DISC_R, DISC_R, 0.0016, 72), [discEdge, discMat, discMat])
+    disc.rotation.z = Math.PI / 2 // the disc's axis points the same way as the cover's
+    disc.castShadow = true
+    const discHolder = new THREE.Group()
+    discHolder.add(disc)
+    mesh.add(discHolder)
     const slot = r.guest ? null : stackSlot(r.album.uri)
     if (slot) { mesh.position.copy(slot.pos); mesh.quaternion.copy(slot.q) } // it lies in the stack on the table: it comes from there
     else mesh.position.copy(r.home).setZ(r.home.z + r.out * 0.09)
@@ -837,17 +858,18 @@ export function buildListeningCorner() {
     if (r.guest) {
       // tumbling in from the window
       mesh.quaternion.setFromEuler(new THREE.Euler(0.8, -1.2, 0.5))
-      return { mesh, rec: r, vel: new THREE.Vector3(0, 0.4, 0), returning: false }
+      return { mesh, rec: r, disc: discHolder, vel: new THREE.Vector3(0, 0.4, 0), returning: false }
     }
     r.hidden = true
     writeInstance(r)
-    return { mesh, rec: r, vel: new THREE.Vector3(), returning: false }
+    return { mesh, rec: r, disc: discHolder, vel: new THREE.Vector3(), returning: false }
   }
   function dropLoose(uri) {
     const l = loose.get(uri)
     if (!l) return
     group.remove(l.mesh)
     l.mesh.geometry.dispose()
+    l.disc?.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach((m) => { m.map?.dispose(); m.dispose() }) } })
     l.mesh.material.forEach((m) => { if (m !== pageMat) { m.map?.dispose(); m.dispose() } })
     loose.delete(uri)
     if (l.rec.guest) { guestRecs.delete(uri); return }
@@ -1018,6 +1040,9 @@ export function buildListeningCorner() {
         targetPos.copy(r.home)
         targetQ.identity()
       }
+      // the vinyl slides out of the sleeve a little (held / browsed / playing) and back in
+      const wantOut = sel ? 0.056 : peek ? 0.05 : isPlaying ? 0.042 : 0
+      if (Math.abs(wantOut - l.disc.position.y) > 0.0004) { l.disc.position.y += (wantOut - l.disc.position.y) * Math.min(1, dt * 5); moving = true }
       const k = sel ? 55 : 90, c = sel ? 11 : 14
       l.vel.x += ((targetPos.x - l.mesh.position.x) * k - l.vel.x * c) * dt
       l.vel.y += ((targetPos.y - l.mesh.position.y) * k - l.vel.y * c) * dt
@@ -1074,7 +1099,7 @@ export function buildListeningCorner() {
     if (!l || l.returning) return null
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
     for (let i = 0; i < 8; i++) {
-      boxCorner.set(i & 1 ? THICK / 2 : -THICK / 2, i & 2 ? SLEEVE / 2 : -SLEEVE / 2, i & 4 ? SLEEVE / 2 : -SLEEVE / 2)
+      boxCorner.set(i & 1 ? SLEEVE_T / 2 : -SLEEVE_T / 2, i & 2 ? SLEEVE / 2 : -SLEEVE / 2, i & 4 ? SLEEVE / 2 : -SLEEVE / 2)
       l.mesh.localToWorld(boxCorner).project(camera)
       const x = (boxCorner.x + 1) / 2 * width
       const y = (1 - boxCorner.y) / 2 * height
