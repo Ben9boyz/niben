@@ -58,6 +58,8 @@ function setHidden(v) {
   if (route.name === 'lytte') v ? set.add('lytte') : set.delete('lytte')
   try { localStorage.setItem(HIDE_KEY, JSON.stringify([...set])) } catch {}
 }
+// phones: picking up the iPod slides the sheet away so the iPod fills the screen (the arrow brings the panel back)
+watch(holdingIpod, (v) => { if (v && mobile.value) collapsed.value = true })
 watch(() => route.name, (n) => (room.panelHidden = n === 'lytte' && hiddenSet().has(n)), { immediate: true })
 
 // Tell the 3D view how much of the screen the panel covers,

@@ -488,7 +488,8 @@ export function buildListeningCorner() {
   add(new THREE.CylinderGeometry(0.018, 0.018, 0.004, 20), new THREE.MeshStandardMaterial({ color: 0xe8b934, roughness: 0.5 }), 0.27, 0.002, 0.07, tt)
 
   // ── iPod classic ──
-  const ipodHome = { pos: new THREE.Vector3(1.92, 0.43, 1.3), rotY: -0.45 }
+  // on the sideboard, in front of the leaning sleeve – next to the turntable, so the camera hardly has to move
+  const ipodHome = { pos: new THREE.Vector3(-0.02, TOP_Y, 0.36), rotY: 0.22 }
   const ipod = new THREE.Group()
   ipod.position.copy(ipodHome.pos)
   ipod.rotation.y = ipodHome.rotY
@@ -1038,10 +1039,14 @@ export function buildListeningCorner() {
       // distance chosen so the whole iPod (click wheel included) fills ~64 % of the view height,
       // nudged up a little to leave room for the "put down" button underneath
       const tanH = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)
-      const fitH = H / ((ipodBig ? 0.76 : 0.6) * 2 * tanH)
-      const fitW = W / ((ipodBig ? 0.6 : 0.42) * 2 * tanH * camera.aspect)
+      // it should nearly fill the screen – and on a phone (narrow, tall view) almost all of it, like using a real iPod
+      const phone = camera.aspect < 0.9
+      const hf = phone ? 0.84 : ipodBig ? 0.9 : 0.72
+      const wf = phone ? 0.94 : ipodBig ? 0.7 : 0.5
+      const fitH = H / (hf * 2 * tanH)
+      const fitW = W / (wf * 2 * tanH * camera.aspect)
       const dist = Math.max(fitH, fitW)
-      tmpV.copy(camera.position).addScaledVector(camFwd, dist).addScaledVector(camUp, (ipodBig ? 0.01 : -0.03) * dist * tanH * 2)
+      tmpV.copy(camera.position).addScaledVector(camFwd, dist).addScaledVector(camUp, (phone ? 0.02 : ipodBig ? 0.01 : -0.03) * dist * tanH * 2)
       targetPos.copy(group.worldToLocal(tmpV))
       ipod.position.lerp(targetPos, Math.min(1, dt * 7))
       tmpQ.copy(camera.quaternion).premultiply(groupQ)

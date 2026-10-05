@@ -8,6 +8,15 @@ import { mode } from './useMode'
 // is the Spotify speaker) and I'm in the 3D room – the music itself comes from Spotify, so this is layered on top.
 const KEY = 'niben-vinyl'
 export const vinyl = reactive({ on: (() => { try { return localStorage.getItem(KEY) !== 'off' } catch { return true } })() })
+// how loud the crackle is: 100 = the old level, the default is half of that (set with the slider by the switch)
+const LKEY = 'niben-vinyl-level'
+const readLevel = () => { try { const n = Number(localStorage.getItem(LKEY)); return localStorage.getItem(LKEY) != null && n >= 0 && n <= 100 ? n : 50 } catch { return 50 } }
+vinyl.level = readLevel()
+export function setVinylLevel(n) {
+  vinyl.level = Math.max(0, Math.min(100, Math.round(n)))
+  try { localStorage.setItem(LKEY, String(vinyl.level)) } catch {}
+  if (ctx && master && shouldPlay()) master.gain.setTargetAtTime(vinyl.level / 100, ctx.currentTime, 0.1)
+}
 export function setVinyl(v) { vinyl.on = v; try { localStorage.setItem(KEY, v ? 'on' : 'off') } catch {} }
 
 let ctx = null
@@ -70,7 +79,7 @@ function start() {
       hissSrc.start()
     }
     master.gain.cancelScheduledValues(ctx.currentTime)
-    master.gain.setTargetAtTime(1, ctx.currentTime, 1.2)
+    master.gain.setTargetAtTime(vinyl.level / 100, ctx.currentTime, 1.2)
     if (!timer) schedule()
   } catch {}
 }
@@ -79,7 +88,7 @@ function stop() {
   if (ctx && master) master.gain.setTargetAtTime(0, ctx.currentTime, 0.4)
 }
 
-const shouldPlay = () => vinyl.on && mode.value === 'rom' && web.status === 'ready' && !!spotify.now?.playing
+function shouldPlay() { return vinyl.on && mode.value === 'rom' && web.status === 'ready' && !!spotify.now?.playing }
 let armed = false
 function sync() {
   if (shouldPlay()) {

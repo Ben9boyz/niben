@@ -42,10 +42,11 @@ const STATIONS = {
 // the listening corner while music plays: closer, from above at an angle – the turntable and the
 // sleeve beside it in focus, the record shelf still visible underneath
 const LYTTE_TOP = { pos: [2.55, 1.55, -0.2], target: [3.72, 0.5, -0.12] }
-// a playlist playing: looking at the iPod back on its stand on the coffee table (its screen shows the song)
+// a playlist playing: looking at the iPod back on its stand on the sideboard by the turntable (its screen shows the song)
 // in front of the record shelf (under the turntable), to browse the spines
 const LYTTE_SHELF = { pos: [2.12, 0.8, 0.1], target: [3.6, 0.3, 0.1] }
-const LYTTE_IPOD = { pos: [2.06, 0.9, 1.74], target: [2.65, 0.56, 2.02] }
+// (close up, so what's on the iPod's little screen can be read when it stands there)
+const LYTTE_IPOD = { pos: [2.95, 0.9, 0.16], target: [3.59, 0.62, 0.08] }
 
 export const STATION_LABELS = { gaming: 'Gaming', japansk: 'Japansk', lytte: 'Lytteplassen', ovelse: 'Øvingstimer', gitar: 'Gitarer', boker: 'Bokhylla', kode: 'Prosjekter', reiser: 'Reiser', om: 'Om meg' }
 

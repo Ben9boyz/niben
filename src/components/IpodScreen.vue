@@ -177,7 +177,7 @@ onBeforeUnmount(() => {
     <button class="w-center" aria-label="Velg" @click="open(rows[active])"></button>
   </div>
 
-  <button v-if="rect" class="putdown glass" :style="{ left: `${rect.x + rect.w / 2}px`, top: `${rect.y + rect.h * 2.3 + 12}px` }" @click="room.musicView = 'ipodDock'">
+  <button v-if="rect" class="putdown glass" :style="{ left: `${rect.x + rect.w / 2}px`, top: `${Math.min(rect.y + rect.h * 2.3 + 12, innerHeight - 56)}px` }" @click="room.musicView = 'ipodDock'">
     Legg fra deg iPoden
   </button>
 </template>

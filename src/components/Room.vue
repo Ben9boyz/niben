@@ -183,7 +183,7 @@ watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room
     // the picked record is held up to the camera – not in the overhead view, where it lies by the turntable
     selected: here && room.musicView !== 'spiller' && room.sel.musikk?.kind === 'album' ? room.sel.musikk.uri : null,
     ipod: here && room.musicView === 'ipod',
-    big: room.panelHidden, // no panel: the held iPod can fill much more of the screen
+    big: room.panelHidden || window.matchMedia('(max-width: 900px)').matches, // no panel (or a phone): the held iPod fills the screen
     // "Album": the camera stays by the turntable · "Spillelister": by the iPod on its stand
     // (picking something lifts the iPod up in front of the camera)
     pose: !here ? null : room.musicView.startsWith('ipod') ? 'ipod' : room.shelfView ? 'shelf' : 'top',

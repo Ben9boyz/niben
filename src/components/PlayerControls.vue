@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Shuffle, SkipBack, SkipForward, Play, Pause, Repeat, Repeat1, MonitorSpeaker, Smartphone, Speaker, Laptop, Volume2 } from 'lucide-vue-next'
 import WebPlayerToggle from './WebPlayerToggle.vue'
-import { vinyl, setVinyl } from '../composables/useVinylNoise'
+import { vinyl, setVinyl, setVinylLevel } from '../composables/useVinylNoise'
 import { mode } from '../composables/useMode'
 import { spotify, control, setShuffle, cycleRepeat, fetchDevices, transferTo, setDeviceVolume, lockLeft, fmtClock, notify } from '../composables/useSpotify'
 
@@ -63,6 +63,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDoc))
       <b class="label-caps">Spill på</b>
       <WebPlayerToggle class="here" />
       <label v-if="mode === 'rom'" class="vin" title="Svak vinylknitring over musikken i 3D-rommet"><input type="checkbox" :checked="vinyl.on" @change="setVinyl($event.target.checked)" /><span class="sw"><i></i></span>Vinylknitring</label>
+      <label v-if="mode === 'rom' && vinyl.on" class="vol vlv" title="Hvor sterk vinylknitringen er"><span class="vt">Knitring</span><input type="range" min="0" max="100" :value="vinyl.level" aria-label="Styrke på vinylknitring" @input="setVinylLevel(+$event.target.value)" /></label>
       <p v-if="!devices" class="muted">Henter enheter …</p>
       <p v-else-if="!devices.length" class="muted">Ingen Spotify-enheter er åpne.</p>
       <button v-for="d in devices || []" :key="d.id" class="dv" :class="{ active: d.active }" :disabled="d.restricted" @click="pick(d)">
@@ -107,4 +108,5 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDoc))
 .dv:disabled { opacity: 0.45; cursor: default; }
 .vol { display: flex; align-items: center; gap: 8px; padding: 6px 10px 2px; color: var(--text-3); }
 .vol input { flex: 1; accent-color: #1db954; }
+.vlv .vt { font-size: 0.74rem; font-weight: 600; white-space: nowrap; }
 </style>
