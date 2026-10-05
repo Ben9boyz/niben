@@ -50,6 +50,7 @@ export async function checkLogin() {
   try {
     const r = await api('me')
     admin.loggedIn = !!r.admin
+    if (r.admin) { try { localStorage.setItem('niben-me', '1') } catch {} }
   } catch {
     admin.loggedIn = false
   }
@@ -59,6 +60,7 @@ export async function checkLogin() {
 export async function login(password) {
   await api('login', { password })
   admin.loggedIn = true
+  try { localStorage.setItem('niben-me', '1') } catch {} // this browser is me: not counted as a visitor
   refreshSongs()
 }
 

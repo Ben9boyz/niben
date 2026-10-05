@@ -40,7 +40,7 @@ function onPick(p) {
   if (p.kind === 'turntable') { if (spotify.now?.name && admin.loggedIn) control(spotify.now.playing ? 'pause' : 'resume'); return }
   if (p.kind === 'guitar') room.sel.gitar = p.index
   else if (p.kind === 'book') room.sel.bok = room.sel.bok === p.index ? -1 : p.index
-  else if (p.kind === 'country') room.sel.land = room.sel.land === p.name ? null : p.name
+  else if (p.kind === 'country') { room.sel.land = room.sel.land === p.name ? null : p.name; if (room.sel.land) room.panelHidden = false } // picking a country always brings the panel (the trip) forward
   else if (p.kind === 'clock') toggleTimer()
   else if (p.kind === 'album') {
     room.musicView = 'vinyl'

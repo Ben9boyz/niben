@@ -257,6 +257,7 @@ require_once __DIR__ . '/_about.inc.php';
 require_once __DIR__ . '/_site.inc.php';
 require_once __DIR__ . '/_github.inc.php';
 require_once __DIR__ . '/_translate.inc.php';
+require_once __DIR__ . '/_visits.inc.php';
 
 try {
     if (str_starts_with($action, 'spotify_')) {
@@ -285,6 +286,12 @@ try {
         fail('Ukjent handling.', 404);
     }
     if ($action === 'translate') tr_handle();
+    if ($action === 'visit') {
+        if (!$post || ($_SERVER['HTTP_X_NIBEN'] ?? '') !== '1') out(['ok' => false]);
+        vi_count((string)(body()['path'] ?? ''));
+        out(['ok' => true]);
+    }
+    if ($action === 'admin_visits') { require_admin(); out(vi_stats()); }
     if ($action === 'admin_status') {
         require_admin();
         $count = function (string $t) { try { return (int)db()->query("SELECT COUNT(*) FROM $t")->fetchColumn(); } catch (Throwable $e) { return 0; } };
@@ -337,6 +344,7 @@ try {
         out(function_exists('upload_limits') ? upload_limits() : []);
 
     case 'me':
+        if (is_admin() && empty($_COOKIE['niben_me'])) vi_mark_me(); // logged in from before the counter existed: that's me too
         out(['admin' => is_admin()]);
 
     case 'login': {
@@ -357,6 +365,7 @@ try {
         session_regenerate_id(true);
         $_SESSION['admin'] = true;
         $_SESSION['expires'] = time() + 60 * 60 * 8;
+        vi_mark_me(); // I'm not a visitor
         out(['admin' => true]);
     }
 

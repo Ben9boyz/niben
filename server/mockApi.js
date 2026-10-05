@@ -248,6 +248,12 @@ export function mockApi() {
           case 'admin_status':
             if (!needAdmin()) return
             return send(res, 200, { counts: { trips: 4, books: 12, recordings: 3, photos: 38 }, spotify: { connected: true, lock_seconds: sp.lockSeconds, can_save: true, can_playlists: false }, steam: true, jpdb: false, translate: { configured: true, provider: 'anthropic', total: 214, languages: [{ lang: 'de', n: 120 }, { lang: 'en', n: 94 }] } })
+          case 'admin_visits': {
+            if (!needAdmin()) return
+            const days = Array.from({ length: 30 }, (_, i) => { const d = new Date(Date.now() - (29 - i) * 864e5).toISOString().slice(0, 10); const u = Math.max(0, Math.round(3 + 4 * Math.sin(i / 3) + (i % 5))); return { day: d, u, h: u * 3 } })
+            return send(res, 200, { days, today: days[29].u, week: 31, month: 94, total: 212, returning: 37, hits_today: days[29].h })
+          }
+          case 'visit': return send(res, 200, { ok: true })
           case 'admin_translate_clear':
             if (!needAdmin()) return
             return send(res, 200, { ok: true })

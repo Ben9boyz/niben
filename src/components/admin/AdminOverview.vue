@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Music2, Gamepad2, Languages, Globe2, BookOpen, Plane, Mic, RefreshCw, Unplug, Plug, Trash2, Check, AlertTriangle } from 'lucide-vue-next'
+import { Users, Music2, Gamepad2, Languages, Globe2, BookOpen, Plane, Mic, RefreshCw, Unplug, Plug, Trash2, Check, AlertTriangle } from 'lucide-vue-next'
 import { api } from '../../composables/useAdmin'
 import { spotify, setLockSeconds, refreshSpotify, fmtLock, notify } from '../../composables/useSpotify'
 import { byCode } from '../../lib/languages'
@@ -8,11 +8,13 @@ import { byCode } from '../../lib/languages'
 // The first admin tab: what is connected and how things are set up, in plain words – with the buttons to fix it.
 const emit = defineEmits(['goto'])
 const st = ref(null)
+const vis = ref(null)
 const err = ref('')
 const busy = ref('')
 const msg = ref('')
 async function load() {
   try { st.value = await api('admin_status') ; err.value = '' } catch (e) { err.value = e.message }
+  try { vis.value = await api('admin_visits') } catch {}
 }
 onMounted(load)
 const flash = (t) => { msg.value = t; setTimeout(() => { if (msg.value === t) msg.value = '' }, 3500) }
@@ -42,6 +44,8 @@ async function clearLang(lang) {
   try { await api('admin_translate_clear', { lang }); await load(); flash('Slettet.') } catch (e) { err.value = e.message }
   busy.value = ''
 }
+const maxDay = computed(() => Math.max(1, ...(vis.value?.days || []).map((d) => d.u)))
+const dayLabel = (d) => new Date(d + 'T12:00:00').toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })
 const langName = (c) => byCode[c]?.en || c
 </script>
 
@@ -57,6 +61,21 @@ const langName = (c) => byCode[c]?.en || c
         <button class="stat" @click="emit('goto', 'reiser')"><Plane :size="18" /><b>{{ st.counts.trips }}</b><span>reiser</span><small>{{ st.counts.photos }} bilder</small></button>
         <button class="stat" @click="emit('goto', 'boker')"><BookOpen :size="18" /><b>{{ st.counts.books }}</b><span>bøker</span></button>
         <button class="stat" @click="emit('goto', 'opptak')"><Mic :size="18" /><b>{{ st.counts.recordings }}</b><span>gitaropptak</span></button>
+      </section>
+
+      <!-- visitors -->
+      <section v-if="vis" class="card">
+        <header><Users :size="18" /><h3>Besøkende</h3></header>
+        <div class="vstats">
+          <div><b>{{ vis.today }}</b><span>i dag</span></div>
+          <div><b>{{ vis.week }}</b><span>siste 7 dager</span></div>
+          <div><b>{{ vis.month }}</b><span>siste 30 dager</span></div>
+          <div><b>{{ vis.total }}</b><span>totalt</span></div>
+        </div>
+        <div class="bars" role="img" :aria-label="`Besøkende per dag, siste 30 dager`">
+          <i v-for="d in vis.days" :key="d.day" :style="{ height: `${Math.max(4, (d.u / maxDay) * 100)}%` }" :class="{ zero: !d.u }" :title="`${dayLabel(d.day)}: ${d.u} besøkende, ${d.h} sidevisninger`"></i>
+        </div>
+        <p class="help">Hver ulike IP-adresse teller som én besøkende per dag (adressen lagres ikke, bare et tilfeldig avtrykk). {{ vis.returning }} har kommet tilbake på en ny dag. <b>Du telles ikke</b> – når du logger inn, fjernes tellingen fra denne IP-adressen og denne nettleseren.</p>
       </section>
 
       <!-- Spotify -->
@@ -124,6 +143,14 @@ const langName = (c) => byCode[c]?.en || c
 .card { display: grid; gap: 10px; padding: 16px; border: 1px solid var(--glass-border); border-radius: 18px; background: var(--glass-strong); }
 .card header { display: flex; align-items: center; gap: 8px; color: var(--accent); }
 .card h3 { margin: 0; flex: 1; font-size: 1rem; color: var(--text); }
+.vstats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.vstats div { display: grid; padding: 8px 4px; }
+.vstats b { font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
+.vstats span { font-size: 0.74rem; color: var(--text-3); }
+.bars { display: flex; align-items: flex-end; gap: 3px; height: 70px; padding-top: 4px; }
+.bars i { flex: 1; min-width: 0; border-radius: 3px 3px 0 0; background: var(--accent); opacity: 0.85; }
+.bars i.zero { background: var(--glass-border); opacity: 1; }
+.bars i:hover { opacity: 1; filter: brightness(1.1); }
 .help { margin: 0; font-size: 0.86rem; line-height: 1.45; color: var(--text-2); }
 .help.warn { color: #b8711a; }
 .help code, .svc code { padding: 1px 6px; border-radius: 6px; background: var(--accent-soft); font-size: 0.82em; }

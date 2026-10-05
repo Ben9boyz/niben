@@ -429,6 +429,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   function goTo(name, { instant = false, duration } = {}) {
     invalidate(0.5)
     station = STATIONS[name] ? name : 'hjem'
+    zoomTarget = 1 // the zoom is for the globe only
     desk.setScreenMode(station === 'gaming' ? 'gaming' : 'code')
     const s = station === 'lytte' && lyttePose ? { ipod: LYTTE_IPOD, shelf: LYTTE_SHELF, top: LYTTE_TOP }[lyttePose] : STATIONS[station]
     const to = { pos: new THREE.Vector3(...s.pos), target: new THREE.Vector3(...s.target) }
@@ -577,6 +578,13 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     onHover?.(null)
   }
   const el = renderer.domElement
+  function onWheel(e) {
+    if (station !== 'reiser') return
+    e.preventDefault()
+    zoomTarget = Math.min(1.15, Math.max(0.3, zoomTarget * Math.exp(e.deltaY * 0.0012)))
+    invalidate(0.6)
+  }
+  el.addEventListener('wheel', onWheel, { passive: false })
   el.addEventListener('pointermove', onMove)
   el.addEventListener('pointerdown', onDown)
   el.addEventListener('pointerup', onUp)
@@ -634,6 +642,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   }
 
   let distK = 1
+  // scroll wheel over the globe zooms in and out (the camera moves along its line of sight; 1 = the usual distance)
+  let zoom = 1, zoomTarget = 1
 
   // ── Render on demand ──
   let lastRender = 0
@@ -780,10 +790,11 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     const px = pointer.inside && !dragging ? pointer.x : 0
     const py = pointer.inside && !dragging ? pointer.y : 0
     // narrow screens: step back so the subject still fits
-    const wantPos = camTarget.clone().addScaledVector(tmp2.subVectors(camPos, camTarget), distK)
+    zoom += (zoomTarget - zoom) * Math.min(1, dt * 8)
+    const wantPos = camTarget.clone().addScaledVector(tmp2.subVectors(camPos, camTarget), distK * zoom)
       .addScaledVector(right, px * par).addScaledVector(up, py * par * 0.6)
     if (firstFrame) { camera.position.copy(wantPos); firstFrame = false }
-    let active = !!flight || performance.now() < renderUntil
+    let active = !!flight || performance.now() < renderUntil || Math.abs(zoomTarget - zoom) > 0.0005
     if (camera.position.distanceToSquared(wantPos) > 1e-8 || lookAt.distanceToSquared(camTarget) > 1e-8) active = true
     camera.position.lerp(wantPos, Math.min(1, dt * 4))
     lookAt.lerp(camTarget, Math.min(1, dt * 6))
@@ -930,6 +941,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
       cancelAnimationFrame(raf)
       ro.disconnect()
       el.removeEventListener('pointermove', onMove)
+      el.removeEventListener('wheel', onWheel)
       el.removeEventListener('pointerdown', onDown)
       el.removeEventListener('pointerup', onUp)
       el.removeEventListener('pointerleave', onLeave)

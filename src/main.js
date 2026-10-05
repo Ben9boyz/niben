@@ -46,3 +46,11 @@ registerServiceWorker()
 
 // iOS Safari ignores user-scalable=no: stop the pinch gesture itself
 for (const t of ['gesturestart', 'gesturechange']) document.addEventListener(t, (e) => e.preventDefault(), { passive: false })
+
+// count the visit once per browser session (never when this browser has been logged in as admin = me)
+try {
+  if (!localStorage.getItem('niben-me') && !sessionStorage.getItem('niben-counted') && !window.nibenApp) {
+    sessionStorage.setItem('niben-counted', '1')
+    setTimeout(() => fetch('api.php?action=visit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Niben': '1' }, body: JSON.stringify({ path: (location.hash || '#/').slice(1) }), keepalive: true }).catch(() => {}), 1500)
+  }
+} catch {}
