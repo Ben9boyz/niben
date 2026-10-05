@@ -20,9 +20,9 @@ onMounted(() => { stopSteam = watchSteam(); loadJapanese(); loadMilestones() })
 onBeforeUnmount(() => stopSteam?.())
 
 // ── milestones: what I just managed (new recording, finished book, anime, song) – kept for 30 days ──
-const MS_ICON = { recording: Mic, book: BookOpen, anime: Tv, song: Guitar, other: Trophy }
-const MS_LABEL = { recording: 'Nytt opptak', book: 'Ferdig lest', anime: 'Klarer anime', song: 'Sang lært', other: 'Klart' }
-const MS_TO = { recording: '/gitar', book: '/boker', anime: '/japansk', song: '/ovelse', other: '/' }
+const MS_ICON = { recording: Mic, book: BookOpen, anime: Tv, song: Guitar, trip: Plane, other: Trophy }
+const MS_LABEL = { recording: 'Nytt opptak', book: 'Ferdig lest', anime: 'Klarer anime', song: 'Sang lært', trip: 'På reise', other: 'Klart' }
+const MS_TO = { recording: '/gitar', book: '/boker', anime: '/japansk', song: '/ovelse', trip: '/reiser', other: '/' }
 const recent = computed(() => (milestones.items || []).filter((m) => Date.now() / 1000 - m.t < 30 * 86400).slice(0, 5))
 const fresh = computed(() => recent.value.length && Date.now() / 1000 - recent.value[0].t < 4 * 86400)
 const msAgo = (t) => {

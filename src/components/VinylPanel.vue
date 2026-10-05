@@ -8,6 +8,7 @@ import { mode } from '../composables/useMode'
 import GroupedGrid from './GroupedGrid.vue'
 import GroupBar from './GroupBar.vue'
 import { loadGroups } from '../composables/useGroups'
+import { sorted } from '../composables/useSort'
 import MusicDetail from './MusicDetail.vue'
 import SpotifySearch from './SpotifySearch.vue'
 import { Search as SearchIcon, X as CloseIcon } from 'lucide-vue-next'
@@ -38,7 +39,7 @@ const album = computed(() => findAlbum(selectedUri.value))
 const items = computed(() => {
   const n = q.value.trim().toLowerCase()
   const list = n ? spotify.albums.filter((a) => `${a.name} ${a.artist}`.toLowerCase().includes(n)) : spotify.albums
-  return list.map((a) => ({ uri: a.uri, name: a.name, sub: a.artist, image: a.image || a.thumb }))
+  return sorted('album', list).map((a) => ({ uri: a.uri, name: a.name, sub: a.artist, image: a.image || a.thumb }))
 })
 
 function pick(it) {

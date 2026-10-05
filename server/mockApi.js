@@ -18,7 +18,7 @@ export function mockApi() {
     // 65 records, like the real shelf
     .flatMap((x, k, all) => Array.from({ length: Math.ceil(65 / all.length) }, (_, j) => [j ? `${x[0]} ${j + 1}` : x[0], x[1], `hsl(${(k * 47 + j * 23) % 360}, 45%, 45%)`]))
     .slice(0, 65)
-    .map(([name, artist, color], i) => ({ id: 'a' + i, uri: `spotify:album:mockalbum${String(i).padStart(10, '0')}`, name, artist, year: String(2015 + (i % 10)), image: null, color, url: null, tracks: 10 + (i % 6) }))
+    .map(([name, artist, color], i) => ({ id: 'a' + i, uri: `spotify:album:mockalbum${String(i).padStart(10, '0')}`, name, artist, year: String(2015 + (i % 10)), image: null, color, url: null, tracks: 10 + (i % 6), added: 1760000000 - i * 86400 }))
   // tiny coloured squares as stand-in covers
   const mockCover = (h) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><rect width="8" height="8" fill="hsl(${h % 360},60%,50%)"/><circle cx="4" cy="4" r="1.6" fill="#fff"/></svg>`)}`
   const MOCK_TITLES = ['Intro', 'Golden Hour', 'Slow Down', 'Northern Sky', 'Paper Hearts', 'Drift', 'Home', 'Waves', 'Late Again', 'Outro', 'Echoes', 'Morning']

@@ -116,7 +116,7 @@ function sp_cached(string $key, int $ttl, callable $fetch) {
 }
 
 function sp_albums(): ?array {
-    return sp_cached('cache_albums_v3', 1800, function () {
+    return sp_cached('cache_albums_v4', 1800, function () {
         $out = [];
         for ($offset = 0; $offset < 1000; $offset += 50) {
             [$s, $j] = sp_api('GET', '/me/albums?limit=50&offset=' . $offset);
@@ -136,6 +136,7 @@ function sp_albums(): ?array {
                     'thumb' => sp_img($a['images'] ?? [], 64),
                     'url' => $a['external_urls']['spotify'] ?? null,
                     'tracks' => $a['total_tracks'] ?? null,
+                    'added' => !empty($it['added_at']) ? strtotime($it['added_at']) : null,
                 ];
             }
             if (empty($j['next'])) break;

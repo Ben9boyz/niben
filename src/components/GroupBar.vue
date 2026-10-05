@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { Layers, Pencil, Plus, ArrowUp, ArrowDown, X, Check } from 'lucide-vue-next'
 import FolderIcon from './FolderIcon.vue'
+import SortButton from './SortButton.vue'
 import { groups, setGrouping, setView, saveGroups, groupCover, itemsIn, coverOfUri } from '../composables/useGroups'
 import { admin } from '../composables/useAdmin'
 import { notify } from '../composables/useSpotify'
@@ -41,7 +42,8 @@ async function save() {
         <button :class="{ on: view === 'lister' }" @click="setView('lister')">Lister</button>
         <button v-if="artist" :class="{ on: view === 'artist' }" @click="setView('artist')">Artist</button>
       </span>
-      <button v-if="admin.loggedIn && groups.on && groups.view !== 'artist'" class="ed" :class="{ on: groups.editing }" @click="groups.editing = !groups.editing"><Pencil :size="13" />{{ groups.editing ? 'Ferdig' : 'Rediger' }}</button>
+      <span class="tools"><SortButton :kind="artist ? 'album' : 'playlist'" />
+      <button v-if="admin.loggedIn && groups.on && groups.view !== 'artist'" class="ed" :class="{ on: groups.editing }" @click="groups.editing = !groups.editing"><Pencil :size="13" />{{ groups.editing ? 'Ferdig' : 'Rediger' }}</button></span>
     </div>
     <div v-if="open && groups.on" class="editor">
       <p class="hint">Flytt ting med valgene på hver flis, eller dra dem til en annen gruppe. «gjettet» betyr at gruppen bare er et forslag – fra sjangeren til artistene, lyden (instrumentalitet og energi) eller navnet.</p>
@@ -72,6 +74,7 @@ async function save() {
 
 <style scoped>
 .gb { display: grid; gap: 8px; }
+.tools { display: inline-flex; align-items: center; gap: 6px; }
 .gbrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .sw, .ed { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.78rem var(--font); cursor: pointer; }
 .sw { padding: 5px 8px; }
@@ -104,6 +107,6 @@ async function save() {
   /* phones: the switch on the left, Mapper/Artist exactly in the middle, Rediger on the right */
   .gbrow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; }
   .gbrow > .sw { justify-self: start; }
-  .gbrow > .ed { justify-self: end; }
+  .gbrow > .tools { justify-self: end; }
 }
 </style>

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { sorted } from '../composables/useSort'
 import { spotify, prefetchTracks } from '../composables/useSpotify'
 import { room } from '../composables/useRoom'
 import GroupedGrid from './GroupedGrid.vue'
@@ -16,7 +17,7 @@ const playlist = computed(() => room.ipod.playlist)
 const items = computed(() => {
   const n = q.value.trim().toLowerCase()
   const list = n ? spotify.playlists.filter((p) => p.name.toLowerCase().includes(n)) : spotify.playlists
-  return list.map((p) => ({ uri: p.uri, name: p.name, sub: p.count ? `${p.count} låter` : p.owner, image: p.image || p.thumb }))
+  return sorted('playlist', list).map((p) => ({ uri: p.uri, name: p.name, sub: p.count ? `${p.count} låter` : p.owner, image: p.image || p.thumb }))
 })
 const cursorUri = computed(() => (q.value ? null : spotify.playlists[room.ipod.active]?.uri))
 

@@ -3,7 +3,15 @@
 // an anime I can follow, a song I have learned. Kept as a short list in the key/value table (newest first).
 // Automatic ones are added where the thing happens (saving a recording or a book, jpdb coverage); the rest by hand in Admin.
 
-const MS_TYPES = ['recording', 'book', 'anime', 'song', 'other'];
+const MS_TYPES = ['recording', 'book', 'anime', 'song', 'trip', 'other'];
+
+/** A trip that has started (or is over) in the last 30 days is a milestone – checked whenever the list is read, so a trip entered in advance shows up on the day it begins. */
+function ms_trips(): void {
+    try {
+        $rows = db()->query("SELECT id, country, place, title, date_from, date_to, year FROM trips WHERE date_from IS NOT NULL AND date_from <= CURDATE() AND date_from >= CURDATE() - INTERVAL 30 DAY")->fetchAll();
+        foreach ($rows as $r) ms_add('trip:' . $r['id'], 'trip', trim(($r['place'] ?: $r['country']) . ($r['place'] && $r['country'] ? ', ' . $r['country'] : '')), (string)$r['title'], null, strtotime($r['date_from'] . ' 12:00') ?: time());
+    } catch (Throwable $e) {}
+}
 
 function ms_all(): array {
     $l = json_decode(kv_get('milestones') ?: '[]', true);
@@ -23,6 +31,7 @@ function ms_add(string $key, string $type, string $title, string $sub = '', ?str
 function ms_handle(string $action, bool $post): void {
     switch ($action) {
     case 'milestones':
+        ms_trips();
         out(['items' => array_slice(ms_all(), 0, 12)]);
     case 'milestone_add': {
         if (!$post) fail('Bruk POST.', 405);
