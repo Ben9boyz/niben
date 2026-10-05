@@ -4,7 +4,6 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Room from './Room.vue'
 import LeaderLine from './LeaderLine.vue'
-import MusicSwitch from './MusicSwitch.vue'
 import IpodScreen from './IpodScreen.vue'
 import RecordOverlay from './RecordOverlay.vue'
 import SubTabs from './SubTabs.vue'
@@ -113,7 +112,6 @@ watch(() => route.name, () => (collapsed.value = false))
   </transition>
 
   <LeaderLine :active="route.name === 'reiser' && !!room.sel.land" />
-  <MusicSwitch v-if="isMusic && room.ready" />
   <!-- the other groups' sub-tabs: same look and spot as the music switch -->
   <SubTabs v-if="!isHome && !isMusic && room.ready" floating />
   <IpodScreen v-if="holdingIpod" />

@@ -1,13 +1,12 @@
 <script setup>
 import BrandLogo from './BrandLogo.vue'
 import { ref } from 'vue'
-import { Box, LayoutGrid, Sun, Moon, LogIn, ArrowUpRight } from 'lucide-vue-next'
-import { mode, toggleMode } from '../composables/useMode'
+import { Sun, Moon, LogIn, ArrowUpRight } from 'lucide-vue-next'
 import { useTheme } from '../composables/useTheme'
 import { admin, checkLogin, login } from '../composables/useAdmin'
 import { leavePlayer } from '../composables/useShell'
 
-// Top bar of the music player: name, 3D / flat, light / dark, and logging in (needed to play).
+// Top bar of the music player: name, light / dark, and logging in (needed to play).
 const { theme, toggle } = useTheme()
 checkLogin()
 const inApp = !!window.nibenApp
@@ -16,7 +15,6 @@ const pw = ref('')
 const err = ref('')
 const busy = ref(false)
 
-function setMode(m) { if (mode.value !== m) toggleMode() }
 async function doLogin() {
   busy.value = true
   err.value = ''
@@ -39,11 +37,6 @@ function toSite() {
 <template>
   <header class="ptop">
     <div class="brand glass"><BrandLogo mark class="mark" /><b>musikk</b></div>
-
-    <div class="seg glass" role="tablist" aria-label="Visning">
-      <button role="tab" :aria-selected="mode === 'rom'" :class="{ on: mode === 'rom' }" @click="setMode('rom')"><Box :size="15" />3D</button>
-      <button role="tab" :aria-selected="mode !== 'rom'" :class="{ on: mode !== 'rom' }" @click="setMode('enkel')"><LayoutGrid :size="15" />Flat</button>
-    </div>
 
     <span class="spacer"></span>
 

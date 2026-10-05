@@ -1,4 +1,5 @@
 import { ref, watch } from 'vue'
+import { shell } from './useShell'
 
 // "rom" = the 3D room, "enkel" = plain pages without the room.
 const KEY = 'niben-mode'
@@ -16,11 +17,12 @@ function initial() {
 }
 export const mode = ref(initial())
 
-function apply(m) {
-  document.documentElement.classList.toggle('classic', m === 'enkel')
+// the music player app has no 3D room: it is always the plain version
+function apply() {
+  document.documentElement.classList.toggle('classic', mode.value === 'enkel' || shell.value === 'player')
 }
-apply(mode.value)
-watch(mode, (m) => apply(m))
+apply()
+watch([mode, shell], apply)
 
 export function toggleMode() {
   mode.value = mode.value === 'rom' ? 'enkel' : 'rom'

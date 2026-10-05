@@ -308,12 +308,12 @@ export function buildListeningCorner() {
   group.add(candle)
   add(new THREE.CylinderGeometry(0.03, 0.03, 0.06, 20), new THREE.MeshStandardMaterial({ color: 0xe9d9bd, roughness: 0.5 }), 0, 0.03, 0, candle)
   add(new THREE.CylinderGeometry(0.0015, 0.0015, 0.014, 6), dark, 0, 0.067, 0, candle)
-  const flameMat = new THREE.MeshBasicMaterial({ color: 0xffc46b, toneMapped: false })
+  const flameMat = new THREE.MeshBasicMaterial({ color: 0xe8a24e }) // not too bright: the bloom would make it glow
   const flame = new THREE.Mesh(new THREE.SphereGeometry(0.009, 10, 8), flameMat)
   flame.scale.set(0.8, 1.7, 0.8)
   flame.position.set(0, 0.082, 0)
   candle.add(flame)
-  const candleLight = new THREE.PointLight(0xffb76b, 0.35, 0.8, 2)
+  const candleLight = new THREE.PointLight(0xffb76b, 0.05, 0.35, 2)
   candleLight.position.set(0, 0.1, 0.02)
   candle.add(candleLight)
   // ── The stack of records on the table: the albums coming up in the queue on top (next one first), the albums
@@ -408,7 +408,7 @@ export function buildListeningCorner() {
   const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.2, 0.26, 28, 1, true), shadeMat)
   shade.position.set(0, 1.5, 0)
   lamp.add(shade)
-  const lampLight = new THREE.PointLight(0xffc98a, 0.9, 2.6, 2)
+  const lampLight = new THREE.PointLight(0xffc98a, 0.45, 2.2, 2)
   lampLight.position.set(0, 1.45, 0.05)
   lamp.add(lampLight)
 
@@ -910,7 +910,7 @@ export function buildListeningCorner() {
     fairyMat.color.setRGB(1, 0.85, 0.66).multiplyScalar(glow)
     shadeMat.color.setRGB(1, 0.86, 0.68).multiplyScalar(0.8 + 0.25 * beat)
     flame.scale.y = 1.7 + Math.sin(t * 9) * 0.18 + Math.sin(t * 23) * 0.1
-    candleLight.intensity = 0.32 + Math.sin(t * 7) * 0.05 + Math.sin(t * 19) * 0.03
+    candleLight.intensity = 0.045 + Math.sin(t * 7) * 0.008 + Math.sin(t * 19) * 0.005
     armAngle += ((playing ? -0.42 : 0) - armAngle) * Math.min(1, dt * 2)
     arm.rotation.y = armAngle
     // the iPod's progress bar moves on once a second while something plays
