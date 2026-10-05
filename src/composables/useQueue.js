@@ -1,6 +1,6 @@
 import { reactive, watch } from 'vue'
 import { api, admin } from './useAdmin'
-import { spotify, progressMs, notify, fetchTracks, findAlbum } from './useSpotify'
+import { spotify, progressMs, notify, fetchTracks, findAlbum, playDevice } from './useSpotify'
 
 // My own queue. Spotify's queue can only be added to – songs can't be moved or taken away – so the list lives HERE
 // (on the server, the same on every device) and Spotify only ever holds ONE song of it: the next one, sent in the last
@@ -99,6 +99,19 @@ export function shuffleMine() {
   }
   myQueue.items = [...myQueue.items.slice(0, lo), ...rest]
   changed()
+}
+
+/** I'm about to put something else on, but Spotify already holds my next song and can't give it back. So use it up
+ *  first (skip to it – a blip, the new song starts right after) and put it back first in my list: it isn't lost. */
+export async function releaseSent() {
+  const s = myQueue.sent
+  if (!s) return
+  try {
+    if (!(playDevice.control && (await playDevice.control('next', 0)))) await api('spotify_control', { op: 'next', ms: 0 })
+  } catch {}
+  myQueue.sent = null
+  keepSent()
+  spotify.queueV++
 }
 
 // ── the driver: keeps Spotify's queue holding exactly my next song ──

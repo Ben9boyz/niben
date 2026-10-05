@@ -1,7 +1,7 @@
 import { reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { api } from './useAdmin'
 import { pget, pset, pdel } from '../lib/pcache'
-import { addSongs, addCollection, startQueueDriver } from './useQueue'
+import { addSongs, addCollection, startQueueDriver, releaseSent, myQueue } from './useQueue'
 
 // Shared Spotify state: what's saved, what's playing, and the 10-minute switch lock.
 export const spotify = reactive({
@@ -297,6 +297,8 @@ export async function play(uri, track = null, opts = {}) { // opts.from: 'search
     }
   }
   try {
+    // Spotify already holds my next queued song and can't give it back: use it up first, so it doesn't pop up after what I put on now
+    if (myQueue.sent && lockLeft.value <= 0) await releaseSent()
     // the page's player is still starting up: wait a moment for it rather than playing elsewhere
     // or another tab is the player: take it over here (that tab lets go)
     if (playDevice.id) body.device = playDevice.id
