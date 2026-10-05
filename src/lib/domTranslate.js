@@ -11,7 +11,8 @@ import { pget, pset } from './pcache'
 // (Vue re-renders, new panels, toasts) is picked up by a MutationObserver. Anything inside translate="no"
 // (names of songs, albums, games, code …) is left alone.
 const ATTRS = ['placeholder', 'title', 'aria-label', 'alt']
-const SKIP = 'script, style, code, pre, textarea, svg, canvas, [translate="no"], .notranslate, [contenteditable]'
+// jpdb content (Japanese words, readings, English meanings, anime titles) is tagged lang="ja" / lang="en" and is never translated
+const SKIP = 'script, style, code, pre, textarea, svg, canvas, [translate="no"], .notranslate, [contenteditable], [lang="ja"], [lang="en"]'
 const mem = new Map() // lang -> Map(template -> translated template)
 const textRec = new WeakMap() // text node -> { src, out }
 const attrRec = new WeakMap() // element -> { attr: { src, out } }
@@ -33,7 +34,8 @@ function templatize(core) {
   return { tpl, nums }
 }
 const fill = (tr, nums) => tr.replace(/\{(\d+)\}/g, (m, i) => (nums[+i] !== undefined ? nums[+i] : m))
-const translatable = (core) => core.length >= 2 && core.length <= 600 && /\p{L}{2,}/u.test(core) && !/^(https?:\/\/|www\.)\S+$/i.test(core) && !/^\S+@\S+\.\S+$/.test(core)
+const JA = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/ // Japanese / Chinese characters: that is what I'm practising, leave it
+const translatable = (core) => !JA.test(core) && core.length >= 2 && core.length <= 600 && /\p{L}{2,}/u.test(core) && !/^(https?:\/\/|www\.)\S+$/i.test(core) && !/^\S+@\S+\.\S+$/.test(core)
 
 function lookup(lang, tpl) {
   const v = table(lang).get(tpl)

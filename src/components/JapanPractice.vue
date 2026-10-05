@@ -125,7 +125,7 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); loadJapane
         <div class="reading" lang="ja">
           <PitchReading :reading="card.reading" :pitch="card.pitch" />
         </div>
-        <ol class="meanings">
+        <ol class="meanings" translate="no">
           <li v-for="(m, k) in card.meanings" :key="k">{{ m.join('; ') }}</li>
         </ol>
         <div class="meta">

@@ -139,7 +139,7 @@ const GR = [['again', 'Igjen', '1'], ['hard', 'Vanskelig', '2'], ['good', 'Greit
           </div>
           <ul class="words">
             <li v-for="w in card.words" :key="w.vid + ':' + w.sid">
-              <b lang="ja">{{ w.spelling }}</b><small lang="ja">{{ w.reading }}</small><span>{{ w.meaning }}</span>
+              <b lang="ja">{{ w.spelling }}</b><small lang="ja">{{ w.reading }}</small><span translate="no">{{ w.meaning }}</span>
               <button v-if="canSpeak()" class="say" aria-label="Hør ordet" @click="speak(w.reading)"><Volume2 :size="14" /></button>
             </li>
           </ul>

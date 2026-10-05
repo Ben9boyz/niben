@@ -67,7 +67,7 @@ const list = computed(() => {
         <b>Mine kortstokker</b>
         <div class="dl">
           <div v-for="d in decks" :key="d.id" class="dk">
-            <span>{{ d.name }}<small v-if="d.words != null"> · {{ d.words }} ord</small></span>
+            <span translate="no">{{ d.name }}<small v-if="d.words != null"> · {{ d.words }} ord</small></span>
             <button title="Gi nytt navn" @click="deck('rename', d)"><Pencil :size="13" /></button>
             <button title="Tøm" @click="deck('clear', d)"><Eraser :size="13" /></button>
             <button title="Slett" @click="deck('delete', d)"><Trash2 :size="13" /></button>
@@ -89,7 +89,7 @@ const list = computed(() => {
             <span class="dot" :class="stateOf(w.state)" :title="STATE_LABEL[stateOf(w.state)]"></span>
             <b lang="ja">{{ w.spelling }}</b>
             <small lang="ja">{{ w.reading !== w.spelling ? w.reading : '' }}</small>
-            <span class="m">{{ w.meaning }}</span>
+            <span class="m" translate="no">{{ w.meaning }}</span>
             <span v-if="canSpeak()" class="say" role="button" aria-label="Hør ordet" @click.stop="speak(w.reading || w.spelling)"><Volume2 :size="14" /></span>
           </button>
         </li>

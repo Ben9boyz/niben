@@ -80,11 +80,11 @@ const inDays = (t) => {
       <h3><Languages :size="15" />Japansk</h3>
       <router-link v-if="anime" to="/japansk" class="row">
         <img v-if="anime.cover" :src="anime.cover" alt="" class="art book" />
-        <span class="txt"><b>{{ anime.title }}</b><small>Anime · {{ Math.round(anime.known) }} % av ordene kan jeg</small></span>
+        <span class="txt"><b translate="no">{{ anime.title }}</b><small>Anime · {{ Math.round(anime.known) }} % av ordene kan jeg</small></span>
       </router-link>
       <router-link v-if="word" to="/japansk" class="word">
         <span lang="ja" class="jp">{{ word.spelling }}</span>
-        <span class="mean"><small v-if="word.reading !== word.spelling" lang="ja">{{ word.reading }}</small>{{ (word.meanings?.[0] || []).slice(0, 2).join('; ') }}</span>
+        <span class="mean" translate="no"><small v-if="word.reading !== word.spelling" lang="ja">{{ word.reading }}</small>{{ (word.meanings?.[0] || []).slice(0, 2).join('; ') }}</span>
       </router-link>
       <p v-if="jp.loaded && jp.count?.due" class="due"><b>{{ jp.count.due }}</b> kort venter på repetisjon</p>
       <p v-if="jp.loaded && !jp.configured" class="none">jpdb er ikke koblet til.</p>

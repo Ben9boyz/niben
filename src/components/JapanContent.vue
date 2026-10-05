@@ -64,7 +64,7 @@ watch(() => room.jpAnime, async (i) => {
           <div class="r" lang="ja">
             <PitchReading v-if="word.reading !== word.spelling" :reading="word.reading" :pitch="word.pitch" />
           </div>
-          <p class="m">{{ (word.meanings?.[0] || []).join('; ') }}</p>
+          <p class="m" translate="no">{{ (word.meanings?.[0] || []).join('; ') }}</p>
           <a :href="jpdbUrl(word)" target="_blank" rel="noopener" class="jl">Se på jpdb <ArrowUpRight :size="13" /></a>
         </article>
 
@@ -93,7 +93,7 @@ watch(() => room.jpAnime, async (i) => {
           <div v-for="(a, i) in jp.anime" :key="a.anilist" :data-i="i" class="show" :class="{ on: room.jpAnime === i, ready: a.known >= ANIME_READY }" @click="pickAnime(i)">
             <img v-if="a.cover" :src="`${a.cover}?cors`" alt="" loading="lazy" crossorigin="anonymous" :style="{ background: a.color || undefined }" />
             <div class="si">
-              <span class="st-t">{{ a.en || a.title }}</span>
+              <span class="st-t" translate="no">{{ a.en || a.title }}</span>
               <small lang="ja">{{ a.native }}<template v-if="a.year"> · {{ a.year }}</template><template v-if="a.parts > 1"> · {{ a.parts }} deler</template></small>
               <div class="dbar"><i class="known" :style="{ width: `${a.known}%` }"></i><i class="learning" :style="{ width: `${Math.max(0, a.learning - a.known)}%` }"></i><b class="goal" :style="{ left: `${ANIME_READY}%` }"></b></div>
               <small class="sp">
@@ -108,7 +108,7 @@ watch(() => room.jpAnime, async (i) => {
         <section v-if="jp.decks.length" class="decks">
           <b class="label-caps">Kortstokker</b>
           <div v-for="d in jp.decks" :key="d.id" class="deck">
-            <div class="dn"><span>{{ d.name }}</span><small>{{ d.words }} ord</small></div>
+            <div class="dn"><span translate="no">{{ d.name }}</span><small>{{ d.words }} ord</small></div>
             <div class="dbar"><i class="known" :style="{ width: `${d.known}%` }"></i><i class="learning" :style="{ width: `${Math.max(0, d.learning - d.known)}%` }"></i></div>
             <small class="dp">{{ d.known }} % kjent · {{ d.learning }} % påbegynt</small>
           </div>
