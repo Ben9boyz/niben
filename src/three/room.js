@@ -46,7 +46,7 @@ const LYTTE_TOP = { pos: [2.55, 1.55, -0.2], target: [3.72, 0.5, -0.12] }
 // in front of the record shelf (under the turntable), to browse the spines
 const LYTTE_SHELF = { pos: [2.12, 0.8, 0.1], target: [3.6, 0.3, 0.1] }
 // (close up, so what's on the iPod's little screen can be read when it stands there)
-const LYTTE_IPOD = { pos: [2.95, 0.9, 0.16], target: [3.59, 0.62, 0.08] }
+const LYTTE_IPOD = { pos: [3.14, 0.82, 0.14], target: [3.59, 0.62, 0.08] } // (30 % closer than before)
 
 export const STATION_LABELS = { gaming: 'Gaming', japansk: 'Japansk', lytte: 'Lytteplassen', ovelse: 'Øvingstimer', gitar: 'Gitarer', boker: 'Bokhylla', kode: 'Prosjekter', reiser: 'Reiser', om: 'Om meg' }
 

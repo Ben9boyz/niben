@@ -89,7 +89,10 @@ async function playTrack(t) {
   if (locked.value) { msg.value = { error: `Låst – hør ferdig (${fmtClock(lockLeft.value)} igjen)` }; return }
   addGuest(albumOf(t)) // an album that isn't on the shelf gets a record by the turntable
   busy.value = t.uri
-  const r = await play(t.album_uri, t.uri, { from: 'search' })
+  // searching in the Album tab and the song is on an album I own → it plays on the turntable; everything else found by
+  // searching (Spillelister tab, albums I don't have) goes on the iPod
+  const onShelf = props.tab === 'vinyl' && spotify.albums.some((a) => a.uri === t.album_uri)
+  const r = await play(t.album_uri, t.uri, onShelf ? {} : { from: 'search' })
   busy.value = null
   msg.value = r.ok ? { ok: `Spiller «${t.name}»${lockNote()}` } : { error: r.error }
 }

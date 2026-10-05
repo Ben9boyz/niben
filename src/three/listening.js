@@ -252,12 +252,21 @@ export function buildListeningCorner() {
     new THREE.MeshStandardMaterial({ color: 0x0c0c0e }),
   ])
   disc.castShadow = true
-  platter.add(disc)
+  // the record on the turntable: only there while one is playing (it comes out of its sleeve and lands on the platter)
+  const rec = new THREE.Group()
+  rec.visible = false
+  platter.add(rec)
+  rec.add(disc)
   const labelMat = new THREE.MeshStandardMaterial({ color: 0xd33a2c, roughness: 0.6 })
   const label = new THREE.Mesh(new THREE.CircleGeometry(0.048, 48), labelMat)
   label.rotation.x = -Math.PI / 2
   label.position.y = 0.0025
-  platter.add(label)
+  rec.add(label)
+  // the same record in flight between the sleeve and the platter
+  const flyDisc = new THREE.Group()
+  flyDisc.add(disc.clone(), label.clone())
+  flyDisc.visible = false
+  group.add(flyDisc)
   add(new THREE.CylinderGeometry(0.004, 0.004, 0.02, 8), alu, -0.04, 0.11, 0, tt)
   add(new THREE.CylinderGeometry(0.025, 0.028, 0.03, 24), alu, 0.16, 0.095, -0.1, tt)
   const arm = new THREE.Group()
@@ -901,6 +910,15 @@ export function buildListeningCorner() {
   }
 
   let screenImgSrc = null, labelSrc = null
+  // ── the record goes from its sleeve to the turntable ──
+  let recUri = null // the album whose record is (about to be) on the turntable
+  let recOn = false // settled on the platter
+  let recFlight = null // { t, wait } while it travels (wait: until the sleeve has arrived by the turntable)
+  const recEnd = new THREE.Vector3(-0.46, TOP_Y + 0.105, 0.24) // the platter's centre (group-local)
+  const vA = new THREE.Vector3(), vB = new THREE.Vector3()
+  const qStart = new THREE.Quaternion(), qId = new THREE.Quaternion()
+  const qZ90 = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2))
+  const easeIO = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2)
   function setState({ albums = [], now = null, guests = [], playOn = 'vinyl' }) {
     setAlbums(albums)
     guestAlbums = guests
@@ -914,6 +932,14 @@ export function buildListeningCorner() {
     if (!playingUri && vNow?.album) playingUri = albums.find((a) => a.name === vNow.album)?.uri || null
     screenNow = onIpod ? now : null
     screenAt = performance.now()
+    const wantRec = vNow?.name && playingUri ? playingUri : null
+    if (wantRec !== recUri) { // another record (or none): the platter is bare, and a new disc will come from its sleeve
+      recUri = wantRec
+      recOn = false
+      rec.visible = false
+      flyDisc.visible = false
+      recFlight = wantRec ? { t: 0, wait: 1.0 } : null
+    }
     if (screenNow?.image !== screenImgSrc) {
       screenImgSrc = screenNow?.image || null
       screenArt = null
@@ -985,6 +1011,25 @@ export function buildListeningCorner() {
     // the iPod's progress bar moves on once a second while something plays
     if (screenNow?.playing && performance.now() - screenDrawn > 1000) redrawScreen()
 
+    // the disc travels: out of the sleeve, in an arc, down onto the platter
+    if (recFlight) {
+      const l = loose.get(recUri)
+      moving = true
+      if (recFlight.wait > 0) recFlight.wait -= dt
+      else if (!l) { recFlight = null; recOn = true; rec.visible = true } // no sleeve to come from: it is just there
+      else {
+        recFlight.t = Math.min(1, recFlight.t + dt / 1.25)
+        const k = easeIO(recFlight.t)
+        vA.copy(l.mesh.position).add(vB.set(0, 0.05, 0).applyQuaternion(l.mesh.quaternion)) // where the disc sits in the sleeve
+        qStart.copy(l.mesh.quaternion).multiply(qZ90)
+        flyDisc.position.lerpVectors(vA, recEnd, k)
+        flyDisc.position.y += Math.sin(Math.PI * k) * 0.16
+        flyDisc.quaternion.slerpQuaternions(qStart, qId, k)
+        flyDisc.visible = true
+        if (recFlight.t >= 1) { recFlight = null; recOn = true; rec.visible = true; flyDisc.visible = false }
+      }
+    }
+
     camera.getWorldDirection(camFwd)
     camUp.set(0, 1, 0).applyQuaternion(camera.quaternion)
     group.getWorldQuaternion(groupQ).invert()
@@ -1048,6 +1093,8 @@ export function buildListeningCorner() {
       // the vinyl slides out of the sleeve a little (held / browsed / playing) and back in
       const wantOut = sel ? 0.056 : peek ? 0.05 : isPlaying ? 0.042 : 0
       if (Math.abs(wantOut - l.disc.position.y) > 0.0004) { l.disc.position.y += (wantOut - l.disc.position.y) * Math.min(1, dt * 5); moving = true }
+      // the record that is on the turntable is not in its sleeve any more
+      l.disc.visible = !(uri === recUri && (recOn || (recFlight && recFlight.wait <= 0)))
       const k = sel ? 55 : 90, c = sel ? 11 : 14
       l.vel.x += ((targetPos.x - l.mesh.position.x) * k - l.vel.x * c) * dt
       l.vel.y += ((targetPos.y - l.mesh.position.y) * k - l.vel.y * c) * dt
