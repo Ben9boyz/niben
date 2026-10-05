@@ -140,7 +140,10 @@ function show(view) {
 /* PC: the search stays put at the top while the grid scrolls away underneath it – on the same line as the
    library and what's playing, so nothing ever sticks higher than the search */
 @media (min-width: 821px) {
-  .toolbar { position: sticky; top: 0; z-index: 6; margin: -12px -10px 0; padding: 20px 10px 12px; background: color-mix(in srgb, var(--bg) 94%, transparent); -webkit-backdrop-filter: blur(16px) saturate(140%); backdrop-filter: blur(16px) saturate(140%); }
+  .toolbar { position: sticky; top: 0; z-index: 6; margin: -12px -10px 0; padding: 20px 10px 12px; background: color-mix(in srgb, var(--bg) 55%, transparent); -webkit-backdrop-filter: blur(26px) saturate(140%); backdrop-filter: blur(26px) saturate(140%);
+    /* frosted glass that fades out at the edges – no pale box behind the search */
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent), linear-gradient(to bottom, #000 calc(100% - 14px), transparent);
+    -webkit-mask-composite: source-in; mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent), linear-gradient(to bottom, #000 calc(100% - 14px), transparent); mask-composite: intersect; }
 }
 .seg { display: none !important; }
 @media (max-width: 820px) { .seg { display: grid !important; } }
