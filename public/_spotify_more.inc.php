@@ -317,6 +317,23 @@ function sp_more_handle(string $action, bool $post): bool {
         kv_set('my_queue', json_encode($out, JSON_UNESCAPED_UNICODE));
         out(['ok' => true, 'count' => count($out)]);
     }
+    case 'myqueue_send': {
+        // hand Spotify my next song – ONCE. Several pages (Mac, phone, a second tab) run the same logic; the first one wins,
+        // the others are told "already sent" so the song doesn't end up in Spotify's queue twice.
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $uri = (string)(body()['uri'] ?? '');
+        $after = (string)(body()['after'] ?? '');
+        if (!$id($uri, 'track')) fail('Ugyldig låt.');
+        $c = json_decode(kv_get('my_queue_sent') ?: 'null', true);
+        if (is_array($c) && ($c['uri'] ?? '') === $uri && ($c['after'] ?? '') === $after && time() - (int)($c['t'] ?? 0) < 1500) out(['ok' => true, 'already' => true]);
+        kv_set('my_queue_sent', json_encode(['uri' => $uri, 'after' => $after, 't' => time()]));
+        [$s, $j] = sp_api('POST', '/me/player/queue?uri=' . rawurlencode($uri));
+        if ($s === 404) { kv_del('my_queue_sent'); out(['error' => 'Ingen Spotify-enhet spiller nå.', 'code' => 'no_device'], 409); }
+        if ($s >= 300) { kv_del('my_queue_sent'); fail('Spotify svarte med feil (' . $s . ').', 502); }
+        kv_del('cache_queue', 'cache_queue4');
+        out(['ok' => true]);
+    }
     case 'spotify_enqueue': {
         // put a song next in the queue (doesn't switch what's playing, so the lock doesn't apply)
         if (!$post) fail('Bruk POST.', 405);

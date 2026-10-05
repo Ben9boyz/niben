@@ -313,6 +313,9 @@ export function mockApi() {
             }
             return send(res, 200, { ok: n > 0, added: n, total: (b.uris || []).length, failed: (b.uris || []).length - n })
           }
+          case 'myqueue_send':
+            if (!needAdmin()) return
+            return send(res, 200, { ok: true })
           case 'myqueue_get':
             if (!needAdmin()) return
             return send(res, 200, { items: sp.myQueue || [] })

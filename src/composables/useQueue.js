@@ -120,8 +120,9 @@ async function sendNext() {
   const head = myQueue.items[0]
   sending = true
   try {
-    await api('spotify_enqueue', { uri: head.uri })
-    myQueue.sent = { uri: head.uri, after: spotify.now?.uri || null, t: Date.now() }
+    const after = spotify.now?.uri || ''
+    await api('myqueue_send', { uri: head.uri, after }) // the server sends it once, however many pages are open
+    myQueue.sent = { uri: head.uri, after: after || null, t: Date.now() }
     keepSent()
     spotify.queueV++
   } catch (e) {
