@@ -699,7 +699,22 @@ export function buildListeningCorner() {
   atlasTex.colorSpace = THREE.SRGBColorSpace
   atlasTex.anisotropy = 8
   let atlasTimer = 0
-  const atlasDirty = () => { clearTimeout(atlasTimer); atlasTimer = setTimeout(() => (atlasTex.needsUpdate = true), 120) }
+  // the flat sides of the sleeves (the cover face): a second atlas, one cell per record, so the slivers you see between the spines are the cover art
+  const CELL = 96, CCOLS = 8, CROWS = Math.ceil(MAX_RECORDS / CCOLS)
+  const facesCanvas = document.createElement('canvas')
+  facesCanvas.width = CELL * CCOLS
+  facesCanvas.height = CELL * CROWS
+  const facesCtx = facesCanvas.getContext('2d')
+  const facesTex = new THREE.CanvasTexture(facesCanvas)
+  facesTex.colorSpace = THREE.SRGBColorSpace
+  facesTex.anisotropy = 4
+  function drawFace(i, color, img) {
+    const x = (i % CCOLS) * CELL, y = Math.floor(i / CCOLS) * CELL
+    facesCtx.fillStyle = color
+    facesCtx.fillRect(x, y, CELL, CELL)
+    if (img) facesCtx.drawImage(img, x, y, CELL, CELL)
+  }
+  const atlasDirty = () => { clearTimeout(atlasTimer); atlasTimer = setTimeout(() => { atlasTex.needsUpdate = true; facesTex.needsUpdate = true }, 120) }
 
   const coverTex = new Map() // uri -> texture of the cover, loaded in the background
   let coverJobs = []
@@ -764,13 +779,27 @@ export function buildListeningCorner() {
   recGeo.setAttribute('spineFace', new THREE.BufferAttribute(spineFlag, 1))
   const colAttr = new THREE.InstancedBufferAttribute(new Float32Array(MAX_RECORDS), 1)
   recGeo.setAttribute('aCol', colAttr)
+  const cellAttr = new THREE.InstancedBufferAttribute(new Float32Array(MAX_RECORDS * 2), 2) // where a record's cover cell sits in the faces atlas (uv)
+  recGeo.setAttribute('aCell', cellAttr)
+  const faceFlag = new Float32Array(recGeo.attributes.position.count)
+  for (let v = 0; v < 4; v++) faceFlag[v] = 1 // +x = the cover face
+  recGeo.setAttribute('coverFace', new THREE.BufferAttribute(faceFlag, 1))
   const shelfMat = new THREE.MeshStandardMaterial({ map: atlasTex, roughness: 0.6 })
   shelfMat.onBeforeCompile = (sh) => {
     sh.uniforms.uCols = { value: MAX_RECORDS }
+    sh.uniforms.uFaces = { value: facesTex }
+    sh.uniforms.uCell = { value: new THREE.Vector2(CELL / facesCanvas.width, CELL / facesCanvas.height) }
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', 'attribute float spineFace;\nattribute float aCol;\nuniform float uCols;\n#include <common>')
+      .replace('#include <common>', 'attribute float spineFace;\nattribute float aCol;\nattribute float coverFace;\nattribute vec2 aCell;\nuniform float uCols;\nuniform vec2 uCell;\nvarying float vCF;\nvarying vec2 vCUv;\n#include <common>')
       .replace('#include <uv_vertex>', `#include <uv_vertex>
+      vCF = coverFace; vCUv = aCell + (uv * 0.96 + 0.02) * uCell;
       vMapUv = spineFace > 0.5 ? vec2((aCol + uv.x) / uCols, uv.y * 0.9) : vec2((aCol + 0.5) / uCols, 0.97);`)
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', 'uniform sampler2D uFaces;\nvarying float vCF;\nvarying vec2 vCUv;\n#include <common>')
+      .replace('#include <map_fragment>', `#ifdef USE_MAP
+      vec4 sampledDiffuseColor = vCF > 0.5 ? texture2D(uFaces, vCUv) : texture2D(map, vMapUv);
+      diffuseColor *= sampledDiffuseColor;
+    #endif`)
   }
   const shelfMesh = new THREE.InstancedMesh(recGeo, shelfMat, MAX_RECORDS)
   shelfMesh.count = 0
@@ -856,6 +885,8 @@ export function buildListeningCorner() {
       const color = album.color || '#3a4352'
       drawSpine(i, album, color)
       colAttr.setX(i, i)
+      cellAttr.setXY(i, (i % CCOLS) * (CELL / facesCanvas.width), 1 - (Math.floor(i / CCOLS) + 1) * (CELL / facesCanvas.height))
+      drawFace(i, color, null)
       const r = { album, index: i, color, out: 0, hidden: false,
         home: new THREE.Vector3(x0 + 0.006 + THICK / 2 + off, BOTTOM_Y + SLEEVE / 2 + 0.001, FRONT_Z - SLEEVE / 2 - 0.012) }
       writeInstance(r)
@@ -875,6 +906,7 @@ export function buildListeningCorner() {
             }
           }
           drawSpine(i, album, r.color)
+          drawFace(i, r.color, img)
           atlasDirty()
           const tex = new THREE.Texture(img)
           tex.colorSpace = THREE.SRGBColorSpace
@@ -889,6 +921,8 @@ export function buildListeningCorner() {
     })
     setTimeout(pumpCovers, 500) // after the first picture is up
     colAttr.needsUpdate = true
+    cellAttr.needsUpdate = true
+    facesTex.needsUpdate = true
     shelfMesh.count = records.length
     shelfMesh.computeBoundingSphere() // clicks/hover test against it – fit it to the records now on the shelf
     atlasTex.needsUpdate = true
