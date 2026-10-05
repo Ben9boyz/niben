@@ -11,6 +11,7 @@ import { admin } from '../composables/useAdmin'
 import { useVinylNoise } from '../composables/useVinylNoise'
 import { gfxPayload } from '../composables/useGraphics'
 import { dailyAlbum } from '../composables/useDaily'
+import { playOn, targetFor } from '../composables/usePlayOn'
 import { decor, loadDecor, changed as decorChanged } from '../composables/useDecor'
 import { weather } from '../composables/useLive'
 import { calm } from '../composables/useCalm'
@@ -170,8 +171,8 @@ watch(() => spotify.now?.uri, async (uri) => {
   const bpm = uri ? await fetchTempo(uri) : 0
   if (spotify.now?.uri === uri) api?.setTempo(bpm)
 }, { immediate: false })
-const sceneMusic = () => ({ albums: shelfAlbums.value, playlists: spotify.playlists, now: spotify.now, guests: spotify.guests })
-watch(() => [shelfAlbums.value, spotify.playlists, spotify.now, spotify.guests], () => api?.setMusic(sceneMusic()), { deep: false })
+const sceneMusic = () => ({ albums: shelfAlbums.value, playlists: spotify.playlists, now: spotify.now, guests: spotify.guests, playOn: playOn.value })
+watch(() => [shelfAlbums.value, spotify.playlists, spotify.now, spotify.guests, playOn.value], () => api?.setMusic(sceneMusic()), { deep: false })
 // typing in the shelf search: the matching records slide out (only a handful – more would just be a mess)
 watch(() => [room.shelfQ, spotify.albums, route.name], () => {
   const n = room.shelfQ.trim().toLowerCase()
@@ -207,13 +208,34 @@ watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room
 // a record goes onto the turntable ('spiller' = turntable camera, record not held up), a playlist
 // puts the iPod back on its stand and the camera looks at it ('ipodDock'). Picking another record
 // holds that one up; picking up the iPod (click it / the tab) takes it in hand again.
-watch(() => spotify.startedHere, () => {
+// the camera goes to the player the music belongs to: the turntable for an album, the iPod for a playlist or a found
+// song (or what I've forced in the settings) – whenever a song begins, and after a while without anybody touching
+// anything. The panel slides away on the PC so the player is the whole picture.
+function focusPlayer(target) {
   if (route.name !== 'lytte') return
-  room.musicView = room.musicView.startsWith('ipod') ? 'ipodDock' : 'spiller'
+  room.musicView = (target || playOn.value) === 'ipod' ? 'ipodDock' : 'spiller'
   room.shelfView = false
   room.recordFlipped = false
   if (window.matchMedia('(min-width: 901px)').matches) room.panelHidden = true
+}
+watch(() => spotify.startedHere, () => focusPlayer(targetFor(spotify.origin?.uri, spotify.origin?.from)))
+// a new song began (the next one in line, or started on another device): to the right player – unless I'm holding something
+watch(() => spotify.now?.uri, (uri, old) => {
+  if (!uri || uri === old || !spotify.now?.playing) return
+  const holding = room.musicView === 'ipod' || (room.musicView === 'vinyl' && (room.sel.musikk || room.shelfView))
+  if (!holding) focusPlayer()
 })
+let lastTouch = Date.now()
+const touched = () => { lastTouch = Date.now() }
+let idleTimer = 0
+onMounted(() => {
+  for (const e of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart']) window.addEventListener(e, touched, { passive: true })
+  idleTimer = setInterval(() => {
+    if (route.name !== 'lytte' || !spotify.now?.playing || Date.now() - lastTouch < 45000) return
+    if (room.musicView !== 'spiller' && room.musicView !== 'ipodDock') focusPlayer()
+  }, 5000)
+})
+onBeforeUnmount(() => { clearInterval(idleTimer); for (const e of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart']) window.removeEventListener(e, touched) })
 watch(() => room.sel.musikk?.uri, (uri) => {
   room.recordFlipped = false
   if (uri && room.musicView === 'spiller') room.musicView = 'vinyl'

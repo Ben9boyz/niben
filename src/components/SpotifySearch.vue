@@ -89,7 +89,7 @@ async function playTrack(t) {
   if (locked.value) { msg.value = { error: `Låst – hør ferdig (${fmtClock(lockLeft.value)} igjen)` }; return }
   addGuest(albumOf(t)) // an album that isn't on the shelf gets a record by the turntable
   busy.value = t.uri
-  const r = await play(t.album_uri, t.uri)
+  const r = await play(t.album_uri, t.uri, { from: 'search' })
   busy.value = null
   msg.value = r.ok ? { ok: `Spiller «${t.name}»${lockNote()}` } : { error: r.error }
 }

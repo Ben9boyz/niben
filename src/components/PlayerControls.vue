@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Shuffle, SkipBack, SkipForward, Play, Pause, Repeat, Repeat1, MonitorSpeaker, Smartphone, Speaker, Laptop, Volume2 } from 'lucide-vue-next'
 import WebPlayerToggle from './WebPlayerToggle.vue'
+import { playPref, setPlayPref } from '../composables/usePlayOn'
 import { vinyl, setVinyl, setVinylLevel } from '../composables/useVinylNoise'
 import { mode } from '../composables/useMode'
 import { spotify, control, setShuffle, cycleRepeat, fetchDevices, transferTo, setDeviceVolume, lockLeft, fmtClock, notify } from '../composables/useSpotify'
@@ -62,6 +63,12 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDoc))
     <div v-if="open === 'devices'" class="pop glass">
       <b class="label-caps">Spill på</b>
       <WebPlayerToggle class="here" />
+      <div v-if="mode === 'rom'" class="po" role="group" aria-label="Hvor lyden kommer fra i rommet">
+        <span class="pt" title="Album spilles på platespilleren, spillelister og søkte låter på iPod-en. Her kan du tvinge det ene.">Spilles på</span>
+        <button :class="{ on: playPref.v === 'auto' }" @click="setPlayPref('auto')">Auto</button>
+        <button :class="{ on: playPref.v === 'ipod' }" @click="setPlayPref('ipod')">iPod</button>
+        <button :class="{ on: playPref.v === 'vinyl' }" @click="setPlayPref('vinyl')">Plate</button>
+      </div>
       <label v-if="mode === 'rom'" class="vin" title="Svak vinylknitring over musikken i 3D-rommet"><input type="checkbox" :checked="vinyl.on" @change="setVinyl($event.target.checked)" /><span class="sw"><i></i></span>Vinylknitring</label>
       <label v-if="mode === 'rom' && vinyl.on" class="vol vlv" title="Hvor sterk vinylknitringen er"><span class="vt">Knitring</span><input type="range" min="0" max="100" :value="vinyl.level" aria-label="Styrke på vinylknitring" @input="setVinylLevel(+$event.target.value)" /></label>
       <p v-if="!devices" class="muted">Henter enheter …</p>
@@ -108,5 +115,9 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDoc))
 .dv:disabled { opacity: 0.45; cursor: default; }
 .vol { display: flex; align-items: center; gap: 8px; padding: 6px 10px 2px; color: var(--text-3); }
 .vol input { flex: 1; accent-color: #1db954; }
+.po { display: flex; align-items: center; gap: 4px; padding: 6px 10px; }
+.po .pt { margin-right: auto; font-size: 0.78rem; color: var(--text-2); }
+.po button { padding: 4px 10px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.74rem var(--font); cursor: pointer; }
+.po button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .vlv .vt { font-size: 0.74rem; font-weight: 600; white-space: nowrap; }
 </style>

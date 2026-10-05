@@ -505,14 +505,14 @@ export function buildListeningCorner() {
   const W = 0.1, H = 0.166, D = 0.018
   add(new RoundedBoxGeometry(W, H, D, 4, 0.008), new THREE.MeshPhysicalMaterial({ color: 0xe2e4e8, roughness: 0.18, clearcoat: 1, metalness: 0.05 }), 0, 0, 0, body)
   const screenCanvas = document.createElement('canvas')
-  screenCanvas.width = 1024
-  screenCanvas.height = 840 // same shape as the screen (SW : SH), at 2× for a crisp screen
+  screenCanvas.width = 2048
+  screenCanvas.height = 1680 // same shape as the screen (SW : SH), at 4× – sharp even when the iPod stands there and the camera is close
   const screenCtx = screenCanvas.getContext('2d')
   const screenTex = new THREE.CanvasTexture(screenCanvas)
   screenTex.colorSpace = THREE.SRGBColorSpace
-  screenTex.anisotropy = 8
+  screenTex.anisotropy = 16
   const SW = W * 0.84, SH = W * 0.84 * 0.82
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false, color: new THREE.Color(0.9, 0.9, 0.9) }))
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false, color: new THREE.Color(1, 1, 1) }))
   screen.position.set(0, H * 0.22, D / 2 + 0.0006)
   body.add(screen)
   const wheel = new THREE.Mesh(new THREE.CircleGeometry(W * 0.36, 48), new THREE.MeshStandardMaterial({ color: 0xcfd3d9, roughness: 0.55 }))
@@ -895,45 +895,49 @@ export function buildListeningCorner() {
     const p = screenNow?.duration_ms
       ? Math.min(screenNow.duration_ms, (screenNow.progress_ms || 0) + (screenNow.playing ? performance.now() - screenAt : 0))
       : 0
-    drawIpodScreen(screenCtx, 1024, 840, screenNow, screenArt, p)
+    drawIpodScreen(screenCtx, 2048, 1680, screenNow, screenArt, p)
     screenTex.needsUpdate = true
     screenDrawn = performance.now()
   }
 
-  function setState({ albums = [], now = null, guests = [] }) {
+  let screenImgSrc = null, labelSrc = null
+  function setState({ albums = [], now = null, guests = [], playOn = 'vinyl' }) {
     setAlbums(albums)
     guestAlbums = guests
-    playing = !!now?.playing
-    playingUri = now?.context && now.context.startsWith('spotify:album:') ? now.context : null
+    // what is playing belongs either to the turntable (an album) or to the iPod (a playlist, a found song): only that
+    // one "plays" – the other stands still
+    const onIpod = playOn === 'ipod'
+    const vNow = onIpod ? null : now
+    playing = !!vNow?.playing
+    playingUri = vNow?.context && vNow.context.startsWith('spotify:album:') ? vNow.context : null
     // fall back to matching the album name when the context isn't an album (e.g. a track from it)
-    if (!playingUri && now?.album) playingUri = albums.find((a) => a.name === now.album)?.uri || null
-    screenNow = now
+    if (!playingUri && vNow?.album) playingUri = albums.find((a) => a.name === vNow.album)?.uri || null
+    screenNow = onIpod ? now : null
     screenAt = performance.now()
-    const key = `${now?.image}|${now?.name}|${playing}`
-    if (key !== nowKey) {
-      const imageChanged = !nowKey.startsWith(`${now?.image}|`)
-      nowKey = key
-      if (imageChanged) {
-        screenArt = null
-        if (now?.image) {
-          const img = new Image()
-          img.crossOrigin = 'anonymous'
-          img.onload = () => { if (screenNow?.image === now.image) { screenArt = img; redrawScreen() } }
-          img.src = now.image
-        }
-      }
-      redrawScreen()
-      if (now?.image) {
-        loader.load(now.image_large || now.image, (t) => {
-          t.anisotropy = 16
-          t.colorSpace = THREE.SRGBColorSpace
-          labelMat.map?.dispose()
-          labelMat.map = t
-          labelMat.color.set(0xffffff)
-          labelMat.needsUpdate = true
-        }, undefined, () => {})
+    if (screenNow?.image !== screenImgSrc) {
+      screenImgSrc = screenNow?.image || null
+      screenArt = null
+      if (screenImgSrc) {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const src = screenImgSrc
+        img.onload = () => { if (screenImgSrc === src) { screenArt = img; redrawScreen() } }
+        img.src = src
       }
     }
+    if (vNow?.image && vNow.image !== labelSrc) {
+      labelSrc = vNow.image
+      loader.load(vNow.image_large || vNow.image, (t) => {
+        t.anisotropy = 16
+        t.colorSpace = THREE.SRGBColorSpace
+        labelMat.map?.dispose()
+        labelMat.map = t
+        labelMat.color.set(0xffffff)
+        labelMat.needsUpdate = true
+      }, undefined, () => {})
+    }
+    const key = `${vNow?.name}|${playing}|${screenNow?.image}|${screenNow?.name}|${screenNow?.playing}`
+    if (key !== nowKey) { nowKey = key; redrawScreen() }
   }
   redrawScreen()
 

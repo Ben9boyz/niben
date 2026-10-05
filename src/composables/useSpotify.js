@@ -20,6 +20,7 @@ export const spotify = reactive({
   tick: Date.now(), // updates every second for countdowns
   error: null,
   startedHere: 0, // time of the last successful play() from this page
+  origin: (() => { try { return JSON.parse(localStorage.getItem('niben-play-origin') || 'null') } catch { return null } })(), // what I last started from this site: { uri (album / playlist / song), t } – decides turntable or iPod
 })
 
 let subscribers = 0
@@ -275,7 +276,7 @@ export async function control(op, ms = 0) {
  *  Tries hard to play somewhere: the player on this page first (waiting for it / reconnecting it when
  *  Spotify can't see it), then any other Spotify device of mine – and says where it ended up. */
 let starting = false // one start at a time: a double click / tap must not send two plays
-export async function play(uri, track = null) {
+export async function play(uri, track = null, opts = {}) { // opts.from: 'search' = picked from the search results (the iPod plays those)
   if (starting) return { ok: false, error: 'Starter allerede …' }
   starting = true
   // must run inside the click, before any await, or the browser keeps the player muted
@@ -326,6 +327,8 @@ export async function play(uri, track = null) {
     }
     spotify.lockUntil = r.lock_until
     spotify.startedHere = Date.now()
+    spotify.origin = { uri, from: opts.from || null, t: Date.now() }
+    try { localStorage.setItem('niben-play-origin', JSON.stringify(spotify.origin)) } catch {}
     if (r.server_time) spotify.offset = r.server_time - Date.now() / 1000
     if (r.device_name) notify(`Spiller på «${r.device_name}» – fant ikke spilleren på siden.`)
     setTimeout(refreshNow, 1500) // give Spotify a moment before asking what's playing

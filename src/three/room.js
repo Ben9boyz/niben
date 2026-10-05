@@ -1297,7 +1297,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     setTempo(bpm) { listening.setTempo(bpm); invalidate(0.5) },
     setShelfFilter(list) { listening.setFilter(list); invalidate(1) },
     setMusic(state) {
-      music = { albums: state.albums || [], playlists: state.playlists || [], now: state.now || null, guests: state.guests || [] }
+      music = { albums: state.albums || [], playlists: state.playlists || [], now: state.now || null, guests: state.guests || [], playOn: state.playOn || 'vinyl' }
       listening.setState(music)
       shadowsDirty = true
       invalidate(1)
