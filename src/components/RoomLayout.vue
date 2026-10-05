@@ -16,6 +16,7 @@ import { spotify } from '../composables/useSpotify'
 import { shell } from '../composables/useShell'
 import GlobalMini from './GlobalMini.vue'
 import MusicSwitch from './MusicSwitch.vue'
+import ListenDock from './ListenDock.vue'
 import { admin } from '../composables/useAdmin'
 
 const data = useData()
@@ -52,7 +53,11 @@ const canHide = computed(() => !mobile.value && !isHome.value && !isFocus.value)
 const hidden = computed(() => canHide.value && room.panelHidden)
 // the little player in the top-right corner (GlobalMini): everywhere in the room except the listening corner while
 // its panel shows the full player. A side panel on the right then moves down below it.
-const miniOn = computed(() => (!!spotify.now?.name || admin.loggedIn) && shell.value !== 'player' && route.name !== 'admin' && (route.name !== 'lytte' || hidden.value) && (!mobile.value || collapsed.value))
+const miniOn = computed(() => !(mobile.value && isMusic.value) && (!!spotify.now?.name || admin.loggedIn) && shell.value !== 'player' && route.name !== 'admin' && (route.name !== 'lytte' || hidden.value) && (!mobile.value || collapsed.value))
+// phones in the listening corner: no side menus – one tiny switch (Album / Spillelister) on top and ONE action bar at the bottom (ListenDock)
+const listenPhone = computed(() => mobile.value && isMusic.value)
+watch(listenPhone, (v) => document.documentElement.classList.toggle('listen-phone', v), { immediate: true })
+onBeforeUnmount(() => document.documentElement.classList.remove('listen-phone'))
 const belowMini = computed(() => miniOn.value && !mobile.value && !hidden.value && !isFocus.value && !isHome.value)
 function setHidden(v) {
   room.panelHidden = v
@@ -162,6 +167,7 @@ watch(() => route.name, () => (collapsed.value = false))
 
   <DecorEditor />
   <MusicSwitch v-if="isMusic && room.ready" @pick="collapsed = false" />
+  <ListenDock v-if="listenPhone && room.ready && collapsed && !decor.editing" />
   <GlobalMini :show="miniOn" />
 
   <!-- phones, panel closed: one icon brings it back -->
@@ -378,3 +384,12 @@ watch(() => route.name, () => (collapsed.value = false))
 
 
 </style>
+
+<style>
+/* phones in the 3D listening corner: nothing but the tiny Album / Spillelister switch on top and the action bar at the bottom
+   (the menu, the settings cog, the mini player, the panel button and the room's own record buttons are all out of the way –
+   the plain version has everything, and the "2D" button next to the switch goes there) */
+html.listen-phone .mbar, html.listen-phone .mlogo, html.listen-phone .nav, html.listen-phone body .sm.sm, html.listen-phone .open-fab,
+html.listen-phone .rplay, html.listen-phone .rflip, html.listen-phone .rclose, html.listen-phone .shelfbar { display: none !important; }
+</style>
+

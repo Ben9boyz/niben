@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { Sparkles } from 'lucide-vue-next'
+import { toggleMode } from '../composables/useMode'
 import { room } from '../composables/useRoom'
 import { spotify } from '../composables/useSpotify'
 import SegSwitch from './SegSwitch.vue'
@@ -28,6 +29,7 @@ function toggleDiscover() { room.discover = !room.discover; if (room.discover) {
 <template>
   <div class="msw">
     <SegSwitch v-model="view" :items="items" label="Musikk" />
+    <button class="to2d glass" title="Bytt til hele 2D-versjonen" aria-label="Bytt til 2D-versjonen" @click="toggleMode">2D</button>
     <button class="disc glass" :class="{ on: room.discover }" title="Oppdag – album jeg anbefaler" aria-label="Oppdag" :aria-pressed="room.discover" @click="toggleDiscover"><Sparkles :size="18" aria-hidden="true" /></button>
   </div>
 </template>
@@ -39,6 +41,15 @@ function toggleDiscover() { room.discover = !room.discover; if (room.discover) {
 .disc { display: grid; place-items: center; width: 46px; height: 46px; padding: 0; border: 0; border-radius: 50%; color: var(--text-2); cursor: pointer; transition: color 0.2s, transform 0.3s var(--spring); }
 .disc:hover { color: var(--accent); transform: scale(1.06); }
 .disc.on { color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+/* phones in the 3D corner: just a tiny switch, icons only, in the corner – and "2D" to leave for the plain version */
+.to2d { display: none; }
+@media (max-width: 900px) {
+  html.listen-phone .msw { top: calc(8px + env(safe-area-inset-top)); left: 8px; gap: 6px; animation: none; }
+  html.listen-phone .msw :deep(.seg) { max-width: none; }
+  html.listen-phone .msw :deep(.seg button) { padding: 0 10px; min-width: 40px; height: 36px; }
+  html.listen-phone .msw :deep(.seg .lbl), html.listen-phone .msw :deep(.seg small) { display: none; }
+  html.listen-phone .to2d { display: grid; place-items: center; height: 36px; min-width: 36px; padding: 0 9px; border: 0; border-radius: 999px; color: var(--text-2); font: 700 0.72rem var(--font); cursor: pointer; touch-action: manipulation; }
+}
 /* phones: the switch sits in the top bar; Oppdag is the icon inside the library sheet instead */
 @media (max-width: 720px) { .msw { top: calc(10px + env(safe-area-inset-top)); left: 62px; } .disc { display: none; } .msw :deep(.seg) { max-width: calc(100vw - 62px - 112px); } .msw :deep(.seg small) { display: none; } }
 </style>

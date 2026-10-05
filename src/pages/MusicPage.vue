@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { Disc3, ListMusic, Library, Search, X, Sparkles } from 'lucide-vue-next'
 import { room } from '../composables/useRoom'
@@ -20,6 +20,7 @@ import { loadGroups, groups, select } from '../composables/useGroups'
 import { peek, peekBack, peekClear } from '../composables/useBrowse'
 import MusicDetail from '../components/MusicDetail.vue'
 import ArtistPage from '../components/ArtistPage.vue'
+import MobileMusicBar from '../components/MobileMusicBar.vue'
 
 // Plain version, laid out like Spotify: the library on the left, search + the grid in the middle, what's
 // playing on the right. Phones: the search and the Album/Spillelister switch stay at the top while the grid
@@ -27,6 +28,13 @@ import ArtistPage from '../components/ArtistPage.vue'
 useSpotify()
 loadGroups()
 const gq = ref('') // one search for playlists, albums and songs
+// phones: laid out like Spotify – the library and the search are two tabs in a bar at the bottom, with the player on top of it
+const phoneMq = window.matchMedia('(max-width: 820px)')
+const phone = ref(phoneMq.matches)
+const onMq = () => { phone.value = phoneMq.matches }
+onMounted(() => phoneMq.addEventListener('change', onMq))
+onBeforeUnmount(() => phoneMq.removeEventListener('change', onMq))
+const tab = ref('library') // 'library' | 'search'
 const ipod = computed(() => room.musicView.startsWith('ipod'))
 const playing = computed(() => !!spotify.now?.name)
 const sheet = ref(false) // phones: the full "now playing" card
@@ -42,6 +50,25 @@ const backLabel = computed(() => (peek.stack.length > 1 ? 'Tilbake' : gq.value.t
 const byArtist = computed(() => !ipod.value && !showAll.value && !room.discover && groups.on && groups.view === 'artist')
 const hasTree = computed(() => groups.on && groups.loaded && !byArtist.value && !room.discover) // ("Alt" has its folders too: they work across albums and playlists)
 
+function setTab(t) {
+  if (t === tab.value && !top.value && !room.sel.musikk && !room.ipod.playlist) return
+  tab.value = t
+  peekClear()
+  room.sel.musikk = null
+  room.ipod.playlist = null
+  room.ipod.view = 'menu'
+  if (t === 'library') gq.value = ''
+}
+const chip = computed(() => (room.discover ? 'discover' : libView.value))
+function pickChip(id) {
+  peekClear()
+  room.sel.musikk = null
+  if (id === 'discover') { room.discover = true; return }
+  room.discover = false
+  libView.value = id
+}
+const CHIPS = [{ id: 'vinyl', label: 'Album' }, { id: 'ipod', label: 'Spillelister' }, { id: 'all', label: 'Alt' }, { id: 'discover', label: 'Oppdag' }]
+
 function show(view) {
   peekClear()
   room.musicView = view
@@ -52,8 +79,39 @@ function show(view) {
 </script>
 
 <template>
-  <div class="cpage music" :class="{ app: shell === 'player' }">
-    <div class="layout">
+  <div class="cpage music" :class="{ app: shell === 'player', phone }">
+    <!-- phones: like Spotify – the library or the search fills the screen; the player + the two tabs sit together at the bottom -->
+    <div v-if="phone" class="mobile">
+      <main class="m-main">
+        <div class="glass main-card">
+          <template v-if="top">
+            <MusicDetail v-if="top.kind === 'album'" :key="top.item.uri" :item="top.item" kind="album" :back-label="backLabel" @back="peekBack" />
+            <ArtistPage v-else :key="top.item.id || top.item.name" :artist="top.item" :back-label="backLabel" @back="peekBack" />
+          </template>
+          <template v-else-if="tab === 'search'">
+            <label class="gsearch big">
+              <Search :size="18" aria-hidden="true" />
+              <input v-model="gq" type="search" placeholder="Hva vil du høre?" aria-label="Søk i musikken" autofocus />
+              <button v-if="gq" type="button" aria-label="Tøm søket" @click="gq = ''"><X :size="16" /></button>
+            </label>
+            <SpotifySearch v-if="gq.trim()" :q="gq" scope="all" :tab="ipod ? 'ipod' : 'vinyl'" />
+            <p v-else class="m-hint">Søk etter album, spillelister og låter.</p>
+          </template>
+          <template v-else>
+            <div v-if="!room.sel.musikk && !room.ipod.playlist" class="chips" role="tablist" aria-label="Bibliotek">
+              <button v-for="c in CHIPS" :key="c.id" role="tab" :aria-selected="chip === c.id" :class="{ on: chip === c.id }" @click="pickChip(c.id)">{{ c.label }}</button>
+            </div>
+            <DiscoverContent v-if="room.discover" />
+            <AllPanel v-else-if="showAll" />
+            <PlaylistPanel v-else-if="ipod" :search="false" />
+            <VinylPanel v-else :search="false" />
+          </template>
+        </div>
+      </main>
+      <MobileMusicBar :tab="tab" @tab="setTab" @open="sheet = true" />
+    </div>
+
+    <div v-else class="layout">
       <!-- library -->
       <aside class="lib-col">
         <div class="glass lib-card">
@@ -126,7 +184,6 @@ function show(view) {
     </div>
 
     <!-- phones: a small player above the menu; tap for the full card -->
-    <MiniNowPlaying v-if="playing" class="m-mini" @open="sheet = true" />
     <teleport to="body">
       <transition name="fade">
         <div v-if="sheet" class="m-sheet-bg" @click.self="sheet = false">
@@ -182,6 +239,15 @@ function show(view) {
 .idle b { color: var(--text-2); font-size: 0.95rem; }
 .idle small { font-size: 0.8rem; }
 .m-mini { display: none; }
+/* phones, the Spotify-like layout */
+.mobile { min-width: 0; }
+.m-main { padding-bottom: calc(158px + env(safe-area-inset-bottom)); }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding: 0 0 10px; margin: 0 -2px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chips button { flex: none; padding: 7px 15px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.84rem var(--font); cursor: pointer; touch-action: manipulation; }
+.chips button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.gsearch.big { margin-bottom: 12px; padding: 12px 16px; }
+.m-hint { margin: 18px 4px; color: var(--text-3); font-size: 0.9rem; text-align: center; }
 .as-player { display: block; width: max-content; margin: 10px auto 2px; font-size: 0.78rem; color: var(--text-3); opacity: 0.7; text-decoration: none; }
 .as-player:hover { opacity: 1; color: var(--accent); }
 
