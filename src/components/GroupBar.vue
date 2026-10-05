@@ -33,8 +33,8 @@ async function save() {
 <template>
   <div class="gb">
     <div class="row">
-      <button class="sw" :class="{ on: groups.on }" role="switch" :aria-checked="groups.on" title="Grupper av / på" @click="setGrouping(!groups.on)">
-        <Layers :size="14" />Grupper<i><b></b></i>
+      <button class="sw" :class="{ on: groups.on }" role="switch" :aria-checked="groups.on" title="Grupper av / på" aria-label="Grupper av / på" @click="setGrouping(!groups.on)">
+        <Layers :size="15" />
       </button>
       <span v-if="groups.on" class="vw" role="group" aria-label="Visning">
         <button :class="{ on: view === 'mapper' }" @click="setView('mapper')">Mapper</button>
@@ -74,7 +74,8 @@ async function save() {
 .gb { display: grid; gap: 8px; }
 .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .sw, .ed { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.78rem var(--font); cursor: pointer; }
-.sw.on { color: var(--accent); border-color: var(--accent); }
+.sw { padding: 5px 8px; }
+.sw.on { color: #fff; background: var(--accent); border-color: var(--accent); }
 .sw i { position: relative; width: 26px; height: 15px; border-radius: 999px; background: var(--accent-soft); }
 .sw i b { position: absolute; top: 2px; left: 2px; width: 11px; height: 11px; border-radius: 50%; background: var(--text-3); transition: transform 0.2s, background 0.2s; }
 .sw.on i b { transform: translateX(11px); background: var(--accent); }
