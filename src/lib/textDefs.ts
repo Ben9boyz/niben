@@ -1,6 +1,8 @@
 // The site's own wording – every line here can be changed in Admin → Tekster. `d` is the standard text (what shows
 // until I write something else). Add a line here + use tx('key') in the page, and it appears in the admin list.
-export const TEXT_GROUPS = [
+export interface TextItem { k: string; label: string; d: string; long?: boolean }
+export interface TextGroup { title: string; items: TextItem[] }
+export const TEXT_GROUPS: TextGroup[] = [
   { title: 'Hjem', items: [
     { k: 'home.eyebrow', label: 'Lille tekst over hilsenen', d: 'Velkommen inn' },
     { k: 'home.hello', label: 'Hilsen (før navnet)', d: 'Hei, jeg er' },
@@ -126,4 +128,4 @@ export const TEXT_GROUPS = [
     { k: 'guest.none', label: 'Når ingen har skrevet', d: 'Ingen hilsener ennå – bli den første.' },
   ] },
 ]
-export const TEXT_DEFAULTS = Object.fromEntries(TEXT_GROUPS.flatMap((g) => g.items.map((i) => [i.k, i.d])))
+export const TEXT_DEFAULTS: Record<string, string> = Object.fromEntries(TEXT_GROUPS.flatMap((g) => g.items.map((i): [string, string] => [i.k, i.d])))

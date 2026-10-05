@@ -150,9 +150,9 @@ function playTone(f) {
     </div>
 
     <div class="shift" role="group" aria-label="Flytt stemmingen">
-      <button class="pill" aria-label="Ett halvt steg ned" :disabled="shift <= -6" @click="shift--">♭ −½</button>
+      <button class="pbtn" aria-label="Ett halvt steg ned" :disabled="shift <= -6" @click="shift--">♭ −½</button>
       <span class="sl"><b>{{ shiftLabel }}</b><small>{{ shift > 0 ? '+' : '' }}{{ shift }} halvtoner</small></span>
-      <button class="pill" aria-label="Ett halvt steg opp" :disabled="shift >= 6" @click="shift++">♯ +½</button>
+      <button class="pbtn" aria-label="Ett halvt steg opp" :disabled="shift >= 6" @click="shift++">♯ +½</button>
     </div>
 
     <div class="gauge" :class="{ tune: inTune, idle: !freq }">

@@ -2,7 +2,8 @@ import { reactive } from 'vue'
 
 // The main tabs and the sub-tabs inside them. Every sub-tab is still its own route (and its own
 // station in the 3D room); a group just decides which tab lights up in the menu and which pills show.
-export const GROUPS = [
+export interface NavGroup { id: string; label: string; routes: string[]; icon: string }
+export const GROUPS: NavGroup[] = [
   { id: 'hjem', label: 'Hjem', routes: ['hjem'], icon: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z' },
   { id: 'lytte', label: 'Lytte', routes: ['lytte'], icon: 'M9 18V5l12-2v13M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6z' },
   { id: 'lare', label: 'Lære', routes: ['japansk', 'ovelse'], icon: 'M22 10 12 5 2 10l10 5 10-5zM6 12v5c3 3 9 3 12 0v-5' },
@@ -12,7 +13,7 @@ export const GROUPS = [
 ]
 
 /** Icons (SVG paths, 24×24) for the sub-tabs. */
-export const ROUTE_ICONS = {
+export const ROUTE_ICONS: Record<string, string> = {
   japansk: 'M3 5.5c3.5 1.2 14.5 1.2 18 0M5 9.5h14M7.5 6.5V21M16.5 6.5V21M12 6.8v2.7',
   ovelse: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm0-12v4l2.5 2.5M10 2h4M12 2v3',
   gitar: 'M19.6 2.6l1.8 1.8-2.1 2.1.6.6-1.4 1.4-.6-.6-3.3 3.3a4 4 0 0 1-1 5.2 4.6 4.6 0 0 1-3 4.4 5 5 0 0 1-6.5-6.5 4.6 4.6 0 0 1 4.4-3 4 4 0 0 1 5.2-1l3.3-3.3-.6-.6 1.4-1.4.6.6zM8.5 13a2 2 0 1 0 2.5 2.5',
@@ -24,12 +25,12 @@ export const ROUTE_ICONS = {
 }
 
 /** Names of the sub-tabs (only groups with more than one route show them). */
-export const TAB_LABELS = { japansk: 'Japansk', ovelse: 'Gitar-øving', gitar: 'Gitarer', kode: 'Prosjekter', reiser: 'Reiser', boker: 'Bøker', gaming: 'Spill', aaret: 'Året' }
+export const TAB_LABELS: Record<string, string> = { japansk: 'Japansk', ovelse: 'Gitar-øving', gitar: 'Gitarer', kode: 'Prosjekter', reiser: 'Reiser', boker: 'Bøker', gaming: 'Spill', aaret: 'Året' }
 
-const byRoute = new Map(GROUPS.flatMap((g) => g.routes.map((r) => [r, g])))
-export const groupOf = (routeName) => byRoute.get(routeName) || null
+const byRoute = new Map<string, NavGroup>(GROUPS.flatMap((g) => g.routes.map((r): [string, NavGroup] => [r, g])))
+export const groupOf = (routeName: unknown): NavGroup | null => byRoute.get(String(routeName)) ?? null
 
 // the tab you were last on inside each group – the menu takes you back there
-const last = reactive(new Map()) // reactive: the menu links update when it changes
-export const rememberTab = (routeName) => { const g = byRoute.get(routeName); if (g) last.set(g.id, routeName) }
-export const groupTarget = (g) => ({ name: last.get(g.id) || g.routes[0] })
+const last = reactive(new Map<string, string>()) // reactive: the menu links update when it changes
+export const rememberTab = (routeName: unknown): void => { const g = byRoute.get(String(routeName)); if (g) last.set(g.id, String(routeName)) }
+export const groupTarget = (g: NavGroup): { name: string } => ({ name: last.get(g.id) ?? g.routes[0] })

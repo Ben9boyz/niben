@@ -190,7 +190,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); clearTimeout(flipTimer); wind
 
   <!-- in front of the shelf: browse one record at a time, or go back up to the turntable -->
   <div v-if="room.shelfView" class="shelfbar">
-    <button class="pill glass" @click="toTurntable"><ChevronLeft :size="16" />Til platespilleren</button>
+    <button class="toturn glass" @click="toTurntable"><ChevronLeft :size="16" />Til platespilleren</button>
     <div v-if="peeked" class="browser glass">
       <button class="arrow" aria-label="Forrige album (←)" title="Forrige (←)" @click="browse(-1)"><ChevronLeft :size="22" /></button>
       <div class="pk"><b>{{ peeked.name }}</b><small>{{ peeked.artist }}<template v-if="peeked.year"> · {{ peeked.year }}</template> · {{ room.peekIndex + 1 }}/{{ shelfCount }}</small></div>
@@ -276,8 +276,8 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); clearTimeout(flipTimer); wind
 .rclose { width: 32px; height: 32px; justify-content: center; border-radius: 50%; transform: translate(-100%, 0); }
 .rflip:hover, .rclose:hover { color: var(--accent); }
 .shelfbar { position: fixed; z-index: 24; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 32px); }
-.pill { display: flex; align-items: center; gap: 4px; padding: 10px 16px; border: 0; border-radius: 999px; color: var(--text); font: 600 0.85rem var(--font); cursor: pointer; white-space: nowrap; }
-.pill:hover { color: var(--accent); }
+.toturn { display: flex; align-items: center; gap: 4px; padding: 10px 16px; border: 0; border-radius: 999px; color: var(--text); font: 600 0.85rem var(--font); cursor: pointer; white-space: nowrap; }
+.toturn:hover { color: var(--accent); }
 .browser { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 999px; min-width: 0; }
 .arrow { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--accent-soft); color: var(--accent); cursor: pointer; }
 .arrow:hover { background: var(--accent); color: #fff; }

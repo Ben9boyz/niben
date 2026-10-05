@@ -51,8 +51,8 @@ const hp = computed(() => (hover.value == null ? null : pts.value[hover.value]))
         <p v-if="pts.length > 1" class="head"><b>{{ delta >= 0 ? '+' : '' }}{{ delta }}</b> ord kjent siste {{ pts.length }} dager</p>
       </div>
       <div class="ctl">
-        <button v-for="r in RANGES" :key="r.k" class="pill" :class="{ on: range === r.k }" @click="range = r.k">{{ r.l }}</button>
-        <button class="pill" :class="{ on: table }" @click="table = !table">Tabell</button>
+        <button v-for="r in RANGES" :key="r.k" class="pbtn" :class="{ on: range === r.k }" @click="range = r.k">{{ r.l }}</button>
+        <button class="pbtn" :class="{ on: table }" @click="table = !table">Tabell</button>
       </div>
     </header>
 

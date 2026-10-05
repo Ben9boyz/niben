@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { ChevronLeft, ChevronRight, ArrowUpFromLine, Library, ScanEye, Smartphone, SkipBack, SkipForward, Play, Pause, RotateCw, X, Lock, Undo2 } from 'lucide-vue-next'
 import { room } from '../composables/useRoom'
 import { shelfAlbums } from '../composables/useGroups'
@@ -40,6 +40,35 @@ function browse(d) {
 function takeOut() {
   if (peeked.value) room.sel.musikk = { kind: 'album', uri: peeked.value.uri, t: Date.now() }
 }
+// a record in hand: ‹ › puts it back and takes its neighbour – flicking through the shelf with every record on the "screen"
+// (cover, name, play, turn over), the way "Ta ut" shows it
+function swap(d) {
+  const n = shelfCount.value
+  if (!n || !held.value) return
+  const i = shelfAlbums.value.findIndex((a) => a.uri === held.value.uri)
+  const j = ((i < 0 ? room.peekIndex : i) + d + n) % n
+  room.peekIndex = j
+  room.recordFlipped = false
+  room.sel.musikk = { kind: 'album', uri: shelfAlbums.value[j].uri, t: Date.now() }
+}
+// a swipe sideways on the 3D view does the same as the arrows (not on the bar or the sheets)
+let sx = 0, sy = 0, sOn = false
+function onTouchStart(e) {
+  sOn = e.touches.length === 1 && !e.target.closest?.('.ld, .dock, .rback, .msw, .tour') && (state.value === 'held' || state.value === 'shelf')
+  if (sOn) { sx = e.touches[0].clientX; sy = e.touches[0].clientY }
+}
+function onTouchEnd(e) {
+  if (!sOn) return
+  sOn = false
+  const t = e.changedTouches[0]
+  const dx = t.clientX - sx, dy = t.clientY - sy
+  if (Math.abs(dx) < 56 || Math.abs(dy) > Math.abs(dx) * 0.6) return
+  const d = dx < 0 ? 1 : -1
+  if (state.value === 'held') swap(d)
+  else browse(d)
+}
+onMounted(() => { window.addEventListener('touchstart', onTouchStart, { passive: true }); window.addEventListener('touchend', onTouchEnd, { passive: true }) })
+onBeforeUnmount(() => { window.removeEventListener('touchstart', onTouchStart); window.removeEventListener('touchend', onTouchEnd) })
 
 // ── playing ──
 async function playHeld() {
@@ -65,8 +94,10 @@ const toggle = () => ctl(playing.value ? 'pause' : 'resume')
     <div class="bar glass">
       <!-- a record in hand -->
       <template v-if="state === 'held'">
-        <button class="b" aria-label="Legg tilbake" @click="putBack"><X :size="20" /><span>Legg tilbake</span></button>
+        <button class="b" aria-label="Legg tilbake i hylla" @click="putBack"><X :size="20" /></button>
+        <button class="b arrow" aria-label="Forrige plate" @click="swap(-1)"><ChevronLeft :size="24" /></button>
         <button class="b" :aria-label="room.recordFlipped ? 'Forside' : 'Se låtene'" @click="flip"><RotateCw :size="20" /><span>{{ room.recordFlipped ? 'Forside' : 'Låter' }}</span></button>
+        <button class="b arrow" aria-label="Neste plate" @click="swap(1)"><ChevronRight :size="24" /></button>
         <button v-if="admin.loggedIn" class="b go" :disabled="busy || blocked" :aria-label="isOn && playing ? 'Pause' : 'Spill av'" @click="playHeld">
           <Lock v-if="blocked" :size="20" /><Pause v-else-if="isOn && playing" :size="20" fill="currentColor" /><Play v-else :size="20" fill="currentColor" />
           <span>{{ blocked ? fmtClock(lockLeft) : isOn && playing ? 'Pause' : 'Spill' }}</span>
