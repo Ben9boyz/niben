@@ -13,6 +13,7 @@ import { useData } from '../composables/useData'
 import { room } from '../composables/useRoom'
 import { spotify } from '../composables/useSpotify'
 import { shell } from '../composables/useShell'
+import GlobalMini from './GlobalMini.vue'
 import { admin } from '../composables/useAdmin'
 
 const data = useData()
@@ -47,7 +48,10 @@ function hiddenSet() {
 }
 const canHide = computed(() => !mobile.value && !isHome.value && !isFocus.value)
 const hidden = computed(() => canHide.value && room.panelHidden)
-// (the side panel comes back with the little icon at the edge – there is no extra mini player in the room)
+// the little player in the top-right corner (GlobalMini): everywhere in the room except the listening corner while
+// its panel shows the full player. A side panel on the right then moves down below it.
+const miniOn = computed(() => (!!spotify.now?.name || admin.loggedIn) && shell.value !== 'player' && route.name !== 'admin' && (route.name !== 'lytte' || hidden.value) && (!mobile.value || collapsed.value))
+const belowMini = computed(() => miniOn.value && !mobile.value && !hidden.value && !isFocus.value && !isHome.value)
 function setHidden(v) {
   room.panelHidden = v
   const set = hiddenSet()
@@ -123,6 +127,7 @@ watch(() => route.name, () => (collapsed.value = false))
     ref="dock"
     class="dock"
     :class="{ home: isHome, focus: isFocus, wide: isWide, expanded: isExpanded, big: isExpanded && route.name !== 'lytte', collapsed: collapsed && mobile && !isFocus, hidden }"
+    :style="belowMini ? { top: '86px' } : null"
     :inert="hidden || undefined"
   >
     <!-- phones: the panel fills the screen like the flat version; this closes it so only the 3D room is left -->
@@ -135,6 +140,8 @@ watch(() => route.name, () => (collapsed.value = false))
       </transition>
     </router-view>
   </aside>
+
+  <GlobalMini :show="miniOn" />
 
   <!-- phones, panel closed: one icon brings it back -->
   <button v-if="mobile && collapsed && !isHome && !isFocus && room.ready" class="open-fab glass" aria-label="Åpne panelet" title="Åpne panelet" @click="collapsed = false">

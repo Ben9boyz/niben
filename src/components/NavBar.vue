@@ -1,4 +1,5 @@
 <script setup>
+import { shortcuts } from '../composables/useShortcuts'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { GROUPS, groupOf, groupTarget } from '../lib/nav'
 import { useRoute, useRouter } from 'vue-router'
@@ -141,6 +142,10 @@ onBeforeUnmount(() => {
       <svg v-if="mode === 'rom'" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10" /></svg>
       <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2.5l8.5 4.75v9.5L12 21.5l-8.5-4.75v-9.5z" /><path d="M3.5 7.25L12 12l8.5-4.75M12 12v9.5" /></svg>
       <span>{{ mode === 'rom' ? 'Enkel' : '3D-rom' }}</span>
+    </button>
+
+    <button class="kbdbtn glass" title="Hurtigtaster (?)" aria-label="Hurtigtaster" @click="shortcuts.open = true">
+      <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2.5" /><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M7 14h10" /></svg>
     </button>
 
     <button class="theme glass" @click="toggle" :aria-label="theme === 'dark' ? 'Bytt til lyst tema' : 'Bytt til mørkt tema'">
@@ -311,7 +316,7 @@ onBeforeUnmount(() => {
 .spin-enter-from { transform: rotate(-90deg) scale(0.4); opacity: 0; }
 .spin-leave-to { transform: rotate(90deg) scale(0.4); opacity: 0; }
 
-.item .label, .tip, .spacer { display: none; }
+.item .label, .tip, .spacer, .kbdbtn { display: none; }
 @media (max-width: 720px) {
   .nav-wrap { top: auto; bottom: calc(14px + env(safe-area-inset-bottom)); }
   .brand { display: none; }
@@ -361,7 +366,7 @@ onBeforeUnmount(() => {
   .item .label { display: block; font-size: 0.62rem; letter-spacing: 0.01em; line-height: 1; }
   .item:hover svg { transform: scale(1.12); }
   .spacer { display: block; flex: 1; }
-  .admin-chip, .mode, .theme, .install {
+  .admin-chip, .mode, .theme, .install, .kbdbtn {
     position: relative; left: auto; right: auto; top: auto;
     align-self: center; flex: none;
     width: 50px; height: 50px; padding: 0; border-radius: 17px;
@@ -370,6 +375,8 @@ onBeforeUnmount(() => {
   }
   .admin-chip { opacity: 1; }
   .mode span, .install span { display: none; }
+  .kbdbtn { display: grid; color: var(--text-2); border: 0; cursor: pointer; }
+  .kbdbtn:hover { color: var(--accent); }
   .install:hover { transform: scale(1.06); }
   .theme:hover { transform: rotate(20deg) scale(1.06); }
   /* labels as tooltips when they're hidden */
@@ -386,7 +393,7 @@ onBeforeUnmount(() => {
   .nav-wrap { top: 10px; bottom: 10px; gap: 6px; }
   .brand { height: 50px; }
   .item { padding: 7px 0 5px; }
-  .admin-chip, .mode, .theme, .install { width: 44px; height: 44px; }
+  .admin-chip, .mode, .theme, .install, .kbdbtn { width: 44px; height: 44px; }
 }
 /* only really low screens (under 700 px) lose the labels – they show on hover instead */
 @media (min-width: 721px) and (max-height: 700px) {

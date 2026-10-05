@@ -1,5 +1,7 @@
 import { watch } from 'vue'
-import { spotify, control, lockLeft, notify } from './useSpotify'
+import { spotify, control, lockLeft, notify, setShuffle, cycleRepeat, isLiked, setLiked } from './useSpotify'
+import { room } from './useRoom'
+import { shortcuts } from './useShortcuts'
 import { admin } from './useAdmin'
 
 // What's playing shows up where the system shows music (lock screen, media keys, headphones, the
@@ -37,12 +39,29 @@ export function useMediaSession() {
     }, { immediate: true })
   }
   window.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return
+    const t = e.target
+    if (t.closest?.('input, textarea, select, [contenteditable]')) return
+    const onButton = !!t.closest?.('button, a')
+    // "?" shows the list of shortcuts, everywhere (also for visitors)
+    if (e.key === '?') { e.preventDefault(); shortcuts.open = !shortcuts.open; return }
+    if (e.key === 'Escape' && shortcuts.open) { shortcuts.open = false; return }
     if (!admin.loggedIn || !spotify.now?.name) return
-    if (e.target.closest?.('input, textarea, select, [contenteditable], button, a') || e.metaKey || e.ctrlKey || e.altKey) return
-    // only where the music lives (the listening corner / the player) – other pages keep their own keys
-    if (!/#\/(lytte|musicplayer)/.test(location.hash)) return
-    if (e.code === 'Space') { e.preventDefault(); toggle() }
-    else if (e.key === 'ArrowRight' && e.shiftKey) { e.preventDefault(); guarded('next') }
-    else if (e.key === 'ArrowLeft' && e.shiftKey) { e.preventDefault(); guarded('previous') }
+    const here = /#\/(lytte|musicplayer)/.test(location.hash) // where the music lives; other pages keep their own keys
+    // everywhere: shift + space / shift + arrows
+    if (e.shiftKey && e.code === 'Space') { e.preventDefault(); toggle(); return }
+    if (e.shiftKey && e.key === 'ArrowRight') { e.preventDefault(); guarded('next'); return }
+    if (e.shiftKey && e.key === 'ArrowLeft') { e.preventDefault(); guarded('previous'); return }
+    if (!here || e.shiftKey) return
+    if (e.code === 'Space') { if (!onButton) { e.preventDefault(); toggle() } return }
+    const k = e.key.toLowerCase()
+    if (k === 's') { e.preventDefault(); setShuffle(!spotify.now.shuffle) }
+    else if (k === 'r') { e.preventDefault(); cycleRepeat() }
+    else if (k === 'h') {
+      e.preventDefault()
+      const uri = spotify.now.uri
+      if (uri?.startsWith('spotify:track:')) isLiked(uri).then((l) => setLiked(uri, !l))
+    } else if (k === 'f' && room.sel.musikk) { e.preventDefault(); room.recordFlipped = !room.recordFlipped }
+    else if (e.key === '/') { const el = document.querySelector('.gsearch input, input[type=search]'); if (el) { e.preventDefault(); el.focus() } }
   })
 }

@@ -482,3 +482,6 @@ html.player-shell .cpage { padding-top: 80px; padding-bottom: 40px; }
   html, body { touch-action: pan-x pan-y; }
   input, select, textarea { font-size: 16px !important; }
 }
+
+/* the little player in the top-right corner (flat version): the pages start a little lower so nothing hides under it */
+@media (min-width: 721px) { html.has-mini:not(.player-shell) #app > main > .cpage { padding-top: 84px; } }
