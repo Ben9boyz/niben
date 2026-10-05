@@ -1,6 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { Disc3, ListMusic, Search, X } from 'lucide-vue-next'
+import { ref, computed, nextTick } from 'vue'
+import { Disc3, ListMusic, Search, X, ChevronRight } from 'lucide-vue-next'
 import { room } from '../composables/useRoom'
 import { spotify, useSpotify } from '../composables/useSpotify'
 import { shell } from '../composables/useShell'
@@ -11,7 +11,8 @@ import SpotifySearch from '../components/SpotifySearch.vue'
 import MiniNowPlaying from '../components/MiniNowPlaying.vue'
 import SegSwitch from '../components/SegSwitch.vue'
 import FolderTree from '../components/FolderTree.vue'
-import { loadGroups, groups } from '../composables/useGroups'
+import QueuePanel from '../components/QueuePanel.vue'
+import { loadGroups, groups, select } from '../composables/useGroups'
 
 // Plain version, laid out like Spotify: the library on the left, search + the grid in the middle, what's
 // playing on the right. Phones: the search and the Album/Spillelister switch stay at the top while the grid
@@ -24,6 +25,18 @@ const playing = computed(() => !!spotify.now?.name)
 const sheet = ref(false) // phones: the full "now playing" card
 const LIB = [{ id: 'vinyl', label: 'Album', icon: Disc3 }, { id: 'ipod', label: 'Spillelister', icon: ListMusic }]
 const libView = computed({ get: () => (ipod.value ? 'ipod' : 'vinyl'), set: (v) => { gq.value = ''; show(v) } })
+
+// the folders under each library entry (the one I'm looking at starts open)
+const treeOpen = ref({ vinyl: true, ipod: false })
+const hasTree = (v) => groups.on && groups.loaded && (v === 'ipod' || groups.view !== 'artist')
+async function pickFolder(view, id) {
+  gq.value = ''
+  if ((view === 'ipod') === ipod.value) { select(id); return } // same list: open it (or close it again)
+  show(view)
+  await nextTick() // switching lists starts at the top – then go into the folder
+  groups.sel = id
+  treeOpen.value = { ...treeOpen.value, [view]: true }
+}
 
 function show(view) {
   room.musicView = view
@@ -41,14 +54,21 @@ function show(view) {
         <div class="glass lib-card">
           <b class="lh">Biblioteket</b>
           <nav class="lib" role="tablist" aria-label="Bibliotek">
-            <button role="tab" :aria-selected="!ipod" :class="{ on: !ipod && !gq }" @click="gq = ''; show('vinyl')">
-              <Disc3 class="ic" :size="19" aria-hidden="true" />Album<small>{{ spotify.albums.length || '' }}</small>
-            </button>
-            <button role="tab" :aria-selected="ipod" :class="{ on: ipod && !gq }" @click="gq = ''; show('ipod')">
-              <ListMusic class="ic" :size="19" aria-hidden="true" />Spillelister<small>{{ spotify.playlists.length || '' }}</small>
-            </button>
+            <div class="li">
+              <button role="tab" :aria-selected="!ipod" :class="{ on: !ipod && !gq }" @click="gq = ''; show('vinyl')">
+                <Disc3 class="ic" :size="19" aria-hidden="true" />Album<small>{{ spotify.albums.length || '' }}</small>
+              </button>
+              <button v-if="hasTree('vinyl')" class="tg" :aria-expanded="treeOpen.vinyl" aria-label="Mapper under Album" @click="treeOpen.vinyl = !treeOpen.vinyl"><ChevronRight :size="14" :class="{ open: treeOpen.vinyl }" /></button>
+            </div>
+            <FolderTree v-if="hasTree('vinyl') && treeOpen.vinyl" kind="album" :active="!ipod" @pick="pickFolder('vinyl', $event)" />
+            <div class="li">
+              <button role="tab" :aria-selected="ipod" :class="{ on: ipod && !gq }" @click="gq = ''; show('ipod')">
+                <ListMusic class="ic" :size="19" aria-hidden="true" />Spillelister<small>{{ spotify.playlists.length || '' }}</small>
+              </button>
+              <button v-if="hasTree('ipod')" class="tg" :aria-expanded="treeOpen.ipod" aria-label="Mapper under Spillelister" @click="treeOpen.ipod = !treeOpen.ipod"><ChevronRight :size="14" :class="{ open: treeOpen.ipod }" /></button>
+            </div>
+            <FolderTree v-if="hasTree('ipod') && treeOpen.ipod" kind="playlist" :active="ipod" @pick="pickFolder('ipod', $event)" />
           </nav>
-          <FolderTree v-if="ipod || groups.view !== 'artist'" :kind="ipod ? 'playlist' : 'album'" />
         </div>
       </aside>
 
@@ -75,6 +95,7 @@ function show(view) {
       <aside v-if="shell !== 'player'" class="now-col">
         <div class="glass now-card">
           <NowPlaying v-if="playing" stacked />
+          <QueuePanel v-if="playing" class="queue" />
           <div v-else class="idle">
             <Disc3 :size="28" />
             <b>Ingenting spilles</b>
@@ -94,6 +115,7 @@ function show(view) {
           <div class="m-sheet glass">
             <button class="m-close" aria-label="Lukk" @click="sheet = false"><X :size="18" /></button>
             <NowPlaying stacked />
+            <QueuePanel class="queue" />
           </div>
         </div>
       </transition>
@@ -108,6 +130,11 @@ function show(view) {
 .lib-card { padding: 12px; border-radius: 20px; display: grid; gap: 8px; }
 .lh { margin: 2px 6px; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
 .lib { display: grid; gap: 2px; }
+.li { display: flex; align-items: center; gap: 2px; }
+.li > button:first-child { flex: 1; min-width: 0; }
+.lib .tg { flex: none; display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border-radius: 8px; color: var(--text-3); }
+.lib .tg svg { transition: transform 0.18s; }
+.lib .tg svg.open { transform: rotate(90deg); }
 .lib button { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text-2); font: 600 0.92rem var(--font); text-align: left; cursor: pointer; transition: background 0.2s, color 0.2s; }
 .lib button:hover { background: var(--accent-soft); color: var(--text); }
 .lib button.on { background: var(--accent-soft); color: var(--accent); }
@@ -123,7 +150,10 @@ function show(view) {
 .gsearch input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--text); font: 500 0.95rem var(--font); }
 .gsearch button { display: grid; place-items: center; border: 0; background: transparent; color: var(--text-3); cursor: pointer; padding: 0; }
 .main-card { padding: 16px; border-radius: 22px; container-type: inline-size; min-width: 0; }
-.now-card { padding: 12px; border-radius: 22px; }
+.now-card { padding: 12px; border-radius: 22px; display: grid; gap: 12px; }
+.queue { background: transparent; border: 0; padding: 0; }
+.m-sheet { max-height: 88dvh; overflow-y: auto; }
+.m-sheet .queue { margin-top: 12px; }
 .idle { display: grid; justify-items: center; gap: 4px; padding: 28px 12px; text-align: center; color: var(--text-3); }
 .idle b { color: var(--text-2); font-size: 0.95rem; }
 .idle small { font-size: 0.8rem; }

@@ -4,14 +4,18 @@ import { ChevronRight } from 'lucide-vue-next'
 import FolderIcon from './FolderIcon.vue'
 import { spotify } from '../composables/useSpotify'
 import { ref } from 'vue'
-import { groups, topGroups, childrenOf, countIn, select, groupCover, moveTo } from '../composables/useGroups'
+import { groups, topGroups, childrenOf, countIn, groupCover, moveTo } from '../composables/useGroups'
 import { admin } from '../composables/useAdmin'
 import { drag, endDrag } from '../composables/useDrag'
 import { notify } from '../composables/useSpotify'
 
 // The folders under the library (PC): click one to show just that folder in the grid, click it again for all.
 // A folder with folders inside folds in and out.
-const props = defineProps({ kind: { type: String, default: 'album' } }) // which list the numbers count
+const props = defineProps({
+  kind: { type: String, default: 'album' }, // which list the numbers count
+  active: { type: Boolean, default: true }, // is this the list I'm looking at (only then is a folder lit)
+})
+const emit = defineEmits(['pick'])
 const uris = computed(() => (props.kind === 'playlist' ? spotify.playlists : spotify.albums).map((x) => x.uri))
 // drop an album / playlist tile on a folder to move it there
 const over = ref(null)
@@ -30,31 +34,29 @@ const toggle = (id) => { groups.treeOpen = { ...groups.treeOpen, [id]: !isOpen(i
 </script>
 
 <template>
-  <nav v-if="groups.on && groups.loaded" class="ft" aria-label="Mapper">
-    <b class="lh">Mapper</b>
+  <nav v-if="groups.on && groups.loaded" class="ft" :aria-label="`Mapper for ${kind === 'playlist' ? 'spillelister' : 'album'}`">
     <template v-for="g in topGroups()" :key="g.id">
       <div class="r">
         <button v-if="childrenOf(g.id).length" class="chev" :aria-label="isOpen(g.id) ? 'Brett inn' : 'Brett ut'" :aria-expanded="isOpen(g.id)" @click="toggle(g.id)"><ChevronRight :size="13" :class="{ open: isOpen(g.id) }" /></button>
         <span v-else class="chev"></span>
-        <button class="f" :class="{ on: groups.sel === g.id, over: over === g.id }" @click="select(g.id)" @dragover="allow($event, g.id)" @dragleave="over === g.id && (over = null)" @drop="drop($event, g.id)">
-          <FolderIcon :image="groupCover(g.id)" :size="17" :open="groups.sel === g.id" /><span>{{ g.name }}</span><small>{{ countIn(g.id, uris) }}</small>
+        <button class="f" :class="{ on: active && groups.sel === g.id, over: over === g.id }" @click="emit('pick', g.id)" @dragover="allow($event, g.id)" @dragleave="over === g.id && (over = null)" @drop="drop($event, g.id)">
+          <FolderIcon :image="groupCover(g.id)" :size="16" :open="active && groups.sel === g.id" /><span class="nm">{{ g.name }}</span><small>{{ countIn(g.id, uris) }}</small>
         </button>
       </div>
       <template v-if="isOpen(g.id)">
         <div v-for="c in childrenOf(g.id)" :key="c.id" class="r sub">
           <span class="chev"></span>
-          <button class="f" :class="{ on: groups.sel === c.id, over: over === c.id }" @click="select(c.id)" @dragover="allow($event, c.id)" @dragleave="over === c.id && (over = null)" @drop="drop($event, c.id)">
-            <FolderIcon :image="groupCover(c.id)" :size="15" :open="groups.sel === c.id" /><span>{{ c.name }}</span><small>{{ countIn(c.id, uris) }}</small>
+          <button class="f" :class="{ on: active && groups.sel === c.id, over: over === c.id }" @click="emit('pick', c.id)" @dragover="allow($event, c.id)" @dragleave="over === c.id && (over = null)" @drop="drop($event, c.id)">
+            <FolderIcon :image="groupCover(c.id)" :size="14" :open="active && groups.sel === c.id" /><span class="nm">{{ c.name }}</span><small>{{ countIn(c.id, uris) }}</small>
           </button>
         </div>
       </template>
     </template>
-    <button v-if="groups.sel" class="all" @click="select(groups.sel)">Vis alle</button>
   </nav>
 </template>
 
 <style scoped>
-.ft { display: grid; gap: 1px; padding-top: 8px; margin-top: 4px; border-top: 1px solid var(--glass-border); }
+.ft { display: grid; gap: 1px; padding: 2px 0 6px 10px; }
 .lh { margin: 4px 6px 4px; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
 .r { display: flex; align-items: center; gap: 0; }
 .r.sub { padding-left: 16px; }
@@ -62,7 +64,7 @@ const toggle = (id) => { groups.treeOpen = { ...groups.treeOpen, [id]: !isOpen(i
 .chev svg { transition: transform 0.18s; }
 .chev svg.open { transform: rotate(90deg); }
 .f { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 7px 9px; border: 0; border-radius: 10px; background: transparent; color: var(--text-2); font: 600 0.85rem var(--font); text-align: left; cursor: pointer; }
-.f span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .f small { font-weight: 500; opacity: 0.6; font-variant-numeric: tabular-nums; }
 .f:hover { background: var(--accent-soft); color: var(--text); }
 .f.over { background: var(--accent); color: #fff; }
