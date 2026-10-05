@@ -6,6 +6,7 @@ import { room, clearSelection } from '../composables/useRoom'
 import { useData } from '../composables/useData'
 import { useTheme } from '../composables/useTheme'
 import { timer, timerState, toggle as toggleTimer } from '../composables/useTimer'
+import { myQueue } from '../composables/useQueue'
 import { spotify, useSpotify, prefetchTracks, fetchTracks, fetchTempo, fetchQueue, control, findAlbum, addGuest } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 import { useVinylNoise } from '../composables/useVinylNoise'
@@ -133,8 +134,14 @@ watch(() => timer.interval, (v) => api?.setTimerInterval(v))
 // the records stand in the shelf's order (by artist, or by my folders)
 // the stack on the table: the albums coming up in the queue on top (next first), the ones I heard last below
 const queuedTracks = ref([])
-async function loadQueue() { queuedTracks.value = spotify.connected && spotify.now?.name ? await fetchQueue() : [] }
-watch(() => [spotify.now?.uri, spotify.queueV, spotify.connected], loadQueue, { immediate: true })
+// the table shows what's coming: my own list first, then what Spotify itself has lined up
+async function loadQueue() {
+  const sp = spotify.connected && spotify.now?.name ? await fetchQueue() : []
+  const mine = myQueue.items
+  const sent = myQueue.sent?.uri
+  queuedTracks.value = [...mine, ...sp.filter((t) => !(sent && t.uri === sent))]
+}
+watch(() => [spotify.now?.uri, spotify.queueV, spotify.connected, myQueue.items.length], loadQueue, { immediate: true })
 // "next": an album is only next when ALL of it has been put in the queue (not just one song from it)
 const nextAlbum = computed(() => {
   const ctx = String(spotify.now?.context || '')

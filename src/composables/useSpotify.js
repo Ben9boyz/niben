@@ -1,6 +1,7 @@
 import { reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { api } from './useAdmin'
 import { pget, pset, pdel } from '../lib/pcache'
+import { addSongs, addCollection, startQueueDriver } from './useQueue'
 
 // Shared Spotify state: what's saved, what's playing, and the 10-minute switch lock.
 export const spotify = reactive({
@@ -348,6 +349,7 @@ export function useSpotify() {
     if (subscribers++ === 0) {
       refreshLists()
       refreshNow()
+      startQueueDriver() // my own queue (only does anything when I'm logged in)
       // "now playing" every 10 s, but only while the page is visible
       pollTimer = setInterval(() => { if (!document.hidden) refreshNow() }, 10000)
       tickTimer = setInterval(() => (spotify.tick = Date.now()), 1000)
@@ -485,23 +487,15 @@ export async function cycleRepeat() {
   if (!r.ok && spotify.now) spotify.now.repeat = before
   return r
 }
-/** Put a song next in the queue. */
-export async function enqueue(uri) {
-  const r = await act('spotify_enqueue', { uri })
-  if (r.ok) { notify('Lagt i køen.'); spotify.queueV++ }
-  return r
+/** Put a song last in MY queue (useQueue: kept here, handed to Spotify one song at a time). `t` is the song ({ uri, name, … }) or just its uri. */
+export async function enqueue(t) {
+  const track = typeof t === 'string' ? { uri: t } : t
+  if (!track.name && spotify.now?.uri === track.uri) Object.assign(track, { name: spotify.now.name, artist: spotify.now.artist, ms: spotify.now.duration_ms, album: spotify.now.album, album_image: spotify.now.image, img: spotify.now.image })
+  return addSongs([track])
 }
-/** A whole album at the end of the queue (its songs, in order). */
-export async function enqueueAlbum(albumUri, name = '') {
-  const t = await fetchTracks(albumUri)
-  if (!t.tracks.length) { notify('Fant ingen låter i albumet.', true); return { ok: false } }
-  // all the songs in one request: the server adds them one by one (with a pause, and a retry if Spotify says "slow down")
-  const r = await act('spotify_enqueue_many', { uris: t.tracks.map((x) => x.uri) })
-  spotify.queueV++
-  if (!r.ok) { notify(r.error || 'Klarte ikke å legge albumet i køen.', true); return r }
-  if (r.failed) { notify(`Bare ${r.added} av ${r.total} låter kom inn i køen – prøv en gang til.`, true); return { ok: false, error: 'partial' } }
-  notify(name ? `«${name}» er lagt i køen (${r.added} låter).` : 'Albumet er lagt i køen.')
-  return { ok: true }
+/** A whole album / playlist at the end of my queue (its songs, in order). */
+export function enqueueAlbum(uri, name = '') {
+  return addCollection(uri, name)
 }
 /** Is this song among my liked songs? / save or remove it. */
 const likedCache = new Map() // uri -> { t, v }: asked once per song (10 minutes), changed at once by the heart

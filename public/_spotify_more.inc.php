@@ -296,6 +296,27 @@ function sp_more_handle(string $action, bool $post): bool {
         kv_del('cache_now');
         out(['ok' => true]);
     }
+    case 'myqueue_get': {
+        // my own queue (kept here, edited on the site; the page sends the first song to Spotify just before it is needed)
+        require_admin();
+        $l = json_decode(kv_get('my_queue') ?: '[]', true);
+        out(['items' => is_array($l) ? $l : []]);
+    }
+    case 'myqueue_set': {
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $in = (array)(body()['items'] ?? []);
+        $keep = ['uri', 'name', 'artist', 'img', 'ms', 'album_uri', 'album', 'album_image', 'no', 'disc'];
+        $out = [];
+        foreach (array_slice($in, 0, 300) as $t) {
+            if (!is_array($t) || !is_string($t['uri'] ?? null) || !$id($t['uri'], 'track')) continue;
+            $o = [];
+            foreach ($keep as $k) if (isset($t[$k]) && (is_scalar($t[$k]))) $o[$k] = is_string($t[$k]) ? mb_substr($t[$k], 0, 300) : $t[$k];
+            $out[] = $o;
+        }
+        kv_set('my_queue', json_encode($out, JSON_UNESCAPED_UNICODE));
+        out(['ok' => true, 'count' => count($out)]);
+    }
     case 'spotify_enqueue': {
         // put a song next in the queue (doesn't switch what's playing, so the lock doesn't apply)
         if (!$post) fail('Bruk POST.', 405);

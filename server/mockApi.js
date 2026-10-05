@@ -313,6 +313,13 @@ export function mockApi() {
             }
             return send(res, 200, { ok: n > 0, added: n, total: (b.uris || []).length, failed: (b.uris || []).length - n })
           }
+          case 'myqueue_get':
+            if (!needAdmin()) return
+            return send(res, 200, { items: sp.myQueue || [] })
+          case 'myqueue_set':
+            if (!needAdmin()) return
+            sp.myQueue = Array.isArray(b.items) ? b.items : []
+            return send(res, 200, { ok: true, count: sp.myQueue.length })
           case 'spotify_enqueue': {
             if (!needAdmin()) return
             // a song from some album: remember which album it is on (the mock song ids are "mocktrack<albumId><n>")

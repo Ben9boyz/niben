@@ -187,13 +187,13 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
                 </small>
               </span>
               <span v-if="admin.loggedIn" class="ics">
-                <button class="ic" title="Spill etterpå – legg til sist i køen" aria-label="Legg til sist i køen" @click="enqueue(t.uri)"><ListEnd :size="17" /></button>
+                <button class="ic" title="Spill etterpå – legg til sist i køen" aria-label="Legg til sist i køen" @click="enqueue(t)"><ListEnd :size="17" /></button>
                 <button class="ic" :class="{ on: menuFor === t.uri }" title="Legg til i en spilleliste" aria-label="Legg til i en spilleliste" @click="menuFor = menuFor === t.uri ? null : t.uri"><CirclePlus :size="19" /></button>
               </span>
               <button class="plain d" :disabled="!!busy" @click="playTrack(t)"><Lock v-if="locked" :size="13" /><Play v-else :size="13" fill="currentColor" /> {{ fmtClock(t.ms / 1000) }}</button>
             </div>
           </div>
-          <div v-if="menuFor === t.uri" class="menu"><AddMenu @queue="menuFor = null; enqueue(t.uri)" @pick="(p) => addTo(t, p)" @close="menuFor = null" /></div>
+          <div v-if="menuFor === t.uri" class="menu"><AddMenu @queue="menuFor = null; enqueue(t)" @pick="(p) => addTo(t, p)" @close="menuFor = null" /></div>
         </div>
       </section>
 

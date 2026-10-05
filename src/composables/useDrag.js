@@ -5,7 +5,7 @@ import { reactive } from 'vue'
 export const drag = reactive({ track: null, item: null }) // track: { uri, name } · item: uri
 
 export function startTrackDrag(e, t) {
-  drag.track = { uri: t.uri, name: t.name }
+  drag.track = { uri: t.uri, name: t.name, t }
   if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('text/plain', t.uri) }
 }
 export function startItemDrag(e, uri) {
@@ -30,7 +30,7 @@ export const queueDrop = {
     queueOver.value = false
     const t = drag.track, it = drag.item
     endDrag()
-    if (t) { const r = await enqueue(t.uri); if (!r.ok) notify(r.error || 'Klarte ikke å legge i køen.', true); return }
+    if (t) { const r = await enqueue(t.t || t.uri); if (!r.ok) notify(r.error || 'Klarte ikke å legge i køen.', true); return }
     if (it) {
       const name = (findAlbum(it) || spotify.playlists.find((p) => p.uri === it))?.name || ''
       enqueueAlbum(it, name)

@@ -56,7 +56,7 @@ export function trackMenu(t, { onPlay, albumUri, playlists = true } = {}) {
   const album = t.album_uri ? albumOfTrack(t) : null
   if (admin.loggedIn) {
     items.push({ label: spotify.now?.uri === t.uri && spotify.now?.playing ? 'Pause' : 'Spill', icon: spotify.now?.uri === t.uri && spotify.now?.playing ? Pause : Play, run: onPlay })
-    items.push({ label: 'Spill etterpå (legg i køen)', icon: ListEnd, run: () => enqueue(t.uri) })
+    items.push({ label: 'Spill etterpå (legg i køen)', icon: ListEnd, run: () => enqueue(t) })
     if (playlists) {
       items.push({
         label: 'Legg til i spilleliste', icon: ListPlus,

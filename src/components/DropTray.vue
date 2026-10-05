@@ -16,7 +16,7 @@ async function drop(e, target) {
   const t = drag.track
   endDrag()
   if (!t) return
-  if (target === 'queue') { enqueue(t.uri); return }
+  if (target === 'queue') { enqueue(t.t || t.uri); return }
   const r = await addToPlaylist(target.uri, t.uri)
   notify(r.ok ? `«${t.name}» er lagt til i «${target.name}».` : r.error, !r.ok)
 }
