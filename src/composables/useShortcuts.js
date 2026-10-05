@@ -14,7 +14,7 @@ export const SHORTCUT_GROUPS = [
     ['Mellomrom', 'Pause / spill'],
     ['S', 'Tilfeldig rekkefølge av / på'],
     ['R', 'Gjenta: av → lista/albumet → låta'],
-    ['H', 'Hjerte – lagre låta i Likte sanger'],
+    ['H', 'Hjerte – lagrer albumet du hører på (eller låta, hvis den spilles alene)'],
     ['Q', 'Legg låta du peker på sist i køen'],
     ['/', 'Søk i musikken'],
   ] },

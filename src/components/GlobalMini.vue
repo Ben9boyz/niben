@@ -28,16 +28,21 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
-  <transition name="fade">
+  <transition name="gm">
     <div v-if="visible" class="gm glass" :class="{ playing: now?.playing, open }">
-      <button class="cover" :aria-label="open ? 'Lukk musikken' : 'Åpne musikken'" @click="open = !open">
-        <img v-if="now?.image" crossorigin="anonymous" :src="now.image" alt="" />
-        <Music v-else :size="16" />
-      </button>
-      <button class="txt" :translate="now?.name ? 'no' : null" :title="now?.name ? `${now.name} – ${now.artist}` : 'Velg musikk'" @click="open = !open">
-        <b>{{ now?.name || 'Ingenting spilles' }}</b>
-        <span>{{ now?.name ? now.artist : 'Trykk for å velge' }}</span>
-      </button>
+      <!-- a new song: the cover and the title fade out and the next ones fade in -->
+      <transition name="swap" mode="out-in">
+        <button :key="'c' + (now?.uri || 'none')" class="cover" :aria-label="open ? 'Lukk musikken' : 'Åpne musikken'" @click="open = !open">
+          <img v-if="now?.image" crossorigin="anonymous" :src="now.image" alt="" />
+          <Music v-else :size="16" />
+        </button>
+      </transition>
+      <transition name="swap" mode="out-in">
+        <button :key="'t' + (now?.uri || 'none')" class="txt" :translate="now?.name ? 'no' : null" :title="now?.name ? `${now.name} – ${now.artist}` : 'Velg musikk'" @click="open = !open">
+          <b>{{ now?.name || 'Ingenting spilles' }}</b>
+          <span>{{ now?.name ? now.artist : 'Trykk for å velge' }}</span>
+        </button>
+      </transition>
       <span v-if="admin.loggedIn" class="lk"><LockControl tiny /></span>
       <span v-if="admin.loggedIn && now?.name" class="ctl">
         <button :class="{ dim: locked }" aria-label="Forrige" @click="skip('previous')"><SkipBack :size="14" fill="currentColor" /></button>
@@ -48,10 +53,20 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <i class="prog" :style="{ width: `${pct}%` }"></i>
     </div>
   </transition>
-  <MusicDrawer v-if="visible && open" class="gm-drawer" @close="open = false" />
+  <transition name="gm-drawer"><MusicDrawer v-if="visible && open" class="gm-drawer" @close="open = false" /></transition>
 </template>
 
 <style scoped>
+/* the little player glides in from the top-right corner and out again */
+.gm-enter-active { transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1), transform 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+.gm-leave-active { transition: opacity 0.28s ease, transform 0.3s ease; }
+.gm-enter-from, .gm-leave-to { opacity: 0; transform: translate(14px, -10px) scale(0.94); }
+/* new song: soft cross-fade */
+.swap-enter-active, .swap-leave-active { transition: opacity 0.22s ease, transform 0.22s ease; }
+.swap-enter-from { opacity: 0; transform: translateY(4px); }
+.swap-leave-to { opacity: 0; transform: translateY(-4px); }
+.gm-drawer-enter-active, .gm-drawer-leave-active { transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+.gm-drawer-enter-from, .gm-drawer-leave-to { opacity: 0; transform: translateY(-8px) scale(0.98); }
 .gm {
   position: fixed;
   top: 16px;

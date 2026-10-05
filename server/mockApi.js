@@ -317,7 +317,7 @@ export function mockApi() {
           case 'spotify_follow':
             if (!needAdmin()) return
             return send(res, 200, { ok: true })
-          case 'spotify_save':
+          case 'spotify_save': case 'spotify_unsave':
             if (!needAdmin()) return
             return send(res, 200, { ok: true })
           case 'spotify_playlist_add':

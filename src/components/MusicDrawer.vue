@@ -58,7 +58,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   border-radius: 24px;
   overflow: hidden;
   box-shadow: var(--shadow-2, 0 24px 60px rgba(0, 0, 0, 0.35));
-  animation: drop 0.35s var(--spring, ease);
 }
 @keyframes drop { from { opacity: 0; transform: translateY(-10px) scale(0.98); } }
 header { display: flex; align-items: center; gap: 6px; padding: 12px 12px 8px; }

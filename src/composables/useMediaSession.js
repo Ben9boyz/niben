@@ -1,5 +1,5 @@
 import { watch } from 'vue'
-import { spotify, control, lockLeft, notify, setShuffle, cycleRepeat, isLiked, setLiked } from './useSpotify'
+import { spotify, control, lockLeft, notify, setShuffle, cycleRepeat, isLiked, setLiked, isSaved, toggleAlbumSaved, findAlbum } from './useSpotify'
 import { room } from './useRoom'
 import { shortcuts } from './useShortcuts'
 import { admin } from './useAdmin'
@@ -59,8 +59,11 @@ export function useMediaSession() {
     else if (k === 'r') { e.preventDefault(); cycleRepeat() }
     else if (k === 'h') {
       e.preventDefault()
+      // H: an album that is playing goes into / out of the library; a playlist has no heart; a single song goes into Liked Songs
+      const ctx = String(spotify.now.context || '')
       const uri = spotify.now.uri
-      if (uri?.startsWith('spotify:track:')) isLiked(uri).then((l) => setLiked(uri, !l))
+      if (ctx.startsWith('spotify:album:')) toggleAlbumSaved(findAlbum(ctx) || { uri: ctx, name: spotify.now.album || 'Albumet', artist: spotify.now.artist, image: spotify.now.image, image_large: spotify.now.image_large })
+      else if (!ctx.startsWith('spotify:playlist:') && uri?.startsWith('spotify:track:')) isLiked(uri).then((l) => setLiked(uri, !l))
     } else if (k === 'f' && room.sel.musikk) { e.preventDefault(); room.recordFlipped = !room.recordFlipped }
     else if (e.key === '/') { const el = document.querySelector('.gsearch input, input[type=search]'); if (el) { e.preventDefault(); el.focus() } }
   })

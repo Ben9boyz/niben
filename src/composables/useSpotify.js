@@ -401,6 +401,28 @@ export async function saveAlbum(uri) {
   }
 }
 
+/** Is this album in my library? */
+export const isSaved = (uri) => spotify.albums.some((a) => a.uri === uri)
+/** The heart on an album: save it to / take it out of the library. Shows at once, the lists are fetched again behind it. */
+export async function toggleAlbumSaved(album) {
+  const saved = isSaved(album.uri)
+  const before = spotify.albums
+  if (saved) { spotify.albums = before.filter((a) => a.uri !== album.uri); addGuest(album) } // (stays open as a guest record, so the page doesn't jump away)
+  else spotify.albums = [{ ...album, added: Math.floor(Date.now() / 1000) }, ...before]
+  try {
+    await api(saved ? 'spotify_unsave' : 'spotify_save', { uri: album.uri })
+    // no refetch (Spotify can lag a moment): the list is right as it is – keep it in the saved copy too, the server's copy was dropped
+    listsSig = ''
+    try { localStorage.setItem(LISTS_KEY, JSON.stringify({ at: listsAt, sig: listsSig, albums: spotify.albums, playlists: spotify.playlists })) } catch {}
+    notify(saved ? `«${album.name}» er fjernet fra albumene dine.` : `«${album.name}» ligger nå blant albumene dine.`)
+    return { ok: true, saved: !saved }
+  } catch (e) {
+    spotify.albums = before
+    notify(e.message, true)
+    return { ok: false, error: e.message }
+  }
+}
+
 /** Add a song to one of my playlists. */
 export async function addToPlaylist(playlistUri, trackUri) {
   try {
