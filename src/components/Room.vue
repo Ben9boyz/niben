@@ -10,6 +10,7 @@ import { spotify, useSpotify, prefetchTracks, fetchTracks, fetchTempo, fetchQueu
 import { admin } from '../composables/useAdmin'
 import { useVinylNoise } from '../composables/useVinylNoise'
 import { weather } from '../composables/useLive'
+import { calm } from '../composables/useCalm'
 import { shelfAlbums, loadGroups } from '../composables/useGroups'
 import { jp, loadJapanese } from '../composables/useJapanese'
 import { steam, loadSteam } from '../composables/useSteam'
@@ -94,6 +95,7 @@ onMounted(() => {
   if (import.meta.env.DEV) window.__room = api
   api.setTheme(theme.value)
   api.setWeather(weather.value)
+  api.setCalm(calm.value)
   api.setTimerInterval(timer.interval)
   api.setMusic(sceneMusic())
   api.setStack(stackItems.value)
@@ -114,6 +116,7 @@ watch(() => [steam.profile, steam.library, room.api], () => room.api?.setSteam({
 watch(() => [jp.anime, room.jpAnime, room.api], () => room.api?.setAnime(jp.anime, room.jpAnime), { immediate: true })
 watch(theme, (t) => api?.setTheme(t))
 watch(() => weather.value?.kind, () => api?.setWeather(weather.value))
+watch(calm, (v) => api?.setCalm(v))
 watch(() => timer.interval, (v) => api?.setTimerInterval(v))
 // the records stand in the shelf's order (by artist, or by my folders)
 // the stack on the table: the albums coming up in the queue on top (next first), the ones I heard last below

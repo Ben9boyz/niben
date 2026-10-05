@@ -57,7 +57,8 @@ const THEMES = {
 const easeInOut = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2)
 
 export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) {
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  let reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const deviceReduced = reduced
 
   // ── Renderer ───────────────────────────────────────────
   // "low" on phones / weak machines: lower resolution and less MSAA.
@@ -966,6 +967,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     /** The records matching the shelf search slide out of the shelf (null = no search). */
     /** The album queued up next (all of it): one sleeve leaning by the turntable, or null. */
     setNext(a) { listening.setNext(a, () => { shadowsDirty = true; invalidate(1) }) },
+    /** Calm mode: no weather, no drifting things; the camera just cuts instead of flying. */
+    setCalm(v) { reduced = deviceReduced || !!v; listening.setCalm(reduced); if (reduced) { rain.visible = false; snow.visible = false }; invalidate(1) },
     /** The weather where I live: { kind: clear | cloud | fog | drizzle | rain | thunder | snow }. */
     setWeather(w) { weather = { kind: w?.kind || 'clear' }; setTheme(themeName); invalidate(1) },
     /** The records on the table: queued albums on top (next first), then the ones I heard last. */

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { weather } from '../composables/useLive'
+import { calm } from '../composables/useCalm'
 
 // The weather at home over the plain version: rain, snow or fog drifting over the background (never over the text –
 // it is behind the content, in front of the backdrop). Off with "reduce motion". One small canvas, ~30 frames a second.
@@ -42,13 +43,13 @@ function flash() { flashing.value = 1; setTimeout(() => (flashing.value = 0.5), 
 function start() {
   cancelAnimationFrame(raf)
   kind = weather.value?.kind || 'clear'
-  if (reduce || !['drizzle', 'rain', 'thunder', 'snow'].includes(kind)) { ctx?.clearRect(0, 0, w, h); return }
+  if (reduce || calm.value || !['drizzle', 'rain', 'thunder', 'snow'].includes(kind)) { ctx?.clearRect(0, 0, w, h); return }
   size(); make()
   raf = requestAnimationFrame(frame)
 }
 onMounted(() => { ctx = cv.value.getContext('2d'); window.addEventListener('resize', start); start() })
 onBeforeUnmount(() => { cancelAnimationFrame(raf); window.removeEventListener('resize', start) })
-watch(() => weather.value?.kind, start)
+watch(() => [weather.value?.kind, calm.value], start)
 </script>
 
 <template>

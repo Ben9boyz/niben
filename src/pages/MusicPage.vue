@@ -28,7 +28,7 @@ const gq = ref('') // one search for playlists, albums and songs
 const ipod = computed(() => room.musicView.startsWith('ipod'))
 const playing = computed(() => !!spotify.now?.name)
 const sheet = ref(false) // phones: the full "now playing" card
-const LIB = [{ id: 'vinyl', label: 'Album', icon: Disc3 }, { id: 'ipod', label: 'Spillelister', icon: ListMusic }, { id: 'all', label: 'Alt', icon: Library }]
+const LIB = [{ id: 'vinyl', label: 'Album', icon: Disc3 }, { id: 'ipod', label: 'Spillelister', icon: ListMusic }]
 // "Alt": playlists and albums together (remembered)
 const allMode = ref((() => { try { return localStorage.getItem('niben-lib-all') === '1' } catch { return false } })())
 const setAll = (v) => { allMode.value = v; try { localStorage.setItem('niben-lib-all', v ? '1' : '0') } catch {} }

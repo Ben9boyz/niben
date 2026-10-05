@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onBeforeUnmount } from 'vue'
-import { Music, BookOpen, Languages, Guitar, Gamepad2, Plane, ArrowRight, Radio, PartyPopper, Mic, Tv, Trophy } from 'lucide-vue-next'
+import { Music, BookOpen, Languages, Guitar, Gamepad2, Plane, ArrowRight, Radio, PartyPopper, Mic, Tv, Trophy, Disc3 } from 'lucide-vue-next'
 import { milestones, loadMilestones } from '../composables/useMilestones'
 import { useRouter } from 'vue-router'
 import { useData } from '../composables/useData'
@@ -20,10 +20,15 @@ onMounted(() => { stopSteam = watchSteam(); loadJapanese(); loadMilestones() })
 onBeforeUnmount(() => stopSteam?.())
 
 // ── milestones: what I just managed (new recording, finished book, anime, song) – kept for 30 days ──
-const MS_ICON = { recording: Mic, book: BookOpen, anime: Tv, song: Guitar, trip: Plane, other: Trophy }
-const MS_LABEL = { recording: 'Nytt opptak', book: 'Ferdig lest', anime: 'Klarer anime', song: 'Sang lært', trip: 'På reise', other: 'Klart' }
-const MS_TO = { recording: '/gitar', book: '/boker', anime: '/japansk', song: '/ovelse', trip: '/reiser', other: '/' }
-const recent = computed(() => (milestones.items || []).filter((m) => Date.now() / 1000 - m.t < 30 * 86400).slice(0, 5))
+const MS_ICON = { recording: Mic, book: BookOpen, anime: Tv, song: Guitar, trip: Plane, album: Disc3, other: Trophy }
+const MS_LABEL = { recording: 'Nytt opptak', book: 'Ferdig lest', anime: 'Klarer anime', song: 'Sang lært', trip: 'På reise', album: 'Nytt album', other: 'Klart' }
+const MS_TO = { recording: '/gitar', book: '/boker', anime: '/japansk', song: '/ovelse', trip: '/reiser', album: '/lytte', other: '/' }
+// the timeline: milestones (30 days) + albums I saved in the last week
+const recent = computed(() => {
+  const now = Date.now() / 1000
+  const albums = (spotify.albums || []).filter((a) => a.added && now - a.added < 7 * 86400).slice(0, 4).map((a) => ({ key: 'alb:' + a.uri, type: 'album', title: a.name, sub: a.artist, image: a.thumb || a.image, t: a.added }))
+  return [...(milestones.items || []).filter((m) => now - m.t < 30 * 86400), ...albums].sort((a, b) => b.t - a.t).slice(0, 7)
+})
 const fresh = computed(() => recent.value.length && Date.now() / 1000 - recent.value[0].t < 4 * 86400)
 const msAgo = (t) => {
   const d = Math.floor((Date.now() / 1000 - t) / 86400)
@@ -68,7 +73,7 @@ const inDays = (t) => {
   <div class="now">
     <!-- just happened -->
     <section v-if="recent.length" class="card wide ms" :class="{ fresh }">
-      <h3><PartyPopper :size="15" />{{ fresh ? 'Nytt!' : 'Nylig klart' }}</h3>
+      <h3><PartyPopper :size="15" />{{ fresh ? 'Nytt!' : 'Nylig' }}</h3>
       <ul>
         <li v-for="m in recent" :key="m.key">
           <router-link :to="m.url || MS_TO[m.type] || '/'" class="msrow">
@@ -167,7 +172,9 @@ const inDays = (t) => {
 .card:has(> .none:last-child:nth-child(2)) { opacity: 0.7; }
 .card { display: grid; gap: 8px; align-content: start; padding: 16px; border-radius: 16px; background: var(--glass-strong); border: 1px solid var(--glass-border); min-width: 0; }
 .card.wide { grid-column: span 2; }
-.ms ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.ms ul { margin: 0; padding: 0 0 0 14px; list-style: none; display: grid; gap: 6px; border-left: 2px solid var(--glass-border); }
+.ms li { position: relative; }
+.ms li::before { content: ''; position: absolute; left: -20px; top: 20px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--glass-strong); }
 .msrow { display: flex; align-items: center; gap: 12px; padding: 4px; border-radius: 12px; color: inherit; text-decoration: none; }
 .msrow:hover { background: var(--accent-soft); }
 .msart { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; flex: none; }

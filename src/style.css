@@ -498,3 +498,9 @@ html.player-shell .cpage { padding-top: 80px; padding-bottom: 40px; }
 *::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
 *::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--accent) 55%, transparent); background-clip: content-box; }
 *::-webkit-scrollbar-corner { background: transparent; }
+
+/* ── Rolig modus: nothing moves, nothing glows ── */
+html.calm *, html.calm *::before, html.calm *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+html.calm .blob { display: none; }
+html.calm .glass, html.calm .card, html.calm [class*="glow"] { box-shadow: none !important; }
+html.calm .live, html.calm .tag.live { box-shadow: none !important; }

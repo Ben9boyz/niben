@@ -2,6 +2,8 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Sun, Moon, Radio, Check } from 'lucide-vue-next'
 import { useTheme } from '../composables/useTheme'
+import { calm, setCalm } from '../composables/useCalm'
+import { Wind } from 'lucide-vue-next'
 
 // Light / dark: a button with a small menu – "Live" (day and night where I live), "Lys" and "Mørk".
 const { theme, mode, setMode, live } = useTheme()
@@ -41,6 +43,9 @@ function pick(id) { setMode(id); open.value = false }
           <button v-for="c in choices" :key="c[0]" role="menuitemradio" :aria-checked="mode === c[0]" :class="{ on: mode === c[0] }" @click="pick(c[0])">
             <component :is="c[2]" :size="16" aria-hidden="true" /><span class="l"><b>{{ c[1] }}</b><small v-if="c[3]">{{ c[3] }}</small></span><Check v-if="mode === c[0]" :size="14" aria-hidden="true" />
           </button>
+          <button class="calmrow" role="menuitemcheckbox" :aria-checked="calm" :class="{ on: calm }" @click="setCalm(!calm)">
+            <Wind :size="16" aria-hidden="true" /><span class="l"><b>Rolig modus</b><small>Ingen animasjon, glød eller bevegelse</small></span><Check v-if="calm" :size="14" aria-hidden="true" />
+          </button>
         </div>
       </transition>
     </teleport>
@@ -56,6 +61,7 @@ function pick(id) { setMode(id); open.value = false }
 .tsmenu button:hover { background: var(--accent-soft); }
 .tsmenu button.on { color: var(--accent); background: var(--accent-soft); }
 .tsmenu svg { flex: none; }
+.tsmenu .calmrow { margin-top: 4px; border-top: 1px solid var(--glass-border); border-radius: 0 0 10px 10px; }
 .tsmenu .l { flex: 1; display: grid; min-width: 0; }
 .tsmenu .l b { font-weight: 600; font-size: 0.88rem; }
 .tsmenu .l small { font-size: 0.72rem; color: var(--text-3); line-height: 1.25; }

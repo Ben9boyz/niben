@@ -1,4 +1,5 @@
 <script setup>
+import PracticeCalendar from './PracticeCalendar.vue'
 import PitchReading from './PitchReading.vue'
 import { ref, computed, watch, nextTick } from 'vue'
 import { GraduationCap, ArrowUpRight, Tv, Check, LayoutDashboard, ScanText, BookA } from 'lucide-vue-next'
@@ -85,6 +86,8 @@ watch(() => room.jpAnime, async (i) => {
           <i class="known" :style="{ width: `${(jp.count.known / total) * 100}%` }"></i>
           <i class="learning" :style="{ width: `${((jp.count.learning + jp.count.due) / total) * 100}%` }"></i>
         </div>
+
+        <PracticeCalendar />
 
         </div>
         <div class="ov-col">

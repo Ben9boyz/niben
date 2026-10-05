@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { MapPin, Trophy, Download, Users, Music2, Gamepad2, Languages, Globe2, BookOpen, Plane, Mic, RefreshCw, Unplug, Plug, Trash2, Check, AlertTriangle } from 'lucide-vue-next'
+import { MessageCircle, Check as CheckIcon, Archive as ArchiveIcon, MapPin, Trophy, Download, Users, Music2, Gamepad2, Languages, Globe2, BookOpen, Plane, Mic, RefreshCw, Unplug, Plug, Trash2, Check, AlertTriangle } from 'lucide-vue-next'
 import { api } from '../../composables/useAdmin'
 import { spotify, setLockSeconds, refreshSpotify, fmtLock, notify } from '../../composables/useSpotify'
 import { byCode } from '../../lib/languages'
@@ -49,6 +49,25 @@ async function clearLang(lang) {
 }
 const maxDay = computed(() => Math.max(1, ...(vis.value?.days || []).map((d) => d.u)))
 const dayLabel = (d) => new Date(d + 'T12:00:00').toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })
+// guestbook: greetings wait here until I have read and approved them
+const gb = ref([])
+async function loadGb() { try { gb.value = (await api('admin_guestbook')).items } catch {} }
+onMounted(loadGb)
+const pendingGb = computed(() => gb.value.filter((g) => g.status === 'pending'))
+async function gbDo(id, what) { try { await api('admin_guestbook_set', { id, do: what }); await loadGb() } catch (e) { err.value = e.message } }
+// backup: everything as one file
+async function backup() {
+  busy.value = 'bk'
+  try {
+    const r = await fetch('api.php?action=admin_backup', { headers: { 'X-Niben': '1' }, credentials: 'same-origin' })
+    if (!r.ok) throw new Error('Fikk ikke laget sikkerhetskopien.')
+    const url = URL.createObjectURL(await r.blob())
+    const a = document.createElement('a'); a.href = url; a.download = `niben-backup-${new Date().toISOString().slice(0, 10)}.json`; a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+    flash('Sikkerhetskopien er lastet ned.')
+  } catch (e) { err.value = e.message }
+  busy.value = ''
+}
 const home = ref(null)
 const hq = ref('')
 const hres = ref([])
@@ -148,6 +167,26 @@ const langName = (c) => byCode[c]?.en || c
           <i v-for="d in vis.days" :key="d.day" :style="{ height: `${Math.max(4, (d.u / maxDay) * 100)}%` }" :class="{ zero: !d.u }" :title="`${dayLabel(d.day)}: ${d.u} besøkende, ${d.h} sidevisninger`"></i>
         </div>
         <p class="help">Hver ulike IP-adresse teller som én besøkende per dag (adressen lagres ikke, bare et tilfeldig avtrykk). {{ vis.returning }} har kommet tilbake på en ny dag. <b>Du telles ikke</b> – når du logger inn, fjernes tellingen fra denne IP-adressen og denne nettleseren.</p>
+      </section>
+
+      <!-- guestbook moderation -->
+      <section class="card">
+        <header><MessageCircle :size="18" /><h3>Gjestebok</h3><span class="pill" :class="pendingGb.length ? 'bad' : 'ok'">{{ pendingGb.length ? `${pendingGb.length} venter` : 'Ingen venter' }}</span></header>
+        <p class="help">Hilsener vises ikke på siden før du har godkjent dem.</p>
+        <ul v-if="gb.length" class="gbl">
+          <li v-for="g in gb.slice(0, 20)" :key="g.id" :class="g.status">
+            <div class="gm"><b translate="no">{{ g.name }}</b><small>{{ new Date(g.t * 1000).toLocaleString('nb-NO') }} · {{ g.status === 'pending' ? 'venter' : 'godkjent' }}</small><p translate="no">{{ g.msg }}</p></div>
+            <div class="ga"><button v-if="g.status === 'pending'" class="btn primary small" @click="gbDo(g.id, 'approve')"><CheckIcon :size="14" />Godkjenn</button><button class="x" :aria-label="'Slett'" @click="gbDo(g.id, 'delete')"><Trash2 :size="14" /></button></div>
+          </li>
+        </ul>
+        <p v-else class="help">Ingen hilsener ennå.</p>
+      </section>
+
+      <!-- backup -->
+      <section class="card">
+        <header><ArchiveIcon :size="18" /><h3>Sikkerhetskopi</h3></header>
+        <p class="help">Last ned alt innholdet (reiser, bøker, opptak, sanger, gjestebok og innstillinger) som én fil. Bildene og lydfilene ligger i <code>uploads/</code> og må lastes ned for seg fra serveren. Ta en kopi av og til.</p>
+        <button class="btn primary small" :disabled="busy === 'bk'" @click="backup"><Download :size="14" />Last ned sikkerhetskopi</button>
       </section>
 
       <!-- where I live: the weather and day / night at home -->
@@ -260,6 +299,13 @@ const langName = (c) => byCode[c]?.en || c
 .hres button { display: flex; flex-direction: column; align-items: flex-start; width: 100%; padding: 8px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
 .hres button:hover { background: var(--accent-soft); }
 .hres small { color: var(--text-3); }
+.gbl { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.gbl li { display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: var(--accent-soft); }
+.gbl li.pending { background: rgba(240, 160, 64, 0.16); }
+.gm { display: grid; gap: 2px; min-width: 0; }
+.gm small { color: var(--text-3); }
+.gm p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ga { display: flex; gap: 6px; flex: none; align-items: center; }
 .msform { display: grid; grid-template-columns: 170px 1fr 1fr auto; gap: 8px; }
 .msform select, .msform input { min-width: 0; padding: 8px 12px; border: 1px solid var(--glass-border); border-radius: 10px; background: var(--bg); color: var(--text); font: 500 0.86rem var(--font); }
 .mslist { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }

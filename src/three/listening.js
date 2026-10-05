@@ -908,6 +908,7 @@ export function buildListeningCorner() {
   let armAngle = 0
   // the record turns once per bar (4 beats): a 120 BPM song gives 30 rpm. Unknown tempo = 33⅓ rpm.
   let tempo = 0
+  let calm = false // calm mode: the record doesn't turn, nothing drifts or pulses
   let spin = 0 // rad/s, eased so the record winds up and slows down
   const rpmFor = (bpm) => {
     if (!(bpm > 30)) return 33.3
@@ -919,14 +920,14 @@ export function buildListeningCorner() {
 
   function update(dt, t, camera) {
     let moving = false
-    animateLife(t)
+    if (!calm) animateLife(t)
     ttLed.visible = playing
-    const spinTarget = playing ? (rpmFor(tempo) / 60) * Math.PI * 2 : 0
+    const spinTarget = playing && !calm ? (rpmFor(tempo) / 60) * Math.PI * 2 : 0
     spin += (spinTarget - spin) * Math.min(1, dt * (playing ? 1.4 : 0.9))
     if (spin > 0.002) platter.rotation.y -= dt * spin
     if (Math.abs(spinTarget - spin) > 0.05) moving = true
     // lights pulse softly on the beat while a song plays; the candle flickers
-    const beat = playing && tempo > 30 ? Math.exp(-5 * (((t * tempo) / 60) % 1)) : 0
+    const beat = playing && !calm && tempo > 30 ? Math.exp(-5 * (((t * tempo) / 60) % 1)) : 0
     const glow = playing ? 0.82 + 0.38 * beat : 0.7
     fairyMat.color.setRGB(1, 0.85, 0.66).multiplyScalar(glow)
     shadeMat.color.setRGB(1, 0.86, 0.68).multiplyScalar(0.8 + 0.25 * beat)
@@ -1077,6 +1078,7 @@ export function buildListeningCorner() {
     setFilter(list) { filterSet = list?.length ? new Set(list) : null },
     setHoldIpod(v, big = false) { holdIpod = v; ipodBig = big },
     setFlip(v) { flipSel = v },
+    setCalm(v) { calm = !!v },
     setStack,
     setNext,
     setTempo(bpm) { tempo = Number(bpm) || 0 },
