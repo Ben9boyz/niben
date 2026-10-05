@@ -13,7 +13,7 @@ export const myQueue = reactive({
   sent: null, // { uri, after, t } – the first song is already in Spotify's queue: it can't be moved any more
 })
 
-const LEAD_MS = 40000 // send the next song this long before the current one ends
+const LEAD_MS = 15000 // send the next song this long before the current one ends
 const SENT_KEY = 'niben-queue-sent'
 try { myQueue.sent = JSON.parse(sessionStorage.getItem(SENT_KEY) || 'null') } catch {}
 const keepSent = () => { try { sessionStorage.setItem(SENT_KEY, JSON.stringify(myQueue.sent)) } catch {} }
