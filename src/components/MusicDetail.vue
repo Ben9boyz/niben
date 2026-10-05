@@ -1,5 +1,5 @@
 <script setup>
-import { ChevronLeft, Music, Lock, Play, Pause, ArrowUpRight, ListPlus, ListEnd } from 'lucide-vue-next'
+import { ChevronLeft, Music, Lock, Play, Pause, ArrowUpRight, CirclePlus, ListEnd } from 'lucide-vue-next'
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import AddMenu from './AddMenu.vue'
 import { startTrackDrag, endDrag } from '../composables/useDrag'
@@ -170,7 +170,7 @@ async function onPlay(track = null) {
               <a class="lnk" href="#" @click.stop.prevent="openArtistPage({ id: t.artist_id, name: firstArtist(t.artist) })">{{ t.artist }}</a><template v-if="kind === 'playlist' && t.album_uri"> · <a class="lnk" href="#" title="Åpne albumet" @click.stop.prevent="openAlbumPage(albumOfTrack(t))">{{ t.album }}</a></template>
             </small></span>
           <button v-if="admin.loggedIn" class="add" title="Spill etterpå – i køen (Q)" aria-label="Spill etterpå" @click.stop="enqueue(t.uri)"><ListEnd :size="15" /></button>
-          <button v-if="admin.loggedIn" class="add" :class="{ on: menuFor === t.uri }" title="Legg i en spilleliste" aria-label="Legg i en spilleliste" @click.stop="menuFor = menuFor === t.uri ? null : t.uri"><ListPlus :size="15" /></button>
+          <button v-if="admin.loggedIn" class="add" :class="{ on: menuFor === t.uri }" title="Legg i en spilleliste" aria-label="Legg i en spilleliste" @click.stop="menuFor = menuFor === t.uri ? null : t.uri"><CirclePlus :size="18" /></button>
           <span class="d">{{ busy === t.uri ? '…' : fmtClock(t.ms / 1000) }}</span>
         </li>
         <li v-if="menuFor === t.uri" class="plmenu">

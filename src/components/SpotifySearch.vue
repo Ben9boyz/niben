@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
-import { Play, Lock, Plus, Check, Music, ListPlus, ListEnd, Disc3, User } from 'lucide-vue-next'
+import { Play, Lock, Plus, Check, Music, CirclePlus, ListEnd } from 'lucide-vue-next'
 import { spotify, lockLeft, fmtClock, play, lockNote, searchSpotify, saveAlbum, addToPlaylist, addGuest, control, followPlaylist, enqueue } from '../composables/useSpotify'
 import { room } from '../composables/useRoom'
 import { mode } from '../composables/useMode'
@@ -176,10 +176,12 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
                   · <a v-if="admin.loggedIn && t.album_uri" class="lnk" href="#" title="Åpne albumet" @click.prevent="mode === 'rom' ? openAlbum(albumOf(t)) : openAlbumPage(albumOfTrack(t))">{{ t.album }}</a><template v-else>{{ t.album }}</template>
                 </small>
               </span>
+              <span v-if="admin.loggedIn" class="ics">
+                <button class="ic" title="Spill etterpå – legg til sist i køen" aria-label="Legg til sist i køen" @click="enqueue(t.uri)"><ListEnd :size="17" /></button>
+                <button class="ic" :class="{ on: menuFor === t.uri }" title="Legg til i en spilleliste" aria-label="Legg til i en spilleliste" @click="menuFor = menuFor === t.uri ? null : t.uri"><CirclePlus :size="19" /></button>
+              </span>
               <button class="plain d" :disabled="!!busy" @click="playTrack(t)"><Lock v-if="locked" :size="13" /><Play v-else :size="13" fill="currentColor" /> {{ fmtClock(t.ms / 1000) }}</button>
             </div>
-            <button class="act" title="Spill etterpå – i køen" aria-label="Spill etterpå" @click="enqueue(t.uri)"><ListEnd :size="15" /><span class="lb">Kø</span></button>
-            <button class="act" title="Legg til i en spilleliste" @click="menuFor = menuFor === t.uri ? null : t.uri"><ListPlus :size="15" /><span class="lb">Liste</span></button>
           </div>
           <div v-if="menuFor === t.uri" class="menu"><AddMenu @queue="menuFor = null; enqueue(t.uri)" @pick="(p) => addTo(t, p)" @close="menuFor = null" /></div>
         </div>
@@ -211,6 +213,10 @@ h4 { margin: 0 2px 4px; font-size: 0.72rem; letter-spacing: 0.12em; text-transfo
 .act { display: inline-flex; align-items: center; gap: 4px; flex: none; padding: 6px 10px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.75rem var(--font); cursor: pointer; }
 .act:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
 .songrow { cursor: default; }
+.ics { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+.ic { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-3); cursor: pointer; transition: color 0.15s, background 0.15s; }
+.ic:hover, .ic.on { color: var(--accent); background: var(--accent-soft); }
+@media (hover: hover) and (pointer: fine) { .ics { opacity: 0; transition: opacity 0.15s; } .trk:hover .ics, .ics:focus-within { opacity: 1; } }
 .plain { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; min-width: 0; }
 .plain:disabled { cursor: not-allowed; }
 .nm { display: block; max-width: 100%; }
@@ -218,11 +224,7 @@ h4 { margin: 0 2px 4px; font-size: 0.72rem; letter-spacing: 0.12em; text-transfo
 .lnk:hover { color: var(--accent); text-decoration: underline; }
 .menu { margin: 2px 0 6px 54px; }
 @media (max-width: 560px) {
-  /* phones: the song gets the whole line, its buttons (album · artist · queue · playlist) sit under it */
-  .trk .row.wrap { flex-wrap: wrap; row-gap: 2px; }
-  .trk .main { flex: 1 1 100%; }
-  .trk .act { margin-left: 0; padding: 7px 12px; }
-  .trk .row.wrap > .act:first-of-type { margin-left: 54px; }
+  /* phones: queue + plus sit at the end of the same line as the song */
   .lnk { padding: 3px 0; }
 }
 </style>
