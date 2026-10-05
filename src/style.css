@@ -426,11 +426,11 @@ html.player-shell { --rail: 0px; }
 .back { display: inline-flex; align-items: center; gap: 2px; }
 
 /* ── player mode (niben.no/#/musicplayer and the "niben musikk" app) ── */
-html.player-shell .dock:not(.focus) { top: 136px !important; bottom: 104px !important; }
-html.player-shell .cpage { padding-top: 80px; padding-bottom: 130px; }
+html.player-shell .dock:not(.focus) { top: 136px !important; bottom: 20px !important; }
+html.player-shell .cpage { padding-top: 80px; padding-bottom: 40px; }
 @media (max-width: 900px) {
-  html.player-shell .dock:not(.focus) { top: auto !important; bottom: 132px !important; }
-  html.player-shell .cpage { padding-bottom: 160px; }
+  html.player-shell .dock:not(.focus) { top: auto !important; bottom: 12px !important; }
+  html.player-shell .cpage { padding-bottom: 80px; }
 }
 
 /* phones: the page title takes too much room. With sub-tabs, the tabs are the title; otherwise a

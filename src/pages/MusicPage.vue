@@ -13,6 +13,9 @@ import SegSwitch from '../components/SegSwitch.vue'
 import FolderTree from '../components/FolderTree.vue'
 import QueuePanel from '../components/QueuePanel.vue'
 import { loadGroups, groups, select } from '../composables/useGroups'
+import { peek, peekBack, peekClear } from '../composables/useBrowse'
+import MusicDetail from '../components/MusicDetail.vue'
+import ArtistPage from '../components/ArtistPage.vue'
 
 // Plain version, laid out like Spotify: the library on the left, search + the grid in the middle, what's
 // playing on the right. Phones: the search and the Album/Spillelister switch stay at the top while the grid
@@ -25,10 +28,13 @@ const playing = computed(() => !!spotify.now?.name)
 const sheet = ref(false) // phones: the full "now playing" card
 const LIB = [{ id: 'vinyl', label: 'Album', icon: Disc3 }, { id: 'ipod', label: 'Spillelister', icon: ListMusic }]
 const libView = computed({ get: () => (ipod.value ? 'ipod' : 'vinyl'), set: (v) => { gq.value = ''; show(v) } })
+const top = computed(() => peek.stack[peek.stack.length - 1] || null)
+const backLabel = computed(() => (peek.stack.length > 1 ? 'Tilbake' : gq.value.trim() ? 'Tilbake til søket' : 'Tilbake'))
 
 const hasTree = computed(() => groups.on && groups.loaded && (ipod.value || groups.view !== 'artist'))
 
 function show(view) {
+  peekClear()
   room.musicView = view
   // tapping the tab you're on goes back to the grid
   if (view === 'vinyl') room.sel.musikk = null
@@ -54,7 +60,7 @@ function show(view) {
           <!-- the folders of whatever I'm looking at: Album or Spillelister -->
           <div v-if="hasTree" class="mapper">
             <b class="lh">Mapper</b>
-            <FolderTree :kind="ipod ? 'playlist' : 'album'" @pick="gq = ''; select($event)" />
+            <FolderTree :kind="ipod ? 'playlist' : 'album'" @pick="gq = ''; peekClear(); select($event)" />
           </div>
         </div>
       </aside>
@@ -70,7 +76,11 @@ function show(view) {
           </label>
         </div>
         <div class="glass main-card">
-          <SpotifySearch v-if="gq.trim()" :q="gq" scope="all" />
+          <template v-if="top">
+            <MusicDetail v-if="top.kind === 'album'" :key="top.item.uri" :item="top.item" kind="album" :back-label="backLabel" @back="peekBack" />
+            <ArtistPage v-else :key="top.item.id || top.item.name" :artist="top.item" :back-label="backLabel" @back="peekBack" />
+          </template>
+          <SpotifySearch v-else-if="gq.trim()" :q="gq" scope="all" />
           <template v-else>
             <PlaylistPanel v-if="ipod" :search="false" />
             <VinylPanel v-else :search="false" />
@@ -78,8 +88,8 @@ function show(view) {
         </div>
       </main>
 
-      <!-- what's playing (the player app has its own bar) -->
-      <aside v-if="shell !== 'player'" class="now-col">
+      <!-- what's playing + the queue -->
+      <aside class="now-col">
         <div class="glass now-card">
           <NowPlaying v-if="playing" stacked />
           <QueuePanel v-if="playing" class="queue" />
@@ -95,7 +105,7 @@ function show(view) {
     <a v-if="shell !== 'player'" href="#/musicplayer" class="as-player">Åpne som egen musikkspiller</a>
 
     <!-- phones: a small player above the menu; tap for the full card -->
-    <MiniNowPlaying v-if="shell !== 'player' && playing" class="m-mini" @open="sheet = true" />
+    <MiniNowPlaying v-if="playing" class="m-mini" @open="sheet = true" />
     <teleport to="body">
       <transition name="fade">
         <div v-if="sheet" class="m-sheet-bg" @click.self="sheet = false">
@@ -113,7 +123,9 @@ function show(view) {
 <style scoped>
 .music { width: min(1680px, 100%); padding-top: 28px; }
 .layout { display: grid; grid-template-columns: 210px minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
-.lib-col, .now-col { position: sticky; top: 24px; }
+.lib-col, .now-col { position: sticky; top: 20px; }
+/* a card taller than the screen scrolls inside itself instead of being cut off */
+.lib-card, .now-card { max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .lib-card { padding: 12px; border-radius: 20px; display: grid; gap: 8px; }
 .lh { margin: 2px 6px; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
 .lib { display: grid; gap: 2px; }
@@ -123,8 +135,13 @@ function show(view) {
 .lib button.on { background: var(--accent-soft); color: var(--accent); }
 .lib .ic { flex: none; }
 .lib small { margin-left: auto; font-weight: 500; opacity: 0.6; font-variant-numeric: tabular-nums; }
-.main-col { min-width: 0; display: grid; gap: 12px; }
+.main-col { min-width: 0; display: grid; gap: 0; }
 .toolbar { display: flex; gap: 10px; align-items: center; }
+/* PC: the search stays put at the top while the grid scrolls away underneath it – on the same line as the
+   library and what's playing, so nothing ever sticks higher than the search */
+@media (min-width: 821px) {
+  .toolbar { position: sticky; top: 0; z-index: 6; margin: -12px -10px 0; padding: 20px 10px 12px; background: color-mix(in srgb, var(--bg) 94%, transparent); -webkit-backdrop-filter: blur(16px) saturate(140%); backdrop-filter: blur(16px) saturate(140%); }
+}
 .seg { display: none !important; }
 @media (max-width: 820px) { .seg { display: grid !important; } }
 .gsearch { flex: 1; display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px; border: 1px solid var(--glass-border); background: var(--glass-strong); color: var(--text-3); box-shadow: var(--shadow-1, none); }
@@ -175,7 +192,9 @@ function show(view) {
 
 <style>
 /* player mode has a fixed top bar: the sticky columns stop below it */
-@media (min-width: 821px) { html.player-shell .music .lib-col, html.player-shell .music .now-col { top: 84px; } }
+@media (min-width: 821px) { html.player-shell .music .lib-col, html.player-shell .music .now-col { top: 84px; } html.player-shell .music .toolbar { top: 64px; } html.player-shell .music .lib-card, html.player-shell .music .now-card { max-height: calc(100dvh - 104px); } }
 /* phones: with the menu slid away, the mini player drops down to where the menu was */
+/* the player view has no menu at the bottom: the mini player sits at the very bottom */
+@media (max-width: 820px) { html.player-shell .music .m-mini { bottom: calc(14px + env(safe-area-inset-bottom)) !important; } }
 @media (max-width: 820px) { html.nav-hidden .music .m-mini { bottom: calc(14px + env(safe-area-inset-bottom)) !important; } }
 </style>

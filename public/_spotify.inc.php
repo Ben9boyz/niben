@@ -129,6 +129,7 @@ function sp_albums(): ?array {
                     'uri' => $a['uri'],
                     'name' => $a['name'],
                     'artist' => implode(', ', array_map(fn($x) => $x['name'], $a['artists'] ?? [])),
+                    'artist_id' => $a['artists'][0]['id'] ?? null,
                     'year' => substr((string)($a['release_date'] ?? ''), 0, 4),
                     'image' => sp_img($a['images'] ?? [], 300),
                     'image_large' => sp_img($a['images'] ?? [], 640),
@@ -211,19 +212,67 @@ function sp_now(): ?array {
 }
 
 function sp_track(array $t): array {
-    return [
+    $al = $t['album'] ?? null;
+    $out = [
         'uri' => $t['uri'] ?? null,
         'name' => $t['name'] ?? '',
         'artist' => implode(', ', array_map(fn($x) => $x['name'], $t['artists'] ?? [])),
+        'artist_id' => $t['artists'][0]['id'] ?? null,
         'ms' => (int)($t['duration_ms'] ?? 0),
         'n' => $t['track_number'] ?? null,
-        'img' => sp_img($t['album']['images'] ?? [], 64), // tiny cover (playlists; album tracks have none)
+        'img' => sp_img($al['images'] ?? [], 64), // tiny cover (playlists; album tracks have none)
     ];
+    if ($al && !empty($al['uri'])) { // so a song can open its album
+        $out += [
+            'album' => $al['name'] ?? '', 'album_uri' => $al['uri'], 'album_id' => $al['id'] ?? null,
+            'album_artist' => implode(', ', array_map(fn($x) => $x['name'], $al['artists'] ?? [])),
+            'album_image' => sp_img($al['images'] ?? [], 300), 'album_image_large' => sp_img($al['images'] ?? [], 640),
+            'album_url' => $al['external_urls']['spotify'] ?? null,
+        ];
+    }
+    return $out;
+}
+
+/** An artist and their albums (admin; cached 6 h). By id, or – when only the name is known – found by search. */
+function sp_artist(string $id, string $name): ?array {
+    if ($id === '' && $name !== '') {
+        [$s, $j] = sp_api('GET', '/search?type=artist&limit=1&q=' . rawurlencode(mb_substr($name, 0, 100)));
+        $id = $s === 200 ? (string)($j['artists']['items'][0]['id'] ?? '') : '';
+    }
+    if (!preg_match('~^[A-Za-z0-9]{10,40}$~', $id)) return null;
+    return sp_cached("artist1_{$id}", 21600, function () use ($id) {
+        [$s, $a] = sp_api('GET', "/artists/{$id}");
+        if ($s !== 200) return null;
+        $albums = []; $seen = [];
+        for ($offset = 0; $offset < 100; $offset += 50) {
+            [$s2, $j] = sp_api('GET', "/artists/{$id}/albums?include_groups=album,single&limit=50&offset={$offset}");
+            if ($s2 !== 200) break;
+            foreach ($j['items'] ?? [] as $x) {
+                $key = mb_strtolower($x['name'] ?? '');
+                if (!$x || isset($seen[$key])) continue; // the same record re-released in several markets
+                $seen[$key] = 1;
+                $albums[] = [
+                    'id' => $x['id'], 'uri' => $x['uri'], 'name' => $x['name'],
+                    'artist' => implode(', ', array_map(fn($y) => $y['name'], $x['artists'] ?? [])),
+                    'year' => substr((string)($x['release_date'] ?? ''), 0, 4), 'type' => $x['album_type'] ?? 'album',
+                    'image' => sp_img($x['images'] ?? [], 300), 'image_large' => sp_img($x['images'] ?? [], 640), 'thumb' => sp_img($x['images'] ?? [], 64),
+                    'url' => $x['external_urls']['spotify'] ?? null, 'tracks' => $x['total_tracks'] ?? null,
+                ];
+            }
+            if (empty($j['next'])) break;
+        }
+        usort($albums, fn($p, $q) => strcmp($q['year'], $p['year']));
+        return [
+            'id' => $a['id'], 'uri' => $a['uri'], 'name' => $a['name'], 'genres' => array_slice($a['genres'] ?? [], 0, 4),
+            'image' => sp_img($a['images'] ?? [], 300), 'image_large' => sp_img($a['images'] ?? [], 640),
+            'url' => $a['external_urls']['spotify'] ?? null, 'albums' => $albums,
+        ];
+    });
 }
 
 /** Track list for an album or playlist (fetched on demand, cached for 6 hours). */
 function sp_tracks(string $type, string $id): array {
-    $data = sp_cached("tracks2_{$type}_{$id}", 21600, function () use ($type, $id) {
+    $data = sp_cached("tracks3_{$type}_{$id}", 21600, function () use ($type, $id) {
         $out = [];
         for ($offset = 0; $offset < 1000; $offset += 50) {
             $path = $type === 'album'
@@ -323,6 +372,13 @@ function sp_handle(string $action, bool $post): void {
             if (!in_array($id, $mine, true)) fail('Ukjent ' . ($type === 'album' ? 'album' : 'spilleliste') . '.', 404);
         }
         out(sp_tracks($type, $id));
+    }
+
+    case 'spotify_artist': {
+        if (!is_admin()) fail('Logg inn for å åpne artister.', 401);
+        $r = sp_artist((string)($_GET['id'] ?? ''), trim((string)($_GET['name'] ?? '')));
+        if (!$r) fail('Fant ikke artisten.', 404);
+        out($r);
     }
 
     case 'spotify_login': {

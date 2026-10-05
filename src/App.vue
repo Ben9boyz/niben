@@ -11,7 +11,6 @@ import { useData } from './composables/useData'
 import { mode } from './composables/useMode'
 import { shell } from './composables/useShell'
 import PlayerTop from './components/PlayerTop.vue'
-import PlayerBar from './components/PlayerBar.vue'
 
 const data = useData()
 useMediaSession()
@@ -43,7 +42,6 @@ const toTop = () => window.scrollTo(0, 0)
   <NavBar v-if="shell !== 'player'" />
   <template v-else>
     <PlayerTop />
-    <PlayerBar />
   </template>
   <p v-if="data.error" class="data-error glass">Kunne ikke laste innholdet (data.json): {{ data.error }}</p>
 </template>

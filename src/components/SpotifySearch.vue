@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
-import { Play, Lock, Plus, Check, Music, ListPlus, ListEnd } from 'lucide-vue-next'
+import { Play, Lock, Plus, Check, Music, ListPlus, ListEnd, Disc3, User } from 'lucide-vue-next'
 import { spotify, lockLeft, fmtClock, play, lockNote, searchSpotify, saveAlbum, addToPlaylist, addGuest, control, followPlaylist, enqueue } from '../composables/useSpotify'
 import { room } from '../composables/useRoom'
 import { mode } from '../composables/useMode'
@@ -8,6 +8,7 @@ import { admin } from '../composables/useAdmin'
 import MusicDetail from './MusicDetail.vue'
 import AddMenu from './AddMenu.vue'
 import { startTrackDrag, endDrag } from '../composables/useDrag'
+import { openAlbumPage, openArtistPage, albumOfTrack, firstArtist } from '../composables/useBrowse'
 
 // Search results. 'all' (the flat grid): my playlists, albums and songs. 'player' (the turntable):
 // only albums and songs. Songs start inside their album, so the music carries on after the song.
@@ -169,6 +170,8 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
               <span class="t"><b>{{ t.name }}</b><small>{{ t.artist }} · {{ t.album }}</small></span>
               <span class="d"><Lock v-if="locked" :size="13" /><Play v-else :size="13" fill="currentColor" /> {{ fmtClock(t.ms / 1000) }}</span>
             </button>
+            <button v-if="admin.loggedIn && t.album_uri" class="act" title="Åpne albumet" @click="mode === 'rom' ? openAlbum(albumOf(t)) : openAlbumPage(albumOfTrack(t))"><Disc3 :size="15" />Album</button>
+            <button v-if="admin.loggedIn && mode !== 'rom'" class="act" title="Åpne artisten og albumene" @click="openArtistPage({ id: t.artist_id, name: firstArtist(t.artist) })"><User :size="15" />Artist</button>
             <button class="act" title="Spill etterpå – i køen" aria-label="Spill etterpå" @click="enqueue(t.uri)"><ListEnd :size="15" />Kø</button>
             <button class="act" title="Legg til i en spilleliste" @click="menuFor = menuFor === t.uri ? null : t.uri"><ListPlus :size="15" />Liste</button>
           </div>

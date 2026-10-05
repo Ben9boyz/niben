@@ -239,6 +239,12 @@ export function mockApi() {
             const playlists = [0, 1].map((i) => ({ id: `sp${i}`, uri: `spotify:playlist:searchlist${String(i).padStart(10, '0')}`, name: `${q} mix ${i + 1}`, owner: 'Spotify-bruker', image: mockCover(i * 90 + 40), thumb: mockCover(i * 90 + 40), count: 30 + i * 12, url: null }))
             return send(res, 200, { albums, tracks, playlists })
           }
+          case 'spotify_artist': {
+            if (!loggedIn) return send(res, 401, { error: 'Logg inn for å åpne artister.' })
+            const nm = url.searchParams.get('name') || 'Mock Artist'
+            const albums = Array.from({ length: 7 }, (_, i) => ({ id: `ar${i}`, uri: `spotify:album:artistalbum${String(i).padStart(10, '0')}`, name: ['Northern Lights', 'Slow Burn', 'Echoes', 'Paper Hearts', 'Late Again', 'Golden Hour', 'Home'][i], artist: nm, year: String(2024 - i * 3), type: i % 3 === 2 ? 'single' : 'album', image: mockCover(i * 37 + 3), image_large: mockCover(i * 37 + 3), thumb: mockCover(i * 37 + 3), url: null, tracks: 8 + i }))
+            return send(res, 200, { id: 'mockartist00000001', uri: 'spotify:artist:mockartist00000001', name: nm, genres: ['jazz fusion', 'instrumental'], image: mockCover(200), image_large: mockCover(200), url: null, albums })
+          }
           case 'spotify_queue': {
             const ctx = sp.now?.context || ''
             const id = /^spotify:(album|playlist):/.test(ctx) ? ctx.split(':')[2] : ''
@@ -371,7 +377,8 @@ export function mockApi() {
             const id = url.searchParams.get('id')
             if (url.searchParams.get('type') === 'playlist' && id.endsWith('3')) return send(res, 200, { hidden: true, tracks: [] })
             const n = 6 + (id.charCodeAt(id.length - 1) % 7)
-            return send(res, 200, { tracks: Array.from({ length: n }, (_, i) => ({ uri: `spotify:track:mocktrack${id}${String(i).padStart(4, '0')}`, name: ['Intro', 'Golden Hour', 'Slow Down', 'Northern Sky', 'Paper Hearts', 'Drift', 'Home', 'Waves', 'Late Again', 'Outro', 'Echoes', 'Morning'][i % 12], artist: 'Mock Artist', ms: 150000 + i * 17000, n: i + 1, img: mockCover(i * 53) })) })
+            const pl = url.searchParams.get('type') === 'playlist'
+            return send(res, 200, { tracks: Array.from({ length: n }, (_, i) => ({ ...(pl ? { album: `Albumet ${i % 4 + 1}`, album_uri: `spotify:album:plalbum${String(i % 4).padStart(10, '0')}`, album_artist: `Artist ${i % 3 + 1}`, album_image: mockCover((i % 4) * 60 + 5), album_image_large: mockCover((i % 4) * 60 + 5) } : {}), artist_id: 'mockartist00000001', uri: `spotify:track:mocktrack${id}${String(i).padStart(4, '0')}`, name: ['Intro', 'Golden Hour', 'Slow Down', 'Northern Sky', 'Paper Hearts', 'Drift', 'Home', 'Waves', 'Late Again', 'Outro', 'Echoes', 'Morning'][i % 12], artist: pl ? `Artist ${i % 3 + 1}` : 'Mock Artist', ms: 150000 + i * 17000, n: i + 1, img: mockCover(i * 53) })) })
           }
           case 'spotify_refresh':
           case 'spotify_disconnect':

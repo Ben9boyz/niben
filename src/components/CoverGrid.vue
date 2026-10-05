@@ -1,5 +1,19 @@
 <script setup>
-import { Music } from 'lucide-vue-next'
+import { Music, Play, Pause } from 'lucide-vue-next'
+import { spotify, play, control, lockLeft, fmtClock, lockNote } from '../composables/useSpotify'
+import { admin } from '../composables/useAdmin'
+
+// the little play button on a cover: starts the album from its first song (albums always play in order),
+// a playlist the way it is set up. What's already playing just pauses / resumes.
+async function go(it) {
+  const here = spotify.now?.context === it.uri
+  const say = (o) => { spotify.notice = { ...o, t: Date.now() } }
+  if (here) { const r = await control(spotify.now.playing ? 'pause' : 'resume'); if (!r.ok) say({ error: true, text: r.error }); return }
+  if (lockLeft.value > 0) return say({ error: true, text: `Låst – hør ferdig (${fmtClock(lockLeft.value)} igjen)` })
+  const r = await play(it.uri)
+  say(r.ok ? { text: `Spiller «${it.name}»${lockNote()}` } : { error: true, text: r.error })
+}
+const playable = (it) => admin.loggedIn && /^spotify:(album|playlist):/.test(it.uri || '')
 // Grid of square covers (records and playlists). The name shows on hover.
 defineProps({
   items: { type: Array, required: true }, // [{ uri, name, sub, image }]
@@ -33,6 +47,9 @@ const emit = defineEmits(['pick', 'hover', 'move', 'dragitem'])
         <span class="cap"><b>{{ it.name }}</b><small v-if="it.sub">{{ it.sub }}</small></span>
         <span v-if="it.uri === playingUri" class="live" title="Spilles nå"><i></i><i></i><i></i></span>
       </button>
+      <button v-if="playable(it)" class="pl" :class="{ now: it.uri === playingUri }" :title="it.uri === playingUri && spotify.now?.playing ? 'Pause' : 'Spill av fra første låt'" :aria-label="`Spill ${it.name}`" @click.stop="go(it)">
+        <Pause v-if="it.uri === playingUri && spotify.now?.playing" :size="15" fill="currentColor" /><Play v-else :size="15" fill="currentColor" />
+      </button>
       <template v-if="movable">
         <span v-if="guessed.includes(it.uri)" class="guess" :title="why[it.uri] ? `Gjettet ut fra: ${why[it.uri]}` : 'Gruppen er et gjett – flytt eller bekreft'">gjettet</span>
         <select class="mv" :value="groupOf?.(it.uri) || ''" :aria-label="`Gruppe for ${it.name}`" @change="emit('move', it.uri, $event.target.value)" @click.stop>
@@ -51,6 +68,10 @@ const emit = defineEmits(['pick', 'hover', 'move', 'dragitem'])
 @media (hover: hover) and (pointer: fine) { .mv { display: none; } }
 .mv { position: absolute; left: 4px; right: 4px; bottom: 4px; z-index: 3; width: calc(100% - 8px); padding: 3px 4px; border: 0; border-radius: 6px; background: rgba(0, 0, 0, 0.72); color: #fff; font: 600 0.66rem var(--font); }
 .guess { position: absolute; left: 4px; top: 4px; z-index: 3; padding: 1px 6px; border-radius: 999px; background: #f0a040; color: #fff; font: 700 0.6rem var(--font); }
+.pl { position: absolute; right: 7px; bottom: 7px; z-index: 2; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: #1db954; color: #fff; box-shadow: 0 6px 14px rgba(0, 0, 0, 0.4); cursor: pointer; opacity: 0; transform: translateY(6px); transition: opacity 0.18s, transform 0.18s, filter 0.15s; }
+.cell:hover .pl, .pl:focus-visible { opacity: 1; transform: none; }
+.pl:hover { filter: brightness(1.1); transform: scale(1.08); }
+@media (hover: none) { .pl { opacity: 0.95; transform: none; width: 30px; height: 30px; } }
 .tile {
   position: relative;
   width: 100%;

@@ -243,7 +243,6 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); clearTimeout(flipTimer); wind
 .rclose { width: 32px; height: 32px; justify-content: center; border-radius: 50%; transform: translate(-100%, 0); }
 .rflip:hover, .rclose:hover { color: var(--accent); }
 .shelfbar { position: fixed; z-index: 24; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 32px); }
-:global(html.player-shell) .shelfbar { bottom: 112px; }
 .pill { display: flex; align-items: center; gap: 4px; padding: 10px 16px; border: 0; border-radius: 999px; color: var(--text); font: 600 0.85rem var(--font); cursor: pointer; white-space: nowrap; }
 .pill:hover { color: var(--accent); }
 .browser { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 999px; min-width: 0; }
