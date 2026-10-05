@@ -62,26 +62,29 @@ upload_ftp() {
   # (the password goes via stdin, so it never shows up in the process list)
   upload_one() {
     local f="$1" attempt tmp want got
-    for attempt in 1 2 3; do
+    for attempt in $(seq 1 "${TRIES:-5}"); do
       tmp=".up-$f.$$.$attempt.tmp" # a fresh temporary name each try: a leftover from a cut-off try can't block the next
-      if printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sS -K - -T "$f" "$FTP_HOST/$tmp" -Q "-RNFR $tmp" -Q "-RNTO $f"; then return 0; fi
-      echo "    prøver igjen ($attempt/3) …"; sleep $((attempt * 2))
+      if printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sS --connect-timeout 20 --max-time 300 -K - -T "$f" "$FTP_HOST/$tmp" -Q "-RNFR $tmp" -Q "-RNTO $f"; then return 0; fi
+      echo "    prøver igjen ($attempt/${TRIES:-5}) …"; sleep $((attempt * 2))
     done
-    # the host sometimes refuses the rename step (451) for a file: upload straight to its final name instead,
-    # and check that the whole file arrived
-    echo "    prøver direkte opplasting …"
-    if printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sS -K - -T "$f" "$FTP_HOST/$f"; then
-      want=$(wc -c < "$f" | tr -d ' ')
-      got=$(printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sSI -K - "$FTP_HOST/$f" 2>/dev/null | tr -d '\r' | awk 'tolower($1)=="content-length:" {print $2}')
-      if [ -z "$got" ] || [ "$got" = "$want" ]; then return 0; fi
-      echo "    størrelsen stemmer ikke ($got av $want byte)"
-    fi
+    # (never upload straight to the live name as a fallback: when the host refuses the file, a half-written
+    # copy is left behind – on 2026-10-05 that broke _spotify.inc.php and with it the whole API)
     return 1
   }
 
+  # index.html goes up LAST, and only when everything else arrived: it points at the new script
+  # files, so with one of them missing the whole site would be blank (happened 2026-10-05)
+  local page="" ok_any=""
   for f in ${ONLY:-* .user.ini}; do
     [ -f "$f" ] || continue
-    if upload_one "$f"; then echo "  ✓ $f"; else echo "  ✗ $f"; failed+=("$f"); fi
+    if [ "$f" = "index.html" ]; then page="$f"; continue; fi
+    if upload_one "$f"; then echo "  ✓ $f"; ok_any=1; else echo "  ✗ $f"; failed+=("$f"); fi
+    # nothing gets through at all (the server isn't letting us in): stop instead of hammering it
+    if [ -z "$ok_any" ] && [ "${#failed[@]}" -ge 2 ]; then
+      echo "  Serveren slipper ikke inn opplastinger nå – stopper. Prøv igjen senere."
+      unset PASS
+      return 1
+    fi
   done
 
   # the host sometimes answers 451 for a stretch (many connections in a row): wait a little, then
@@ -94,9 +97,14 @@ upload_ftp() {
     done
     failed=("${still[@]}")
   fi
+  if [ -n "$page" ]; then
+    if [ "${#failed[@]}" -gt 0 ]; then
+      echo "  ! index.html er IKKE lastet opp (filer mangler) – siden viser fortsatt forrige versjon."
+    elif upload_one "$page"; then echo "  ✓ $page"; else echo "  ✗ $page"; failed+=("$page"); fi
+  fi
   unset PASS
   if [ "${#failed[@]}" -gt 0 ]; then
-    echo "  Disse mangler fortsatt – kjør: ./deploy.sh ftp ${failed[*]}"
+    echo "  Disse mangler fortsatt – kjør: ./deploy.sh ftp ${failed[*]}${page:+ index.html}"
     return 1
   fi
 }
@@ -112,9 +120,9 @@ upload_app() {
   for f in niben-mac-arm64.dmg niben-win-x64.exe version.json; do
     [ -f "$DIR/$f" ] || { echo "  – $f finnes ikke (bygg med: cd desktop && npm run dist)"; continue; }
     local ok=0 tmp=".up-$f.tmp"
-    for attempt in 1 2 3 4 5; do
+    for attempt in $(seq 1 "${TRIES:-5}"); do
       if printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sS --ftp-create-dirs -K - -T "$DIR/$f" "ftp://$HOST/www/app/$tmp" -Q "-RNFR $tmp" -Q "-RNTO $f"; then ok=1; break; fi
-      echo "    prøver igjen ($attempt/5) …"; sleep $((attempt * 2))
+      echo "    prøver igjen ($attempt/${TRIES:-5}) …"; sleep $((attempt * 2))
     done
     if [ "$ok" = 1 ]; then echo "  ✓ app/$f"; else echo "  ✗ app/$f"; FAILED=1; fi
   done
