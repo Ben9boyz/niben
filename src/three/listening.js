@@ -714,6 +714,21 @@ export function buildListeningCorner() {
   let atlasTimer = 0
   const atlasDirty = () => { clearTimeout(atlasTimer); atlasTimer = setTimeout(() => (atlasTex.needsUpdate = true), 120) }
 
+  const coverTex = new Map() // uri -> texture of the cover, loaded in the background
+  let coverJobs = []
+  let coverActive = 0
+  function pumpCovers() { // three at a time, so the shelf never hogs the connection
+    while (coverActive < 3 && coverJobs.length) {
+      const job = coverJobs.shift()
+      coverActive++
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      const done = () => { coverActive--; pumpCovers() }
+      img.onload = () => { try { job(img) } finally { done() } }
+      img.onerror = done
+      img.src = job.src
+    }
+  }
   const spineCovers = new Map() // index -> the small cover (drawn at the top of the spine)
   function drawSpine(i, album, color) {
     const x = atlasCtx
@@ -834,6 +849,9 @@ export function buildListeningCorner() {
     if (key === albumsKey) return
     albumsKey = key
     spineCovers.clear()
+    for (const t of coverTex.values()) t.dispose()
+    coverTex.clear()
+    coverJobs = []
     for (const l of loose.values()) group.remove(l.mesh)
     loose.clear()
     // a little air before each new artist (not much – a few millimetres), so the shelf reads in groups
@@ -854,12 +872,11 @@ export function buildListeningCorner() {
       const r = { album, index: i, color, out: 0, hidden: false,
         home: new THREE.Vector3(x0 + 0.006 + THICK / 2 + off, BOTTOM_Y + SLEEVE / 2 + 0.001, FRONT_Z - SLEEVE / 2 - 0.012) }
       writeInstance(r)
-      // the small cover goes on the spine (and colours it, if the album has no colour yet)
-      const thumb = album.thumb || album.image
-      if (thumb) {
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        img.onload = () => {
+      // the cover (300 px) loads in the background: it goes on the spine, colours it if the album has no colour yet, and is
+      // kept as a texture so that a record pulled out of the shelf already has its cover on it
+      const src = (navigator.connection?.saveData ? album.thumb : album.image) || album.thumb || album.image
+      if (src) {
+        const job = (img) => {
           if (records[i] !== r) return // the shelf changed meanwhile
           spineCovers.set(i, img)
           if (!album.color) {
@@ -872,11 +889,18 @@ export function buildListeningCorner() {
           }
           drawSpine(i, album, r.color)
           atlasDirty()
+          const tex = new THREE.Texture(img)
+          tex.colorSpace = THREE.SRGBColorSpace
+          tex.anisotropy = 4
+          tex.needsUpdate = true
+          coverTex.set(album.uri, tex)
         }
-        img.src = thumb
+        job.src = src
+        coverJobs.push(job)
       }
       return r
     })
+    setTimeout(pumpCovers, 500) // after the first picture is up
     colAttr.needsUpdate = true
     shelfMesh.count = records.length
     shelfMesh.computeBoundingSphere() // clicks/hover test against it – fit it to the records now on the shelf
@@ -886,14 +910,17 @@ export function buildListeningCorner() {
   /** A real mesh (with cover) for a record that leaves the shelf. */
   function makeLoose(r) {
     // the cover glows a touch on its own so it stays readable in the shade of the shelf
-    const coverMat = new THREE.MeshStandardMaterial({ map: placeholderCover(r.album), roughness: 0.5, emissive: 0xffffff, emissiveIntensity: 0.16 })
+    const cached = coverTex.get(r.album.uri) // the cover loaded in the background: on it from the first frame
+    let ownMap = !cached
+    const coverMat = new THREE.MeshStandardMaterial({ map: cached || placeholderCover(r.album), roughness: 0.5, emissive: 0xffffff, emissiveIntensity: 0.16 })
     coverMat.emissiveMap = coverMat.map
     const src = r.album.image_large || r.album.image // the 640 px cover: sharp even when held up close
     if (src) {
       loader.load(src, (t) => {
         t.colorSpace = THREE.SRGBColorSpace
         t.anisotropy = 16 // stays crisp at a distance and at an angle (clamped to what the GPU allows)
-        coverMat.map?.dispose()
+        if (ownMap) coverMat.map?.dispose() // (never the shared one)
+        ownMap = true
         coverMat.map = t
         coverMat.emissiveMap = t
         coverMat.needsUpdate = true
