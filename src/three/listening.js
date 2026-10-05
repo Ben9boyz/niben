@@ -312,14 +312,47 @@ export function buildListeningCorner() {
   const candleLight = new THREE.PointLight(0xffb76b, 0.35, 0.8, 2)
   candleLight.position.set(0, 0.1, 0.02)
   candle.add(candleLight)
-  // a stack of sleeves + a record brush
-  ;[0xd97b66, 0x5b8fb9, 0xe2c46a].forEach((c, i) => {
-    const sl = add(new THREE.BoxGeometry(0.3, 0.008, 0.3), new THREE.MeshStandardMaterial({ color: c, roughness: 0.7 }), 0.4 + i * 0.004, 0.004 + i * 0.0085, 0.27, group.children.length ? group : group)
-    sl.position.y += TOP_Y
-    sl.rotation.y = 0.12 * (i - 1)
-  })
-  const brush = add(new THREE.BoxGeometry(0.1, 0.014, 0.025), dark, 0.4, TOP_Y + 0.033, 0.27)
-  brush.rotation.y = 0.5
+  // ── The stack of records on the table: the albums coming up in the queue on top (next one first), the albums
+  // I listened to last below them. Any height: the sleeves get thinner the more there are. ──
+  const stackGroup = new THREE.Group()
+  stackGroup.position.set(0.42, TOP_Y, 0.27)
+  group.add(stackGroup)
+  let stackItems = []
+  const stackTex = new Map()
+  const hueOf = (str) => { let h = 0; for (const c of str) h = (h * 31 + c.charCodeAt(0)) % 360; return h }
+  function setStack(list, onChange) {
+    const key = list.map((x) => x.uri + (x.queued ? 'q' : '')).join('|')
+    if (key === stackKey) return
+    stackKey = key
+    stackItems = list.slice(0, 30)
+    for (const m of [...stackGroup.children]) { stackGroup.remove(m); m.geometry.dispose(); for (const mt of m.material) if (!mt.map) mt.dispose() }
+    const n = stackItems.length
+    const t = Math.min(0.0095, 0.26 / Math.max(n, 1)) // 30 sleeves still fit in 26 cm
+    stackItems.forEach((it, i) => {
+      const fromBottom = n - 1 - i
+      const hue = hueOf(it.uri)
+      const edge = new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(hue / 360, it.queued ? 0.55 : 0.4, it.queued ? 0.5 : 0.42), roughness: 0.75 })
+      let top = edge
+      if (i === 0) { // only the top sleeve shows its cover
+        top = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
+        const src = it.image_large || it.image
+        if (src) {
+          const apply = (tex) => { top.map = tex; top.needsUpdate = true; onChange?.() }
+          if (stackTex.has(src)) apply(stackTex.get(src))
+          else loader.load(src, (tex) => { tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; stackTex.set(src, tex); apply(tex) }, undefined, () => {})
+        } else top.color.setHSL(hue / 360, 0.4, 0.55)
+      }
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.3, t * 0.92, 0.3), [edge, edge, top, edge, edge, edge])
+      const j = ((hueOf(it.uri + i) % 100) / 100 - 0.5)
+      m.position.set(j * 0.02, t * fromBottom + t / 2, ((hueOf(it.name || it.uri) % 100) / 100 - 0.5) * 0.02)
+      m.rotation.y = j * 0.16
+      m.castShadow = m.receiveShadow = true
+      m.userData = { kind: 'stack', index: i }
+      stackGroup.add(m)
+    })
+    onChange?.()
+  }
+  let stackKey = ''
   // frames on the wall above (abstract "records at sunset")
   const art = (seed) => canvasTex(300, 380, (x, w, h) => {
     const g = x.createLinearGradient(0, 0, 0, h)
@@ -917,6 +950,7 @@ export function buildListeningCorner() {
     setFilter(list) { filterSet = list?.length ? new Set(list) : null },
     setHoldIpod(v, big = false) { holdIpod = v; ipodBig = big },
     setFlip(v) { flipSel = v },
+    setStack,
     setTempo(bpm) { tempo = Number(bpm) || 0 },
     isSpinning: () => playing || spin > 0.02,
     isHoldingIpod: () => holdIpod,

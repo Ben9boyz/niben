@@ -3,7 +3,7 @@ import { ChevronLeft, Music, Lock, Play, Pause, ArrowUpRight, CirclePlus, ListEn
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import AddMenu from './AddMenu.vue'
 import { startTrackDrag, endDrag } from '../composables/useDrag'
-import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote, control, addToPlaylist, enqueue } from '../composables/useSpotify'
+import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote, control, addToPlaylist, enqueue, enqueueAlbum } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 import { openAlbumPage, openArtistPage, albumOfTrack, firstArtist } from '../composables/useBrowse'
 
@@ -140,6 +140,7 @@ async function onPlay(track = null) {
         </button>
         <span v-if="admin.loggedIn && locked && !isPlayingHere" class="lockt">Låst {{ fmtClock(lockLeft) }}</span>
         <span v-if="isPlayingHere" class="now-tag">Spilles nå</span>
+        <button v-if="admin.loggedIn && kind === 'album'" class="qalbum" title="Legg hele albumet sist i køen" @click="enqueueAlbum(item.uri, item.name)"><ListEnd :size="16" />Legg i kø</button>
         <span class="spacer"></span>
         <a v-if="item.url" class="open" :href="item.url" target="_blank" rel="noopener">Åpne i Spotify <ArrowUpRight :size="15" /></a>
       </div>
@@ -212,6 +213,8 @@ async function onPlay(track = null) {
 .lockt { font-size: 0.8rem; color: #b8711a; font-weight: 600; font-variant-numeric: tabular-nums; }
 .now-tag { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #1db954; }
 .spacer { flex: 1; }
+.qalbum { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 999px; background: rgba(0, 0, 0, 0.16); color: var(--text); font: 600 0.8rem var(--font); cursor: pointer; }
+.qalbum:hover { background: rgba(0, 0, 0, 0.28); }
 .open { display: inline-flex; align-items: center; gap: 3px; font-size: 0.8rem; font-weight: 600; color: var(--text-2); text-decoration: none; white-space: nowrap; }
 .open:hover { color: var(--accent); }
 

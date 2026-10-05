@@ -381,7 +381,15 @@ onBeforeUnmount(() => {
     transition: opacity 0.15s, transform 0.2s var(--ease);
   }
 }
+/* a bit lower screens: the labels stay, everything just sits a little tighter */
 @media (min-width: 721px) and (max-height: 860px) {
+  .nav-wrap { top: 10px; bottom: 10px; gap: 6px; }
+  .brand { height: 50px; }
+  .item { padding: 7px 0 5px; }
+  .admin-chip, .mode, .theme, .install { width: 44px; height: 44px; }
+}
+/* only really low screens (under 700 px) lose the labels – they show on hover instead */
+@media (min-width: 721px) and (max-height: 700px) {
   .item .label { display: none; }
   .item { padding: 11px 0; }
   .item:hover .tip { opacity: 1; transform: translate(0, -50%); }

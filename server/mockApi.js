@@ -9,7 +9,7 @@ export function mockApi() {
   seed(db, files)
   let loggedIn = false
   const mock = {} // scratch state for the stand-in endpoints
-  const sp = { lock: 0, lockSeconds: 600, now: { playing: false } }
+  const sp = { lock: 0, lockSeconds: 600, now: { playing: false }, recent: [], queued: [] }
   const SP_ALBUMS = [
     ['Blue Hour', 'The Midnight Club', '#2b6cb0'], ['Paper Planes', 'Northern Lights', '#d69e2e'], ['Fjord', 'Aurora Sky', '#38a169'],
     ['Late Night Drive', 'Neon Coast', '#805ad5'], ['Wooden Room', 'Acoustic Days', '#c05621'], ['Static', 'Low Tide', '#2d3748'],
@@ -199,7 +199,7 @@ export function mockApi() {
               albums: SP_ALBUMS, playlists: SP_PLAYLISTS,
             })
           case 'spotify_now':
-            return send(res, 200, { configured: true, connected: true, now: sp.now, lock_until: sp.lock, lock_seconds: sp.lockSeconds, server_time: Math.floor(Date.now() / 1000) })
+            return send(res, 200, { configured: true, connected: true, now: sp.now, recent: sp.recent, lock_until: sp.lock, lock_seconds: sp.lockSeconds, server_time: Math.floor(Date.now() / 1000) })
           case 'github_tree': {
             // dev: ask GitHub directly (the real server caches this for an hour)
             const repo = url.searchParams.get('repo')
@@ -255,12 +255,21 @@ export function mockApi() {
             const id = /^spotify:(album|playlist):/.test(ctx) ? ctx.split(':')[2] : ''
             const all = id ? mockAlbumTracks(id) : []
             const at = all.findIndex((t) => t.uri === sp.now?.uri)
-            return send(res, 200, { tracks: at >= 0 ? all.slice(at + 1) : all.slice(1, 5) })
+            const rest = (at >= 0 ? all.slice(at + 1) : all.slice(1, 5))
+            return send(res, 200, { tracks: [...sp.queued, ...rest] })
           }
           case 'spotify_devices':
             if (!needAdmin()) return
             return send(res, 200, { devices: [{ id: 'dev00000000000000000001', name: 'niben.no', type: 'Computer', active: true, volume: 70 }, { id: 'dev00000000000000000002', name: 'iPhone', type: 'Smartphone', active: false, volume: 50 }] })
-          case 'spotify_transfer': case 'spotify_volume': case 'spotify_enqueue':
+          case 'spotify_enqueue': {
+            if (!needAdmin()) return
+            // a song from some album: remember which album it is on (the mock song ids are "mocktrack<albumId><n>")
+            const m = /^spotify:track:mocktrack(.+?)\d{4}$/.exec(b.uri || '')
+            const alb = m && SP_ALBUMS.find((a) => a.uri.endsWith(m[1]))
+            if (alb) sp.queued.push({ uri: b.uri, name: 'I køen', artist: alb.artist, ms: 180000, img: alb.thumb, album_uri: alb.uri, album: alb.name, album_artist: alb.artist, album_image: alb.image })
+            return send(res, 200, { ok: true })
+          }
+          case 'spotify_transfer': case 'spotify_volume':
             if (!needAdmin()) return
             return send(res, 200, { ok: true })
           case 'spotify_repeat':
@@ -288,6 +297,7 @@ export function mockApi() {
             if (!item) return send(res, 400, { error: 'Ugyldig Spotify-lenke.' })
             sp.lock = now + sp.lockSeconds
             const pick = /^spotify:(album|playlist):/.test(item.uri) ? mockAlbumTracks(item.uri.split(':')[2])[2] : null
+            if (/^spotify:album:/.test(item.uri)) sp.recent = [{ uri: item.uri, name: item.name, artist: item.artist, image: item.image, image_large: item.image }, ...sp.recent.filter((r) => r.uri !== item.uri)].slice(0, 10)
             sp.now = { playing: true, progress_ms: 61000, duration_ms: pick?.ms || 214000, name: pick ? pick.name : `Første låt fra ${item.name}`, artist: item.artist || item.owner, album: item.name, image: item.image, uri: pick?.uri, context: item.uri, at: now }
             return send(res, 200, { ok: true, lock_until: sp.lock, server_time: now })
           }

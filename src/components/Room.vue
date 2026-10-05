@@ -1,12 +1,12 @@
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createRoom } from '../three/room'
 import { room, clearSelection } from '../composables/useRoom'
 import { useData } from '../composables/useData'
 import { useTheme } from '../composables/useTheme'
 import { timer, timerState, toggle as toggleTimer } from '../composables/useTimer'
-import { spotify, useSpotify, prefetchTracks, fetchTracks, fetchTempo, control } from '../composables/useSpotify'
+import { spotify, useSpotify, prefetchTracks, fetchTracks, fetchTempo, fetchQueue, control, findAlbum, addGuest } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 import { useVinylNoise } from '../composables/useVinylNoise'
 import { shelfAlbums, loadGroups } from '../composables/useGroups'
@@ -29,6 +29,14 @@ const ROUTES = { hjem: '/', japansk: '/japansk', gaming: '/gaming', lytte: '/lyt
 let nextPeek = null // the record clicked on the way down to the shelf (pulled out first)
 function onPick(p) {
   if (p.kind === 'station') { router.push(ROUTES[p.station]); return }
+  if (p.kind === 'stackrecord') {
+    if (!p.album) return
+    // a record from the stack: pick it up like one from the shelf (an album I don't have gets a guest record)
+    if (!findAlbum(p.album.uri)) addGuest({ uri: p.album.uri, name: p.album.name, artist: p.album.artist, image: p.album.image, image_large: p.album.image_large })
+    room.musicView = 'vinyl'
+    room.sel.musikk = { kind: 'album', uri: p.album.uri, t: Date.now() }
+    return
+  }
   if (p.kind === 'turntable') { if (spotify.now?.name && admin.loggedIn) control(spotify.now.playing ? 'pause' : 'resume'); return }
   if (p.kind === 'guitar') room.sel.gitar = p.index
   else if (p.kind === 'book') room.sel.bok = room.sel.bok === p.index ? -1 : p.index
@@ -86,6 +94,7 @@ onMounted(() => {
   api.setTheme(theme.value)
   api.setTimerInterval(timer.interval)
   api.setMusic(sceneMusic())
+  api.setStack(stackItems.value)
   if (spotify.now?.uri) fetchTempo(spotify.now.uri).then((b) => { if (api && spotify.now?.uri) api.setTempo(b) })
   if (data.loaded) api.setData(data)
   api.goTo(route.name || 'hjem', { duration: 2.6 })
@@ -103,6 +112,35 @@ watch(() => [jp.anime, room.jpAnime, room.api], () => room.api?.setAnime(jp.anim
 watch(theme, (t) => api?.setTheme(t))
 watch(() => timer.interval, (v) => api?.setTimerInterval(v))
 // the records stand in the shelf's order (by artist, or by my folders)
+// the stack on the table: the albums coming up in the queue on top (next first), the ones I heard last below
+const queuedTracks = ref([])
+async function loadQueue() { queuedTracks.value = spotify.connected && spotify.now?.name ? await fetchQueue() : [] }
+watch(() => [spotify.now?.uri, spotify.queueV, spotify.connected], loadQueue, { immediate: true })
+const stackItems = computed(() => {
+  const ctx = String(spotify.now?.context || '')
+  const playingAlbum = ctx.startsWith('spotify:album:') ? ctx : null
+  const seen = new Set(playingAlbum ? [playingAlbum] : [])
+  const out = []
+  // queued songs from other albums (only when an album, not a playlist, is playing – in a playlist the next songs
+  // would all look "queued")
+  if (!ctx || playingAlbum) {
+    for (const t of queuedTracks.value) {
+      if (!t.album_uri || seen.has(t.album_uri)) continue
+      seen.add(t.album_uri)
+      out.push({ uri: t.album_uri, name: t.album, artist: t.album_artist, image: t.album_image, image_large: t.album_image, queued: true })
+    }
+  }
+  let recent = 0
+  for (const a of spotify.recent || []) {
+    if (recent >= 3) break
+    if (seen.has(a.uri)) continue
+    seen.add(a.uri)
+    recent++
+    out.push({ ...a, queued: false })
+  }
+  return out
+})
+watch(stackItems, (v) => api?.setStack(v), { deep: false })
 // the turntable spins to the tempo of the song (4 beats – one bar – per turn)
 watch(() => spotify.now?.uri, async (uri) => {
   const bpm = uri ? await fetchTempo(uri) : 0

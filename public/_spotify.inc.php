@@ -292,6 +292,21 @@ function sp_tracks(string $type, string $id): array {
     return $data ?? ['tracks' => [], 'error' => true];
 }
 
+/** The albums I listened to last (newest first, 10 kept): remembered on the server so every device sees the same stack
+ *  on the 3D table. Called whenever somebody asks what's playing; only writes when the album changes. */
+function sp_note_recent(?array $now): array {
+    $list = json_decode(kv_get('recent_albums') ?: '[]', true);
+    if (!is_array($list)) $list = [];
+    $ctx = (string)($now['context'] ?? '');
+    if ($now && !empty($now['playing']) && str_starts_with($ctx, 'spotify:album:') && (($list[0]['uri'] ?? '') !== $ctx)) {
+        $list = array_values(array_filter($list, fn($a) => ($a['uri'] ?? '') !== $ctx));
+        array_unshift($list, ['uri' => $ctx, 'name' => $now['album'] ?? '', 'artist' => $now['artist'] ?? '', 'image' => $now['image'] ?? null, 'image_large' => $now['image_large'] ?? null]);
+        $list = array_slice($list, 0, 10);
+        kv_set('recent_albums', json_encode($list, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+    return $list;
+}
+
 function sp_lock_clear(): void {
     kv_set('lock_until', '0');
     kv_del('lock_album', 'lock_started');
@@ -355,7 +370,8 @@ function sp_handle(string $action, bool $post): void {
     case 'spotify_now': {
         // tiny response for frequent polling – the album/playlist lists are fetched rarely
         if (!kv_get('refresh_token')) out(['configured' => true, 'connected' => false]);
-        out(['configured' => true, 'connected' => true, 'now' => sp_now(), 'lock_until' => sp_lock_until(), 'lock_seconds' => sp_lock_seconds(), 'server_time' => time()]);
+        $__now = sp_now();
+        out(['configured' => true, 'connected' => true, 'now' => $__now, 'recent' => sp_note_recent($__now), 'lock_until' => sp_lock_until(), 'lock_seconds' => sp_lock_seconds(), 'server_time' => time()]);
     }
 
     case 'spotify_tracks': {

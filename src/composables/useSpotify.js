@@ -12,6 +12,8 @@ export const spotify = reactive({
   albums: [],
   guests: [], // albums found by search that aren't on the shelf – they get a record in the room for a while
   playlists: [],
+  recent: [], // the albums I listened to last (newest first) – from the server, the same on every device
+  queueV: 0, // goes up whenever I add something to the queue (the 3D table re-reads the queue)
   lockUntil: 0, // unix seconds (server clock)
   lockSeconds: 600, // how long a play locks switching (admin setting, 0 = never)
   offset: 0, // server time - local time (seconds)
@@ -84,6 +86,7 @@ function applyNow(j) {
   spotify.configured = !!j.configured
   spotify.connected = !!j.connected
   if (j.server_time) spotify.offset = j.server_time - Date.now() / 1000
+  if (j.recent && JSON.stringify(j.recent) !== JSON.stringify(spotify.recent)) spotify.recent = j.recent
   if ((j.lock_until || 0) !== spotify.lockUntil) spotify.lockUntil = j.lock_until || 0
   if (j.lock_seconds != null && j.lock_seconds !== spotify.lockSeconds) spotify.lockSeconds = j.lock_seconds
   if (Date.now() < localUntil) return
@@ -460,8 +463,20 @@ export async function cycleRepeat() {
 /** Put a song next in the queue. */
 export async function enqueue(uri) {
   const r = await act('spotify_enqueue', { uri })
-  if (r.ok) notify('Lagt i køen.')
+  if (r.ok) { notify('Lagt i køen.'); spotify.queueV++ }
   return r
+}
+/** A whole album at the end of the queue (its songs, in order). */
+export async function enqueueAlbum(albumUri, name = '') {
+  const t = await fetchTracks(albumUri)
+  if (!t.tracks.length) { notify('Fant ingen låter i albumet.', true); return { ok: false } }
+  for (const tr of t.tracks) {
+    const r = await act('spotify_enqueue', { uri: tr.uri })
+    if (!r.ok) { notify(r.error || 'Klarte ikke å legge albumet i køen.', true); spotify.queueV++; return r }
+  }
+  notify(name ? `«${name}» er lagt i køen.` : 'Albumet er lagt i køen.')
+  spotify.queueV++
+  return { ok: true }
 }
 /** Is this song among my liked songs? / save or remove it. */
 const likedCache = new Map() // uri -> { t, v }: asked once per song (10 minutes), changed at once by the heart

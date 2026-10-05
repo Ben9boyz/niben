@@ -359,6 +359,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   tag(listening.group, 'lytte')
   scene.add(listening.group)
   let music = { albums: [], playlists: [], now: null }
+  let stack = [] // the records on the table (see setStack)
   let animeList = [] // the Japanese corner's DVDs (from jpdb)
 
   // Practice corner with the interval clock
@@ -520,6 +521,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
         if (a) label = `${a.en || a.title} · ${String(a.known).replace('.', ',')} % kjent`
       }
       else if (hoverInfo.kind === 'ipod') label = 'Spillelister'
+      else if (hoverInfo.kind === 'stack') label = stack[hoverInfo.index] ? `${stack[hoverInfo.index].queued ? 'Neste i køen: ' : 'Hørt sist: '}${stack[hoverInfo.index].name}` : null
       else if (hoverInfo.kind === 'turntable' && music.now?.name) label = music.now.playing ? 'Pause' : 'Spill videre'
       else if (hoverInfo.kind === 'shelf' && lyttePose !== 'shelf') label = 'Bla i platehylla'
       else if (hoverInfo.station === 'reiser' && hoverInfo.country) { globeTable.setHover(hoverInfo.country); label = norskNavn(hoverInfo.country) }
@@ -560,6 +562,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     else if (info.kind === 'anime') onPick?.({ station, kind: 'anime', index: info.index })
     else if (info.kind === 'ipod') onPick?.({ station, kind: 'ipod' })
     else if (info.kind === 'turntable') onPick?.({ station, kind: 'turntable' })
+    else if (info.kind === 'stack') onPick?.({ station, kind: 'stackrecord', album: stack[info.index] })
     else if (info.kind === 'shelf') onPick?.({ station, kind: 'shelf' })
     else onPick?.({ station, kind: 'object' })
   }
@@ -877,6 +880,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
       return s && { x: r.left + s.x, y: r.top + s.y, w: s.w, h: s.h }
     },
     /** The records matching the shelf search slide out of the shelf (null = no search). */
+    /** The records on the table: queued albums on top (next first), then the ones I heard last. */
+    setStack(list) { stack = list || []; listening.setStack(stack, () => { shadowsDirty = true; invalidate(1) }) },
     /** Tempo (BPM) of the song that's playing; 0 = unknown (the record turns at 33⅓ rpm). */
     setTempo(bpm) { listening.setTempo(bpm); invalidate(0.5) },
     setShelfFilter(list) { listening.setFilter(list); invalidate(1) },
