@@ -243,17 +243,39 @@ function sp_tracks(string $type, string $id): array {
     return $data ?? ['tracks' => [], 'error' => true];
 }
 
+function sp_lock_clear(): void {
+    kv_set('lock_until', '0');
+    kv_del('lock_album', 'lock_started');
+}
+
+/** Has the album that started the lock been heard to the end – or has the music gone on to something else? */
+function sp_album_finished(string $album, array $now): bool {
+    // playing something that isn't this album any more (another album, autoplay, a radio …): done
+    if ((string)($now['context'] ?? '') !== $album) return true;
+    // still in it: done when the LAST song has played to its end (or has stopped there)
+    if (!preg_match('~^spotify:album:([A-Za-z0-9]{10,40})$~', $album, $m)) return false;
+    $tracks = sp_tracks('album', $m[1])['tracks'] ?? [];
+    $last = $tracks ? ($tracks[count($tracks) - 1]['uri'] ?? null) : null;
+    if (!$last || (string)($now['uri'] ?? '') !== $last) return false;
+    $dur = (int)($now['duration_ms'] ?? 0);
+    $pos = (int)($now['progress_ms'] ?? 0);
+    return empty($now['playing']) || ($dur > 0 && $pos >= $dur - 4000);
+}
+
 function sp_lock_until(): int {
     $lock = (int)(kv_get('lock_until') ?? 0);
-    // nothing playing at all (blank "now playing") → the lock is lifted. A short grace period
-    // right after starting, since Spotify can report "nothing" for a moment before the music begins.
-    if ($lock > time() && $lock - sp_lock_seconds() < time() - 20) {
-        $now = sp_now();
-        if ($now !== null && empty($now['name'])) {
-            kv_set('lock_until', '0');
-            return 0;
-        }
-    }
+    if ($lock <= time()) return $lock;
+    // a short grace period right after starting, since Spotify can report "nothing" (or the old song) for a
+    // moment before the music begins
+    $started = (int)(kv_get('lock_started') ?? 0);
+    if (($started ?: $lock - sp_lock_seconds()) > time() - 20) return $lock;
+    $now = sp_now();
+    if ($now === null) return $lock;
+    // nothing playing at all → the lock is lifted
+    if (empty($now['name'])) { sp_lock_clear(); return 0; }
+    // an album that has been heard to the end (or left for something else) → lifted
+    $album = (string)(kv_get('lock_album') ?? '');
+    if ($album !== '' && sp_album_finished($album, $now)) { sp_lock_clear(); return 0; }
     return $lock;
 }
 /** How long a play locks switching, in seconds (set by the admin; 0 = no lock). */
@@ -591,6 +613,8 @@ function sp_handle(string $action, bool $post): void {
         if ($isAlbum) $shuffleOff(); // again now that the device is certainly the active one
         $until = time() + sp_lock_seconds();
         kv_set('lock_until', (string)$until);
+        kv_set('lock_started', (string)time());
+        kv_set('lock_album', $isAlbum ? $uri : ''); // an album: the lock goes off when it has been heard to the end
         kv_del('cache_now');
         out(['ok' => true, 'lock_until' => $until, 'server_time' => time(), 'device_name' => $usedName]);
     }

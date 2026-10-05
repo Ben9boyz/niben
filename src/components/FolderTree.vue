@@ -56,7 +56,7 @@ const toggle = (id) => { groups.treeOpen = { ...groups.treeOpen, [id]: !isOpen(i
 </template>
 
 <style scoped>
-.ft { display: grid; gap: 1px; padding: 2px 0 6px 10px; }
+.ft { display: grid; gap: 1px; }
 .lh { margin: 4px 6px 4px; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
 .r { display: flex; align-items: center; gap: 0; }
 .r.sub { padding-left: 16px; }

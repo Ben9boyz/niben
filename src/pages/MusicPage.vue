@@ -1,6 +1,6 @@
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
-import { Disc3, ListMusic, Search, X, ChevronRight } from 'lucide-vue-next'
+import { ref, computed } from 'vue'
+import { Disc3, ListMusic, Search, X } from 'lucide-vue-next'
 import { room } from '../composables/useRoom'
 import { spotify, useSpotify } from '../composables/useSpotify'
 import { shell } from '../composables/useShell'
@@ -26,22 +26,7 @@ const sheet = ref(false) // phones: the full "now playing" card
 const LIB = [{ id: 'vinyl', label: 'Album', icon: Disc3 }, { id: 'ipod', label: 'Spillelister', icon: ListMusic }]
 const libView = computed({ get: () => (ipod.value ? 'ipod' : 'vinyl'), set: (v) => { gq.value = ''; show(v) } })
 
-// the folders under each library entry
-const TREE_KEY = 'niben-lib-tree'
-function readTree() {
-  try { return { vinyl: true, ipod: true, ...JSON.parse(localStorage.getItem(TREE_KEY) || '{}') } } catch { return { vinyl: true, ipod: true } }
-}
-const treeOpen = ref(readTree()) // both lists show their folders until I fold one in (remembered)
-watch(treeOpen, (v) => { try { localStorage.setItem(TREE_KEY, JSON.stringify(v)) } catch {} }, { deep: true })
-const hasTree = (v) => groups.on && groups.loaded && (v === 'ipod' || groups.view !== 'artist')
-async function pickFolder(view, id) {
-  gq.value = ''
-  if ((view === 'ipod') === ipod.value) { select(id); return } // same list: open it (or close it again)
-  show(view)
-  await nextTick() // switching lists starts at the top – then go into the folder
-  groups.sel = id
-  treeOpen.value = { ...treeOpen.value, [view]: true }
-}
+const hasTree = computed(() => groups.on && groups.loaded && (ipod.value || groups.view !== 'artist'))
 
 function show(view) {
   room.musicView = view
@@ -59,21 +44,18 @@ function show(view) {
         <div class="glass lib-card">
           <b class="lh">Biblioteket</b>
           <nav class="lib" role="tablist" aria-label="Bibliotek">
-            <div class="li">
-              <button role="tab" :aria-selected="!ipod" :class="{ on: !ipod && !gq }" @click="gq = ''; show('vinyl')">
-                <Disc3 class="ic" :size="19" aria-hidden="true" />Album<small>{{ spotify.albums.length || '' }}</small>
-              </button>
-              <button v-if="hasTree('vinyl')" class="tg" :aria-expanded="treeOpen.vinyl" aria-label="Mapper under Album" @click="treeOpen.vinyl = !treeOpen.vinyl"><ChevronRight :size="14" :class="{ open: treeOpen.vinyl }" /></button>
-            </div>
-            <FolderTree v-if="hasTree('vinyl') && treeOpen.vinyl" kind="album" :active="!ipod" @pick="pickFolder('vinyl', $event)" />
-            <div class="li">
-              <button role="tab" :aria-selected="ipod" :class="{ on: ipod && !gq }" @click="gq = ''; show('ipod')">
-                <ListMusic class="ic" :size="19" aria-hidden="true" />Spillelister<small>{{ spotify.playlists.length || '' }}</small>
-              </button>
-              <button v-if="hasTree('ipod')" class="tg" :aria-expanded="treeOpen.ipod" aria-label="Mapper under Spillelister" @click="treeOpen.ipod = !treeOpen.ipod"><ChevronRight :size="14" :class="{ open: treeOpen.ipod }" /></button>
-            </div>
-            <FolderTree v-if="hasTree('ipod') && treeOpen.ipod" kind="playlist" :active="ipod" @pick="pickFolder('ipod', $event)" />
+            <button role="tab" :aria-selected="!ipod" :class="{ on: !ipod && !gq }" @click="gq = ''; show('vinyl')">
+              <Disc3 class="ic" :size="19" aria-hidden="true" />Album<small>{{ spotify.albums.length || '' }}</small>
+            </button>
+            <button role="tab" :aria-selected="ipod" :class="{ on: ipod && !gq }" @click="gq = ''; show('ipod')">
+              <ListMusic class="ic" :size="19" aria-hidden="true" />Spillelister<small>{{ spotify.playlists.length || '' }}</small>
+            </button>
           </nav>
+          <!-- the folders of whatever I'm looking at: Album or Spillelister -->
+          <div v-if="hasTree" class="mapper">
+            <b class="lh">Mapper</b>
+            <FolderTree :kind="ipod ? 'playlist' : 'album'" @pick="gq = ''; select($event)" />
+          </div>
         </div>
       </aside>
 
@@ -135,11 +117,7 @@ function show(view) {
 .lib-card { padding: 12px; border-radius: 20px; display: grid; gap: 8px; }
 .lh { margin: 2px 6px; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
 .lib { display: grid; gap: 2px; }
-.li { display: flex; align-items: center; gap: 2px; }
-.li > button:first-child { flex: 1; min-width: 0; }
-.lib .tg { flex: none; display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border-radius: 8px; color: var(--text-3); }
-.lib .tg svg { transition: transform 0.18s; }
-.lib .tg svg.open { transform: rotate(90deg); }
+.mapper { display: grid; gap: 2px; padding-top: 8px; margin-top: 4px; border-top: 1px solid var(--glass-border); }
 .lib button { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text-2); font: 600 0.92rem var(--font); text-align: left; cursor: pointer; transition: background 0.2s, color 0.2s; }
 .lib button:hover { background: var(--accent-soft); color: var(--text); }
 .lib button.on { background: var(--accent-soft); color: var(--accent); }

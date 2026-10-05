@@ -21,6 +21,8 @@ export function mockApi() {
     .map(([name, artist, color], i) => ({ id: 'a' + i, uri: `spotify:album:mockalbum${String(i).padStart(10, '0')}`, name, artist, year: String(2015 + (i % 10)), image: null, color, url: null, tracks: 10 + (i % 6) }))
   // tiny coloured squares as stand-in covers
   const mockCover = (h) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><rect width="8" height="8" fill="hsl(${h % 360},60%,50%)"/><circle cx="4" cy="4" r="1.6" fill="#fff"/></svg>`)}`
+  const MOCK_TITLES = ['Intro', 'Golden Hour', 'Slow Down', 'Northern Sky', 'Paper Hearts', 'Drift', 'Home', 'Waves', 'Late Again', 'Outro', 'Echoes', 'Morning']
+  const mockAlbumTracks = (id) => Array.from({ length: 6 + (id.charCodeAt(id.length - 1) % 7) }, (_, i) => ({ uri: `spotify:track:mocktrack${id}${String(i).padStart(4, '0')}`, name: MOCK_TITLES[i % 12], artist: 'Mock Artist', ms: 150000 + i * 17000, n: i + 1, img: mockCover(i * 53) }))
   SP_ALBUMS.forEach((a, i) => { a.image = a.image_large = a.thumb = mockCover(i * 29 + 10) }) // coloured stand-in covers
   const SP_PLAYLISTS = ['Øving – fokus', 'Gitarhelter', 'Søndagsmorgen', 'Treningsmiks', 'Roadtrip 2025'].map((name, i) => ({
     id: 'p' + i, uri: `spotify:playlist:mockplaylist${String(i).padStart(10, '0')}`, name, owner: 'Benjamin', image: null, thumb: mockCover(i * 90 + 20), count: 20 + i * 7, url: null,
@@ -237,8 +239,13 @@ export function mockApi() {
             const playlists = [0, 1].map((i) => ({ id: `sp${i}`, uri: `spotify:playlist:searchlist${String(i).padStart(10, '0')}`, name: `${q} mix ${i + 1}`, owner: 'Spotify-bruker', image: mockCover(i * 90 + 40), thumb: mockCover(i * 90 + 40), count: 30 + i * 12, url: null }))
             return send(res, 200, { albums, tracks, playlists })
           }
-          case 'spotify_queue':
-            return send(res, 200, { tracks: ['Golden Hour', 'Slow Down', 'Northern Sky', 'Paper Hearts'].map((name, i) => ({ uri: `spotify:track:q${i}`, name, artist: 'Mock Artist', img: mockCover(i * 40), ms: 180000 + i * 9000 })) })
+          case 'spotify_queue': {
+            const ctx = sp.now?.context || ''
+            const id = /^spotify:(album|playlist):/.test(ctx) ? ctx.split(':')[2] : ''
+            const all = id ? mockAlbumTracks(id) : []
+            const at = all.findIndex((t) => t.uri === sp.now?.uri)
+            return send(res, 200, { tracks: at >= 0 ? all.slice(at + 1) : all.slice(1, 5) })
+          }
           case 'spotify_devices':
             if (!needAdmin()) return
             return send(res, 200, { devices: [{ id: 'dev00000000000000000001', name: 'niben.no', type: 'Computer', active: true, volume: 70 }, { id: 'dev00000000000000000002', name: 'iPhone', type: 'Smartphone', active: false, volume: 50 }] })
@@ -269,7 +276,8 @@ export function mockApi() {
             const item = [...SP_ALBUMS, ...SP_PLAYLISTS].find((x) => x.uri === b.uri) || (/^spotify:album:/.test(b.uri || '') ? { name: 'Album fra søk', artist: 'Søk' } : null)
             if (!item) return send(res, 400, { error: 'Ugyldig Spotify-lenke.' })
             sp.lock = now + sp.lockSeconds
-            sp.now = { playing: true, progress_ms: 0, duration_ms: 214000, name: b.track ? `Valgt låt fra ${item.name}` : `Første låt fra ${item.name}`, artist: item.artist || item.owner, album: item.name, image: item.image, context: item.uri, at: now }
+            const pick = /^spotify:(album|playlist):/.test(item.uri) ? mockAlbumTracks(item.uri.split(':')[2])[2] : null
+            sp.now = { playing: true, progress_ms: 61000, duration_ms: pick?.ms || 214000, name: pick ? pick.name : `Første låt fra ${item.name}`, artist: item.artist || item.owner, album: item.name, image: item.image, uri: pick?.uri, context: item.uri, at: now }
             return send(res, 200, { ok: true, lock_until: sp.lock, server_time: now })
           }
           case 'spotify_lock': {
