@@ -443,6 +443,18 @@ export function mockApi() {
             db.newsLast = { t: Math.floor(Date.now() / 1000), subject: b.subject, sent: n, failed: 0 }
             return send(res, 200, { ok: true, sent: n, failed: 0 })
           }
+          case 'jpdb_history': {
+            // a made-up curve for development: ~200 days, the words known growing in bursts
+            const pts = []
+            let known = 620, learning = 90
+            for (let i = 200; i >= 0; i--) {
+              const d = new Date(Date.now() - i * 86400000)
+              known += Math.max(0, Math.round(2.4 + Math.sin(i / 9) * 2 + (i % 17 === 0 ? 14 : 0)))
+              learning = Math.max(20, Math.round(learning + Math.sin(i / 5) * 6))
+              pts.push({ d: d.toISOString().slice(0, 10), known, learning, new: 4000 - known, due: Math.round(30 + Math.abs(Math.sin(i / 3)) * 40) })
+            }
+            return send(res, 200, { points: pts })
+          }
           case 'about_get':
             return send(res, 200, { about: db.about || null })
           case 'about_photo': {

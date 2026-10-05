@@ -140,6 +140,11 @@ function jp_handle(string $action, bool $post): void {
     if (!jp_config()) out(['configured' => false]);
 
     switch ($action) {
+    case 'jpdb_history': {
+        // the daily snapshots: { d: 'YYYY-MM-DD', known, learning, new, due } – for the vocabulary curve
+        $l = json_decode(kv_get('jp_snaps') ?: '[]', true);
+        out(['points' => is_array($l) ? $l : []]);
+    }
     case 'jpdb_public': {
         // statistics + word of the day for everyone (cached for 10 minutes)
         $data = sp_cached('jp_public_v2', 600, function () {
@@ -161,7 +166,7 @@ function jp_handle(string $action, bool $post): void {
             $word = $pool ? $pool[crc32(date('Y-m-d')) % count($pool)] : null;
             if ($word) unset($word['due']);
             $decks = array_map(fn($d) => array_diff_key($d, ['occ' => 1, 'builtin' => 1]), $all['decks']);
-            ex_snap('jp_snaps', ['known' => $count['known'], 'learning' => $count['learning']]);
+            ex_snap('jp_snaps', ['known' => $count['known'], 'learning' => $count['learning'], 'new' => $count['new'], 'due' => $count['due']]); // one point a day (kept ~2 years): the vocabulary curve
             return ['decks' => $decks, 'anime' => jp_anime($all['decks']), 'count' => $count, 'word' => $word, 'at' => time()];
         });
         if (!$data) fail('Fikk ikke kontakt med jpdb.', 502);

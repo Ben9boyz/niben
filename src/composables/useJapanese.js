@@ -34,6 +34,16 @@ export function loadJapanese(force = false) {
   return loading
 }
 
+// ── vocabulary over time (the server saves one snapshot a day) ──
+export const jpHistory = reactive({ loaded: false, points: [] })
+export async function loadJapaneseHistory() {
+  try {
+    const j = await (await fetch('api.php?action=jpdb_history', { cache: 'no-cache' })).json()
+    jpHistory.points = Array.isArray(j.points) ? j.points : []
+  } catch {}
+  jpHistory.loaded = true
+}
+
 /** Known coverage (%) at which a show is comfortable to watch. */
 export const ANIME_READY = 80
 
