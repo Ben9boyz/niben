@@ -23,10 +23,15 @@ const emit = defineEmits(['pick', 'hover'])
 
 const grouped = computed(() => groups.on && groups.loaded && groups.list.length > 0)
 // which view: folders in the grid · sections · albums by artist (only for albums)
-const viewMode = computed(() => (groups.view === 'artist' ? (props.byArtist ? 'artist' : 'mapper') : groups.view))
+// ('Lister' is for playlists; albums have folders and artists)
+const viewMode = computed(() => (groups.view === 'artist' ? (props.byArtist ? 'artist' : 'mapper') : props.byArtist && groups.view === 'lister' ? 'mapper' : groups.view))
 const plain = computed(() => !groups.on || props.flat || (viewMode.value !== 'artist' && !grouped.value))
 const artistSections = computed(() => {
   const by = new Map()
+  if (groups.artist) { // one artist picked in the list on the left
+    const its = props.items.filter((i) => (i.sub || 'Ukjent artist') === groups.artist)
+    return its.length ? [{ group: { id: `artist:${groups.artist}`, name: groups.artist }, items: its, depth: 0, label: groups.artist }] : []
+  }
   for (const it of props.items) { const k = it.sub || 'Ukjent artist'; if (!by.has(k)) by.set(k, []); by.get(k).push(it) }
   const nb = (a, b) => a.localeCompare(b, 'nb')
   // artists with several albums get a section each (most first); the rest share one, A–Å

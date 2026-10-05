@@ -11,6 +11,7 @@ import SpotifySearch from '../components/SpotifySearch.vue'
 import MiniNowPlaying from '../components/MiniNowPlaying.vue'
 import SegSwitch from '../components/SegSwitch.vue'
 import FolderTree from '../components/FolderTree.vue'
+import ArtistTree from '../components/ArtistTree.vue'
 import QueuePanel from '../components/QueuePanel.vue'
 import { loadGroups, groups, select } from '../composables/useGroups'
 import { peek, peekBack, peekClear } from '../composables/useBrowse'
@@ -31,7 +32,8 @@ const libView = computed({ get: () => (ipod.value ? 'ipod' : 'vinyl'), set: (v) 
 const top = computed(() => peek.stack[peek.stack.length - 1] || null)
 const backLabel = computed(() => (peek.stack.length > 1 ? 'Tilbake' : gq.value.trim() ? 'Tilbake til søket' : 'Tilbake'))
 
-const hasTree = computed(() => groups.on && groups.loaded && (ipod.value || groups.view !== 'artist'))
+const byArtist = computed(() => !ipod.value && groups.on && groups.view === 'artist')
+const hasTree = computed(() => groups.on && groups.loaded && !byArtist.value)
 
 function show(view) {
   peekClear()
@@ -58,7 +60,11 @@ function show(view) {
             </button>
           </nav>
           <!-- the folders of whatever I'm looking at: Album or Spillelister -->
-          <div v-if="hasTree" class="mapper">
+          <div v-if="byArtist" class="mapper">
+            <b class="lh">Artister</b>
+            <ArtistTree @pick="gq = ''; peekClear()" />
+          </div>
+          <div v-else-if="hasTree" class="mapper">
             <b class="lh">Mapper</b>
             <FolderTree :kind="ipod ? 'playlist' : 'album'" @pick="gq = ''; peekClear(); select($event)" />
           </div>

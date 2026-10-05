@@ -33,16 +33,18 @@ export const groups = reactive({
   why: {}, // uri -> what the guess was based on (a genre, the sound …)
   audio: null, // 'yes' / 'no': does Spotify give this app the sound data?
   on: readOn(),
+  artist: null, // albums by artist: the one picked in the list on the left (null = all)
   view: readView(), // 'mapper' = folders as tiles in the grid (open one to see what's in it) · 'lister' = sections with headings · 'artist' = albums by artist
   editing: false, // admin: move things / edit the groups
 })
 
 // the folder I'm in belongs to the list I'm looking at: switching between Album and Spillelister starts at the top
-watch(() => room.musicView.startsWith('ipod'), () => { groups.sel = null })
+watch(() => room.musicView.startsWith('ipod'), () => { groups.sel = null; groups.artist = null })
 
 export function setView(v) {
   groups.view = v
   groups.sel = null
+  groups.artist = null
   try { localStorage.setItem(VIEW_KEY, v) } catch {}
 }
 

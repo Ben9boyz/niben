@@ -8,7 +8,8 @@ import { notify } from '../composables/useSpotify'
 
 // Above the albums / playlists: a switch for grouping, and (admin) "Rediger" – moving things between groups
 // and adding / renaming / reordering / deleting the groups themselves.
-defineProps({ artist: Boolean }) // albums: the "Artist" view is offered
+const props = defineProps({ artist: Boolean }) // albums: the "Artist" view is offered (and no "Lister")
+const view = computed(() => (props.artist && groups.view === 'lister' ? 'mapper' : groups.view))
 const draft = ref([])
 const open = computed(() => admin.loggedIn && groups.editing)
 watch(open, (on) => { if (on) draft.value = groups.list.map((g) => ({ ...g })) }, { immediate: true })
@@ -36,9 +37,9 @@ async function save() {
         <Layers :size="14" />Grupper<i><b></b></i>
       </button>
       <span v-if="groups.on" class="vw" role="group" aria-label="Visning">
-        <button :class="{ on: groups.view === 'mapper' }" @click="setView('mapper')">Mapper</button>
-        <button :class="{ on: groups.view === 'lister' }" @click="setView('lister')">Lister</button>
-        <button v-if="artist" :class="{ on: groups.view === 'artist' }" @click="setView('artist')">Artist</button>
+        <button :class="{ on: view === 'mapper' }" @click="setView('mapper')">Mapper</button>
+        <button v-if="!artist" :class="{ on: view === 'lister' }" @click="setView('lister')">Lister</button>
+        <button v-if="artist" :class="{ on: view === 'artist' }" @click="setView('artist')">Artist</button>
       </span>
       <button v-if="admin.loggedIn && groups.on && groups.view !== 'artist'" class="ed" :class="{ on: groups.editing }" @click="groups.editing = !groups.editing"><Pencil :size="13" />{{ groups.editing ? 'Ferdig' : 'Rediger' }}</button>
     </div>
