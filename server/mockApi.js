@@ -245,6 +245,12 @@ export function mockApi() {
             let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 997
             return send(res, 200, { bpm: 70 + (h % 90) })
           }
+          case 'admin_status':
+            if (!needAdmin()) return
+            return send(res, 200, { counts: { trips: 4, books: 12, recordings: 3, photos: 38 }, spotify: { connected: true, lock_seconds: sp.lockSeconds, can_save: true, can_playlists: false }, steam: true, jpdb: false, translate: { configured: true, provider: 'anthropic', total: 214, languages: [{ lang: 'de', n: 120 }, { lang: 'en', n: 94 }] } })
+          case 'admin_translate_clear':
+            if (!needAdmin()) return
+            return send(res, 200, { ok: true })
           case 'translate': {
             // dev: pretend to translate (the real server asks Claude / Google and keeps the answers)
             const tag = (b.lang || '??').toUpperCase()

@@ -285,6 +285,28 @@ try {
         fail('Ukjent handling.', 404);
     }
     if ($action === 'translate') tr_handle();
+    if ($action === 'admin_status') {
+        require_admin();
+        $count = function (string $t) { try { return (int)db()->query("SELECT COUNT(*) FROM $t")->fetchColumn(); } catch (Throwable $e) { return 0; } };
+        $cfgSteam = function_exists('st_config') ? (bool)st_config() : false;
+        $cfgJp = function_exists('jp_config') ? (bool)jp_config() : false;
+        $sp = (bool)kv_get('refresh_token');
+        out([
+            'counts' => ['trips' => $count('trips'), 'books' => $count('books'), 'recordings' => $count('recordings'), 'photos' => $count('trip_photos')],
+            'spotify' => ['connected' => $sp, 'lock_seconds' => $sp ? sp_lock_seconds() : null, 'can_save' => $sp && sp_has_scope('user-library-modify'), 'can_playlists' => $sp && sp_has_scope('playlist-modify-private')],
+            'steam' => $cfgSteam, 'jpdb' => $cfgJp,
+            'translate' => tr_admin_status(),
+        ]);
+    }
+    if ($action === 'admin_translate_clear') {
+        require_admin();
+        if (!$post) fail('Bruk POST.', 405);
+        $b = json_decode((string)file_get_contents('php://input'), true) ?: [];
+        $l = (string)($b['lang'] ?? '');
+        if ($l !== '' && !preg_match('~^[a-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$~', $l)) fail('Ugyldig språk.', 400);
+        tr_admin_clear($l);
+        out(['ok' => true]);
+    }
     switch ($action) {
 
     case 'content': {

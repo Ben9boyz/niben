@@ -108,3 +108,22 @@ function tr_handle(): void {
     }
     out(['texts' => array_map(fn($k) => $have[$k], $keys)]);
 }
+
+/** Admin: what the translator has done so far (per language) + clear a language to translate it again. */
+function tr_admin_status(): array {
+    $cfg = tr_cfg();
+    $out = ['configured' => (bool)$cfg, 'provider' => $cfg['provider'] ?? null, 'languages' => [], 'total' => 0];
+    try {
+        tr_table();
+        foreach (db()->query('SELECT lang, COUNT(*) n FROM translations GROUP BY lang ORDER BY n DESC')->fetchAll() as $r) {
+            $out['languages'][] = ['lang' => $r['lang'], 'n' => (int)$r['n']];
+            $out['total'] += (int)$r['n'];
+        }
+    } catch (Throwable $e) {}
+    return $out;
+}
+function tr_admin_clear(string $lang): void {
+    tr_table();
+    if ($lang === '') db()->exec('DELETE FROM translations');
+    else { $st = db()->prepare('DELETE FROM translations WHERE lang = ?'); $st->execute([$lang]); }
+}
