@@ -1,6 +1,8 @@
 import * as THREE from 'three'
+import { meshAdder } from './helpers'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
-import { canvasTex } from './textures'
+import type { JpAnime, JpWord } from '../composables/useJapanese'
+import { canvasTex, context2d } from './textures'
 
 // The Japanese corner: a tatami mat with a low round table (chabudai), two cushions, a paper lantern,
 // a small bonsai, a cup of tea – and a washi card on the table with the word of the day from jpdb.
@@ -25,7 +27,7 @@ function tatamiTexture() {
   })
 }
 
-function drawWordCard(x, w, h, word) {
+function drawWordCard(x: CanvasRenderingContext2D, w: number, h: number, word: JpWord | null): void {
   x.fillStyle = '#fbf7ee'
   x.fillRect(0, 0, w, h)
   // washi fibres
@@ -75,7 +77,7 @@ const DVD = { w: 0.17, d: 0.24, h: 0.019 } // a DVD case (a bit larger than life
 const PER_STACK = 5
 const STACKS = [[0.5, 0.4], [0.78, 0.18], [-0.56, 0.45], [0.66, -0.1]] // spots on the mat, clear of the table
 
-function drawSpine(x, w, h, anime) {
+function drawSpine(x: CanvasRenderingContext2D, w: number, h: number, anime: JpAnime): void {
   const bg = anime.color || '#33415c'
   x.fillStyle = bg
   x.fillRect(0, 0, w, h)
@@ -101,28 +103,31 @@ function drawSpine(x, w, h, anime) {
   x.fillText(`${Math.round(anime.known)}%`, w - 12, h / 2 + 1)
 }
 
-function buildDvds(onChange) {
+/** A DVD case on the mat: its mesh, where it rests and how far it is pulled out. */
+interface Dvd { mesh: THREE.Mesh; base: THREE.Vector3; lift: number }
+function buildDvds(onChange: () => void) {
   const group = new THREE.Group()
   const loader = new THREE.TextureLoader()
   loader.setCrossOrigin('anonymous')
   const geo = new THREE.BoxGeometry(DVD.w, DVD.h, DVD.d)
   const plastic = new THREE.MeshStandardMaterial({ color: 0x1b1d22, roughness: 0.35 })
   const edge = new THREE.MeshStandardMaterial({ color: 0xd9dbe0, roughness: 0.5 })
-  let items = []
+  let items: Dvd[] = []
   let key = ''
   let hover = -1
   let selected = -1
 
-  function set(list) {
-    const k = (list || []).map((a) => `${a.anilist}:${Math.round(a.known)}`).join(',')
+  function set(list: JpAnime[] | null | undefined): void {
+    const k = (list ?? []).map((a) => `${a.anilist}:${Math.round(a.known)}`).join(',')
     if (k === key) return
     key = k
     for (const it of items) {
       group.remove(it.mesh)
-      it.mesh.material.forEach((m) => { m.map?.dispose(); if (m !== plastic && m !== edge) m.dispose() })
+      const mats = Array.isArray(it.mesh.material) ? it.mesh.material : [it.mesh.material]
+      mats.forEach((m) => { if (m instanceof THREE.MeshStandardMaterial) m.map?.dispose(); if (m !== plastic && m !== edge) m.dispose() })
     }
     items = []
-    const shows = (list || []).slice(0, PER_STACK * STACKS.length)
+    const shows = (list ?? []).slice(0, PER_STACK * STACKS.length)
     shows.forEach((a, i) => {
       const stack = Math.floor(i / PER_STACK)
       const level = i % PER_STACK
@@ -160,7 +165,7 @@ function buildDvds(onChange) {
   }
 
   /** Lift and slide out the hovered / picked one. Returns true while moving. */
-  function update(dt) {
+  function update(dt: number): boolean {
     let moving = false
     items.forEach((it, i) => {
       const want = i === selected ? 1 : i === hover ? 0.45 : 0
@@ -178,20 +183,14 @@ function buildDvds(onChange) {
     group,
     set,
     update,
-    setHover(i) { hover = i ?? -1 },
-    setSelected(i) { selected = i ?? -1 },
+    setHover(i: number | null | undefined) { hover = i ?? -1 },
+    setSelected(i: number | null | undefined) { selected = i ?? -1 },
   }
 }
 
-export function buildJapanCorner(onChange = () => {}) {
+export function buildJapanCorner(onChange: () => void = () => {}) {
   const group = new THREE.Group()
-  const add = (geo, mat, x, y, z, parent = group) => {
-    const m = new THREE.Mesh(geo, mat)
-    m.position.set(x, y, z)
-    m.castShadow = m.receiveShadow = true
-    parent.add(m)
-    return m
-  }
+  const add = meshAdder(group)
   const wood = new THREE.MeshStandardMaterial({ color: 0x5a3a24, roughness: 0.45 })
   const woodLight = new THREE.MeshStandardMaterial({ color: 0xb98a5b, roughness: 0.55 })
 
@@ -204,7 +203,7 @@ export function buildJapanCorner(onChange = () => {}) {
     add(new THREE.BoxGeometry(0.05, 0.28, 0.05), wood, x, 0.155, z))
 
   // zabuton cushions
-  const cushion = (color, x, z, rot) => {
+  const cushion = (color: number, x: number, z: number, rot: number): void => {
     const c = add(new RoundedBoxGeometry(0.5, 0.07, 0.5, 3, 0.03), new THREE.MeshStandardMaterial({ color, roughness: 0.9 }), x, 0.065, z)
     c.rotation.y = rot
     add(new THREE.SphereGeometry(0.018, 8, 8), new THREE.MeshStandardMaterial({ color: 0xeee6d0 }), 0, 0.04, 0, c) // the tuft
@@ -241,7 +240,7 @@ export function buildJapanCorner(onChange = () => {}) {
   const cardCanvas = document.createElement('canvas')
   cardCanvas.width = 512
   cardCanvas.height = 360
-  const cardCtx = cardCanvas.getContext('2d')
+  const cardCtx = context2d(cardCanvas)
   const cardTex = new THREE.CanvasTexture(cardCanvas)
   cardTex.colorSpace = THREE.SRGBColorSpace
   const card = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.295), new THREE.MeshStandardMaterial({ map: cardTex, roughness: 0.9 }))
@@ -255,7 +254,7 @@ export function buildJapanCorner(onChange = () => {}) {
   cardTex.needsUpdate = true
 
   let wordKey = ''
-  function setWord(word) {
+  function setWord(word: JpWord | null): void {
     const key = word ? `${word.vid}:${word.sid}` : ''
     if (key === wordKey) return
     wordKey = key

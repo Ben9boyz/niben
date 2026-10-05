@@ -1,11 +1,12 @@
 import * as THREE from 'three'
+import type { Book } from '../composables/useData'
 import { canvasTex, wrapText, hash, shade, luminance } from './textures'
 
 const SPINE_COLORS = ['#1f4e8c', '#2b8cff', '#0f2a4a', '#6aa9e9', '#24476b', '#8bb8e8', '#13355e', '#3d6fa8', '#e4eef8', '#0b3d6b', '#b9d7f2']
 const SHELF_W = 1.7
 const SHELF_YS = [0.95, 1.45, 1.95, 0.45]
 
-function spineTex(book, color) {
+function spineTex(book: Book, color: string): THREE.CanvasTexture {
   return canvasTex(128, 1024, (x, w, h) => {
     const g = x.createLinearGradient(0, 0, w, 0)
     g.addColorStop(0, shade(color, -0.28))
@@ -38,7 +39,7 @@ function spineTex(book, color) {
   })
 }
 
-function coverTex(book, color) {
+function coverTex(book: Book, color: string): THREE.CanvasTexture {
   return canvasTex(600, 900, (x, w, h) => {
     const g = x.createLinearGradient(0, 0, w, h)
     g.addColorStop(0, shade(color, 0.18))
@@ -58,7 +59,7 @@ function coverTex(book, color) {
   })
 }
 
-const pagesTex = () => canvasTex(64, 256, (x, w, h) => {
+const pagesTex = (): THREE.CanvasTexture => canvasTex(64, 256, (x, w, h) => {
   x.fillStyle = '#f4efe4'
   x.fillRect(0, 0, w, h)
   for (let i = 0; i < w; i += 2) {
@@ -67,15 +68,26 @@ const pagesTex = () => canvasTex(64, 256, (x, w, h) => {
   }
 })
 
-export function buildBookshelf() {
+/** A book on the shelf: its mesh, where it rests and the spring that moves it. */
+interface Item { mesh: THREE.Mesh; home: THREE.Vector3; vel: THREE.Vector3; rotVel: number; book: Book; color: string; spineMat: THREE.MeshStandardMaterial }
+export interface Bookshelf {
+  group: THREE.Group
+  readonly meshes: THREE.Mesh[]
+  setBooks(books: Book[]): void
+  refreshSpines(): void
+  setSelected(i: number): void
+  setHover(i: number): void
+  update(dt: number, t: number): boolean
+}
+export function buildBookshelf(): Bookshelf {
   const group = new THREE.Group()
   const boardMat = new THREE.MeshStandardMaterial({ color: 0xf3f6fa, roughness: 0.55 })
   const pageMat = new THREE.MeshStandardMaterial({ map: pagesTex(), roughness: 0.9 })
   const loader = new THREE.TextureLoader()
   loader.setCrossOrigin('anonymous')
 
-  const boards = []
-  function board(y) {
+  const boards: THREE.Object3D[] = []
+  function board(y: number): void {
     const b = new THREE.Mesh(new THREE.BoxGeometry(SHELF_W + 0.1, 0.035, 0.3), boardMat)
     b.position.set(0, y, 0.15)
     b.castShadow = b.receiveShadow = true
@@ -88,16 +100,16 @@ export function buildBookshelf() {
     new THREE.MeshStandardMaterial({ color: 0xf2f4f7, roughness: 0.4 }),
     new THREE.MeshPhysicalMaterial({ color: 0xbfe6ff, roughness: 0.05, transmission: 0.8, thickness: 0.05 }),
   ]
-  function bookend(x, y, dir) {
+  function bookend(x: number, y: number): void {
     const m = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.16, 0.12), endMat)
     m.position.set(x, y + 0.0175 + 0.08, 0.14)
     m.castShadow = true
     group.add(m)
     boards.push(m)
   }
-  function decor(shelf, x) {
-    const y = SHELF_YS[shelf] + 0.0175
-    let m
+  function decor(shelf: number, x: number): void {
+    const y = (SHELF_YS[shelf] ?? 0) + 0.0175
+    let m: THREE.Mesh
     if (shelf === 0) {
       m = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.16, 32), decoMats[0])
       m.position.set(x, y + 0.08, 0.14)
@@ -118,12 +130,12 @@ export function buildBookshelf() {
     boards.push(m)
   }
 
-  let items = []
+  let items: Item[] = []
   let selected = -1
   let hover = -1
   let elapsed = 0
 
-  function setBooks(books) {
+  function setBooks(books: Book[]): void {
     items.forEach((it) => group.remove(it.mesh))
     boards.forEach((b) => group.remove(b))
     boards.length = 0
@@ -133,58 +145,60 @@ export function buildBookshelf() {
     // spread the books evenly over the shelves (top three first)
     const shelvesN = books.length > 54 ? 4 : Math.min(3, Math.max(1, Math.ceil(books.length / 4)))
     const per = Math.ceil(books.length / shelvesN)
-    const used = new Set()
-    const rows = []
+    const used = new Set<number>()
+    interface Row { b: Book; i: number; t: number; h: number }
+    const rows: Row[][] = []
     books.forEach((b, i) => {
       const h1 = hash(b.tittel)
       const h2 = hash((b.forfatter || '') + b.tittel)
       const t = 0.034 + h2 * 0.03 + Math.min(0.02, (b.sider || 0) / 30000)
       const h = 0.22 + h1 * 0.08
       const r = Math.min(shelvesN - 1, Math.floor(i / per))
-      ;(rows[r] ||= []).push({ b, i, t, h })
+      ;(rows[r] ??= []).push({ b, i, t, h })
     })
     // fill from the middle shelf outwards so a short list still looks styled
     const order = shelvesN === 1 ? [1] : shelvesN === 2 ? [1, 0] : shelvesN === 3 ? [1, 0, 2] : [1, 0, 2, 3]
     rows.forEach((row, r) => {
-      const shelf = order[r]
+      const shelf = order[r] ?? 0
       used.add(shelf)
+      const shelfY = SHELF_YS[shelf] ?? 0
       const gap = 0.004
       const width = row.reduce((s, x) => s + x.t + gap, 0)
       // alternate alignment per shelf for a lived-in look
       let x = r % 2 === 0 ? -SHELF_W / 2 + 0.12 : SHELF_W / 2 - 0.12 - width
-      bookend(x - 0.012, SHELF_YS[shelf], 1)
+      bookend(x - 0.012, shelfY)
       row.forEach(({ b, i, t, h }) => {
         const d = 0.17
-        const color = b.farge || SPINE_COLORS[Math.floor(hash(b.tittel + 'c') * SPINE_COLORS.length)]
+        const color = b.farge || SPINE_COLORS[Math.floor(hash(b.tittel + 'c') * SPINE_COLORS.length)] || '#2b8cff'
         const coverMat = new THREE.MeshStandardMaterial({ map: coverTex(b, color), roughness: 0.5 })
-        const setCover = (url) => loader.load(url, (tex) => {
-          if (tex.image?.width > 10) {
+        const setCover = (url: string): void => { loader.load(url, (tex) => {
+          if (((tex.image as { width?: number } | undefined)?.width ?? 0) > 10) {
             tex.colorSpace = THREE.SRGBColorSpace
             coverMat.map?.dispose()
             coverMat.map = tex
             coverMat.needsUpdate = true
           }
-        }, undefined, () => {})
+        }, undefined, () => {}) }
         if (b.omslag) setCover(b.omslag)
         else if (b.isbn) setCover(`https://covers.openlibrary.org/b/isbn/${String(b.isbn).replace(/[^0-9X]/gi, '')}-L.jpg?default=false`)
         const spineMat = new THREE.MeshStandardMaterial({ map: spineTex(b, color), roughness: 0.55 })
         const backMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.6 })
         const mesh = new THREE.Mesh(new THREE.BoxGeometry(t, h, d), [coverMat, backMat, pageMat, pageMat, spineMat, pageMat])
         mesh.castShadow = mesh.receiveShadow = true
-        const home = new THREE.Vector3(x + t / 2, SHELF_YS[shelf] + 0.0175 + h / 2, 0.05 + d / 2)
+        const home = new THREE.Vector3(x + t / 2, shelfY + 0.0175 + h / 2, 0.05 + d / 2)
         x += t + gap
         mesh.position.copy(home)
         mesh.userData = { kind: 'book', index: i }
         group.add(mesh)
         items.push({ mesh, home, vel: new THREE.Vector3(), rotVel: 0, book: b, color, spineMat })
       })
-      bookend(x + 0.008, SHELF_YS[shelf], -1)
+      bookend(x + 0.008, shelfY)
       decor(shelf, r % 2 === 0 ? SHELF_W / 2 - 0.25 : -SHELF_W / 2 + 0.25)
     })
-    ;[...used].forEach((s) => board(SHELF_YS[s]))
+    ;[...used].forEach((s) => board(SHELF_YS[s] ?? 0))
   }
 
-  function refreshSpines() {
+  function refreshSpines(): void {
     items.forEach((it) => {
       it.spineMat.map?.dispose()
       it.spineMat.map = spineTex(it.book, it.color)
@@ -194,11 +208,11 @@ export function buildBookshelf() {
 
   const target = new THREE.Vector3()
   // returns true while any book is still moving (so shadows need refreshing)
-  function update(dt, t) {
+  function update(dt: number, t: number): boolean {
     elapsed += dt
     let moving = selected !== -1
     for (const it of items) {
-      const i = it.mesh.userData.index
+      const i = it.mesh.userData.index as number
       const sel = i === selected
       let rotY = 0, rotX = 0, rotZ = 0, scale = 1
       if (sel) {
@@ -230,8 +244,8 @@ export function buildBookshelf() {
     get meshes() { return items.map((it) => it.mesh) },
     setBooks,
     refreshSpines,
-    setSelected(i) { selected = i },
-    setHover(i) { hover = i },
+    setSelected(i: number) { selected = i },
+    setHover(i: number) { hover = i },
     update,
   }
 }

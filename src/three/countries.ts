@@ -2,7 +2,7 @@ import worldTopo from 'world-atlas/countries-110m.json'
 
 // Norwegian names for countries in the world-atlas data (keyed by the atlas' English name).
 // Lets data.json use "land": "Italia" as well as "land": "Italy".
-export const NO = {
+export const NO: Record<string, string> = {
   'Afghanistan': 'Afghanistan', 'Albania': 'Albania', 'Algeria': 'Algerie', 'Angola': 'Angola',
   'Argentina': 'Argentina', 'Armenia': 'Armenia', 'Australia': 'Australia', 'Austria': 'Østerrike',
   'Azerbaijan': 'Aserbajdsjan', 'Bahamas': 'Bahamas', 'Bangladesh': 'Bangladesh', 'Belarus': 'Belarus',
@@ -33,7 +33,7 @@ export const NO = {
   'Vietnam': 'Vietnam', 'Zambia': 'Zambia', 'Zimbabwe': 'Zimbabwe', 'Antarctica': 'Antarktis',
 }
 
-const ALIASES = {
+const ALIASES: Record<string, string> = {
   'england': 'United Kingdom', 'skottland': 'United Kingdom', 'wales': 'United Kingdom', 'uk': 'United Kingdom',
   'storbritannia': 'United Kingdom', 'usa': 'United States of America', 'amerika': 'United States of America',
   'usa (amerika)': 'United States of America', 'tsjekkia': 'Czechia', 'nord-makedonia': 'Macedonia',
@@ -41,7 +41,7 @@ const ALIASES = {
   'emiratene': 'United Arab Emirates', 'dubai': 'United Arab Emirates', 'korea': 'South Korea',
 }
 
-const lookup = new Map()
+const lookup = new Map<string, string>()
 for (const [en, no] of Object.entries(NO)) {
   lookup.set(en.toLowerCase(), en)
   lookup.set(no.toLowerCase(), en)
@@ -49,27 +49,28 @@ for (const [en, no] of Object.entries(NO)) {
 for (const [k, v] of Object.entries(ALIASES)) lookup.set(k, v)
 
 /** Map whatever the user wrote ("Italia", "Italy", "England") to the atlas name. */
-export function atlasName(input) {
+export function atlasName(input: unknown): string | null {
   if (!input) return null
-  return lookup.get(String(input).trim().toLowerCase()) || String(input).trim()
+  return lookup.get(String(input).trim().toLowerCase()) ?? String(input).trim()
 }
 
-export function norskNavn(atlas) {
-  return NO[atlas] || atlas
+export function norskNavn(atlas: string): string {
+  return NO[atlas] ?? atlas
 }
 
 /** Every country in the map data as { en, no }, sorted by Norwegian name. */
-export function allCountries() {
+export interface Country { en: string; no: string }
+export function allCountries(): Country[] {
   return worldTopo.objects.countries.geometries
     .map((g) => g.properties.name)
-    .filter((n) => n && n !== 'Antarctica')
-    .map((en) => ({ en, no: norskNavn(en) }))
+    .filter((n): n is string => !!n && n !== 'Antarctica')
+    .map((en): Country => ({ en, no: norskNavn(en) }))
     .sort((a, b) => a.no.localeCompare(b.no, 'nb'))
 }
 
 /** Case/diacritic-insensitive match on Norwegian or English name. */
-export function searchCountries(q, list = allCountries()) {
-  const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+export function searchCountries(q: string, list: Country[] = allCountries()): Country[] {
+  const norm = (s: string): string => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   const n = norm(q.trim())
   if (!n) return list
   return list

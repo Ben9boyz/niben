@@ -1,15 +1,18 @@
 import * as THREE from 'three'
+import { meshAdder } from './helpers'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
-import { wrapText, canvasTex } from './textures'
+import type { Project } from '../composables/useData'
+import type { SteamGame, SteamLibrary, SteamProfile } from '../composables/useSteam'
+import { wrapText, canvasTex, context2d } from './textures'
 
 const W = 1280, H = 720
 
-function roundRect(x, px, py, w, h, r) {
+function roundRect(x: CanvasRenderingContext2D, px: number, py: number, w: number, h: number, r: number): void {
   x.beginPath()
   x.roundRect(px, py, w, h, r)
 }
 
-function drawScreen(ctx, project, index, total, t) {
+function drawScreen(ctx: CanvasRenderingContext2D, project: Project | null, index: number, total: number, t: number): void {
   const x = ctx
   // background
   const g = x.createLinearGradient(0, 0, W, H)
@@ -101,22 +104,25 @@ function drawScreen(ctx, project, index, total, t) {
 }
 
 // ── the monitor in the gaming corner: a Steam-like screen with what's being played ──
-const imgCache = new Map()
-function steamImg(appid, kind, onLoad) {
+const imgCache = new Map<string, { img: HTMLImageElement; ok: boolean }>()
+function steamImg(appid: number, kind: string, onLoad: () => void): HTMLImageElement | null {
   const url = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appid}/${kind}.jpg`
   let e = imgCache.get(url)
   if (!e) {
     const img = new Image()
     img.crossOrigin = 'anonymous'
-    e = { img, ok: false }
-    img.onload = () => { e.ok = true; onLoad() }
+    const entry = { img, ok: false }
+    e = entry
+    img.onload = () => { entry.ok = true; onLoad() }
     img.src = url
     imgCache.set(url, e)
   }
   return e.ok ? e.img : null
 }
 
-function drawGaming(x, data, t, onLoad) {
+/** What the monitor in the gaming corner shows (from the server's Steam data). */
+export interface SteamScreenData { profile?: SteamProfile | null; library?: SteamLibrary | null }
+function drawGaming(x: CanvasRenderingContext2D, data: SteamScreenData | null, t: number, onLoad: () => void): void {
   x.fillStyle = '#171a21'
   x.fillRect(0, 0, W, H)
   // top bar
@@ -138,7 +144,7 @@ function drawGaming(x, data, t, onLoad) {
     x.fillText(p.name || '', W - 40, 34)
   }
   const lib = data?.library
-  const hero = p?.playing ? (lib?.recent?.find((g) => g.appid === p.playing.appid) || p.playing) : lib?.recent?.[0]
+  const hero: Partial<SteamGame> & { appid: number } | undefined = p?.playing ? (lib?.recent.find((g) => g.appid === p.playing?.appid) ?? p.playing) : lib?.recent?.[0]
   if (!hero) {
     x.textAlign = 'center'
     x.fillStyle = '#8f98a0'
@@ -177,7 +183,7 @@ function drawGaming(x, data, t, onLoad) {
   const ach = hero.ach ? `  ·  ${hero.ach.done}/${hero.ach.total} prestasjoner` : ''
   x.fillText(hrs + ach, bx, by + bh + 142)
   // recently played, on the right
-  const list = (lib?.recent || []).filter((g) => g.appid !== hero.appid).slice(0, 4)
+  const list = (lib?.recent ?? []).filter((g) => g.appid !== hero.appid).slice(0, 4)
   const lx = 840, lw = W - lx - 40
   x.fillStyle = '#8f98a0'
   x.font = '700 20px system-ui, sans-serif'
@@ -203,8 +209,8 @@ function drawGaming(x, data, t, onLoad) {
   }
 }
 
-function slug(s) {
-  return String(s || '').toLowerCase().replace(/[æ]/g, 'ae').replace(/[ø]/g, 'o').replace(/[å]/g, 'a').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+function slug(s: unknown): string {
+  return String(s ?? '').toLowerCase().replace(/[æ]/g, 'ae').replace(/[ø]/g, 'o').replace(/[å]/g, 'a').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
 export function buildDesk() {
@@ -215,13 +221,7 @@ export function buildDesk() {
   const metal = new THREE.MeshStandardMaterial({ color: 0xc9d1db, roughness: 0.3, metalness: 0.9 })
   const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x5cb6ff).multiplyScalar(3.4), toneMapped: false })
 
-  const add = (geo, mat, x, y, z, parent = group) => {
-    const m = new THREE.Mesh(geo, mat)
-    m.position.set(x, y, z)
-    m.castShadow = m.receiveShadow = true
-    parent.add(m)
-    return m
-  }
+  const add = meshAdder(group)
 
   // desk
   add(new THREE.BoxGeometry(2.0, 0.04, 0.78), wood, 0, 0.74, 0)
@@ -242,7 +242,7 @@ export function buildDesk() {
   const canvas = document.createElement('canvas')
   canvas.width = W
   canvas.height = H
-  const ctx = canvas.getContext('2d')
+  const ctx = context2d(canvas)
   const tex = new THREE.CanvasTexture(canvas)
   tex.colorSpace = THREE.SRGBColorSpace
   tex.anisotropy = 8
@@ -363,7 +363,7 @@ export function buildDesk() {
     f.position.set(a * (CW / 2 - 0.02), 0.003, b * (CD / 2 - 0.03))
     pc.add(f)
   })
-  const fans = []
+  const fans: THREE.Object3D[] = []
 
   // chair
   const chair = new THREE.Group()
@@ -382,20 +382,20 @@ export function buildDesk() {
     add(new THREE.SphereGeometry(0.025, 10, 10), dark, Math.cos(a) * 0.3, 0.025, Math.sin(a) * 0.3, chair)
   }
 
-  let current = { project: null, index: 0, total: 0 }
+  let current: { project: Project | null; index: number; total: number } = { project: null, index: 0, total: 0 }
   let lastBlink = -1
-  function setProject(project, index, total) {
+  function setProject(project: Project | null, index: number, total: number): void {
     current = { project, index, total }
     lastBlink = -1
   }
   // 'code' (projects) or 'gaming' (Steam)
-  let screenMode = 'code'
-  let steamData = null
-  function setScreenMode(m) { if (m !== screenMode) { screenMode = m; lastBlink = -1 } }
-  function setSteam(d) { steamData = d; lastBlink = -1 }
+  let screenMode: 'code' | 'gaming' = 'code'
+  let steamData: SteamScreenData | null = null
+  function setScreenMode(m: 'code' | 'gaming'): void { if (m !== screenMode) { screenMode = m; lastBlink = -1 } }
+  function setSteam(d: SteamScreenData | null): void { steamData = d; lastBlink = -1 }
   const redraw = () => { lastBlink = -1 }
 
-  function update(dt, t) {
+  function update(dt: number, t: number): boolean {
     fans.forEach((f) => (f.rotation.x += dt * 14))
     const blink = Math.floor(t * 2)
     if (blink !== lastBlink) {

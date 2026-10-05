@@ -1,5 +1,7 @@
 import * as THREE from 'three'
-import { canvasTex } from './textures'
+import { meshAdder } from './helpers'
+import { formatTime, type TimerState } from '../composables/useTimer'
+import { canvasTex, context2d } from './textures'
 
 const R = 0.34 // clock radius (m)
 const S = 768 // clock face canvas size
@@ -7,17 +9,7 @@ const S = 768 // clock face canvas size
 const WAIT = '#f0a040'
 const GO = '#3cc47e'
 
-function fmt(ms) {
-  const tenths = Math.floor(ms / 100) % 10
-  const total = Math.floor(ms / 1000)
-  const s = total % 60
-  const m = Math.floor(total / 60) % 60
-  const h = Math.floor(total / 3600)
-  const ss = String(s).padStart(2, '0')
-  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}.${tenths}`
-}
-
-function drawFace(x, st, interval) {
+function drawFace(x: CanvasRenderingContext2D, st: TimerState, interval: number): void {
   const c = S / 2
   x.clearRect(0, 0, S, S)
   // face
@@ -74,7 +66,7 @@ function drawFace(x, st, interval) {
   // elapsed
   x.fillStyle = '#0b1424'
   x.font = '800 132px "Inter Tight", Inter, sans-serif'
-  x.fillText(fmt(st.ms), c, c + 4)
+  x.fillText(formatTime(st.ms), c, c + 4)
 
   // interval info
   x.fillStyle = '#4a5872'
@@ -128,13 +120,7 @@ export function buildPracticeCorner() {
   const wood = new THREE.MeshStandardMaterial({ color: 0xd9b48a, roughness: 0.5 })
   const metal = new THREE.MeshStandardMaterial({ color: 0x2a2f36, roughness: 0.4, metalness: 0.7 })
   const steel = new THREE.MeshStandardMaterial({ color: 0xc9d1db, roughness: 0.3, metalness: 0.9 })
-  const add = (geo, mat, x, y, z, parent = group) => {
-    const m = new THREE.Mesh(geo, mat)
-    m.position.set(x, y, z)
-    m.castShadow = m.receiveShadow = true
-    parent.add(m)
-    return m
-  }
+  const add = meshAdder(group)
 
   // ── Wall clock (faces +x, hangs on the left wall) ─────────
   const clock = new THREE.Group()
@@ -149,7 +135,7 @@ export function buildPracticeCorner() {
 
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = S
-  const ctx = canvas.getContext('2d')
+  const ctx = context2d(canvas)
   const faceTex = new THREE.CanvasTexture(canvas)
   faceTex.colorSpace = THREE.SRGBColorSpace
   faceTex.anisotropy = 8
@@ -240,7 +226,7 @@ export function buildPracticeCorner() {
   desk.add(sheet)
 
   let lastKey = ''
-  function update(dt, t, st, interval) {
+  function update(_dt: number, _t: number, st: TimerState | null | undefined, interval: number): boolean {
     if (!st) return false
     const angle = -(st.go ? 1 : st.progress) * Math.PI * 2
     let changed = Math.abs(hand.rotation.z - angle) > 1e-4

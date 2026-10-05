@@ -2,7 +2,7 @@ import * as THREE from 'three'
 
 // Right half of each body outline, from bottom centre up to top centre.
 // The left half is mirrored. Units are roughly decimetres.
-const OUTLINES = {
+const OUTLINES: Record<string, [number, number][]> = {
   elektrisk: [
     [0, -2.2], [1.0, -2.1], [1.62, -1.6], [1.74, -0.75], [1.36, 0.02], [1.28, 0.55],
     [1.58, 1.3], [1.5, 2.0], [1.16, 2.06], [0.86, 1.6], [0.5, 1.38], [0, 1.42],
@@ -13,20 +13,22 @@ const OUTLINES = {
   ],
 }
 
-function bodyShape(points, mirrorX = 1) {
+function bodyShape(points: [number, number][], mirrorX = 1): THREE.Shape {
   const right = points.map(([x, y]) => new THREE.Vector3(x * mirrorX, y, 0))
   const left = points.slice(1, -1).reverse().map(([x, y]) => new THREE.Vector3(-x * mirrorX, y, 0))
   const curve = new THREE.CatmullRomCurve3([...right, ...left], true, 'centripetal')
   return new THREE.Shape(curve.getPoints(260).map((p) => new THREE.Vector2(p.x, p.y)))
 }
 
-const FRETBOARDS = {
+const FRETBOARDS: Record<string, number> = {
   palisander: 0x3a2318,
   lønn: 0xe6c18a,
   ibenholt: 0x141110,
 }
 
-export function buildGuitar(spec = {}) {
+/** The part of a guitar's data that decides how it is built. */
+export interface GuitarSpec { type?: string; farge?: string; gripebrett?: string; pickguard?: string }
+export function buildGuitar(spec: GuitarSpec = {}): THREE.Group {
   const type = spec.type === 'akustisk' ? 'akustisk' : 'elektrisk'
   const acoustic = type === 'akustisk'
   const color = new THREE.Color(spec.farge || (acoustic ? '#c98a4b' : '#2b8cff'))
@@ -39,7 +41,7 @@ export function buildGuitar(spec = {}) {
     }),
     binding: new THREE.MeshPhysicalMaterial({ color: 0xf4efe6, roughness: 0.3, clearcoat: 1 }),
     neck: new THREE.MeshPhysicalMaterial({ color: acoustic ? 0x9a6a3a : 0xdcb47c, roughness: 0.45, clearcoat: 0.6 }),
-    board: new THREE.MeshStandardMaterial({ color: FRETBOARDS[spec.gripebrett] ?? (acoustic ? FRETBOARDS.palisander : FRETBOARDS.lønn), roughness: 0.7 }),
+    board: new THREE.MeshStandardMaterial({ color: (spec.gripebrett ? FRETBOARDS[spec.gripebrett] : undefined) ?? (acoustic ? FRETBOARDS.palisander : FRETBOARDS.lønn), roughness: 0.7 }),
     chrome: new THREE.MeshStandardMaterial({ color: 0xe8edf2, metalness: 1, roughness: 0.18 }),
     string: new THREE.MeshStandardMaterial({ color: 0xd9dde3, metalness: 1, roughness: 0.25 }),
     dark: new THREE.MeshStandardMaterial({ color: 0x15161a, roughness: 0.55 }),
@@ -228,7 +230,7 @@ export function buildGuitar(spec = {}) {
   }
   g.userData.strings = strings
 
-  g.traverse((o) => { if (o.isMesh) { o.castShadow = true } })
+  g.traverse((o) => { if (o instanceof THREE.Mesh) { o.castShadow = true } })
 
   // centre it vertically
   const box = new THREE.Box3().setFromObject(g)

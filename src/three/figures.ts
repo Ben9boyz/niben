@@ -1,22 +1,17 @@
 import * as THREE from 'three'
+import { meshAdder } from './helpers'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 
 // A wall shelf with collectible figures – Star Wars on the top board, anime on the lower one – small low-poly
 // versions built from simple shapes. A warm LED strip lights each board and a lightsaber glows softly.
-const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.55, ...o })
+const mat = (color: THREE.ColorRepresentation, o: THREE.MeshStandardMaterialParameters = {}): THREE.MeshStandardMaterial => new THREE.MeshStandardMaterial({ color, roughness: 0.55, ...o })
 
-export function buildFigureShelf() {
+export function buildFigureShelf(): { group: THREE.Group; update: (t: number) => void } {
   const group = new THREE.Group()
   const wood = mat(0xc89b6d, { roughness: 0.5 })
   const white = mat(0xf3f4f6, { roughness: 0.45 })
   const black = mat(0x15161a, { roughness: 0.4 })
-  const add = (geo, m, x, y, z, parent = group) => {
-    const o = new THREE.Mesh(geo, m)
-    o.position.set(x, y, z)
-    o.castShadow = o.receiveShadow = true
-    parent.add(o)
-    return o
-  }
+  const add = meshAdder(group)
   const W = 1.25
   // two boards on small brackets + a thin back strip so it reads as a "display shelf"
   ;[0, 0.46].forEach((y) => {
@@ -29,9 +24,9 @@ export function buildFigureShelf() {
   const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.05), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }))
   group.add(tag)
 
-  const fig = (x, y, z = 0.09) => { const g = new THREE.Group(); g.position.set(x, y + 0.015, z); group.add(g); return g }
-  const sph = (r, m, x, y, z, parent, sx = 1, sy = 1, sz = 1) => { const o = add(new THREE.SphereGeometry(r, 16, 12), m, x, y, z, parent); o.scale.set(sx, sy, sz); return o }
-  const cyl = (rt, rb, h, m, x, y, z, parent) => add(new THREE.CylinderGeometry(rt, rb, h, 16), m, x, y, z, parent)
+  const fig = (x: number, y: number, z = 0.09): THREE.Group => { const g = new THREE.Group(); g.position.set(x, y + 0.015, z); group.add(g); return g }
+  const sph = (r: number, m: THREE.Material, x: number, y: number, z: number, parent: THREE.Object3D, sx = 1, sy = 1, sz = 1): THREE.Mesh => { const o = add(new THREE.SphereGeometry(r, 16, 12), m, x, y, z, parent); o.scale.set(sx, sy, sz); return o }
+  const cyl = (rt: number, rb: number, h: number, m: THREE.Material, x: number, y: number, z: number, parent: THREE.Object3D): THREE.Mesh => add(new THREE.CylinderGeometry(rt, rb, h, 16), m, x, y, z, parent)
 
   // ── Star Wars (top board, y = 0.46) ──
   const top = 0.46
@@ -170,7 +165,7 @@ export function buildFigureShelf() {
     }
   }
 
-  function update(t) {
+  function update(t: number): void {
     // the blade hums softly
     const p = 0.9 + Math.sin(t * 6) * 0.05 + Math.sin(t * 17) * 0.03
     saberLight.intensity = 0.35 * p

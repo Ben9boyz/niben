@@ -1,10 +1,18 @@
 import * as THREE from 'three'
 
-export function canvasTex(w, h, draw, { srgb = true, repeat } = {}) {
+/** The 2D drawing context of a canvas (every browser that runs the room has one). */
+export function context2d(c: HTMLCanvasElement): CanvasRenderingContext2D {
+  const ctx = c.getContext('2d')
+  if (!ctx) throw new Error('Nettleseren kan ikke tegne teksturer.')
+  return ctx
+}
+
+/** A texture painted on a canvas: `draw(ctx, w, h)` does the painting. */
+export function canvasTex(w: number, h: number, draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void, { srgb = true, repeat }: { srgb?: boolean; repeat?: [number, number] } = {}): THREE.CanvasTexture {
   const c = document.createElement('canvas')
   c.width = w
   c.height = h
-  draw(c.getContext('2d'), w, h)
+  draw(context2d(c), w, h)
   const t = new THREE.CanvasTexture(c)
   if (srgb) t.colorSpace = THREE.SRGBColorSpace
   t.anisotropy = 8
@@ -15,12 +23,12 @@ export function canvasTex(w, h, draw, { srgb = true, repeat } = {}) {
   return t
 }
 
-function rand(seed) {
+function rand(seed: number): () => number {
   let s = seed
   return () => ((s = Math.imul(s ^ (s >>> 15), 2246822507) ^ Math.imul(s ^ (s >>> 13), 3266489909)) >>> 0) / 4294967296
 }
 
-export function woodFloor() {
+export function woodFloor(): THREE.CanvasTexture {
   const r = rand(7)
   return canvasTex(1024, 1024, (x, w, h) => {
     const rows = 8
@@ -52,7 +60,7 @@ export function woodFloor() {
   }, { repeat: [2.2, 2.2] })
 }
 
-export function wallTexture() {
+export function wallTexture(): THREE.CanvasTexture {
   const r = rand(3)
   return canvasTex(512, 512, (x, w, h) => {
     x.fillStyle = '#ffffff'
@@ -64,7 +72,7 @@ export function wallTexture() {
   }, { repeat: [4, 2] })
 }
 
-export function skyTexture(night, kind = 'clear') {
+export function skyTexture(night: boolean, kind = 'clear'): THREE.CanvasTexture {
   const r = rand(11)
   const grey = ['cloud', 'rain', 'drizzle', 'thunder', 'snow', 'fog'].includes(kind)
   const heavy = ['rain', 'thunder', 'drizzle'].includes(kind)
@@ -106,7 +114,7 @@ export function skyTexture(night, kind = 'clear') {
       x.fill()
     } else {
       x.fillStyle = 'rgba(255,255,255,0.85)'
-      ;[[60, 70, 30], [95, 62, 24], [125, 72, 20], [180, 120, 18], [205, 114, 22]].forEach(([cx, cy, rr]) => {
+      ;([[60, 70, 30], [95, 62, 24], [125, 72, 20], [180, 120, 18], [205, 114, 22]] as [number, number, number][]).forEach(([cx, cy, rr]) => {
         x.beginPath(); x.arc(cx, cy, rr, 0, Math.PI * 2); x.fill()
       })
     }
@@ -120,8 +128,8 @@ export function skyTexture(night, kind = 'clear') {
   })
 }
 
-export function wrapText(ctx, text, x, y, maxW, lh, maxLines = 99) {
-  const words = String(text || '').split(/\s+/)
+export function wrapText(ctx: CanvasRenderingContext2D, text: string | null | undefined, x: number, y: number, maxW: number, lh: number, maxLines = 99): number {
+  const words = String(text ?? '').split(/\s+/)
   let line = ''
   let n = 0
   for (const w of words) {
@@ -137,20 +145,20 @@ export function wrapText(ctx, text, x, y, maxW, lh, maxLines = 99) {
   return n
 }
 
-export function hash(str) {
+export function hash(str: unknown): number {
   let h = 2166136261
   for (const c of String(str)) h = Math.imul(h ^ c.charCodeAt(0), 16777619)
   return ((h >>> 0) % 1000) / 1000
 }
 
-export function shade(hex, amt) {
+export function shade(hex: string, amt: number): string {
   const n = parseInt(String(hex).replace('#', ''), 16)
-  const f = (v) => Math.max(0, Math.min(255, Math.round(v + (amt > 0 ? (255 - v) * amt : v * amt))))
+  const f = (v: number): number => Math.max(0, Math.min(255, Math.round(v + (amt > 0 ? (255 - v) * amt : v * amt))))
   const r = f((n >> 16) & 255), g = f((n >> 8) & 255), b = f(n & 255)
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`
 }
 
-export function luminance(hex) {
+export function luminance(hex: string): number {
   const n = parseInt(String(hex).replace('#', ''), 16)
   return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255
 }

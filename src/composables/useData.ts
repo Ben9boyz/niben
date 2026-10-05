@@ -47,6 +47,7 @@ export interface Book {
   sitat?: string | null
   ol_key?: string | null
   leser?: boolean
+  farge?: string
 }
 export interface Song {
   id: number

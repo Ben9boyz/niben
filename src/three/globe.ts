@@ -1,29 +1,38 @@
 import * as THREE from 'three'
+import { meshAdder } from './helpers'
 import ThreeGlobe from 'three-globe'
 import ConicPolygonGeometry from 'three-conic-polygon-geometry'
 import GeoJsonGeometry from 'three-geojson-geometry'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { feature } from 'topojson-client'
+import type { GeometryCollection, Topology } from 'topojson-specification'
 import worldTopo from 'world-atlas/countries-110m.json'
 
 const RADIUS = 0.24
-const countries = feature(worldTopo, worldTopo.objects.countries).features
+/** One polygon: the outer ring first, then any holes, each a list of [lng, lat]. */
+type Polygon = number[][][]
+interface CountryFeature { properties: { name: string }; geometry: { type: string; coordinates: unknown } }
+const topo = worldTopo as unknown as Topology<{ countries: GeometryCollection<{ name: string }> }>
+const countries = (feature(topo, topo.objects.countries).features as unknown as CountryFeature[])
   .filter((f) => f.properties.name !== 'Antarctica')
+/** All the polygons of a country (a MultiPolygon is several). */
+const polygonsOf = (f: CountryFeature): Polygon[] => (f.geometry.type === 'Polygon' ? [f.geometry.coordinates as Polygon] : (f.geometry.coordinates as Polygon[]))
 
-function centre(f) {
-  const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates
-  let best = null, bestArea = -1
+interface LatLng { lng: number; lat: number }
+function centre(f: CountryFeature): LatLng | null {
+  const polys = polygonsOf(f)
+  let best: LatLng | null = null, bestArea = -1
   for (const p of polys) {
     let minX = 180, maxX = -180, minY = 90, maxY = -90
-    for (const [x, y] of p[0]) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y) }
+    for (const [x = 0, y = 0] of p[0] ?? []) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y) }
     const area = (maxX - minX) * (maxY - minY)
     if (area > bestArea) { bestArea = area; best = { lng: (minX + maxX) / 2, lat: (minY + maxY) / 2 } }
   }
   return best
 }
-const centres = new Map(countries.map((f) => [f.properties.name, centre(f)]))
+const centres = new Map<string, LatLng | null>(countries.map((f): [string, LatLng | null] => [f.properties.name, centre(f)]))
 
-function shortest(from, to) {
+function shortest(from: number, to: number): number {
   let d = (to - from) % (Math.PI * 2)
   if (d > Math.PI) d -= Math.PI * 2
   if (d < -Math.PI) d += Math.PI * 2
@@ -35,13 +44,7 @@ export function buildGlobeTable() {
   const wood = new THREE.MeshStandardMaterial({ color: 0xd9b48a, roughness: 0.5 })
   const white = new THREE.MeshStandardMaterial({ color: 0xf2f4f7, roughness: 0.45 })
   const brass = new THREE.MeshStandardMaterial({ color: 0xd7b56d, roughness: 0.25, metalness: 1 })
-  const add = (geo, mat, x, y, z, parent = group) => {
-    const m = new THREE.Mesh(geo, mat)
-    m.position.set(x, y, z)
-    m.castShadow = m.receiveShadow = true
-    parent.add(m)
-    return m
-  }
+  const add = meshAdder(group)
 
   // round side table
   add(new THREE.CylinderGeometry(0.36, 0.36, 0.035, 64), wood, 0, 0.62, 0)
@@ -76,7 +79,7 @@ export function buildGlobeTable() {
   globe.scale.setScalar(RADIUS / 100)
   spin.add(globe)
 
-  const gm = globe.globeMaterial()
+  const gm = globe.globeMaterial() as THREE.MeshPhongMaterial
   gm.color = new THREE.Color(0x173a6e)
   gm.shininess = 40
   gm.specular = new THREE.Color(0x335577)
@@ -98,19 +101,16 @@ export function buildGlobeTable() {
   globe.add(layer)
   const R = 100
   const RES = 5
-  const shapes = new Map(countries.map((f) => [
-    f.properties.name,
-    f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates,
-  ]))
+  const shapes = new Map<string, Polygon[]>(countries.map((f): [string, Polygon[]] => [f.properties.name, polygonsOf(f)]))
 
-  function plain(g) {
+  function plain(g: THREE.BufferGeometry): THREE.BufferGeometry {
     const out = g.index ? g.toNonIndexed() : g
     for (const k of Object.keys(out.attributes)) if (!['position', 'normal'].includes(k)) out.deleteAttribute(k)
     out.clearGroups()
     return out
   }
-  function countryGeo(name, alt, part) {
-    const polys = shapes.get(name) || []
+  function countryGeo(name: string, alt: number, part: 'cap' | 'side'): THREE.BufferGeometry | null {
+    const polys = shapes.get(name) ?? []
     const parts = polys.map((coords) => {
       const g = new ConicPolygonGeometry(coords, 0, R, false, part === 'cap', part === 'side', RES)
       g.scale(1 + alt, 1 + alt, 1 + alt)
@@ -118,8 +118,8 @@ export function buildGlobeTable() {
     })
     return parts.length ? mergeGeometries(parts, false) : null
   }
-  function strokeGeo(name, alt) {
-    const polys = shapes.get(name) || []
+  function strokeGeo(name: string, alt: number): THREE.BufferGeometry | null {
+    const polys = shapes.get(name) ?? []
     const parts = polys.map((coords) => {
       const g = new GeoJsonGeometry({ type: 'Polygon', coordinates: coords }, R, RES)
       g.scale(1 + alt + 1e-4, 1 + alt + 1e-4, 1 + alt + 1e-4)
@@ -131,9 +131,10 @@ export function buildGlobeTable() {
   }
 
   /** Builds cap + side + outline for a set of countries at one altitude. Caps remember which triangles belong to which country. */
-  function buildLayer(names, alt, capMat, sideMat) {
+  function buildLayer(names: Iterable<string>, alt: number, capMat: THREE.Material, sideMat: THREE.Material): THREE.Group {
     const g = new THREE.Group()
-    const caps = [], sides = [], strokes = [], ranges = []
+    const caps: THREE.BufferGeometry[] = [], sides: THREE.BufferGeometry[] = [], strokes: THREE.BufferGeometry[] = []
+    const ranges: { start: number; name: string }[] = []
     let tri = 0
     for (const n of names) {
       const cap = countryGeo(n, alt, 'cap')
@@ -156,31 +157,31 @@ export function buildGlobeTable() {
     if (strokes.length) g.add(new THREE.LineSegments(mergeGeometries(strokes, false), mats.stroke))
     return g
   }
-  function disposeLayer(g) {
+  function disposeLayer(g: THREE.Group | null): void {
     if (!g) return
     layer.remove(g)
-    g.traverse((o) => o.geometry?.dispose())
+    g.traverse((o) => { if (o instanceof THREE.Mesh || o instanceof THREE.LineSegments) o.geometry.dispose() })
   }
 
   const base = buildLayer([...shapes.keys()], 0.006, mats.land, mats.side)
   layer.add(base)
-  let visitedLayer = null
-  let hoverLayer = null
-  let selectedLayer = null
+  let visitedLayer: THREE.Group | null = null
+  let hoverLayer: THREE.Group | null = null
+  let selectedLayer: THREE.Group | null = null
 
-  let visited = new Set()
-  let hovered = null
-  let selected = null
+  let visited = new Set<string>()
+  let hovered: string | null = null
+  let selected: string | null = null
   let dragging = false
   let spinVel = 0
-  let target = null // { yaw, pitch }
+  let target: { yaw: number; pitch: number } | null = null
 
-  function rebuildVisited() {
+  function rebuildVisited(): void {
     disposeLayer(visitedLayer)
     visitedLayer = buildLayer([...visited].filter((n) => shapes.has(n)), 0.018, mats.visited, mats.sideVisited)
     layer.add(visitedLayer)
   }
-  function rebuildHover() {
+  function rebuildHover(): void {
     disposeLayer(hoverLayer)
     hoverLayer = null
     if (hovered && hovered !== selected && shapes.has(hovered)) {
@@ -188,7 +189,7 @@ export function buildGlobeTable() {
       layer.add(hoverLayer)
     }
   }
-  function rebuildSelected() {
+  function rebuildSelected(): void {
     disposeLayer(selectedLayer)
     selectedLayer = null
     if (selected && shapes.has(selected)) {
@@ -198,19 +199,19 @@ export function buildGlobeTable() {
   }
 
   /** Country under a raycast hit (uses the triangle index on merged meshes). */
-  function countryFromHit(hit) {
-    const ranges = hit?.object?.userData?.ranges
-    if (!ranges || hit.faceIndex == null) return null
+  function countryFromHit(hit: THREE.Intersection | null | undefined): string | null {
+    const ranges = hit?.object.userData.ranges as { start: number; name: string }[] | undefined
+    if (!hit || !ranges || hit.faceIndex == null) return null
     let lo = 0, hi = ranges.length - 1
     while (lo < hi) {
       const mid = (lo + hi + 1) >> 1
-      if (ranges[mid].start <= hit.faceIndex) lo = mid
+      if ((ranges[mid]?.start ?? 0) <= hit.faceIndex) lo = mid
       else hi = mid - 1
     }
     return ranges[lo]?.name ?? null
   }
 
-  function aim(name) {
+  function aim(name: string): void {
     const c = centres.get(name)
     if (!c) { target = null; return }
     // three-globe: lng → rotation about y, lat → tilt toward the viewer (+z of the stand)
@@ -221,7 +222,7 @@ export function buildGlobeTable() {
   }
 
   /** Returns true while the globe is still moving. */
-  function update(dt, t, autoSpin) {
+  function update(dt: number, _t: number, autoSpin: boolean): boolean {
     if (target) {
       const dy = target.yaw - spin.rotation.y, dx = target.pitch - tilt.rotation.x
       spin.rotation.y += dy * Math.min(1, dt * 3.5)
@@ -242,7 +243,7 @@ export function buildGlobeTable() {
   const _n = new THREE.Vector3()
   const _c = new THREE.Vector3()
   /** World position of the selected country on the globe surface (or null). */
-  function selectedWorld(out, cameraPos) {
+  function selectedWorld(out: THREE.Vector3, cameraPos: THREE.Vector3): THREE.Vector3 | null {
     if (!selected) return null
     const c = centres.get(selected)
     if (!c) return null
@@ -263,17 +264,17 @@ export function buildGlobeTable() {
     globe,
     centerY,
     countryFromHit,
-    setVisited(set) { visited = set; rebuildVisited(); rebuildHover(); rebuildSelected() },
-    setHover(n) { if (n !== hovered) { hovered = n; rebuildHover() } },
-    setSelected(n) {
+    setVisited(set: Set<string>) { visited = set; rebuildVisited(); rebuildHover(); rebuildSelected() },
+    setHover(n: string | null) { if (n !== hovered) { hovered = n; rebuildHover() } },
+    setSelected(n: string | null) {
       selected = n
       rebuildSelected()
       rebuildHover()
       if (n) aim(n)
       else target = null
     },
-    drag(dx) { target = null; spinVel = dx * 6; spin.rotation.y += dx * 4 },
-    setDragging(v) { dragging = v },
+    drag(dx: number) { target = null; spinVel = dx * 6; spin.rotation.y += dx * 4 },
+    setDragging(v: boolean) { dragging = v },
     update,
   }
 }

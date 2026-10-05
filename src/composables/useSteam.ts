@@ -1,11 +1,28 @@
 import { reactive } from 'vue'
 
 // Gaming corner (Steam via the server): profile, what's being played right now, the library.
-export interface SteamProfile { name?: string; avatar?: string; url?: string; created?: number; [key: string]: unknown }
-export interface SteamGame { appid: number; name: string; hours: number; [key: string]: unknown }
-export interface SteamLibrary { count?: number; hours?: number; top?: SteamGame[]; recent?: SteamGame[]; [key: string]: unknown }
-export interface SteamLive { appid?: number; name?: string; [key: string]: unknown }
-export interface SteamFriends { best?: object; list?: object[]; online?: number; count?: number; hidden?: boolean }
+export interface SteamGame { appid: number; name: string; hours: number; recent?: number; ach?: { done: number; total: number } | null }
+export interface SteamProfile {
+  name: string
+  avatar?: string | null
+  url?: string | null
+  created?: number | null
+  online?: boolean
+  playing?: { appid: number; name: string; since?: number | null } | null
+}
+export interface SteamLibrary {
+  count: number
+  hours: number
+  played?: number
+  twoWeeks?: number
+  hidden?: boolean
+  recent: SteamGame[]
+  top: SteamGame[]
+  longest?: SteamGame | null
+  genres?: { name: string; hours: number }[]
+}
+export interface SteamLive { info?: { appid?: number; name?: string; [key: string]: unknown }; [key: string]: unknown }
+export interface SteamFriends { best?: object | null; online?: number; count?: number; hidden?: boolean }
 interface SteamReply { configured?: boolean; error?: string; profile?: SteamProfile | null; library?: SteamLibrary | null; live?: SteamLive | null; friends?: SteamFriends | null }
 
 export const steam = reactive({
