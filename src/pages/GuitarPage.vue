@@ -32,7 +32,7 @@ const g = computed(() => data.gitarer?.[idx.value])
           <div class="muted">{{ [g.merke, g.type, g.aar].filter(Boolean).join(' · ') }}</div>
           <h2>{{ g.navn }}</h2>
           <p class="body">{{ g.beskrivelse }}</p>
-          <router-link to="/ovelse" class="btn small"><Timer :size="15" /> Øvingstimer</router-link>
+          <router-link to="/ovelse" class="btn small"><Timer :size="15" /> Øvingskroken</router-link>
         </div>
         <div class="glass card">
           <h3>Opptak</h3>

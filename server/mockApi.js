@@ -358,6 +358,15 @@ export function mockApi() {
             SP_PLAYLISTS.push(pl)
             return send(res, 200, { ok: true, uri: pl.uri, name: pl.name })
           }
+          case 'spotify_playlist_image': {
+            if (!needAdmin()) return
+            if (!file) return send(res, 400, { error: 'Fikk ikke bildet.' })
+            const pl = SP_PLAYLISTS.find((p) => p.uri === b.playlist)
+            if (!pl) return send(res, 400, { error: 'Ugyldig spilleliste.' })
+            const url = await store('photos', file)
+            pl.image = pl.thumb = url
+            return send(res, 200, { ok: true })
+          }
           case 'spotify_playlist_delete': {
             if (!needAdmin()) return
             const i = SP_PLAYLISTS.findIndex((p) => p.uri === b.playlist)

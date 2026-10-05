@@ -692,6 +692,7 @@ export function buildListeningCorner() {
   const notes = [0, 1, 2, 3].map((i) => {
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: noteTex[i % 2], color: i % 2 ? 0xffd27a : 0x8fc6ff, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }))
     sp.userData = { phase: i / 4, side: i % 2 ? 1 : -1, sway: 0.6 + i * 0.35 }
+    sp.raycast = () => {} // only decoration: never in the way of a click
     soundFx.add(sp)
     return sp
   })

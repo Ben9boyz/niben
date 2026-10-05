@@ -607,10 +607,12 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
     pointer.y = -((e.clientY - r.top) / r.height) * 2 + 1
   }
 
+  const shown = (o) => { for (; o; o = o.parent) if (!o.visible) return false; return true }
   function hitInfo() {
     ray.setFromCamera(ndc, camera)
     const hits = ray.intersectObjects(interactive, true)
     for (const h of hits) {
+      if (h.object.isPoints || h.object.isSprite || !shown(h.object)) continue // the raycaster doesn't look at .visible: a hidden thing (the iPod's notes, a hidden station) and dust / sprites are only decoration (a Points hit has a 1 m tolerance by default!) must not eat the click
       let o = h.object
       let info = { object: h.object }
       while (o) {
@@ -1253,6 +1255,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState, onDecor
   return {
     goTo,
     get lyttePose() { return lyttePose },
+    /** (dev/testing) what the pointer would hit at a screen position */
+    pickAt(x, y) { setNdc({ clientX: x, clientY: y }); const h = hitInfo(); return h ? { kind: h.kind, index: h.index, station: h.station, obj: h.object.name || h.object.type, parent: h.object.parent?.name || h.object.parent?.type } : null },
     setData,
     setSelection,
     setTheme,

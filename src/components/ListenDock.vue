@@ -75,11 +75,11 @@ const toggle = () => ctl(playing.value ? 'pause' : 'resume')
 
       <!-- in front of the shelf: browse -->
       <template v-else-if="state === 'shelf'">
-        <button class="b sm" aria-label="Opp til platespilleren" @click="toTurntable"><Undo2 :size="20" /><span>Opp</span></button>
+        <button class="b compact" aria-label="Opp til platespilleren" @click="toTurntable"><Undo2 :size="20" /><span>Opp</span></button>
         <button class="b arrow" aria-label="Forrige album" @click="browse(-1)"><ChevronLeft :size="26" /></button>
         <div class="pk"><b>{{ peeked?.name || 'Hylla' }}</b><small v-if="peeked">{{ room.peekIndex + 1 }}/{{ shelfCount }}</small></div>
         <button class="b arrow" aria-label="Neste album" @click="browse(1)"><ChevronRight :size="26" /></button>
-        <button class="b go sm" :disabled="!peeked" aria-label="Ta ut platen" @click="takeOut"><ArrowUpFromLine :size="20" /><span>Ta ut</span></button>
+        <button class="b go compact" :disabled="!peeked" aria-label="Ta ut platen" @click="takeOut"><ArrowUpFromLine :size="20" /><span>Ta ut</span></button>
       </template>
 
       <!-- the iPod in hand -->
@@ -117,7 +117,7 @@ const toggle = () => ctl(playing.value ? 'pause' : 'resume')
 .b:active:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
 .b:disabled { opacity: 0.4; }
 .b span { white-space: nowrap; }
-.b.sm { padding: 0 11px; gap: 4px; }
+.b.compact { padding: 0 11px; gap: 4px; }
 .b.arrow { padding: 0; width: 42px; background: var(--accent-soft); color: var(--accent); }
 .b.go { background: var(--accent); color: #fff; }
 .b.go:disabled { background: var(--glass-border); color: var(--text-3); }

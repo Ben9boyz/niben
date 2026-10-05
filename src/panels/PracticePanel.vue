@@ -3,6 +3,11 @@ import { computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { timer, timerState, formatTime, toggle, reset, setIntervalSeconds, setSound } from '../composables/useTimer'
 import { room } from '../composables/useRoom'
 import ChordPractice from '../components/ChordPractice.vue'
+import GuitarTuner from '../components/GuitarTuner.vue'
+import Metronome from '../components/Metronome.vue'
+
+// The practice corner: the interval timer, chords, a tuner (with half-step-down / up tunings) and a metronome.
+const TABS = [['timer', 'Timer'], ['akkorder', 'Akkorder'], ['stemmer', 'Stemmer'], ['metronom', 'Metronom']]
 
 // re-evaluates every frame while the timer runs (timer.now ticks)
 const st = computed(() => { void timer.now; void timer.running; void timer.pausedMs; void timer.interval; return timerState() })
@@ -19,7 +24,8 @@ function onKey(e) {
   else if (e.key === 'r' || e.key === 'R') reset()
 }
 
-// keep the screen awake while practising
+// keep the screen awake while practising (the timer running, or the tuner / metronome open – the phone shouldn't go dark mid-song)
+const awake = computed(() => timer.running || room.practiceTab === 'stemmer' || room.practiceTab === 'metronom')
 let lock = null
 async function wake(on) {
   try {
@@ -27,8 +33,8 @@ async function wake(on) {
     if (!on && lock) { await lock.release(); lock = null }
   } catch { lock = null }
 }
-watch(() => timer.running, (r) => wake(r), { immediate: true })
-const onVis = () => { if (!document.hidden && timer.running) { lock = null; wake(true) } }
+watch(awake, (r) => wake(r), { immediate: true })
+const onVis = () => { if (!document.hidden && awake.value) { lock = null; wake(true) } }
 
 onMounted(() => {
   window.addEventListener('keydown', onKey)
@@ -44,11 +50,12 @@ onBeforeUnmount(() => {
 <template>
   <section class="focus glass" :class="{ go: st.go && room.practiceTab === 'timer', running: st.running, chords: room.practiceTab === 'akkorder' }">
     <nav class="ptabs" role="tablist" aria-label="Øving">
-      <button role="tab" :aria-selected="room.practiceTab === 'timer'" :class="{ on: room.practiceTab === 'timer' }" @click="room.practiceTab = 'timer'">Timer</button>
-      <button role="tab" :aria-selected="room.practiceTab === 'akkorder'" :class="{ on: room.practiceTab === 'akkorder' }" @click="room.practiceTab = 'akkorder'">Akkorder</button>
+      <button v-for="t in TABS" :key="t[0]" role="tab" :aria-selected="room.practiceTab === t[0]" :class="{ on: room.practiceTab === t[0] }" @click="room.practiceTab = t[0]">{{ t[1] }}</button>
     </nav>
 
     <ChordPractice v-if="room.practiceTab === 'akkorder'" class="chordpane" />
+    <GuitarTuner v-else-if="room.practiceTab === 'stemmer'" />
+    <Metronome v-else-if="room.practiceTab === 'metronom'" />
 
     <template v-else>
     <button class="dial" @click="toggle" :aria-label="st.running ? 'Pause' : 'Start'">
@@ -107,8 +114,8 @@ onBeforeUnmount(() => {
 .focus.go { --c: #3cc47e; }
 .focus.chords { align-items: stretch; overflow-y: auto; max-height: 100%; }
 .chordpane { width: 100%; }
-.ptabs { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--glass-strong); border: 1px solid var(--glass-border); align-self: center; }
-.ptabs button { padding: 7px 18px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: 700 0.9rem var(--font); cursor: pointer; }
+.ptabs { display: flex; gap: 2px; padding: 4px; max-width: 100%; border-radius: 999px; background: var(--glass-strong); border: 1px solid var(--glass-border); align-self: center; }
+.ptabs button { flex: 1 1 auto; padding: 8px 16px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: 700 0.9rem var(--font); white-space: nowrap; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .ptabs button.on { background: var(--text); color: var(--bg); }
 
 .dial {
@@ -199,5 +206,7 @@ onBeforeUnmount(() => {
   .dial { width: min(44vh, 84vw); }
   .btn.big { min-width: 120px; padding: 12px 20px; }
   .keys { display: none; }
+  .ptabs { width: 100%; }
+  .ptabs button { padding: 9px 6px; font-size: 0.82rem; }
 }
 </style>

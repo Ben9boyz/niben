@@ -16,7 +16,7 @@ export const room = reactive({
   shelfQ: '', // text typed in the shelf search: matching records slide out of the shelf in the room
   peekIndex: 0, // browsing the shelf: the record pulled out (index into the albums)
   recordFlipped: false, // the held-up record turned over to its track list
-  practiceTab: 'timer', // practice corner: 'timer' | 'akkorder'
+  practiceTab: 'timer', // practice corner: 'timer' | 'akkorder' | 'stemmer' | 'metronom'
   chordMode: 'bytte', // chord practice: 'bytte' | 'progresjon' | 'sanger' | 'grep'
   jpAnime: -1, // Japanese corner: the anime DVD pulled out (index into jp.anime)
   jpPractice: false, // Japanese corner: flashcard practice open // desktop: the side panel slid away (the 3D view gets the whole screen)

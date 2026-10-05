@@ -10,6 +10,7 @@ import ShortcutsHelp from './components/ShortcutsHelp.vue'
 import GraphicsSettings from './components/GraphicsSettings.vue'
 import LangSuggest from './components/LangSuggest.vue'
 import ContextMenu from './components/ContextMenu.vue'
+import NewPlaylistDialog from './components/NewPlaylistDialog.vue'
 import WeatherFx from './components/WeatherFx.vue'
 import { useRoute } from 'vue-router'
 // three.js and the whole room are only fetched when the 3D version is used
@@ -52,6 +53,7 @@ const toTop = () => window.scrollTo(0, 0)
   <GraphicsSettings />
   <LangSuggest />
   <ContextMenu />
+  <NewPlaylistDialog />
   <GlobalMini v-if="mode !== 'rom' || shell === 'player'" :show="route.name !== 'lytte' && route.name !== 'admin'" />
   <NavBar v-if="shell !== 'player'" />
   <template v-else>

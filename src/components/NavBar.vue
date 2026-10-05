@@ -5,6 +5,7 @@ import { GROUPS, groupOf, groupTarget } from '../lib/nav'
 import { useRoute, useRouter } from 'vue-router'
 import { admin, checkLogin } from '../composables/useAdmin'
 import BrandLogo from './BrandLogo.vue'
+import { Menu, X } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -135,7 +136,7 @@ onBeforeUnmount(() => {
   </header>
   <!-- phones: the whole menu sits behind the logo (tap it); the settings cog is in the other corner -->
   <div v-if="isPhone" class="mbar" aria-hidden="true"></div>
-  <button v-if="isPhone" class="mlogo glass" :aria-expanded="navOpen" aria-label="Meny" @click="navOpen = !navOpen" @dblclick.prevent="toAdmin" @pointerdown="pressStart" @pointerup="pressEnd" @pointerleave="pressEnd"><BrandLogo mark /></button>
+  <button v-if="isPhone" class="mlogo glass" :aria-expanded="navOpen" aria-label="Meny" @click="navOpen = !navOpen" @dblclick.prevent="toAdmin" @pointerdown="pressStart" @pointerup="pressEnd" @pointerleave="pressEnd"><X v-if="navOpen" :size="24" aria-hidden="true" /><Menu v-else :size="24" aria-hidden="true" /></button>
   <SettingsMenu v-if="isPhone" />
 </template>
 
@@ -327,7 +328,7 @@ onBeforeUnmount(() => {
   /* one bar along the top: logo (menu) · the page's switch / title · settings */
   .mbar { position: fixed; z-index: 38; top: 0; left: 0; right: 0; height: calc(58px + env(safe-area-inset-top)); background: color-mix(in srgb, var(--bg) 74%, transparent); -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%); border-bottom: 1px solid var(--glass-border); }
   html.classic .mbar { display: none; } /* the plain version has its own bar (.mtop) */
-  .mlogo svg { height: 24px; width: auto; }
+  .mlogo svg { height: 24px; width: 24px; }
   .nav { position: fixed; z-index: 41; top: calc(58px + env(safe-area-inset-top)); left: 12px; bottom: auto; right: auto; width: min(240px, 72vw); max-width: none; padding: 6px; flex-direction: column; border-radius: 20px; transform: translateY(-8px) scale(0.97); transform-origin: 0 0; opacity: 0; visibility: hidden; pointer-events: none; transition: transform 0.3s var(--spring), opacity 0.2s, visibility 0s 0.3s; }
   .nav.open { transform: none; opacity: 1; visibility: visible; pointer-events: auto; transition: transform 0.3s var(--spring), opacity 0.2s; }
   .drop { display: none; }

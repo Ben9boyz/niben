@@ -10,7 +10,7 @@
  */
 
 const SP_LOCK_SECONDS = 600;
-const SP_SCOPES = 'user-library-read playlist-read-private playlist-read-collaborative user-read-currently-playing user-read-playback-state user-modify-playback-state streaming user-read-email user-read-private user-library-modify playlist-modify-private playlist-modify-public user-read-recently-played user-top-read';
+const SP_SCOPES = 'user-library-read playlist-read-private playlist-read-collaborative user-read-currently-playing user-read-playback-state user-modify-playback-state streaming user-read-email user-read-private user-library-modify playlist-modify-private playlist-modify-public user-read-recently-played user-top-read ugc-image-upload';
 
 function sp_config(): ?array {
     static $c = false;
@@ -664,6 +664,38 @@ function sp_handle(string $action, bool $post): void {
         if ($s >= 300 || empty($j['uri'])) fail('Spotify svarte med feil (' . $s . ').', 502);
         kv_del('cache_playlists_v3', 'cache_playlists_v4');
         out(['ok' => true, 'uri' => $j['uri'], 'name' => $j['name'] ?? $name]);
+    }
+
+    case 'spotify_playlist_image': {
+        // my own picture on one of my playlists (multipart: playlist, file). Spotify wants a square JPEG under 256 kB as base64, and a
+        // login that includes "ugc-image-upload" – so the picture is cropped and squeezed here first.
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $pl = (string)($_POST['playlist'] ?? '');
+        if (!preg_match('~^spotify:playlist:([A-Za-z0-9]{10,40})$~', $pl, $m)) fail('Ugyldig spilleliste.');
+        if (!sp_has_scope('ugc-image-upload')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
+        $f = $_FILES['file'] ?? null;
+        if (!$f || ($f['error'] ?? 1) !== UPLOAD_ERR_OK || !is_uploaded_file($f['tmp_name'])) fail('Fikk ikke bildet.');
+        if (($f['size'] ?? 0) > 12 * 1024 * 1024) fail('Bildet er for stort.', 413);
+        if (!function_exists('imagecreatefromstring')) fail('Serveren kan ikke behandle bilder (GD mangler).', 500);
+        $im = @imagecreatefromstring((string)file_get_contents($f['tmp_name']));
+        if (!$im) fail('Det er ikke et bilde jeg kan lese.');
+        $w = imagesx($im); $h = imagesy($im); $side = min($w, $h);
+        $sq = imagecreatetruecolor(480, 480);
+        imagecopyresampled($sq, $im, 0, 0, intdiv($w - $side, 2), intdiv($h - $side, 2), 480, 480, $side, $side);
+        $b64 = '';
+        foreach ([88, 78, 68, 58, 48] as $q) {
+            ob_start(); imagejpeg($sq, null, $q); $b64 = base64_encode((string)ob_get_clean());
+            if (strlen($b64) <= 250000) break;
+        }
+        if (strlen($b64) > 256000) fail('Bildet ble for stort selv etter komprimering – prøv et enklere bilde.');
+        $tok = sp_access_token();
+        if (!$tok) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
+        [$s, $res] = http_req('PUT', 'https://api.spotify.com/v1/playlists/' . $m[1] . '/images', ['Authorization: Bearer ' . $tok, 'Content-Type: image/jpeg'], $b64);
+        if ($s === 401 || $s === 403) out(['error' => 'Spotify ville ikke ta imot bildet (' . $s . '). Er det din egen spilleliste? Ellers: koble til Spotify på nytt.', 'code' => 'scope'], 403);
+        if ($s >= 300) fail('Spotify svarte med feil (' . $s . ').', 502);
+        kv_del('cache_playlists_v3', 'cache_playlists_v4');
+        out(['ok' => true]);
     }
 
     case 'spotify_playlist_delete': {

@@ -1,9 +1,9 @@
 <script setup>
-import { Bookmark, ChevronLeft, Music, Lock, Play, Pause, ArrowUpRight, CirclePlus, ListEnd } from 'lucide-vue-next'
+import { Bookmark, ChevronLeft, Music, Lock, Play, Pause, ArrowUpRight, CirclePlus, ListEnd, Camera } from 'lucide-vue-next'
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import AddMenu from './AddMenu.vue'
 import { startTrackDrag, endDrag } from '../composables/useDrag'
-import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote, control, addToPlaylist, enqueue, enqueueAlbum, isSaved, toggleAlbumSaved } from '../composables/useSpotify'
+import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote, control, addToPlaylist, enqueue, enqueueAlbum, isSaved, toggleAlbumSaved, setPlaylistImage } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 import { showMenu, longPress } from '../composables/useContextMenu'
 import { trackMenu } from '../lib/menus'
@@ -22,6 +22,18 @@ const emit = defineEmits(['back'])
 
 const tracks = ref(null)
 const msg = ref(null)
+// my own playlists: tap the cover to change the picture (Spotify keeps it as the playlist's cover)
+const coverFile = ref(null)
+const canChangeCover = computed(() => admin.loggedIn && props.kind === 'playlist' && props.item.editable !== false && spotify.playlists.some((p) => p.uri === props.item.uri))
+const coverBusy = ref(false)
+async function changeCover(e) {
+  const f = e.target.files?.[0]
+  e.target.value = ''
+  if (!f || !f.type.startsWith('image/')) return
+  coverBusy.value = true
+  await setPlaylistImage(props.item.uri, f)
+  coverBusy.value = false
+}
 // "add to playlist" for a song (admin): the list of my own playlists opens under the song
 const menuFor = ref(null)
 async function addTo(t, pl) {
@@ -126,8 +138,12 @@ async function onPlay(track = null) {
     <header v-else class="hero">
       <button class="back" @click="emit('back')"><ChevronLeft :size="16" />{{ backLabel }}</button>
       <div class="hero-row">
-        <img crossorigin="anonymous" v-if="item.image_large || item.image" :src="item.image_large || item.image" alt="" class="cover" />
-        <div v-else class="cover ph"><Music :size="40" /></div>
+        <component :is="canChangeCover ? 'button' : 'div'" class="coverbox" :class="{ edit: canChangeCover, busy: coverBusy }" v-bind="canChangeCover ? { type: 'button', 'aria-label': 'Bytt bilde på spillelisten', title: 'Bytt bilde' } : {}" @click="canChangeCover && coverFile.click()">
+          <img crossorigin="anonymous" v-if="item.image_large || item.image" :src="item.image_large || item.image" alt="" class="cover" />
+          <div v-else class="cover ph"><Music :size="40" /></div>
+          <span v-if="canChangeCover" class="cam"><Camera :size="16" /><i>Bytt bilde</i></span>
+        </component>
+        <input v-if="canChangeCover" ref="coverFile" type="file" accept="image/*" hidden @change="changeCover" />
         <div class="info">
           <small>{{ kind === 'album' ? 'Album' : 'Spilleliste' }}</small>
           <h2 translate="no">{{ item.name }}</h2>
@@ -211,6 +227,12 @@ async function onPlay(track = null) {
 .back { display: inline-flex; align-items: center; gap: 2px; justify-self: start; border: 0; padding: 6px 12px; border-radius: 999px; background: rgba(0, 0, 0, 0.18); color: #fff; font-weight: 600; font-size: 0.82rem; cursor: pointer; }
 .back:hover { background: rgba(0, 0, 0, 0.3); }
 .hero-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 14px; align-items: end; }
+.coverbox { position: relative; flex: none; display: block; padding: 0; border: 0; border-radius: 8px; background: none; line-height: 0; }
+.coverbox.edit { cursor: pointer; }
+.coverbox.busy { opacity: 0.6; pointer-events: none; }
+.coverbox .cam { position: absolute; inset: auto 6px 6px auto; display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; border-radius: 999px; background: rgba(0, 0, 0, 0.58); color: #fff; font: 600 0.72rem var(--font); line-height: 1; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); transition: opacity 0.2s; }
+.coverbox .cam i { font-style: normal; }
+@media (hover: hover) { .coverbox.edit .cam { opacity: 0; } .coverbox.edit:hover .cam, .coverbox.edit:focus-visible .cam { opacity: 1; } }
 .cover { width: 120px; height: 120px; border-radius: 8px; object-fit: cover; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.4); }
 .cover.ph { display: grid; place-items: center; background: var(--glass-strong); font-size: 2rem; color: var(--text-3); }
 .info { min-width: 0; }

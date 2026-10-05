@@ -82,6 +82,7 @@ function back() {
 .search:focus { border-color: var(--accent); }
 .newpl { display: inline-flex; align-items: center; gap: 3px; padding: 3px 10px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.74rem var(--font); cursor: pointer; }
 .newpl:hover { color: var(--accent); border-color: var(--accent); }
+@media (max-width: 820px) { .newpl { min-height: 34px; padding: 0 14px; font-size: 0.82rem; } }
 @media (max-width: 820px) {
   /* phones: the name on top, the buttons spread over the whole width underneath */
   .stick { flex-direction: column; align-items: stretch; gap: 8px; }

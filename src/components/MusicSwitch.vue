@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { Sparkles } from 'lucide-vue-next'
+import { Sparkles, Library, ScanEye } from 'lucide-vue-next'
 import { toggleMode } from '../composables/useMode'
 import { room } from '../composables/useRoom'
 import { spotify } from '../composables/useSpotify'
@@ -23,6 +23,17 @@ const view = computed({
     if (v === 'ipod') { room.musicView = 'ipodDock'; room.sel.musikk = null } else room.musicView = 'vinyl'
   },
 })
+// PC: look at the record shelf / at the turntable from above (the same views as the phone's bottom bar)
+function goShelf() {
+  room.discover = false
+  if (room.shelfView) { room.shelfView = false; room.sel.musikk = null; return }
+  room.musicView = 'vinyl'; room.sel.musikk = null; room.deckView = false; room.shelfView = true
+}
+function goDeck() {
+  room.discover = false
+  if (room.deckView) { room.deckView = false; return }
+  room.musicView = 'vinyl'; room.sel.musikk = null; room.shelfView = false; room.deckView = true
+}
 function toggleDiscover() { room.discover = !room.discover; if (room.discover) { room.sel.musikk = null; emit('pick') } }
 </script>
 
@@ -30,6 +41,8 @@ function toggleDiscover() { room.discover = !room.discover; if (room.discover) {
   <div class="msw">
     <SegSwitch v-model="view" :items="items" label="Musikk" />
     <button class="to2d glass" title="Bytt til hele 2D-versjonen" aria-label="Bytt til 2D-versjonen" @click="toggleMode">2D</button>
+    <button class="disc view glass" :class="{ on: room.shelfView }" title="Se platehylla" aria-label="Se platehylla" :aria-pressed="room.shelfView" @click="goShelf"><Library :size="18" aria-hidden="true" /></button>
+    <button class="disc view glass" :class="{ on: room.deckView }" title="Se platespilleren ovenfra" aria-label="Se platespilleren ovenfra" :aria-pressed="room.deckView" @click="goDeck"><ScanEye :size="18" aria-hidden="true" /></button>
     <button class="disc glass" :class="{ on: room.discover }" title="Oppdag – album jeg anbefaler" aria-label="Oppdag" :aria-pressed="room.discover" @click="toggleDiscover"><Sparkles :size="18" aria-hidden="true" /></button>
   </div>
 </template>
@@ -41,6 +54,8 @@ function toggleDiscover() { room.discover = !room.discover; if (room.discover) {
 .disc { display: grid; place-items: center; width: 46px; height: 46px; padding: 0; border: 0; border-radius: 50%; color: var(--text-2); cursor: pointer; transition: color 0.2s, transform 0.3s var(--spring); }
 .disc:hover { color: var(--accent); transform: scale(1.06); }
 .disc.on { color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+/* (the shelf / turntable view buttons are for the PC: phones have the bottom bar) */
+@media (max-width: 900px) { .disc.view { display: none; } }
 /* phones in the 3D corner: just a tiny switch, icons only, in the corner – and "2D" to leave for the plain version */
 .to2d { display: none; }
 @media (max-width: 900px) {

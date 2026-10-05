@@ -1,5 +1,7 @@
 <script setup>
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { Music, Play, Pause } from 'lucide-vue-next'
+import { libView } from '../composables/useLibView'
 import { spotify } from '../composables/useSpotify'
 import { playItem, itemMenu } from '../lib/menus'
 import { showMenu, longPress } from '../composables/useContextMenu'
@@ -28,12 +30,19 @@ const props = defineProps({
   why: { type: Object, default: () => ({}) }, // uri -> what the guess was based on
 })
 const emit = defineEmits(['pick', 'hover', 'move', 'dragitem'])
+// phones can show the library as a list (see useLibView)
+const mq = window.matchMedia('(max-width: 820px)')
+const small = ref(mq.matches)
+const onMq = () => { small.value = mq.matches }
+onMounted(() => mq.addEventListener('change', onMq))
+onBeforeUnmount(() => mq.removeEventListener('change', onMq))
+const asList = computed(() => libView.list && small.value && !props.movable)
 </script>
 
 <template>
-  <div class="cgrid">
+  <div class="cgrid" :class="{ list: asList }">
     <slot name="lead" />
-    <div v-for="it in items" :key="it.uri" class="cell" :data-uri="it.uri" :draggable="draggable || undefined" @contextmenu="menu($event, it)" v-on="holds(it)">
+    <div v-for="it in items" :key="it.uri" class="cell" :class="{ row: asList }" :data-uri="it.uri" :draggable="draggable || undefined" @contextmenu="menu($event, it)" v-on="holds(it)">
       <button
         class="tile"
         :class="{ on: it.uri === selectedUri, playing: it.uri === playingUri, cursor: it.uri === cursorUri }"
@@ -43,9 +52,10 @@ const emit = defineEmits(['pick', 'hover', 'move', 'dragitem'])
       >
         <img crossorigin="anonymous" v-if="it.image" :src="it.image" alt="" loading="lazy" />
         <span v-else class="ph"><Music :size="28" /></span>
-        <span class="cap" translate="no"><b>{{ it.name }}</b><small v-if="it.sub">{{ it.sub }}</small></span>
+        <span v-if="!asList" class="cap" translate="no"><b>{{ it.name }}</b><small v-if="it.sub">{{ it.sub }}</small></span>
         <span v-if="it.uri === playingUri" class="live" title="Spilles nå"><i></i><i></i><i></i></span>
       </button>
+      <span v-if="asList" class="lt" translate="no" @click="emit('pick', it)"><b>{{ it.name }}</b><small v-if="it.sub">{{ it.sub }}</small></span>
       <button v-if="playable(it)" class="pl" :class="{ now: it.uri === playingUri }" :title="it.uri === playingUri && spotify.now?.playing ? 'Pause' : 'Spill av fra første låt'" :aria-label="`Spill ${it.name}`" @click.stop="go(it)">
         <Pause v-if="it.uri === playingUri && spotify.now?.playing" :size="15" fill="currentColor" /><Play v-else :size="15" fill="currentColor" />
       </button>
@@ -60,6 +70,18 @@ const emit = defineEmits(['pick', 'hover', 'move', 'dragitem'])
 </template>
 
 <style scoped>
+/* list mode (phones): a row per album / playlist */
+.cgrid.list { grid-template-columns: 1fr; gap: 2px; }
+.cell.row { display: flex; align-items: center; gap: 12px; padding: 5px 4px; border-radius: 12px; }
+.cell.row:active { background: var(--accent-soft); }
+.cell.row .tile { flex: none; width: 56px; height: 56px; aspect-ratio: auto; border-radius: 8px; box-shadow: none; }
+.cell.row .tile:hover { transform: none; box-shadow: none; }
+.lt { display: grid; min-width: 0; flex: 1; line-height: 1.25; cursor: pointer; }
+.lt b { font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lt small { font-size: 0.8rem; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cell.row .pl { position: static; opacity: 1; transform: none; flex: none; display: grid !important; width: 38px; height: 38px; box-shadow: none; }
+/* touch screens: the names are always there (no hover) */
+@media (hover: none) { .cgrid:not(.list) .cap { opacity: 1; transform: none; padding-top: 18px; } }
 .cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; }
 .cell { position: relative; min-width: 0; }
 .cell[draggable="true"] { cursor: grab; }

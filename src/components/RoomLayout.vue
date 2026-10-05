@@ -241,7 +241,7 @@ watch(() => route.name, () => (collapsed.value = false))
 }
 
 .dock.focus {
-  top: 24px;
+  top: 84px; /* below the floating sub-tabs (Japansk / Gitar-øving), which would otherwise sit on top of the panel on narrower windows */
   bottom: 24px;
   left: calc(50% + var(--rail) / 2);
   right: auto;
@@ -333,7 +333,7 @@ watch(() => route.name, () => (collapsed.value = false))
     cursor: pointer;
   }
   .dock.focus {
-    top: 70px;
+    top: 126px; /* under the nav bar and the floating sub-tabs (Japansk / Gitar-øving) */
     left: 50%;
     right: auto;
     bottom: calc(14px + env(safe-area-inset-bottom));

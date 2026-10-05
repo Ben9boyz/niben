@@ -1,6 +1,7 @@
 import { Play, Pause, ListEnd, ListPlus, FolderInput, ExternalLink, Link, User, Disc3, Heart, HeartOff, FolderOpen, EyeOff, Trash2 } from 'lucide-vue-next'
-import { createPlaylist, deletePlaylist, spotify, play, control, lockLeft, fmtClock, lockNote, notify, enqueue, enqueueAlbum, addToPlaylist, isSaved, toggleAlbumSaved, isLiked, setLiked, addGuest } from '../composables/useSpotify'
+import { deletePlaylist, spotify, play, control, lockLeft, fmtClock, lockNote, notify, enqueue, enqueueAlbum, addToPlaylist, isSaved, toggleAlbumSaved, isLiked, setLiked, addGuest } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
+import { askNewPlaylist } from '../composables/usePlaylistDialog'
 import { groups, flatGroups, moveTo } from '../composables/useGroups'
 import { openAlbumPage, openArtistPage, albumOfTrack, firstArtist } from '../composables/useBrowse'
 
@@ -23,13 +24,8 @@ export async function playItem(it) {
   say(r.ok ? { text: `Spiller «${it.name}»${lockNote()}` } : { error: true, text: r.error })
 }
 
-/** Ask for a name and make a playlist (right-click menus). Returns the new playlist, or null. */
-export async function promptNewPlaylist() {
-  const name = (window.prompt('Navn på den nye spillelisten:') || '').trim()
-  if (!name) return null
-  const r = await createPlaylist(name)
-  return r.ok ? { uri: r.uri, name } : null
-}
+/** Opens the "Ny spilleliste" sheet (name + picture). Returns the new playlist, or null if I backed out. */
+export const promptNewPlaylist = askNewPlaylist
 /** Right-click in the empty space of the playlists: make a new one. */
 export function playlistsMenu() {
   return admin.loggedIn ? [{ label: 'Ny spilleliste …', icon: ListPlus, run: promptNewPlaylist }] : []

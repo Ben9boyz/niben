@@ -386,11 +386,32 @@ async function searchSpotifyNow(q) {
   return { albums: j.albums || [], tracks: j.tracks || [], playlists: j.playlists || [], artists: j.artists || [] }
 }
 
-/** A new, empty playlist of my own. */
-export async function createPlaylist(name) {
+/** A picture on one of my own playlists. Spotify takes a square JPEG, which the server makes from whatever I choose. */
+export async function setPlaylistImage(uri, file) {
+  const fd = new FormData()
+  fd.append('playlist', uri)
+  fd.append('file', file)
+  const r = await act('spotify_playlist_image', fd)
+  if (!r.ok) { notify(r.error || 'Klarte ikke å bytte bildet.', true); return r }
+  // Spotify needs a moment before its own copy is ready – the picture I chose shows right away
+  const local = URL.createObjectURL(file)
+  const p = spotify.playlists.find((x) => x.uri === uri)
+  if (p) { p.image = p.image_large = p.thumb = local }
+  setTimeout(() => refreshLists(true), 6000)
+  notify('Bildet er byttet.')
+  return r
+}
+
+/** A new, empty playlist of my own – with a picture, if I picked one. */
+export async function createPlaylist(name, image = null) {
   const r = await act('spotify_playlist_create', { name })
-  if (r.ok) { await refreshLists(true); notify(`«${name}» er laget.`) }
-  else notify(r.error || 'Klarte ikke å lage spillelisten.', true)
+  if (!r.ok) { notify(r.error || 'Klarte ikke å lage spillelisten.', true); return r }
+  await refreshLists(true)
+  if (image) {
+    const ri = await setPlaylistImage(r.uri, image)
+    if (!ri.ok) return { ...r, imageError: ri.error }
+  }
+  notify(`«${name}» er laget.`)
   return r
 }
 /** Take a playlist out of my library ("delete": Spotify only lets go of it). */

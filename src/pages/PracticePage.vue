@@ -8,7 +8,7 @@ import PracticePanel from '../panels/PracticePanel.vue'
     <header class="cpage-head">
       <div class="eyebrow">{{ tx('practice.eyebrow') }}</div>
       <h1>{{ tx('practice.title') }}</h1>
-      <p>Intervall-timer og akkordøving.</p>
+      <p>Timer, akkorder, stemmeapparat og metronom – alt du trenger for å øve.</p>
     </header>
     <PracticePanel />
   </div>
