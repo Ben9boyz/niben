@@ -37,7 +37,8 @@ async function toggle() {
   const h = menuEl.value?.offsetHeight || 300, w = menuEl.value?.offsetWidth || 270
   // desktop: beside the rail, bottom edges lined up · phones: under the button in the corner – always on the screen
   const left = phone ? Math.max(8, Math.min(innerWidth - w - 10, r.right - w)) : Math.min(r.right + 10, innerWidth - w - 8)
-  const top = phone ? Math.min(r.bottom + 8, innerHeight - h - 8) : Math.max(8, Math.min(r.bottom - h, innerHeight - h - 8))
+  // (24 px spare at the bottom: a window edge or the Dock can hide the last few pixels)
+  const top = phone ? Math.min(r.bottom + 8, innerHeight - h - 24) : Math.min(r.bottom - h - 4, innerHeight - h - 24)
   pos.value = { left: `${left}px`, top: `${Math.max(8, top)}px` }
 }
 const close = () => { open.value = false; langOpen.value = false }
@@ -103,9 +104,9 @@ const setView = (v) => { if (viewMode.value !== v) toggleMode() }
           </ul>
         </div>
 
-        <button v-if="viewMode === 'rom'" class="row" role="menuitem" @click="close(); gfxUi.open = true"><Gauge :size="16" aria-hidden="true" /><span class="l"><b>Grafikk</b><small>Auto – eller still inn selv</small></span></button>
+        <button v-if="viewMode === 'rom'" class="row" role="menuitem" @click="close(); gfxUi.open = true"><Gauge :size="16" aria-hidden="true" /><span class="l"><b>Grafikk</b></span></button>
 
-        <button v-if="!touch" class="row" role="menuitem" @click="close(); shortcuts.open = true"><Keyboard :size="16" aria-hidden="true" /><span class="l"><b>Hurtigtaster</b><small>Trykk ? når som helst</small></span></button>
+        <button v-if="!touch" class="row" role="menuitem" @click="close(); shortcuts.open = true"><Keyboard :size="16" aria-hidden="true" /><span class="l"><b>Hurtigtaster</b></span></button>
       </div>
     </transition>
   </teleport>
@@ -119,8 +120,8 @@ const setView = (v) => { if (viewMode.value !== v) toggleMode() }
 @media (max-width: 720px) { .sm { width: 40px; height: 40px; } }
 </style>
 <style>
-.smenu.smenu { position: fixed; z-index: 90; width: 280px; max-height: calc(100dvh - 16px); overflow-y: auto; overscroll-behavior: contain; padding: 8px; border-radius: 18px; background: var(--bg); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3); display: grid; gap: 4px; }
-.smenu .row { display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; padding: 9px 10px; border: 0; border-radius: 11px; background: transparent; color: var(--text); text-align: left; text-decoration: none; cursor: pointer; font-family: var(--font); }
+.smenu.smenu { position: fixed; z-index: 90; width: 280px; max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain; padding: 8px; border-radius: 18px; background: var(--bg); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3); display: grid; gap: 4px; }
+.smenu .row { display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; padding: 7px 10px; border: 0; border-radius: 11px; background: transparent; color: var(--text); text-align: left; text-decoration: none; cursor: pointer; font-family: var(--font); }
 .smenu .row:hover { background: var(--accent-soft); }
 .smenu .row:focus { outline: none; }
 .smenu .row:focus-visible, .smenu .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -128,7 +129,7 @@ const setView = (v) => { if (viewMode.value !== v) toggleMode() }
 .smenu .l { flex: 1; display: grid; min-width: 0; }
 .smenu .l b { font-weight: 600; font-size: 0.88rem; }
 .smenu .l small { font-size: 0.72rem; color: var(--text-3); line-height: 1.25; }
-.smenu .grp { display: grid; gap: 4px; padding: 6px 0 4px; border-top: 1px solid var(--glass-border); }
+.smenu .grp { display: grid; gap: 4px; padding: 5px 0 3px; border-top: 1px solid var(--glass-border); }
 .smenu .cap { padding: 0 10px; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
 .smenu .seg { display: flex; gap: 3px; padding: 3px; margin: 0 4px; border-radius: 12px; background: var(--glass-strong); }
 .smenu .seg button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 8px 4px; border: 0; border-radius: 9px; background: transparent; color: var(--text-2); font: 600 0.82rem var(--font); cursor: pointer; }
