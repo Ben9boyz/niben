@@ -3,6 +3,7 @@ import { tick as metronomeTick } from '../lib/strum'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Play, Square, ArrowUpRight, Search, Trophy, ArrowLeftRight, BookOpen } from 'lucide-vue-next'
 import ChordDiagram from './ChordDiagram.vue'
+import SegSwitch from './SegSwitch.vue'
 import ChordSheet from './ChordSheet.vue'
 import { CHORDS, GROUPS, PAIRS, parseProgression, findChord } from '../lib/chords'
 import { useData } from '../composables/useData'
@@ -14,6 +15,7 @@ const data = useData()
 const mode = computed({ get: () => room.chordMode, set: (v) => (room.chordMode = v) })
 const songs = computed(() => data.sanger || [])
 const names = Object.keys(CHORDS)
+const MODES = [{ id: 'bytte', label: 'Bytte' }, { id: 'progresjon', label: 'Progresjon' }, { id: 'sanger', label: 'Sanger' }, { id: 'grep', label: 'Grep' }]
 const sheetId = ref(null) // the song whose chord sheet is open
 const sheetSong = computed(() => songs.value.find((x) => x.id === sheetId.value) || null)
 
@@ -116,9 +118,7 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); clearInter
 
 <template>
   <div class="cp">
-    <nav class="sub" role="tablist">
-      <button v-for="m in [['bytte', 'Bytte'], ['progresjon', 'Progresjon'], ['sanger', 'Sanger'], ['grep', 'Grep']]" :key="m[0]" role="tab" :aria-selected="mode === m[0]" :class="{ on: mode === m[0] }" @click="mode = m[0]">{{ m[1] }}</button>
-    </nav>
+    <SegSwitch v-model="mode" :items="MODES" small stretch label="Akkordøving" />
 
     <!-- one-minute changes -->
     <section v-if="mode === 'bytte'" class="pane">
@@ -130,7 +130,7 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); clearInter
         <ChordDiagram :name="pairB" :size="110" />
         <select v-model="pairB" :disabled="running" aria-label="Andre akkord"><option v-for="n in names" :key="n">{{ n }}</option></select>
       </div>
-      <div class="quick">
+      <div class="quick pills">
         <button v-for="p in PAIRS" :key="p.join()" :class="{ on: p[0] === pairA && p[1] === pairB }" :disabled="running" @click="pickPair(p)">{{ p[0] }}–{{ p[1] }}</button>
       </div>
       <button class="counter" :class="{ running }" @click="running ? countChange() : startChanges()">
@@ -197,17 +197,12 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); clearInter
 
 <style scoped>
 .cp { display: grid; gap: 14px; }
-.sub { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--glass-strong); border: 1px solid var(--glass-border); justify-self: center; }
-.sub button { padding: 7px 14px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: 600 0.85rem var(--font); cursor: pointer; }
-.sub button.on { background: var(--accent); color: #fff; }
 .pane { display: grid; gap: 14px; justify-items: center; }
 .hint { margin: 0; font-size: 0.85rem; color: var(--text-2); text-align: center; max-width: 46ch; }
 .pair { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .pair select, .controls select { padding: 6px 8px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--glass-strong); color: var(--text); font: 600 0.9rem var(--font); }
 .arrow { color: var(--text-3); }
 .quick { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
-.quick button { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--glass-border); background: transparent; color: var(--text-2); font: 600 0.75rem var(--font); cursor: pointer; }
-.quick button.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
 .counter { width: 180px; height: 180px; border-radius: 50%; border: 0; display: grid; place-items: center; align-content: center; gap: 4px; background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: #fff; cursor: pointer; box-shadow: 0 14px 36px var(--accent-glow); transition: transform 0.12s; user-select: none; }
 .counter:active { transform: scale(0.96); }
 .counter b { font-size: 3.2rem; line-height: 1; font-variant-numeric: tabular-nums; }

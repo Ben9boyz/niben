@@ -78,7 +78,7 @@ const list = computed(() => {
         <p v-if="deckMsg?.error" class="notice error">{{ deckMsg.error }}</p>
       </section>
       <label class="find"><Search :size="15" /><input v-model="q" placeholder="Søk: 猫, ねこ eller cat" @input="shown = 60" /></label>
-      <div class="filters">
+      <div class="filters pills">
         <button v-for="[id, label] in FILTERS" :key="id" :class="{ on: filter === id, [id]: true }" @click="filter = id; shown = 60">{{ label }} <small>{{ counts[id] }}</small></button>
         <select v-model="sort" aria-label="Sorter"><option value="freq">Vanligste først</option><option value="kana">Etter lesning</option></select>
       </div>
@@ -106,9 +106,6 @@ const list = computed(() => {
 .find { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 12px; background: var(--glass-strong); border: 1px solid var(--glass-border); color: var(--text-3); }
 .find input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text); font: 500 0.92rem var(--font); outline: none; }
 .filters { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
-.filters button { padding: 5px 11px; border: 1px solid var(--glass-border); border-radius: 999px; background: transparent; color: var(--text-2); font: 600 0.78rem var(--font); cursor: pointer; }
-.filters button small { opacity: 0.6; }
-.filters button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .filters select { margin-left: auto; padding: 5px 8px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--glass-strong); color: var(--text); font: 500 0.78rem var(--font); }
 .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .list button { display: grid; grid-template-columns: 10px auto auto minmax(0, 1fr) auto; align-items: baseline; gap: 8px; width: 100%; padding: 7px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }

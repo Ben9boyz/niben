@@ -32,7 +32,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 <template>
   <section class="drawer glass" aria-label="Musikk">
     <header>
-      <nav class="tabs" role="tablist">
+      <nav class="tabs pills" role="tablist">
         <button role="tab" :aria-selected="!ipod()" :class="{ on: !ipod() }" @click="show('vinyl')"><Disc3 :size="15" />Album<small>{{ spotify.albums.length || '' }}</small></button>
         <button role="tab" :aria-selected="ipod()" :class="{ on: ipod() }" @click="show('ipod')"><ListMusic :size="15" />Spillelister<small>{{ spotify.playlists.length || '' }}</small></button>
       </nav>
@@ -64,8 +64,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 @keyframes drop { from { opacity: 0; transform: translateY(-10px) scale(0.98); } }
 header { display: flex; align-items: center; gap: 6px; padding: 12px 12px 8px; }
 .tabs { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-border); }
-.tabs button { display: flex; align-items: center; gap: 5px; padding: 6px 11px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: 600 0.8rem var(--font); cursor: pointer; }
-.tabs button.on { background: var(--accent-soft); color: var(--accent); }
 .tabs small { opacity: 0.6; font-weight: 500; }
 .corner { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; padding: 5px 9px; border: 0; border-radius: 999px; background: transparent; color: var(--text-3); font: 600 0.72rem var(--font); cursor: pointer; }
 .corner:hover { color: var(--accent); background: var(--accent-soft); }

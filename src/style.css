@@ -211,6 +211,33 @@ button { font: inherit; color: inherit; }
 }
 .btn.primary:hover { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 12px 32px var(--accent-glow); }
 
+/* One design language for everyday controls:
+   · flat – `.pill` / `.pills > button` (filters, presets, small switches), tabs through <SegSwitch>, `.btn` (glass)
+   · glossy 3D – only the main action of a view: `.btn.primary`, the play / start buttons. Use it sparingly. */
+.pill, .pills > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: var(--glass-strong);
+  color: var(--text-2);
+  font: 600 0.82rem var(--font);
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+.pill:hover:not(:disabled), .pills > button:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.pill.on, .pills > button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.pill:disabled, .pills > button:disabled { opacity: 0.45; cursor: default; }
+.pill small, .pills > button small { opacity: 0.6; font-weight: 600; }
+.btn.soft { background: var(--accent-soft); border-color: transparent; box-shadow: none; color: var(--accent); }
+
 .chip {
   display: inline-flex;
   align-items: center;
@@ -387,6 +414,9 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 .form-actions .spacer { flex: 1; }
 .btn.danger { color: #e5484d; }
 .btn.small { padding: 8px 14px; font-size: 0.85rem; }
+/* small buttons are everyday controls: flat blue, no glow (the glossy look is for the one main action) */
+.btn.primary.small { background: var(--accent); box-shadow: none; }
+.btn.primary.small:hover { box-shadow: var(--shadow-1); }
 .notice { padding: 10px 14px; border-radius: 12px; font-size: 0.88rem; }
 .notice.error { background: rgba(229, 72, 77, 0.12); color: #e5484d; }
 .notice.ok { background: rgba(60, 196, 126, 0.14); color: #2a9d63; }

@@ -206,7 +206,7 @@ const langName = (c) => byCode[c]?.en || c
         </header>
         <template v-if="st.spotify.connected">
           <p class="help">Hvor lenge musikken er låst når du setter på et album eller en spilleliste. Da kan ikke noen (heller ikke du) bytte før tiden er ute{{ locked ? ' – akkurat nå er den låst' : '' }}.</p>
-          <div class="chips" role="group" aria-label="Låsens lengde">
+          <div class="chips pills" role="group" aria-label="Låsens lengde">
             <button v-for="s in LOCKS" :key="s" :class="{ on: lockSec === s }" :disabled="busy === 'lock' || locked" @click="setLock(s)">{{ s ? fmtLock(s) : 'Av' }}</button>
           </div>
           <p v-if="locked" class="help warn">Låsen kan endres når den er ferdig.</p>
@@ -280,10 +280,6 @@ const langName = (c) => byCode[c]?.en || c
 .pill.ok { background: rgba(29, 185, 84, 0.16); color: #17924a; }
 .pill.bad { background: rgba(229, 83, 61, 0.16); color: #c0432f; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chips button { padding: 7px 14px; border: 1px solid var(--glass-border); border-radius: 999px; background: transparent; color: var(--text-2); font: 600 0.84rem var(--font); cursor: pointer; }
-.chips button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-.chips button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-.chips button:disabled:not(.on) { opacity: 0.5; cursor: not-allowed; }
 .todo { margin: 0; padding: 10px 14px; list-style: none; border-radius: 12px; background: rgba(240, 160, 64, 0.14); font-size: 0.84rem; }
 .todo a { color: var(--accent); font-weight: 700; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; }

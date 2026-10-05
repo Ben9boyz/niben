@@ -5,9 +5,10 @@ import { room } from '../composables/useRoom'
 import ChordPractice from '../components/ChordPractice.vue'
 import GuitarTuner from '../components/GuitarTuner.vue'
 import Metronome from '../components/Metronome.vue'
+import SegSwitch from '../components/SegSwitch.vue'
 
 // The practice corner: the interval timer, chords, a tuner (with half-step-down / up tunings) and a metronome.
-const TABS = [['timer', 'Timer'], ['akkorder', 'Akkorder'], ['stemmer', 'Stemmer'], ['metronom', 'Metronom']]
+const TABS = [{ id: 'timer', label: 'Timer' }, { id: 'akkorder', label: 'Akkorder' }, { id: 'stemmer', label: 'Stemmer' }, { id: 'metronom', label: 'Metronom' }]
 
 // re-evaluates every frame while the timer runs (timer.now ticks)
 const st = computed(() => { void timer.now; void timer.running; void timer.pausedMs; void timer.interval; return timerState() })
@@ -49,9 +50,7 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="focus glass" :class="{ go: st.go && room.practiceTab === 'timer', running: st.running, chords: room.practiceTab === 'akkorder' }">
-    <nav class="ptabs" role="tablist" aria-label="Øving">
-      <button v-for="t in TABS" :key="t[0]" role="tab" :aria-selected="room.practiceTab === t[0]" :class="{ on: room.practiceTab === t[0] }" @click="room.practiceTab = t[0]">{{ t[1] }}</button>
-    </nav>
+    <SegSwitch v-model="room.practiceTab" :items="TABS" small stretch label="Øving" class="ptabs" />
 
     <ChordPractice v-if="room.practiceTab === 'akkorder'" class="chordpane" />
     <GuitarTuner v-else-if="room.practiceTab === 'stemmer'" />
@@ -78,8 +77,8 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="settings">
-      <div class="presets" role="group" aria-label="Intervall">
-        <button v-for="p in presets" :key="p" class="chip-btn" :class="{ on: timer.interval === p }" @click="setIntervalSeconds(p)">{{ p }}s</button>
+      <div class="presets pills" role="group" aria-label="Intervall">
+        <button v-for="p in presets" :key="p" :class="{ on: timer.interval === p }" @click="setIntervalSeconds(p)">{{ p }}s</button>
         <label class="custom">
           <input type="number" min="1" max="3600" :value="timer.interval" @change="(e) => setIntervalSeconds(e.target.value)" aria-label="Eget intervall i sekunder" />
           <span>s</span>
@@ -113,9 +112,7 @@ onBeforeUnmount(() => {
 .focus.go { --c: #3cc47e; }
 .focus.chords { align-items: stretch; overflow-y: auto; max-height: 100%; }
 .chordpane { width: 100%; }
-.ptabs { display: flex; gap: 2px; padding: 4px; max-width: 100%; border-radius: 999px; background: var(--glass-strong); border: 1px solid var(--glass-border); align-self: center; }
-.ptabs button { flex: 1 1 auto; padding: 8px 16px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: 700 0.9rem var(--font); white-space: nowrap; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-.ptabs button.on { background: var(--text); color: var(--bg); }
+.ptabs { align-self: stretch; }
 
 .dial {
   position: relative;
@@ -168,19 +165,6 @@ onBeforeUnmount(() => {
 
 .settings { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; }
 .presets { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
-.chip-btn {
-  padding: 7px 13px;
-  border-radius: 999px;
-  border: 1px solid var(--glass-border);
-  background: transparent;
-  color: var(--text-2);
-  font-weight: 600;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s, transform 0.4s var(--spring);
-}
-.chip-btn:hover { transform: translateY(-2px); }
-.chip-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .custom { display: flex; align-items: center; gap: 4px; color: var(--text-3); font-size: 0.85rem; }
 .custom input {
   width: 60px;
@@ -203,7 +187,5 @@ onBeforeUnmount(() => {
   .focus { padding: 20px 16px 16px; gap: 14px; }
   .dial { width: min(44vh, 84vw); }
   .btn.big { min-width: 120px; padding: 12px 20px; }
-  .ptabs { width: 100%; }
-  .ptabs button { padding: 9px 6px; font-size: 0.82rem; }
 }
 </style>

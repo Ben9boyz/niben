@@ -145,14 +145,14 @@ function playTone(f) {
 
 <template>
   <div class="tuner">
-    <div class="presets" role="group" aria-label="Stemming">
-      <button v-for="t in TUNINGS" :key="t.id" class="chip" :class="{ on: tuning === t.id }" @click="tuning = t.id; picked = 0">{{ t.label }}</button>
+    <div class="presets pills" role="group" aria-label="Stemming">
+      <button v-for="t in TUNINGS" :key="t.id" :class="{ on: tuning === t.id }" @click="tuning = t.id; picked = 0">{{ t.label }}</button>
     </div>
 
     <div class="shift" role="group" aria-label="Flytt stemmingen">
-      <button class="step" aria-label="Ett halvt steg ned" :disabled="shift <= -6" @click="shift--">♭ −½</button>
+      <button class="pill" aria-label="Ett halvt steg ned" :disabled="shift <= -6" @click="shift--">♭ −½</button>
       <span class="sl"><b>{{ shiftLabel }}</b><small>{{ shift > 0 ? '+' : '' }}{{ shift }} halvtoner</small></span>
-      <button class="step" aria-label="Ett halvt steg opp" :disabled="shift >= 6" @click="shift++">♯ +½</button>
+      <button class="pill" aria-label="Ett halvt steg opp" :disabled="shift >= 6" @click="shift++">♯ +½</button>
     </div>
 
     <div class="gauge" :class="{ tune: inTune, idle: !freq }">
@@ -173,7 +173,7 @@ function playTone(f) {
     </div>
     <p class="sub"><Volume2 :size="13" aria-hidden="true" /> Trykk på en streng for å høre tonen. <button v-if="!auto" class="lnk" @click="auto = true">Finn streng automatisk</button></p>
 
-    <button class="mic" :class="{ on }" @click="on ? stop() : start()">
+    <button class="btn primary mic" :class="{ stop: on }" @click="on ? stop() : start()">
       <component :is="on ? MicOff : Mic" :size="20" aria-hidden="true" />{{ on ? 'Stopp' : 'Start tuner' }}
     </button>
     <p v-if="error" class="err">{{ error }}</p>
@@ -185,12 +185,7 @@ function playTone(f) {
 <style scoped>
 .tuner { display: grid; gap: 12px; justify-items: center; width: 100%; }
 .presets { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
-.chip { padding: 6px 12px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.78rem var(--font); cursor: pointer; }
-.chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .shift { display: flex; align-items: center; gap: 10px; }
-.step { min-width: 62px; padding: 8px 12px; border: 1px solid var(--glass-border); border-radius: 12px; background: var(--glass-strong); color: var(--text); font: 700 0.85rem var(--font); cursor: pointer; touch-action: manipulation; }
-.step:active:not(:disabled) { background: var(--accent-soft); }
-.step:disabled { opacity: 0.35; }
 .sl { display: grid; justify-items: center; min-width: 130px; line-height: 1.2; }
 .sl b { font-size: 0.92rem; }
 .sl small { color: var(--text-3); font-size: 0.72rem; }
@@ -220,8 +215,8 @@ function playTone(f) {
 .str.cur { outline: 2px solid var(--accent); outline-offset: 1px; }
 .sub { display: flex; align-items: center; gap: 5px; margin: 0; color: var(--text-3); font-size: 0.78rem; }
 .lnk { border: 0; background: none; color: var(--accent); font: 600 0.78rem var(--font); cursor: pointer; padding: 0; }
-.mic { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; font: 700 0.95rem var(--font); cursor: pointer; touch-action: manipulation; }
-.mic.on { background: #d24b4b; }
+.mic { padding: 13px 26px; }
+.mic.stop { background: #d24b4b; box-shadow: 0 8px 24px rgba(210, 75, 75, 0.4); }
 .err { margin: 0; max-width: 34ch; text-align: center; color: #d24b4b; font-size: 0.82rem; }
 .ref { display: flex; align-items: center; gap: 6px; color: var(--text-3); font-size: 0.78rem; }
 .ref input { width: 56px; padding: 4px 6px; border: 1px solid var(--glass-border); border-radius: 8px; background: var(--bg); color: var(--text); font: 600 0.82rem var(--font); text-align: center; }

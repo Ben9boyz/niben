@@ -98,11 +98,11 @@ watch(beats, () => { count = 0 })
       <button class="pm" aria-label="Raskere" @click="setBpm(bpm + 1)">+</button>
     </div>
     <input class="slider" type="range" min="30" max="260" :value="bpm" aria-label="Tempo" @input="setBpm($event.target.value)" />
-    <div class="row">
+    <div class="ctrl">
       <button class="go" :class="{ on: running }" :aria-label="running ? 'Stopp' : 'Start'" @click="toggle"><Pause v-if="running" :size="22" fill="currentColor" /><Play v-else :size="22" fill="currentColor" /></button>
-      <button class="tap" @click="tap">Tapp tempo</button>
+      <button class="btn tap" @click="tap">Tapp tempo</button>
     </div>
-    <div class="beats" role="group" aria-label="Slag i takten">
+    <div class="beats pills" role="group" aria-label="Slag i takten">
       <span>Slag:</span>
       <button v-for="b in BEATS" :key="b" :class="{ on: beats === b }" @click="beats = b">{{ b }}</button>
     </div>
@@ -129,14 +129,11 @@ watch(beats, () => { count = 0 })
 .pm { width: 48px; height: 48px; border: 1px solid var(--glass-border); border-radius: 50%; background: var(--glass-strong); color: var(--text); font: 600 1.5rem var(--font); cursor: pointer; touch-action: manipulation; }
 .pm:active { background: var(--accent-soft); }
 .slider { width: 100%; accent-color: var(--accent); }
-.row { display: flex; align-items: center; gap: 12px; }
+.ctrl { display: flex; align-items: center; gap: 12px; }
 .go { display: grid; place-items: center; width: 64px; height: 64px; border: 0; border-radius: 50%; background: var(--accent); color: #fff; cursor: pointer; box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 40%, transparent); touch-action: manipulation; }
 .go.on { background: #d24b4b; box-shadow: 0 8px 22px rgba(210, 75, 75, 0.4); }
-.tap { padding: 12px 20px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text); font: 700 0.88rem var(--font); cursor: pointer; touch-action: manipulation; }
-.tap:active { background: var(--accent-soft); }
 .beats { display: flex; align-items: center; gap: 5px; color: var(--text-3); font-size: 0.8rem; }
-.beats button { width: 34px; height: 34px; border: 1px solid var(--glass-border); border-radius: 10px; background: var(--glass-strong); color: var(--text-2); font: 700 0.85rem var(--font); cursor: pointer; }
-.beats button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+.beats button { min-width: 36px; padding: 0; }
 .tr { display: flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 0.85rem; cursor: pointer; }
 .trset { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; color: var(--text-3); font-size: 0.8rem; }
 .trset label { display: inline-flex; align-items: center; gap: 4px; }

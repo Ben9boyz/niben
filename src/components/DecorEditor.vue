@@ -30,7 +30,7 @@ function done() { decor.editing = false }
         <button class="btn primary small" @click="done"><Check :size="14" aria-hidden="true" />Ferdig</button>
       </div>
       <p v-if="decor.error" class="err">{{ decor.error }}</p>
-      <div v-if="decor.items.length" class="chips">
+      <div v-if="decor.items.length" class="chips pills">
         <button v-for="i in decor.items" :key="i.id" :class="{ on: i.id === decor.selected, off: i.visible === false }" @click="pick(i.id)">{{ i.name || 'Modell' }}</button>
       </div>
       <p v-else class="hint">Ingen modeller ennå. Legg til en .glb-fil, så dukker den opp midt i rommet.</p>
@@ -56,8 +56,6 @@ function done() { decor.editing = false }
 .st { font-size: 0.74rem; color: var(--text-3); }
 .btn { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; max-height: 74px; overflow-y: auto; }
-.chips button { padding: 5px 11px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.8rem var(--font); cursor: pointer; }
-.chips button.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 .chips button.off { opacity: 0.55; text-decoration: line-through; }
 .tools { display: flex; gap: 6px; flex-wrap: wrap; }
 .tools button { display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 12px; background: var(--glass-strong); color: var(--text-2); cursor: pointer; }

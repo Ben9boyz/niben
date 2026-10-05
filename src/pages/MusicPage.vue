@@ -98,7 +98,7 @@ function show(view) {
             <p v-else class="m-hint">Søk etter album, spillelister og låter.</p>
           </template>
           <template v-else>
-            <div v-if="!room.sel.musikk && !room.ipod.playlist" class="chips" role="tablist" aria-label="Bibliotek">
+            <div v-if="!room.sel.musikk && !room.ipod.playlist" class="chips pills" role="tablist" aria-label="Bibliotek">
               <button v-for="c in CHIPS" :key="c.id" role="tab" :aria-selected="chip === c.id" :class="{ on: chip === c.id }" @click="pickChip(c.id)">{{ c.label }}</button>
             </div>
             <DiscoverContent v-if="room.discover" />
@@ -244,8 +244,7 @@ function show(view) {
 .m-main { padding-bottom: calc(158px + env(safe-area-inset-bottom)); }
 .chips { display: flex; gap: 6px; overflow-x: auto; padding: 0 0 10px; margin: 0 -2px; scrollbar-width: none; }
 .chips::-webkit-scrollbar { display: none; }
-.chips button { flex: none; padding: 7px 15px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.84rem var(--font); cursor: pointer; touch-action: manipulation; }
-.chips button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chips button { flex: none; }
 .gsearch.big { margin-bottom: 12px; padding: 12px 16px; }
 .m-hint { margin: 18px 4px; color: var(--text-3); font-size: 0.9rem; text-align: center; }
 .as-player { display: block; width: max-content; margin: 10px auto 2px; font-size: 0.78rem; color: var(--text-3); opacity: 0.7; text-decoration: none; }

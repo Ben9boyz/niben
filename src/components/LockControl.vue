@@ -62,7 +62,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocDown))
       <div v-if="open" ref="menu" class="lockmenu glass" :style="pos" @click.stop>
         <b>Lås etter avspilling</b>
         <p v-if="locked" class="lm-note">Låsen er på nå. Du kan endre den om {{ fmtClock(lockLeft) }}.</p>
-        <div class="chips">
+        <div class="chips pills">
           <button v-for="s in CHOICES" :key="s" :class="{ on: s === spotify.lockSeconds }" :disabled="locked" @click="choose(s)">{{ s ? fmtLock(s) : 'Av' }}</button>
         </div>
         <p v-if="msg" class="lm-err">{{ msg }}</p>
@@ -82,10 +82,6 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocDown))
 .lockmenu { position: fixed; z-index: 60; width: 220px; padding: 12px; border-radius: 14px; background: var(--bg, #fff); box-shadow: var(--shadow-2, 0 12px 30px rgba(0, 0, 0, 0.2)); display: grid; gap: 8px; color: var(--text); text-align: left; }
 .lockmenu > b { font-size: 0.78rem; }
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
-.chips button { padding: 5px 10px; border: 1px solid var(--glass-border); border-radius: 999px; background: transparent; color: var(--text); font: 600 0.78rem var(--font); cursor: pointer; }
-.chips button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-.chips button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-.chips button:disabled { opacity: 0.45; cursor: not-allowed; }
 .lm-note { font-size: 0.72rem; color: var(--text-3); margin: 0; }
 .lm-err { font-size: 0.72rem; color: #d24b4b; margin: 0; }
 </style>

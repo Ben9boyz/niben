@@ -51,8 +51,8 @@ const hp = computed(() => (hover.value == null ? null : pts.value[hover.value]))
         <p v-if="pts.length > 1" class="head"><b>{{ delta >= 0 ? '+' : '' }}{{ delta }}</b> ord kjent siste {{ pts.length }} dager</p>
       </div>
       <div class="ctl">
-        <button v-for="r in RANGES" :key="r.k" class="chip" :class="{ on: range === r.k }" @click="range = r.k">{{ r.l }}</button>
-        <button class="chip" :class="{ on: table }" @click="table = !table">Tabell</button>
+        <button v-for="r in RANGES" :key="r.k" class="pill" :class="{ on: range === r.k }" @click="range = r.k">{{ r.l }}</button>
+        <button class="pill" :class="{ on: table }" @click="table = !table">Tabell</button>
       </div>
     </header>
 
@@ -115,8 +115,6 @@ h3 { margin: 0; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; tex
 .head { margin: 2px 0 0; color: var(--text-2); font-size: 0.85rem; }
 .head b { font-size: 1.3rem; color: var(--text); margin-right: 4px; }
 .ctl { display: flex; flex-wrap: wrap; gap: 4px; }
-.chip { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--glass-border); background: transparent; color: var(--text-2); font: 600 0.74rem var(--font); cursor: pointer; }
-.chip.on { color: var(--accent); border-color: var(--accent); }
 .empty { margin: 0; color: var(--text-3); font-size: 0.85rem; }
 .legend { display: flex; gap: 14px; margin: 0; padding: 0; list-style: none; color: var(--text-2); font-size: 0.78rem; }
 .legend li, .tip span { display: inline-flex; align-items: center; gap: 6px; }
