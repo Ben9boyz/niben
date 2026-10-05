@@ -260,6 +260,7 @@ require_once __DIR__ . '/_translate.inc.php';
 require_once __DIR__ . '/_visits.inc.php';
 require_once __DIR__ . '/_milestones.inc.php';
 require_once __DIR__ . '/_home.inc.php';
+require_once __DIR__ . '/_extras.inc.php';
 
 try {
     if (str_starts_with($action, 'spotify_')) {
@@ -288,6 +289,7 @@ try {
         fail('Ukjent handling.', 404);
     }
     if ($action === 'translate') tr_handle();
+    if (in_array($action, ['guestbook_list', 'guestbook_add', 'admin_guestbook', 'admin_guestbook_set', 'practice_calendar', 'wrapped', 'admin_backup'], true)) ex_handle($action, $post);
     if (in_array($action, ['home_live', 'home_search', 'home_set', 'home_get'], true)) hm_handle($action, $post);
     if ($action === 'milestones' || $action === 'milestone_add' || $action === 'milestone_delete') ms_handle($action, $post);
     if ($action === 'visit') {

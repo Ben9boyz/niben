@@ -228,7 +228,7 @@ function st_friends(): ?array {
         }
         $others = array_values(array_filter($players, fn($p) => $p['id'] !== $best));
         usort($others, fn($a, $b) => ((int)!empty($b['playing']) <=> (int)!empty($a['playing'])) ?: ((int)$b['online'] <=> (int)$a['online']) ?: ($b['last'] <=> $a['last']));
-        return ['count' => count($players), 'online' => count(array_filter($players, fn($p) => $p['online'])), 'best' => $bf, 'list' => array_slice($others, 0, 8)];
+        return ['count' => count($players), 'online' => count(array_filter($players, fn($p) => $p['online'])), 'best' => $bf]; // (only the best friend is shown – not the rest of the list)
     });
 }
 
@@ -241,6 +241,7 @@ function st_handle(string $action, bool $post): void {
         $live = !empty($profile['playing']['appid']) ? st_live((int)$profile['playing']['appid']) : null;
         // the game played last gets the same details when nothing is on right now
         $lib = st_library();
+        if ($lib && isset($lib['hours'])) ex_snap('st_snaps', ['hours' => $lib['hours'], 'count' => $lib['count'] ?? 0]);
         if (!$live && !empty($lib['recent'][0]['appid'])) $live = ['info' => st_app((int)$lib['recent'][0]['appid'])];
         out(['configured' => true, 'profile' => $profile, 'library' => $lib, 'live' => $live, 'friends' => st_friends(), 'at' => time()]);
     }

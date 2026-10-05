@@ -168,17 +168,6 @@ const coverFailed = (g) => { noCover.value = new Set(noCover.value).add(g.appid)
         </ul>
         <p v-if="fr.best.shared_count" class="muted">Vi har {{ fr.best.shared_count }} spill vi begge har spilt. (jeg · vennen)</p>
       </section>
-      <section v-if="fr && fr.list?.length" class="sec">
-        <b class="label-caps">Venner · {{ fr.online }} av {{ fr.count }} pålogget</b>
-        <ul class="friends">
-          <li v-for="f in fr.list" :key="f.id">
-            <a :href="f.url" target="_blank" rel="noopener">
-              <span class="av sm" :class="{ on: f.online, game: !!f.playing }"><img :src="f.avatar" alt="" loading="lazy" /></span>
-              <span class="who"><b>{{ f.name }}</b><small :class="{ game: !!f.playing, on: f.online && !f.playing }">{{ f.playing ? f.playing : f.online ? f.state : `Sist ${ago(f.last)}` }}</small></span>
-            </a>
-          </li>
-        </ul>
-      </section>
       </div>
       </div>
       <p class="src">Fra <a :href="p.url" target="_blank" rel="noopener">Steam</a> · oppdateres hvert minutt.</p>

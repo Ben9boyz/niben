@@ -161,6 +161,7 @@ function jp_handle(string $action, bool $post): void {
             $word = $pool ? $pool[crc32(date('Y-m-d')) % count($pool)] : null;
             if ($word) unset($word['due']);
             $decks = array_map(fn($d) => array_diff_key($d, ['occ' => 1, 'builtin' => 1]), $all['decks']);
+            ex_snap('jp_snaps', ['known' => $count['known'], 'learning' => $count['learning']]);
             return ['decks' => $decks, 'anime' => jp_anime($all['decks']), 'count' => $count, 'word' => $word, 'at' => time()];
         });
         if (!$data) fail('Fikk ikke kontakt med jpdb.', 502);
@@ -193,6 +194,7 @@ function jp_handle(string $action, bool $post): void {
         [$s, $j] = jp_api('review', ['vid' => $vid, 'sid' => $sid, 'grade' => $grade]);
         if ($s !== 200) fail('jpdb svarte: ' . ($j['error_message'] ?? $s), 502);
         kv_del('jp_public_v2');
+        ex_practice_hit(); // a card graded today: the practice calendar
         // the card's new state
         [$ls, $lj] = jp_api('lookup-vocabulary', ['list' => [[$vid, $sid]], 'fields' => ['card_state', 'due_at']]);
         $info = $lj['vocabulary_info'][0] ?? null;

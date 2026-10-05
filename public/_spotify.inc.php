@@ -10,7 +10,7 @@
  */
 
 const SP_LOCK_SECONDS = 600;
-const SP_SCOPES = 'user-library-read playlist-read-private playlist-read-collaborative user-read-currently-playing user-read-playback-state user-modify-playback-state streaming user-read-email user-read-private user-library-modify playlist-modify-private playlist-modify-public';
+const SP_SCOPES = 'user-library-read playlist-read-private playlist-read-collaborative user-read-currently-playing user-read-playback-state user-modify-playback-state streaming user-read-email user-read-private user-library-modify playlist-modify-private playlist-modify-public user-read-recently-played user-top-read';
 
 function sp_config(): ?array {
     static $c = false;
@@ -296,6 +296,7 @@ function sp_tracks(string $type, string $id): array {
 /** The albums I listened to last (newest first, 10 kept): remembered on the server so every device sees the same stack
  *  on the 3D table. Called whenever somebody asks what's playing; only writes when the album changes. */
 function sp_note_recent(?array $now): array {
+    if (function_exists('ex_sync_plays')) ex_sync_plays(); // the listening log behind "Året"
     $list = json_decode(kv_get('recent_albums') ?: '[]', true);
     if (!is_array($list)) $list = [];
     $ctx = (string)($now['context'] ?? '');
