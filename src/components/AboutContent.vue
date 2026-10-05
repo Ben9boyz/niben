@@ -163,22 +163,8 @@ async function save() {
       </div>
     </section>
 
-    <!-- about the site itself -->
-    <section class="site">
-      <b class="label-caps">Om siden</b>
-      <div class="site-card">
-        <Sparkles :size="20" class="spark" />
-        <p>
-          niben.no er et hobbyprosjekt – laget sammen med <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code</a>,
-          Anthropic sin AI-kodeassistent. Fra 3D-rommet og musikkspilleren til japansk-hjørnet: jeg sier hva jeg vil ha, og vi bygger det sammen.
-          All koden ligger åpent på GitHub.
-        </p>
-        <div class="site-links">
-          <a class="chip" href="https://github.com/Ben9boyz/niben" target="_blank" rel="noopener">Koden på GitHub <ArrowUpRight :size="13" /></a>
-          <span class="chip muted-chip">Vue · Three.js · PHP</span>
-        </div>
-      </div>
-    </section>
+    <!-- a small credit, centred -->
+    <p class="made"><Sparkles :size="13" aria-hidden="true" />Laget med <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code</a></p>
 
     <!-- the way in for me (also: double-click the logo) – small, at the very bottom -->
     <router-link v-if="!admin.loggedIn" to="/admin" class="login">Logg inn</router-link>
@@ -215,14 +201,6 @@ h1 { font-size: clamp(2.2rem, 4.5vw, 3.4rem); font-weight: 800; letter-spacing: 
 .big b { font-size: 1.6rem; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .card small { font-size: 0.76rem; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.site { display: grid; gap: 10px; }
-.site-card { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; align-items: start; padding: 16px 18px; border-radius: 18px; border: 1px solid var(--glass-border); background: linear-gradient(135deg, color-mix(in srgb, #d97757 10%, var(--glass-strong)), var(--glass-strong)); }
-.site-card p { margin: 0; color: var(--text-2); line-height: 1.6; font-size: 0.95rem; }
-.site-card a { color: var(--accent); }
-.spark { color: #d97757; margin-top: 2px; }
-.site-links { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.muted-chip { color: var(--text-3); cursor: default; }
-.muted-chip:hover { border-color: var(--glass-border); color: var(--text-3); }
 .login { justify-self: center; padding: 4px 10px; font-size: 0.75rem; color: var(--text-3); opacity: 0.6; text-decoration: none; }
 .login:hover { opacity: 1; color: var(--accent); }
 .edit { display: grid; gap: 8px; margin-top: 12px; }
@@ -241,4 +219,7 @@ h1 { font-size: clamp(2.2rem, 4.5vw, 3.4rem); font-weight: 800; letter-spacing: 
   .photo { max-width: 220px; }
   .cards { grid-template-columns: 1fr 1fr; }
 }
+.made { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 8px 0 0; color: var(--text-3); font-size: 0.82rem; }
+.made a { color: var(--text-2); text-decoration: underline; text-decoration-color: var(--glass-border); text-underline-offset: 3px; }
+.made a:hover { color: var(--accent); }
 </style>
