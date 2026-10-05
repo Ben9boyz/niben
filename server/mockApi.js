@@ -303,6 +303,16 @@ export function mockApi() {
           case 'spotify_devices':
             if (!needAdmin()) return
             return send(res, 200, { devices: [{ id: 'dev00000000000000000001', name: 'niben.no', type: 'Computer', active: true, volume: 70 }, { id: 'dev00000000000000000002', name: 'iPhone', type: 'Smartphone', active: false, volume: 50 }] })
+          case 'spotify_enqueue_many': {
+            if (!needAdmin()) return
+            let n = 0
+            for (const u of b.uris || []) {
+              const m = /^spotify:track:mocktrack(.+?)\d{4}$/.exec(u)
+              const alb = m && SP_ALBUMS.find((a) => a.uri.endsWith(m[1]))
+              if (alb) { sp.queued.push({ uri: u, name: 'I køen', artist: alb.artist, ms: 180000, img: alb.thumb, album_uri: alb.uri, album: alb.name, album_artist: alb.artist, album_image: alb.image }); n++ }
+            }
+            return send(res, 200, { ok: n > 0, added: n, total: (b.uris || []).length, failed: (b.uris || []).length - n })
+          }
           case 'spotify_enqueue': {
             if (!needAdmin()) return
             // a song from some album: remember which album it is on (the mock song ids are "mocktrack<albumId><n>")
@@ -432,39 +442,6 @@ export function mockApi() {
             const n = (db.subs || []).filter((x) => +x.confirmed).length
             db.newsLast = { t: Math.floor(Date.now() / 1000), subject: b.subject, sent: n, failed: 0 }
             return send(res, 200, { ok: true, sent: n, failed: 0 })
-          }
-          case 'queue_get':
-          case 'queue_add':
-          case 'queue_save': {
-            const albOf = (uri) => SP_ALBUMS.find((a) => a.uri === uri) || null
-            const itemOf = (t, alb) => ({ uri: t.uri, name: t.name, artist: t.artist, ms: t.ms, no: t.n, disc: 1, album: alb?.name || '', album_uri: alb?.uri || null, album_artist: alb?.artist || '', img: alb?.thumb || t.img, album_image: alb?.image || t.img })
-            const albumItems = (alb) => mockAlbumTracks(alb.uri.split(':')[2]).map((t) => itemOf(t, alb))
-            const cur = sp.now?.uri ? sp.now : null
-            if (action !== 'queue_get' && !cur) return send(res, 409, { error: 'Ingen Spotify-enhet spiller nå.', code: 'no_device' })
-            const plan = (sp.plan ||= { items: [], nq: 0, for: null })
-            if (cur) { // bring the plan up to date: what has played is dropped; a different song = start over from its album
-              const i = plan.items.findIndex((x) => x.uri === cur.uri)
-              if (i >= 0) { plan.items = plan.items.slice(i + 1); plan.nq = Math.max(0, plan.nq - (i + 1)) }
-              else if (plan.for !== cur.uri || !plan.items.length) {
-                const alb = /^spotify:album:/.test(cur.context || '') ? albOf(cur.context) : null
-                const all = alb ? albumItems(alb) : []
-                const at = all.findIndex((x) => x.uri === cur.uri)
-                plan.items = at >= 0 ? all.slice(at + 1) : sp.queued.map((q) => ({ ...q, no: 1 })); plan.nq = 0
-              }
-              plan.for = cur.uri
-            }
-            if (action === 'queue_add') {
-              if (!needAdmin()) return
-              let add = []
-              if (b.playlist) { add = mockAlbumTracks(b.playlist.split(':')[2]).map((t) => itemOf(t, null)) }
-              else if (b.album) { const alb = albOf(b.album); add = alb ? albumItems(alb) : []; if (!add.length) return send(res, 404, { error: 'Fant ingen låter i albumet.' }) }
-              else for (const u of b.tracks || []) { const m = /^spotify:track:mocktrack(.+?)\d{4}$/.exec(u); const alb = m && SP_ALBUMS.find((a) => a.uri.endsWith(m[1])); add.push(itemOf({ uri: u, name: 'Låt i køen', artist: alb?.artist || 'Mock Artist', ms: 180000, n: 1, img: alb?.thumb }, alb)) }
-              plan.items.splice(b.next ? 0 : plan.nq, 0, ...add); plan.nq += add.length
-            } else if (action === 'queue_save') {
-              if (!needAdmin()) return
-              plan.items = (b.items || []).slice(0, 99); plan.nq = Math.max(0, Math.min(+b.nq || 0, plan.items.length))
-            }
-            return send(res, 200, { ok: true, items: plan.items, nq: plan.nq, now: cur?.uri || null })
           }
           case 'about_get':
             return send(res, 200, { about: db.about || null })

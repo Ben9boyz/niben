@@ -308,6 +308,30 @@ function sp_more_handle(string $action, bool $post): bool {
         kv_del('cache_queue');
         out(['ok' => true]);
     }
+    case 'spotify_enqueue_many': {
+        // a whole album (or any list of songs) at the end of the queue, in order, in ONE request from the page.
+        // One song at a time with a short pause between, and a second try when Spotify says "slow down" (429).
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        @set_time_limit(120);
+        $uris = array_values(array_filter((array)(body()['uris'] ?? []), fn($u) => is_string($u) && $id($u, 'track')));
+        $uris = array_slice($uris, 0, 100);
+        if (!$uris) fail('Ingen låter å legge til.');
+        $added = 0; $failed = [];
+        foreach ($uris as $uri) {
+            $ok = false;
+            for ($try = 0; $try < 4 && !$ok; $try++) {
+                [$s, $j] = sp_api('POST', '/me/player/queue?uri=' . rawurlencode($uri));
+                if ($s === 404) out(['error' => 'Ingen Spotify-enhet spiller nå.', 'code' => 'no_device'], 409);
+                if ($s < 300) { $ok = true; break; }
+                if ($s === 429 || $s >= 500) usleep(700000 * ($try + 1)); else break; // slow down / hiccup: wait and try again
+            }
+            if ($ok) $added++; else $failed[] = $uri;
+            usleep(120000);
+        }
+        kv_del('cache_queue', 'cache_queue4');
+        out(['ok' => $added > 0, 'added' => $added, 'total' => count($uris), 'failed' => count($failed)]);
+    }
     case 'spotify_liked': {
         // is the song saved in my "Liked songs"? (GET ?uri=) – and save / remove it (POST).
         // Spotify has moved these to /me/library (by uri); the older /me/tracks (by id) is the fallback.

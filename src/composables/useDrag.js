@@ -30,7 +30,7 @@ export const queueDrop = {
     queueOver.value = false
     const t = drag.track, it = drag.item
     endDrag()
-    if (t) { await enqueue(t.uri); return }
+    if (t) { const r = await enqueue(t.uri); if (!r.ok) notify(r.error || 'Klarte ikke å legge i køen.', true); return }
     if (it) {
       const name = (findAlbum(it) || spotify.playlists.find((p) => p.uri === it))?.name || ''
       enqueueAlbum(it, name)

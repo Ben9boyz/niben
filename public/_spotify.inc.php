@@ -299,20 +299,24 @@ function sp_artist(string $id, string $name): ?array {
 
 /** Track list for an album or playlist (fetched on demand, cached for 6 hours). */
 function sp_tracks(string $type, string $id): array {
-    $data = sp_cached("tracks3_{$type}_{$id}", 21600, function () use ($type, $id) {
+    $data = sp_cached("tracks4_{$type}_{$id}", 21600, function () use ($type, $id) {
         $out = [];
-        for ($offset = 0; $offset < 1000; $offset += 50) {
+        // read page after page; the next page starts after what we actually GOT (if Spotify hands out fewer than the
+        // 50 we ask for, jumping 50 ahead would skip songs – the cause of albums with only their first few songs)
+        for ($offset = 0, $guard = 0; $offset < 1000 && $guard < 60; $guard++) {
             $path = $type === 'album'
                 ? "/albums/{$id}/tracks?limit=50&offset={$offset}"
                 : "/playlists/{$id}/items?limit=50&offset={$offset}";
             [$s, $j] = sp_api('GET', $path);
             if ($s === 403 || $s === 404) return ['hidden' => true, 'tracks' => []];
             if ($s !== 200) return $out ? ['tracks' => $out] : null;
-            foreach ($j['items'] ?? [] as $it) {
+            $got = $j['items'] ?? [];
+            foreach ($got as $it) {
                 $t = $type === 'album' ? $it : ($it['item'] ?? $it['track'] ?? null);
                 if ($t && !empty($t['uri'])) $out[] = sp_track($t);
             }
-            if (empty($j['next'])) break;
+            if (empty($j['next']) || !$got) break;
+            $offset += count($got);
         }
         return ['tracks' => $out];
     });
@@ -658,7 +662,7 @@ function sp_handle(string $action, bool $post): void {
         if ($s === 403) out(['error' => 'Spotify sier nei – du kan bare legge til i lister du har laget selv (eller som er samarbeidslister).', 'code' => 'forbidden'], 403);
         if ($s === 401) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
         if ($s >= 300) fail('Spotify svarte med feil (' . $s . ').', 502);
-        kv_del('cache_playlists_v3', 'cache_playlists_v4', 'tracks2_playlist_' . $m[1], 'tracks3_playlist_' . $m[1]);
+        kv_del('cache_playlists_v3', 'cache_playlists_v4', 'tracks2_playlist_' . $m[1], 'tracks4_playlist_' . $m[1]);
         out(['ok' => true]);
     }
 
