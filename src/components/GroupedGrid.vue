@@ -24,8 +24,7 @@ const emit = defineEmits(['pick', 'hover'])
 
 const grouped = computed(() => groups.on && groups.loaded && groups.list.length > 0)
 // which view: folders in the grid · sections · albums by artist (only for albums)
-// ('Lister' is for playlists; albums have folders and artists)
-const viewMode = computed(() => (groups.view === 'artist' ? (props.byArtist ? 'artist' : 'mapper') : props.byArtist && groups.view === 'lister' ? 'mapper' : groups.view))
+const viewMode = computed(() => (groups.view === 'artist' ? (props.byArtist ? 'artist' : 'mapper') : groups.view))
 const plain = computed(() => !groups.on || props.flat || (viewMode.value !== 'artist' && !grouped.value))
 const artistSections = computed(() => {
   const by = new Map()
