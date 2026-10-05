@@ -195,6 +195,14 @@ export function mockApi() {
             })
           case 'spotify_now':
             return send(res, 200, { configured: true, connected: true, now: sp.now, lock_until: sp.lock, lock_seconds: sp.lockSeconds, server_time: Math.floor(Date.now() / 1000) })
+          case 'github_tree': {
+            // dev: ask GitHub directly (the real server caches this for an hour)
+            const repo = url.searchParams.get('repo')
+            const h = { 'User-Agent': 'niben-dev', Accept: 'application/vnd.github+json' }
+            const info = await (await fetch(`https://api.github.com/repos/Ben9boyz/${repo}`, { headers: h })).json()
+            const tree = await (await fetch(`https://api.github.com/repos/Ben9boyz/${repo}/git/trees/${info.default_branch || 'main'}?recursive=1`, { headers: h })).json()
+            return send(res, 200, { owner: 'Ben9boyz', repo, branch: info.default_branch || 'main', url: info.html_url, description: info.description, pushed: info.pushed_at, truncated: !!tree.truncated, files: (tree.tree || []).filter((t) => t.type === 'blob').map((t) => ({ path: t.path, size: t.size || 0 })) })
+          }
           case 'github_repos':
             return send(res, 200, { repos: [
               { name: 'niben', description: 'Min personlige nettside – et 3D-rom med Vue og Three.js.', language: 'Vue', topics: ['threejs', 'vite'], stars: 3, url: 'https://github.com/Ben9boyz/niben', homepage: 'https://niben.no', created: '2026', pushed: '2026-10-04T12:00:00Z' },

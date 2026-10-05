@@ -1,10 +1,14 @@
 <script setup>
-import { ArrowUpRight } from 'lucide-vue-next'
-import { computed } from 'vue'
+import { ArrowUpRight, BookOpenText } from 'lucide-vue-next'
+import RepoBrowser from '../components/RepoBrowser.vue'
+import { computed, ref } from 'vue'
 import { useData } from '../composables/useData'
 import { room } from '../composables/useRoom'
 
 const data = useData()
+// a project on my GitHub can be read right here (RepoBrowser)
+const repoOf = (p) => (/github\.com\/Ben9boyz\/([\w.-]+)/i.exec(p?.kode || '') || [])[1] || null
+const reading = ref(null)
 const list = computed(() => data.prosjekter || [])
 const p = computed(() => list.value[room.sel.prosjekt])
 </script>
@@ -37,11 +41,13 @@ const p = computed(() => list.value[room.sel.prosjekt])
           <div class="tags"><span v-for="t in p.teknologi" :key="t" class="chip">{{ t }}</span></div>
           <div class="actions">
             <a v-if="p.lenke" class="btn primary" :href="p.lenke" target="_blank" rel="noopener">Se prosjektet <ArrowUpRight :size="16" /></a>
-            <a v-if="p.kode" class="btn" :href="p.kode" target="_blank" rel="noopener">Kildekode</a>
+            <button v-if="repoOf(p)" class="btn" @click="reading = repoOf(p)"><BookOpenText :size="16" /> Les koden</button>
+          <a v-if="p.kode" class="btn" :href="p.kode" target="_blank" rel="noopener">GitHub <ArrowUpRight :size="14" /></a>
           </div>
         </div>
       </transition>
     </div>
+    <RepoBrowser v-if="reading" :repo="reading" @close="reading = null" />
   </section>
 </template>
 

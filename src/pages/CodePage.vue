@@ -1,7 +1,12 @@
 <script setup>
-import { ArrowUpRight } from 'lucide-vue-next'
+import { ref } from 'vue'
+import { ArrowUpRight, BookOpenText } from 'lucide-vue-next'
+import RepoBrowser from '../components/RepoBrowser.vue'
 import { useData } from '../composables/useData'
 const data = useData()
+// a project on my GitHub can be read right here (RepoBrowser)
+const repoOf = (p) => (/github\.com\/Ben9boyz\/([\w.-]+)/i.exec(p?.kode || '') || [])[1] || null
+const reading = ref(null)
 </script>
 
 <template>
@@ -18,10 +23,12 @@ const data = useData()
         <div class="tags"><span v-for="t in p.teknologi" :key="t" class="chip">{{ t }}</span></div>
         <div class="actions">
           <a v-if="p.lenke" class="btn primary small" :href="p.lenke" target="_blank" rel="noopener">Se prosjektet <ArrowUpRight :size="16" /></a>
-          <a v-if="p.kode" class="btn small" :href="p.kode" target="_blank" rel="noopener">Kildekode</a>
+          <button v-if="repoOf(p)" class="btn small" @click="reading = repoOf(p)"><BookOpenText :size="16" /> Les koden</button>
+          <a v-if="p.kode" class="btn small" :href="p.kode" target="_blank" rel="noopener">GitHub <ArrowUpRight :size="14" /></a>
         </div>
       </article>
     </div>
+    <RepoBrowser v-if="reading" :repo="reading" @close="reading = null" />
   </div>
 </template>
 

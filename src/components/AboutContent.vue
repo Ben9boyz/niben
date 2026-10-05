@@ -132,6 +132,9 @@ async function save() {
         </button>
       </div>
     </section>
+
+    <!-- the way in for me (also: double-click the logo) – small, at the very bottom -->
+    <router-link v-if="!admin.loggedIn" to="/admin" class="login">Logg inn</router-link>
   </div>
 </template>
 
@@ -162,6 +165,8 @@ h1 { font-size: clamp(2.2rem, 4.5vw, 3.4rem); font-weight: 800; letter-spacing: 
 .big b { font-size: 1.6rem; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .card small { font-size: 0.76rem; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+.login { justify-self: center; padding: 4px 10px; font-size: 0.75rem; color: var(--text-3); opacity: 0.6; text-decoration: none; }
+.login:hover { opacity: 1; color: var(--accent); }
 .edit { display: grid; gap: 8px; margin-top: 12px; }
 .edit label { display: grid; gap: 4px; }
 .edit span, .lbl { font-size: 0.74rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; }
