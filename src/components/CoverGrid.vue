@@ -70,7 +70,8 @@ const emit = defineEmits(['pick', 'hover', 'move', 'dragitem'])
 .pl { position: absolute; right: 7px; bottom: 7px; z-index: 2; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: #1db954; color: #fff; box-shadow: 0 6px 14px rgba(0, 0, 0, 0.4); cursor: pointer; opacity: 0; transform: translateY(6px); transition: opacity 0.18s, transform 0.18s, filter 0.15s; }
 .cell:hover .pl, .pl:focus-visible { opacity: 1; transform: none; }
 .pl:hover { filter: brightness(1.1); transform: scale(1.08); }
-@media (hover: none) { .pl { display: none; } } /* touch: just tap the cover to open it, like on the PC – no green play button */
+@media (hover: none) { .pl { opacity: 0.95; transform: none; width: 30px; height: 30px; } } /* touch screens without hover (tablets, touch laptops): always visible */
+@media (hover: none) and (pointer: coarse) and (max-width: 720px) { .pl { display: none; } } /* phones only: just tap the cover to open it – no green play button */
 .tile {
   position: relative;
   width: 100%;
