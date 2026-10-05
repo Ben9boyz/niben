@@ -389,6 +389,27 @@ export function mockApi() {
             db.recsAt = Math.floor(Date.now() / 1000)
             return send(res, 200, { ok: true, recs: db.recs, at: db.recsAt })
           }
+          case 'decor_get':
+            return send(res, 200, { items: db.decor || [] })
+          case 'decor_upload': {
+            if (!needAdmin()) return
+            if (!file) return send(res, 400, { error: 'Mangler fil.' })
+            if (!/\.glb$/i.test(file.name || '')) return send(res, 400, { error: 'Bare .glb-filer (én fil med alt i). Konverter andre formater til GLB først.' })
+            const path = await store('models', file)
+            const item = { id: Math.random().toString(16).slice(2, 12), file: path, name: String(b?.name || file.name.replace(/\.glb$/i, '')).slice(0, 50), x: 0, y: 0, z: 1.2, rot: 0, scale: 1, visible: true }
+            db.decor = [...(db.decor || []), item]
+            return send(res, 200, { ok: true, item })
+          }
+          case 'decor_save': {
+            if (!needAdmin()) return
+            const byId = new Map((b.items || []).map((i) => [String(i.id), i]))
+            db.decor = (db.decor || []).map((d) => { const n = byId.get(d.id); return n ? { ...d, x: +n.x, y: +n.y || 0, z: +n.z, rot: +n.rot, scale: +n.scale || 1, visible: n.visible !== false, name: n.name ?? d.name } : d })
+            return send(res, 200, { ok: true, items: db.decor })
+          }
+          case 'decor_delete':
+            if (!needAdmin()) return
+            db.decor = (db.decor || []).filter((d) => d.id !== b.id)
+            return send(res, 200, { ok: true })
           case 'about_get':
             return send(res, 200, { about: db.about || null })
           case 'about_photo': {

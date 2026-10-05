@@ -262,6 +262,7 @@ require_once __DIR__ . '/_milestones.inc.php';
 require_once __DIR__ . '/_home.inc.php';
 require_once __DIR__ . '/_extras.inc.php';
 require_once __DIR__ . '/_discover.inc.php';
+require_once __DIR__ . '/_decor.inc.php';
 
 try {
     if (str_starts_with($action, 'spotify_')) {
@@ -290,6 +291,7 @@ try {
         fail('Ukjent handling.', 404);
     }
     if ($action === 'translate') tr_handle();
+    if (str_starts_with($action, 'decor_')) { decor_handle($action, $post); fail('Ukjent handling.', 404); }
     if (str_starts_with($action, 'discover_')) { dc_handle($action, $post); fail('Ukjent handling.', 404); }
     if ($action === 'texts_save') {
         // the site's own wording (headings, intro lines …): { texts: { key: text } }. An empty text = back to the default.

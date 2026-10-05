@@ -1,5 +1,7 @@
 <script setup>
-import { watch } from 'vue'
+import { computed, watch } from 'vue'
+import { spotify } from '../composables/useSpotify'
+import { mode } from '../composables/useMode'
 import { room } from '../composables/useRoom'
 import { peek, peekClear } from '../composables/useBrowse'
 import PeekView from '../components/PeekView.vue'
@@ -9,12 +11,15 @@ import PlaylistPanel from '../components/PlaylistPanel.vue'
 
 // picking a record or playlist in the room closes any album / artist page opened with "Gå til …"
 watch(() => [room.sel.musikk, room.ipod.playlist, room.musicView], () => { if (peek.stack.length) peekClear() })
+// phones in the 3D room: no empty "Ingenting spilles" card – the record player is the stage
+const phone = window.matchMedia('(max-width: 720px)').matches
+const showNow = computed(() => !(phone && mode.value === 'rom' && !spotify.now?.name))
 </script>
 
 <template>
   <section class="panel glass music-panel">
     <div class="panel-body">
-      <div class="np-sticky"><NowPlaying /></div>
+      <div v-if="showNow" class="np-sticky"><NowPlaying /></div>
       <transition name="fade" mode="out-in">
         <PeekView v-if="peek.stack.length" key="peek" />
         <PlaylistPanel v-else-if="room.musicView.startsWith('ipod')" key="p" />

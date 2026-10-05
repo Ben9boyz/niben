@@ -202,7 +202,7 @@ function show(view) {
   }
   .gsearch { padding: 9px 14px; }
   .main-card { padding: 10px; padding-bottom: 80px; }
-  .m-mini { display: flex; top: auto !important; bottom: calc(72px + env(safe-area-inset-bottom)); left: 16px; right: 16px; width: auto; transition: bottom 0.35s var(--ease, ease); }
+  .m-mini { display: flex; top: auto !important; bottom: calc(14px + env(safe-area-inset-bottom)); left: 16px; right: 16px; width: auto; transition: bottom 0.35s var(--ease, ease); }
 }
 .m-sheet-bg { position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-end; background: rgba(0, 0, 0, 0.35); }
 .m-sheet { position: relative; width: 100%; padding: 56px 14px calc(18px + env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; background: var(--bg); }

@@ -32,5 +32,5 @@ button { flex: none; padding: 8px 14px; border: 0; border-radius: 999px; font: 7
 .yes { background: var(--accent); color: #fff; }
 .no { background: transparent; color: var(--text-2); }
 .no:hover { color: var(--text); }
-@media (max-width: 720px) { .sug { bottom: calc(86px + env(safe-area-inset-bottom)); flex-wrap: wrap; } .txt { flex-basis: 70%; } }
+@media (max-width: 720px) { .sug { bottom: calc(20px + env(safe-area-inset-bottom)); flex-wrap: wrap; } .txt { flex-basis: 70%; } }
 </style>

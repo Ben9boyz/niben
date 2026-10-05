@@ -106,6 +106,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   .gm .txt, .gm .ctl, .gm .lk, .gm .chev, .gm .prog { display: none; }
   .gm .cover { width: 40px; height: 40px; border-radius: 12px; }
   .gm.playing .cover { box-shadow: 0 0 0 2px #1db954; }
-  .gm-drawer { z-index: 50 !important; top: calc(62px + env(safe-area-inset-top)) !important; left: 12px !important; right: 12px !important; width: auto !important; max-height: none; bottom: calc(84px + env(safe-area-inset-bottom)) !important; }
+  .gm-drawer { z-index: 50 !important; top: calc(62px + env(safe-area-inset-top)) !important; left: 12px !important; right: 12px !important; width: auto !important; max-height: none; bottom: calc(14px + env(safe-area-inset-bottom)) !important; }
 }
 </style>

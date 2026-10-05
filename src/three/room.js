@@ -57,7 +57,7 @@ const THEMES = {
 
 const easeInOut = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2)
 
-export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) {
+export function createRoom(host, { onPick, onHover, onReady, timerState, onDecorChange, onDecorSelect } = {}) {
   let reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const deviceReduced = reduced
 
@@ -635,6 +635,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     invalidate(0.4)
     setNdc(e)
     pointer.inside = true
+    if (decorDrag) { moveDecorDrag(); return }
+    if (decorEdit) { renderer.domElement.style.cursor = decorAt() ? 'grab' : 'default'; return }
     if (dragging) {
       const dx = (e.clientX - dragging.x) / renderer.domElement.clientWidth
       dragging.x = e.clientX
@@ -671,6 +673,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   function onDown(e) {
     invalidate(0.6)
     setNdc(e)
+    if (decorEdit) { startDecorDrag(e); return } // "Rediger rommet": my models are picked up and moved, nothing else reacts
     downAt = { x: e.clientX, y: e.clientY, t: performance.now() }
     const info = hitInfo()
     if (station === 'reiser' && info?.station === 'reiser') {
@@ -680,6 +683,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     }
   }
   function onUp(e) {
+    if (decorEdit) { if (decorDrag) endDecorDrag(); downAt = null; return }
     const wasDrag = dragging?.moved
     if (dragging) { globeTable.setDragging(false); dragging = null }
     if (!downAt || wasDrag) { downAt = null; return }
@@ -711,11 +715,161 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   }
   const el = renderer.domElement
   function onWheel(e) {
+    if (decorEdit && decorSel) { // the wheel turns the selected model (with Shift: makes it bigger / smaller)
+      e.preventDefault()
+      const o = decorObjs.get(decorSel)
+      if (o) adjustDecor(decorSel, e.shiftKey ? { scale: (o.item.scale || 1) * Math.exp(-e.deltaY * 0.0015) } : { rot: (o.item.rot || 0) + e.deltaY * 0.003 })
+      return
+    }
     if (station !== 'reiser') return
     e.preventDefault()
     zoomTarget = Math.min(1.15, Math.max(0.3, zoomTarget * Math.exp(e.deltaY * 0.0012)))
     invalidate(0.6)
   }
+  // ── My own 3D models (uploaded as .glb in Admin) – placed in the room, and moved around in "Rediger rommet" ──
+  const decorGroup = new THREE.Group()
+  scene.add(decorGroup)
+  const decorObjs = new Map() // id -> { root, item }
+  let decorEdit = false
+  let decorSel = null
+  let decorDrag = null
+  const selBox = new THREE.BoxHelper(new THREE.Object3D(), 0x2b8cff)
+  selBox.material.depthTest = false
+  selBox.material.transparent = true
+  selBox.renderOrder = 30
+  selBox.visible = false
+  scene.add(selBox)
+  const dPoint = new THREE.Vector3()
+  const dPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+  const DECOR_X = 3.65, DECOR_Z = 3.2 // the floor (the walls are at ±4 and ±3.5)
+  const clampN = (v, a, b) => Math.max(a, Math.min(b, v))
+
+  function placeDecor(o) {
+    const it = o.item
+    o.root.position.set(it.x, it.y || 0, it.z)
+    o.root.rotation.y = it.rot || 0
+    o.root.scale.setScalar(it.scale || 1)
+    o.root.visible = it.visible !== false || decorEdit // hidden ones still show while editing, so they can be found again
+  }
+  function refreshSel() {
+    const o = decorSel && decorObjs.get(decorSel)
+    selBox.visible = !!o && decorEdit
+    if (o) selBox.setFromObject(o.root)
+  }
+  function serializeDecor() { return [...decorObjs.values()].map((o) => ({ ...o.item })) }
+  function selectDecor(id) {
+    decorSel = id && decorObjs.has(id) ? id : null
+    refreshSel()
+    onDecorSelect?.(decorSel)
+    invalidate(0.5)
+  }
+  function setDecor(list) {
+    const ids = new Set(list.map((i) => i.id))
+    for (const [id, o] of decorObjs) {
+      if (ids.has(id)) continue
+      decorGroup.remove(o.root)
+      decorObjs.delete(id)
+      if (decorSel === id) selectDecor(null)
+    }
+    for (const it of list) {
+      let o = decorObjs.get(it.id)
+      if (o) { if (decorDrag?.id !== it.id) { o.item = { ...it }; placeDecor(o) } continue }
+      o = { root: new THREE.Group(), item: { ...it } }
+      o.root.userData.decorId = it.id
+      decorObjs.set(it.id, o)
+      decorGroup.add(o.root)
+      placeDecor(o)
+      loadModel(it.file).then((g) => {
+        if (decorObjs.get(it.id) !== o) return
+        const m = g.scene.clone(true)
+        // a handy size (the longest side ~ 50 cm; the scale in the list is relative to that), standing on the floor
+        const size = new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3())
+        m.scale.multiplyScalar(0.5 / Math.max(size.x, size.y, size.z, 1e-4))
+        m.updateMatrixWorld(true)
+        const b = new THREE.Box3().setFromObject(m)
+        const c = b.getCenter(new THREE.Vector3())
+        m.position.set(-c.x, -b.min.y, -c.z)
+        m.traverse((n) => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true } })
+        o.root.add(m)
+        shadowsDirty = true
+        scheduleEnvCapture(900)
+        refreshSel()
+        invalidate(1)
+      }).catch(() => {})
+    }
+    refreshSel()
+    shadowsDirty = true
+    invalidate(0.6)
+  }
+  function decorAt() {
+    ray.setFromCamera(ndc, camera)
+    const hits = ray.intersectObjects(decorGroup.children.filter((c) => c.visible), true)
+    for (const h of hits) {
+      let n = h.object
+      while (n && !n.userData.decorId) n = n.parent
+      if (n) return n.userData.decorId
+    }
+    return null
+  }
+  function startDecorDrag(e) {
+    const id = decorAt()
+    selectDecor(id)
+    if (!id) return false
+    const o = decorObjs.get(id)
+    dPlane.constant = -o.root.position.y
+    ray.setFromCamera(ndc, camera)
+    if (!ray.ray.intersectPlane(dPlane, dPoint)) return false
+    decorDrag = { id, ox: o.root.position.x - dPoint.x, oz: o.root.position.z - dPoint.z, moved: false }
+    renderer.domElement.setPointerCapture?.(e.pointerId)
+    renderer.domElement.style.cursor = 'grabbing'
+    return true
+  }
+  function moveDecorDrag() {
+    const o = decorObjs.get(decorDrag.id)
+    if (!o) return
+    ray.setFromCamera(ndc, camera)
+    if (!ray.ray.intersectPlane(dPlane, dPoint)) return
+    o.item.x = clampN(dPoint.x + decorDrag.ox, -DECOR_X, DECOR_X)
+    o.item.z = clampN(dPoint.z + decorDrag.oz, -DECOR_Z, DECOR_Z)
+    decorDrag.moved = true
+    placeDecor(o)
+    selBox.setFromObject(o.root)
+    shadowsDirty = true
+    invalidate(0.3)
+  }
+  function endDecorDrag() {
+    const moved = decorDrag?.moved
+    decorDrag = null
+    renderer.domElement.style.cursor = 'default'
+    if (moved) onDecorChange?.(serializeDecor())
+  }
+  /** Turn / resize / lift / move / hide the selected (or a given) model. */
+  function adjustDecor(id, patch) {
+    const o = decorObjs.get(id || decorSel)
+    if (!o) return
+    const it = o.item
+    if (patch.rot !== undefined) it.rot = patch.rot
+    if (patch.scale !== undefined) it.scale = clampN(patch.scale, 0.05, 8)
+    if (patch.y !== undefined) it.y = clampN(patch.y, 0, 3)
+    if (patch.x !== undefined) it.x = clampN(patch.x, -DECOR_X, DECOR_X)
+    if (patch.z !== undefined) it.z = clampN(patch.z, -DECOR_Z, DECOR_Z)
+    if (patch.visible !== undefined) it.visible = patch.visible
+    if (patch.name !== undefined) it.name = patch.name
+    placeDecor(o)
+    refreshSel()
+    shadowsDirty = true
+    invalidate(0.5)
+    onDecorChange?.(serializeDecor())
+  }
+  function setDecorEdit(on) {
+    decorEdit = !!on
+    if (!decorEdit) { decorDrag = null; selectDecor(null) }
+    for (const o of decorObjs.values()) placeDecor(o)
+    refreshSel()
+    renderer.domElement.style.cursor = 'default'
+    invalidate(0.6)
+  }
+
   el.addEventListener('wheel', onWheel, { passive: false })
   el.addEventListener('pointermove', onMove)
   el.addEventListener('pointerdown', onDown)
@@ -1157,6 +1311,11 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
       const r = renderer.domElement.getBoundingClientRect()
       return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }
     },
+    /** My uploaded 3D models: [{ id, file, name, x, y, z, rot, scale, visible }]. */
+    setDecor,
+    setDecorEdit,
+    selectDecor,
+    adjustDecor,
     /** The user's graphics choices ({ mode: 'auto' | 'custom', … }); null = automatic. */
     setGraphics(g) { gfxIn = g; applyGfx(g) },
     /** What the picture is made of right now (for the settings window): quality class, resolution, frame rate … */

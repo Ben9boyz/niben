@@ -11,6 +11,7 @@ import { admin } from '../composables/useAdmin'
 import { useVinylNoise } from '../composables/useVinylNoise'
 import { gfxPayload } from '../composables/useGraphics'
 import { dailyAlbum } from '../composables/useDaily'
+import { decor, loadDecor, changed as decorChanged } from '../composables/useDecor'
 import { weather } from '../composables/useLive'
 import { calm } from '../composables/useCalm'
 import { shelfAlbums, loadGroups } from '../composables/useGroups'
@@ -86,6 +87,8 @@ onMounted(() => {
       onHover: (h) => { room.hover = h; if (h?.uri) prefetchTracks(h.uri) },
       onReady: () => (room.ready = true),
       timerState,
+      onDecorChange: (list) => decorChanged(list), // I moved / turned / resized one of my models
+      onDecorSelect: (id) => (decor.selected = id),
     })
   } catch (e) {
     console.error(e)
@@ -112,6 +115,10 @@ watch(() => data.version, () => data.loaded && api?.setData(data))
 loadJapanese()
 // the graphics settings (Innstillinger → Grafikk) go straight to the room
 watch(() => [room.api, JSON.stringify(gfxPayload())], () => room.api?.setGraphics(gfxPayload()), { immediate: true })
+// my own 3D models (Admin → Rom)
+onMounted(loadDecor)
+watch(() => [room.api, JSON.stringify(decor.items)], () => room.api?.setDecor(decor.items), { immediate: true })
+watch(() => [room.api, decor.editing], () => room.api?.setDecorEdit(decor.editing), { immediate: true })
 watch(() => [jp.word, room.api], () => room.api?.setJapanWord(jp.word), { immediate: true })
 // the monitor in the gaming corner shows Steam
 loadSteam()

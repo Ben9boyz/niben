@@ -92,7 +92,6 @@ onBeforeUnmount(() => {
 <template>
   <!-- phones, plain version: the bar behind the page name and the buttons on the right -->
   <div class="mtop" :class="{ scrolled }" aria-hidden="true">
-    <router-link to="/" class="mtop-brand" tabindex="-1" @dblclick.prevent="toAdmin" @pointerdown="pressStart" @pointerup="pressEnd" @pointerleave="pressEnd"><BrandLogo :mark="!!barTitle" /></router-link>
     <b v-if="barTitle">{{ barTitle }}</b>
   </div>
   <header class="nav-wrap" :class="{ scrolled }">
@@ -130,16 +129,13 @@ onBeforeUnmount(() => {
       </router-link>
     </nav>
 
-    <button class="navfab glass" :aria-expanded="navOpen" aria-label="Meny" @click="navOpen = !navOpen">
-      <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path :d="activeIcon" /></svg>
-      <svg class="up" :class="{ on: navOpen }" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6" /></svg>
-    </button>
-
     <span class="spacer" aria-hidden="true"></span>
     <!-- me / settings: my photo (logged in) or a cog – opens the menu with view, theme, language … -->
     <SettingsMenu v-if="!isPhone" />
   </header>
-  <!-- phones: outside the bar (the bar slides away with a transform, which would drag a fixed button along) -->
+  <!-- phones: the whole menu sits behind the logo (tap it); the settings cog is in the other corner -->
+  <div v-if="isPhone" class="mbar" aria-hidden="true"></div>
+  <button v-if="isPhone" class="mlogo glass" :aria-expanded="navOpen" aria-label="Meny" @click="navOpen = !navOpen" @dblclick.prevent="toAdmin" @pointerdown="pressStart" @pointerup="pressEnd" @pointerleave="pressEnd"><BrandLogo mark /></button>
   <SettingsMenu v-if="isPhone" />
 </template>
 
@@ -254,7 +250,7 @@ onBeforeUnmount(() => {
 .spin-enter-from { transform: rotate(-90deg) scale(0.4); opacity: 0; }
 .spin-leave-to { transform: rotate(90deg) scale(0.4); opacity: 0; }
 
-.item .label, .tip, .spacer, .navfab { display: none; }
+.item .label, .tip, .spacer { display: none; }
 @media (max-width: 720px) {
   .nav-wrap { top: auto; bottom: calc(14px + env(safe-area-inset-bottom)); }
   .brand { display: none; }
@@ -323,20 +319,31 @@ onBeforeUnmount(() => {
   .item .label { display: none; }
 }
 
-/* phones: the menu is one small button; it opens the bar above itself and closes again after a pick */
+/* phones: no bar at the bottom – the menu is behind the logo in the top-left corner and drops down when you tap it */
 @media (max-width: 720px) {
-  .nav-wrap { gap: 0; }
-  .navfab { display: flex; align-items: center; justify-content: center; gap: 4px; height: 48px; min-width: 64px; padding: 0 16px; border: 0; border-radius: 999px; color: var(--accent); cursor: pointer; transition: transform 0.3s var(--spring); }
-  .navfab:active { transform: scale(0.95); }
-  .navfab .up { color: var(--text-3); transition: transform 0.3s var(--spring); }
-  .navfab .up.on { transform: rotate(180deg); }
-  .nav { position: absolute; left: 50%; bottom: calc(100% + 10px); transform: translate(-50%, 12px) scale(0.96); transform-origin: 50% 100%; opacity: 0; visibility: hidden; pointer-events: none; transition: transform 0.35s var(--spring), opacity 0.2s, visibility 0s 0.35s; }
-  .nav.open { transform: translate(-50%, 0); opacity: 1; visibility: visible; pointer-events: auto; transition: transform 0.35s var(--spring), opacity 0.2s; }
+  .nav-wrap { display: contents; animation: none; }
+  .mlogo { position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 12px; z-index: 42; display: grid; place-items: center; width: 42px; height: 42px; padding: 0; border: 0; border-radius: 14px; color: var(--text); cursor: pointer; transition: transform 0.3s var(--spring); }
+  .mlogo:active { transform: scale(0.94); }
+  /* one bar along the top: logo (menu) · the page's switch / title · settings */
+  .mbar { position: fixed; z-index: 38; top: 0; left: 0; right: 0; height: calc(58px + env(safe-area-inset-top)); background: color-mix(in srgb, var(--bg) 74%, transparent); -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%); border-bottom: 1px solid var(--glass-border); }
+  html.classic .mbar { display: none; } /* the plain version has its own bar (.mtop) */
+  .mlogo svg { height: 24px; width: auto; }
+  .nav { position: fixed; z-index: 41; top: calc(58px + env(safe-area-inset-top)); left: 12px; bottom: auto; right: auto; width: min(240px, 72vw); max-width: none; padding: 6px; flex-direction: column; border-radius: 20px; transform: translateY(-8px) scale(0.97); transform-origin: 0 0; opacity: 0; visibility: hidden; pointer-events: none; transition: transform 0.3s var(--spring), opacity 0.2s, visibility 0s 0.3s; }
+  .nav.open { transform: none; opacity: 1; visibility: visible; pointer-events: auto; transition: transform 0.3s var(--spring), opacity 0.2s; }
+  .drop { display: none; }
+  .item { flex: none; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 12px 14px; }
+  .item .label { display: block; font-size: 0.95rem; }
+  .item.active { background: var(--accent-soft); }
 }
-@media (min-width: 721px) { .navfab { display: none; } }
+@media (min-width: 721px) { .mlogo { display: none; } }
 </style>
 
 <style>
+/* phones: logo and cog sit flat in the bar (no pills of their own) */
+@media (max-width: 720px) {
+  html body .mlogo.mlogo, html body .sm.sm { background: transparent; box-shadow: none; border: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  html body .mlogo.mlogo::before, html body .mlogo.mlogo::after, html body .sm.sm::before, html body .sm.sm::after { display: none; }
+}
 /* the settings button (SettingsMenu): the last thing in the rail; on phones in the top-right corner */
 @media (min-width: 721px) { .nav-wrap .sm { align-self: center; flex: none; width: 50px; height: 50px; } }
 @media (min-width: 721px) and (max-height: 860px) { .nav-wrap .sm { width: 44px; height: 44px; } }

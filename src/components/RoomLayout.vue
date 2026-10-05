@@ -7,6 +7,8 @@ import LeaderLine from './LeaderLine.vue'
 import IpodScreen from './IpodScreen.vue'
 import RecordOverlay from './RecordOverlay.vue'
 import SubTabs from './SubTabs.vue'
+import DecorEditor from './DecorEditor.vue'
+import { decor } from '../composables/useDecor'
 import BrandLogo from './BrandLogo.vue'
 import { useData } from '../composables/useData'
 import { room } from '../composables/useRoom'
@@ -60,6 +62,10 @@ function setHidden(v) {
 }
 // phones: picking up the iPod slides the sheet away so the iPod fills the screen (the arrow brings the panel back)
 watch(holdingIpod, (v) => { if (v && mobile.value) collapsed.value = true })
+// phones, the listening corner: the record player is the stage. The library (Album / Spillelister) is a sheet you pull up
+// with the switch at the top – and picking a record puts the sheet away so the record comes forward
+watch(() => route.name, (n) => { if (mobile.value && n === 'lytte') collapsed.value = true }, { immediate: true })
+watch(() => room.sel.musikk, (v) => { if (v && mobile.value) collapsed.value = true })
 watch(() => route.name, (n) => (room.panelHidden = n === 'lytte' && hiddenSet().has(n)), { immediate: true })
 
 // Tell the 3D view how much of the screen the panel covers,
@@ -141,6 +147,7 @@ watch(() => route.name, () => (collapsed.value = false))
     :class="{ home: isHome, focus: isFocus, wide: isWide, expanded: isExpanded, big: isExpanded && route.name !== 'lytte', collapsed: collapsed && mobile && !isFocus, hidden }"
     :style="belowMini ? { top: '86px' } : null"
     :inert="hidden || undefined"
+    v-show="!decor.editing"
   >
     <!-- phones: the panel fills the screen like the flat version; this closes it so only the 3D room is left -->
     <button v-if="mobile && !isHome && !isFocus" class="close-sheet glass" aria-label="Lukk panelet – se rommet" title="Se rommet" @click="collapsed = true">
@@ -153,7 +160,8 @@ watch(() => route.name, () => (collapsed.value = false))
     </router-view>
   </aside>
 
-  <MusicSwitch v-if="isMusic && room.ready" />
+  <DecorEditor />
+  <MusicSwitch v-if="isMusic && room.ready" @pick="collapsed = false" />
   <GlobalMini :show="miniOn" />
 
   <!-- phones, panel closed: one icon brings it back -->
@@ -269,10 +277,10 @@ watch(() => route.name, () => (collapsed.value = false))
   /* phones: an open panel takes (nearly) the whole screen, like the flat version – close it with the arrow and
      only the 3D room is left, with one icon to open the panel again */
   .dock {
-    top: calc(64px + env(safe-area-inset-top));
+    top: calc(62px + env(safe-area-inset-top));
     left: 10px;
     right: 10px;
-    bottom: calc(78px + env(safe-area-inset-bottom));
+    bottom: calc(14px + env(safe-area-inset-bottom));
     width: auto;
     max-height: none;
     transition: transform 0.5s var(--spring), opacity 0.3s;
@@ -304,7 +312,7 @@ watch(() => route.name, () => (collapsed.value = false))
     position: fixed;
     z-index: 21;
     right: 14px;
-    bottom: calc(96px + env(safe-area-inset-bottom));
+    bottom: calc(22px + env(safe-area-inset-bottom));
     display: grid;
     place-items: center;
     width: 52px;
@@ -320,7 +328,7 @@ watch(() => route.name, () => (collapsed.value = false))
     top: 70px;
     left: 50%;
     right: auto;
-    bottom: calc(86px + env(safe-area-inset-bottom));
+    bottom: calc(14px + env(safe-area-inset-bottom));
     width: calc(100vw - 20px);
     max-height: none;
     transform: translateX(-50%);
@@ -328,7 +336,7 @@ watch(() => route.name, () => (collapsed.value = false))
   .dock.home {
     left: 14px;
     right: 14px;
-    bottom: calc(92px + env(safe-area-inset-bottom));
+    bottom: calc(14px + env(safe-area-inset-bottom));
     width: auto;
   }
 }
