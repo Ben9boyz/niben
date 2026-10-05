@@ -73,7 +73,7 @@ async function save() {
 </template>
 
 <style scoped>
-.gb { display: grid; gap: 8px; }
+.gb { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; max-width: 100%; }
 .tools { display: inline-flex; align-items: center; gap: 6px; }
 .gbrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .sw, .ed { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.78rem var(--font); cursor: pointer; }
@@ -86,9 +86,9 @@ async function save() {
 .vw button { padding: 3px 10px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: 600 0.74rem var(--font); cursor: pointer; }
 .vw button.on { background: var(--accent); color: #fff; }
 .ed.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-.editor { display: grid; gap: 6px; padding: 10px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--glass-border); }
-.hint { margin: 0 0 2px; color: var(--text-3); font-size: 0.78rem; line-height: 1.4; }
-.g { display: flex; align-items: center; gap: 4px; }
+.editor { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 6px; padding: 10px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--glass-border); }
+.hint { margin: 0 0 2px; overflow-wrap: anywhere; color: var(--text-3); font-size: 0.78rem; line-height: 1.4; }
+.g { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .g input { flex: 1; min-width: 0; padding: 6px 10px; border: 1px solid var(--glass-border); border-radius: 8px; background: var(--bg); color: var(--text); font: 500 0.85rem var(--font); }
 .g .pic { width: 34px; }
 .covers { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 6px 6px 8px 38px; }
@@ -97,7 +97,7 @@ async function save() {
 .c0.on, .ci.on { border-color: var(--accent); color: var(--accent); outline: 2px solid var(--accent); outline-offset: 1px; }
 .ci { width: 34px; height: 34px; padding: 0; border: 0; border-radius: 6px; overflow: hidden; cursor: pointer; background: transparent; }
 .ci img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.g .par { max-width: 112px; padding: 5px 4px; border: 1px solid var(--glass-border); border-radius: 8px; background: var(--bg); color: var(--text-2); font: 500 0.74rem var(--font); }
+.g .par { flex: 0 1 112px; min-width: 0; max-width: 112px; padding: 5px 4px; border: 1px solid var(--glass-border); border-radius: 8px; background: var(--bg); color: var(--text-2); font: 500 0.74rem var(--font); }
 .g button { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--text-3); cursor: pointer; }
 .g button:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
 .g button:disabled { opacity: 0.3; cursor: default; }

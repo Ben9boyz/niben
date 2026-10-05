@@ -357,6 +357,27 @@ export function buildListeningCorner() {
     onChange?.()
   }
   let stackKey = ''
+  // the next album (all of it is in the queue): one sleeve leaning against the wall at the left of the plant
+  const nextMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
+  const nextEdge = new THREE.MeshStandardMaterial({ color: 0xe9e4d8, roughness: 0.8 })
+  const nextMesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.008), [nextEdge, nextEdge, nextEdge, nextEdge, nextMat, nextEdge])
+  nextMesh.position.set(0.1, TOP_Y + 0.15 * Math.cos(0.26) + 0.002, 0.11)
+  nextMesh.rotation.x = -0.26
+  nextMesh.castShadow = nextMesh.receiveShadow = true
+  nextMesh.userData = { kind: 'next' }
+  nextMesh.visible = false
+  group.add(nextMesh)
+  let nextUri = null
+  function setNext(a, onChange) {
+    const uri = a?.uri || null
+    if (uri === nextUri) return
+    nextUri = uri
+    nextMesh.visible = !!a
+    if (!a) { onChange?.(); return }
+    const src = a.image_large || a.image
+    if (src) loader.load(src, (tex) => { tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; nextMat.map?.dispose(); nextMat.map = tex; nextMat.needsUpdate = true; onChange?.() }, undefined, () => {})
+    onChange?.()
+  }
   // frames on the wall above (abstract "records at sunset")
   const art = (seed) => canvasTex(300, 380, (x, w, h) => {
     const g = x.createLinearGradient(0, 0, 0, h)
@@ -1057,6 +1078,7 @@ export function buildListeningCorner() {
     setHoldIpod(v, big = false) { holdIpod = v; ipodBig = big },
     setFlip(v) { flipSel = v },
     setStack,
+    setNext,
     setTempo(bpm) { tempo = Number(bpm) || 0 },
     isSpinning: () => playing || spin > 0.02,
     isHoldingIpod: () => holdIpod,

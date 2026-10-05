@@ -165,6 +165,56 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   sky.position.set(4.2, 1.6, 1.7)
   sky.rotation.y = -Math.PI / 2
   scene.add(sky)
+  // ── weather outside the window: rain / snow falling in front of the sky, lightning, grey clouds ──
+  let weather = { kind: 'clear', day: true }
+  const RAIN_N = 110
+  const wp = new Float32Array(RAIN_N * 6)
+  const wseed = Array.from({ length: RAIN_N }, () => ({ z: 1.02 + Math.random() * 1.36, x: 4.06 + Math.random() * 0.12, y: 0.92 + Math.random() * 1.38, v: 0.8 + Math.random() * 0.8 }))
+  const rainGeo = new THREE.BufferGeometry()
+  rainGeo.setAttribute('position', new THREE.BufferAttribute(wp, 3))
+  const rainMat = new THREE.LineBasicMaterial({ color: 0xcfe0ff, transparent: true, opacity: 0.55 })
+  const rain = new THREE.LineSegments(rainGeo, rainMat)
+  rain.frustumCulled = false
+  rain.visible = false
+  scene.add(rain)
+  const snowGeo = new THREE.BufferGeometry()
+  const sp = new Float32Array(RAIN_N * 3)
+  snowGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3))
+  const snow = new THREE.Points(snowGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.02, transparent: true, opacity: 0.95, sizeAttenuation: true }))
+  snow.frustumCulled = false
+  snow.visible = false
+  scene.add(snow)
+  let flash = 0
+  function stepWeather(dt, t) {
+    const k = weather.kind
+    const raining = k === 'rain' || k === 'drizzle' || k === 'thunder'
+    rain.visible = raining
+    snow.visible = k === 'snow'
+    if (raining) {
+      const speed = k === 'drizzle' ? 1.6 : 3.2
+      for (let i = 0; i < RAIN_N; i++) {
+        const d = wseed[i]
+        d.y -= d.v * speed * dt
+        if (d.y < 0.9) { d.y = 2.3; d.z = 1.02 + Math.random() * 1.36 }
+        wp.set([d.x, d.y, d.z, d.x, d.y + 0.1, d.z + 0.012], i * 6)
+      }
+      rainGeo.attributes.position.needsUpdate = true
+    } else if (k === 'snow') {
+      for (let i = 0; i < RAIN_N; i++) {
+        const d = wseed[i]
+        d.y -= d.v * 0.28 * dt
+        if (d.y < 0.9) { d.y = 2.3; d.z = 1.02 + Math.random() * 1.36 }
+        sp.set([d.x, d.y, d.z + Math.sin(t * 0.8 + i) * 0.03], i * 3)
+      }
+      snowGeo.attributes.position.needsUpdate = true
+    }
+    // lightning: a short bright flash through the window
+    if (k === 'thunder') {
+      if (flash <= 0 && Math.random() < dt * 0.12) flash = 0.18
+    }
+    if (flash > 0) { flash -= dt; windowLight.intensity = (THEMES[themeName]?.window ?? 6) * 3 + 8 * Math.max(0, flash / 0.18); skyMat.color.setScalar(1 + flash * 6); if (flash <= 0) { applyWeatherLight(); skyMat.color.setScalar(1) } }
+    return raining || k === 'snow' || flash > 0
+  }
   // baseboards
   box(8.0, 0.08, 0.02, trimMat, 0, 0.04, -3.49, scene, false)
   box(0.02, 0.08, 7.0, trimMat, -3.99, 0.04, 0, scene, false)
@@ -615,7 +665,18 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   }
 
   // ── Theme ──────────────────────────────────────────────
+  let themeName = 'light'
+  // grey weather dims the daylight coming in
+  const DIM = { clear: 1, cloud: 0.7, fog: 0.55, drizzle: 0.5, rain: 0.4, thunder: 0.3, snow: 0.65 }
+  function applyWeatherLight() {
+    const t = THEMES[themeName] || THEMES.light
+    const d = t.night ? 1 : DIM[weather.kind] ?? 1
+    windowLight.intensity = t.window * d
+    sun.intensity = t.sun * d
+    hemi.intensity = t.hemi * (t.night ? 1 : 0.7 + 0.3 * d)
+  }
   function setTheme(name) {
+    themeName = THEMES[name] ? name : 'light'
     const t = THEMES[name] || THEMES.light
     scene.background = new THREE.Color(t.bg)
     scene.fog = new THREE.Fog(t.bg, 26, 48)
@@ -637,8 +698,9 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     bloom.threshold = t.threshold
     renderer.toneMappingExposure = t.exposure
     skyMat.map.dispose()
-    skyMat.map = skyTexture(t.night)
+    skyMat.map = skyTexture(t.night, weather.kind)
     skyMat.needsUpdate = true
+    applyWeatherLight()
   }
 
   let distK = 1
@@ -844,6 +906,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     if (globeTable.update(dt, t, !reduced && near('reiser'))) active = true
     if (timerState && near('ovelse', 'hjem') && practice.update(dt, t, timerState(), timerInterval)) active = true
     ambient = !reduced && !document.hidden && near('lytte', 'hjem', 'kode', 'gaming')
+    if (!reduced && near('lytte', 'hjem') && stepWeather(dt, t)) { active = true; ambient = true }
     figures.update(t)
     if (listening.update(dt, t, camera)) { shadowsDirty = true; active = true }
     if (japan.update(dt)) { shadowsDirty = true; active = true }
@@ -901,6 +964,10 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
       return s && { x: r.left + s.x, y: r.top + s.y, w: s.w, h: s.h }
     },
     /** The records matching the shelf search slide out of the shelf (null = no search). */
+    /** The album queued up next (all of it): one sleeve leaning by the turntable, or null. */
+    setNext(a) { listening.setNext(a, () => { shadowsDirty = true; invalidate(1) }) },
+    /** The weather where I live: { kind: clear | cloud | fog | drizzle | rain | thunder | snow }. */
+    setWeather(w) { weather = { kind: w?.kind || 'clear' }; setTheme(themeName); invalidate(1) },
     /** The records on the table: queued albums on top (next first), then the ones I heard last. */
     setStack(list) { stack = list || []; listening.setStack(stack, () => { shadowsDirty = true; invalidate(1) }) },
     /** Tempo (BPM) of the song that's playing; 0 = unknown (the record turns at 33⅓ rpm). */

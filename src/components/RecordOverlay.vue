@@ -93,6 +93,8 @@ function onKey(e) {
     if (e.key === 'ArrowRight') { browse(1); e.preventDefault(); return }
     if (e.key === 'Enter' || e.key === 'ArrowUp') { takeOut(); e.preventDefault(); return }
   }
+  // the record in my hand: P or Enter puts it on and starts it from the first song
+  if (room.sel.musikk && !peeked.value && (e.key === 'Enter' || e.key.toLowerCase() === 'p') && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); onPlay(); return }
   if (e.key !== 'Escape') return
   if (room.recordFlipped) room.recordFlipped = false
   else if (room.sel.musikk) putBack()

@@ -113,12 +113,12 @@ async function disconnect() {
 </template>
 
 <style scoped>
-.stick { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 16px; }
+.stick { min-width: 0; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 16px; }
 .stick .head { flex: 0 0 auto; margin: 0 2px; padding-bottom: 6px; }
-.stick :deep(.gb) { flex: 1 1 280px; min-width: 0; }
+.stick :deep(.gb) { flex: 1 1 280px; min-width: 0; max-width: 100%; }
 .stick :deep(.gb .gbrow) { justify-content: flex-end; }
 .stick .head b { font-size: 1.05rem; letter-spacing: 0.04em; color: var(--text-2); }
-.vp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.vp { container-type: inline-size; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .browse { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .muted { color: var(--text-3); font-size: 0.85rem; }
 .head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 2px 2px 0; }
@@ -135,6 +135,13 @@ async function disconnect() {
   .stick { flex-direction: column; align-items: stretch; gap: 8px; }
   .stick :deep(.gb) { flex: 0 0 auto; }
   .stick .head { padding-bottom: 0; }
+  .stick :deep(.gb .gbrow) { justify-content: space-between; }
+}
+/* narrow panel (the 3D side panel, the floating player): the name on top, the buttons spread over one line under it */
+@container (max-width: 640px) {
+  .stick { flex-direction: column; align-items: stretch; gap: 8px; }
+  .stick .head { padding-bottom: 0; }
+  .stick :deep(.gb) { flex: 0 0 auto; }
   .stick :deep(.gb .gbrow) { justify-content: space-between; }
 }
 </style>

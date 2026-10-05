@@ -1,6 +1,7 @@
 <script setup>
 import BrandLogo from './BrandLogo.vue'
 import LangSwitch from './LangSwitch.vue'
+import ThemeSwitch from './ThemeSwitch.vue'
 import AdminAvatar from './AdminAvatar.vue'
 import { Keyboard } from 'lucide-vue-next'
 import { shortcuts } from '../composables/useShortcuts'
@@ -57,10 +58,7 @@ function toSite() {
     <LangSwitch class="plang" />
     <button class="icon glass" title="Hurtigtaster (?)" aria-label="Hurtigtaster" @click="shortcuts.open = true"><Keyboard :size="17" /></button>
     <button v-if="!inApp" class="icon glass" title="Til niben.no" aria-label="Til niben.no" @click="toSite"><ArrowUpRight :size="17" /></button>
-    <button class="icon glass" :title="theme === 'dark' ? 'Lyst tema' : 'Mørkt tema'" aria-label="Bytt tema" @click="toggle">
-      <Sun v-if="theme === 'dark'" :size="17" />
-      <Moon v-else :size="17" />
-    </button>
+    <ThemeSwitch class="icon" />
   </header>
 </template>
 

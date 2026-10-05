@@ -64,11 +64,19 @@ export function wallTexture() {
   }, { repeat: [4, 2] })
 }
 
-export function skyTexture(night) {
+export function skyTexture(night, kind = 'clear') {
   const r = rand(11)
+  const grey = ['cloud', 'rain', 'drizzle', 'thunder', 'snow', 'fog'].includes(kind)
+  const heavy = ['rain', 'thunder', 'drizzle'].includes(kind)
   return canvasTex(256, 256, (x, w, h) => {
     const g = x.createLinearGradient(0, 0, 0, h)
-    if (night) {
+    if (grey && night) {
+      g.addColorStop(0, '#0b1020'); g.addColorStop(0.7, '#1a2338'); g.addColorStop(1, '#2c3a52')
+    } else if (grey) {
+      if (heavy) { g.addColorStop(0, '#6c7685'); g.addColorStop(0.65, '#8f99a8'); g.addColorStop(1, '#b4bcc7') }
+      else if (kind === 'fog') { g.addColorStop(0, '#c9d0d9'); g.addColorStop(1, '#e6eaef') }
+      else { g.addColorStop(0, '#9aa7b8'); g.addColorStop(0.65, '#c3ccd8'); g.addColorStop(1, '#e1e6ee') }
+    } else if (night) {
       g.addColorStop(0, '#050b1e')
       g.addColorStop(0.7, '#0f2550')
       g.addColorStop(1, '#2a4f8a')
@@ -79,7 +87,13 @@ export function skyTexture(night) {
     }
     x.fillStyle = g
     x.fillRect(0, 0, w, h)
-    if (night) {
+    if (grey) {
+      // heavy cloud cover: soft grey blobs all over
+      for (let i = 0; i < (kind === 'fog' ? 6 : 26); i++) {
+        x.fillStyle = night ? `rgba(60,72,95,${0.25 + r() * 0.3})` : heavy ? `rgba(95,104,118,${0.25 + r() * 0.35})` : `rgba(235,240,248,${0.35 + r() * 0.4})`
+        x.beginPath(); x.arc(r() * w, r() * h * 0.75, 18 + r() * 34, 0, Math.PI * 2); x.fill()
+      }
+    } else if (night) {
       for (let i = 0; i < 70; i++) {
         x.fillStyle = `rgba(255,255,255,${0.3 + r() * 0.7})`
         x.beginPath()
@@ -97,7 +111,7 @@ export function skyTexture(night) {
       })
     }
     // distant hills
-    x.fillStyle = night ? '#0a1730' : '#9cc7b4'
+    x.fillStyle = night ? '#0a1730' : grey ? '#8fa89c' : '#9cc7b4'
     x.beginPath()
     x.moveTo(0, h)
     for (let i = 0; i <= 16; i++) x.lineTo((i / 16) * w, h * 0.8 - Math.sin(i * 0.9) * 14 - r() * 10)

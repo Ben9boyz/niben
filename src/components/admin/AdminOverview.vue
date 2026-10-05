@@ -1,10 +1,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Trophy, Download, Users, Music2, Gamepad2, Languages, Globe2, BookOpen, Plane, Mic, RefreshCw, Unplug, Plug, Trash2, Check, AlertTriangle } from 'lucide-vue-next'
+import { MapPin, Trophy, Download, Users, Music2, Gamepad2, Languages, Globe2, BookOpen, Plane, Mic, RefreshCw, Unplug, Plug, Trash2, Check, AlertTriangle } from 'lucide-vue-next'
 import { api } from '../../composables/useAdmin'
 import { spotify, setLockSeconds, refreshSpotify, fmtLock, notify } from '../../composables/useSpotify'
 import { byCode } from '../../lib/languages'
 import { pwa, install, desktopApp } from '../../composables/usePwa'
+import { live, loadLive } from '../../composables/useLive'
 import { milestones, loadMilestones, setMilestones } from '../../composables/useMilestones'
 
 // The first admin tab: what is connected and how things are set up, in plain words – with the buttons to fix it.
@@ -48,6 +49,28 @@ async function clearLang(lang) {
 }
 const maxDay = computed(() => Math.max(1, ...(vis.value?.days || []).map((d) => d.u)))
 const dayLabel = (d) => new Date(d + 'T12:00:00').toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })
+const home = ref(null)
+const hq = ref('')
+const hres = ref([])
+let hTimer = 0
+async function loadHome() { try { home.value = (await api('home_get')).place } catch {} }
+onMounted(loadHome)
+function searchHome() {
+  clearTimeout(hTimer)
+  if (hq.value.trim().length < 2) { hres.value = []; return }
+  hTimer = setTimeout(async () => { try { hres.value = (await api('home_search', null, { query: `&q=${encodeURIComponent(hq.value.trim())}` })).results } catch (e) { err.value = e.message } }, 300)
+}
+async function setHome(r) {
+  busy.value = 'home'
+  try { await api('home_set', { name: r.name + (r.region ? `, ${r.region}` : ''), lat: r.lat, lon: r.lon }); hq.value = ''; hres.value = []; await loadHome(); await loadLive(); flash('Bostedet er lagret – siden følger nå været og dag/natt der.') } catch (e) { err.value = e.message }
+  busy.value = ''
+}
+async function clearHome() {
+  busy.value = 'home'
+  try { await api('home_set', { clear: true }); await loadHome(); await loadLive(); flash('Bostedet er fjernet.') } catch (e) { err.value = e.message }
+  busy.value = ''
+}
+const KIND = { clear: 'klart', cloud: 'skyet', fog: 'tåke', drizzle: 'yr', rain: 'regn', thunder: 'torden', snow: 'snø' }
 const bf = ref('')
 async function loadBf() { try { bf.value = (await api('admin_best_friend')).id || '' } catch {} }
 onMounted(loadBf)
@@ -125,6 +148,16 @@ const langName = (c) => byCode[c]?.en || c
           <i v-for="d in vis.days" :key="d.day" :style="{ height: `${Math.max(4, (d.u / maxDay) * 100)}%` }" :class="{ zero: !d.u }" :title="`${dayLabel(d.day)}: ${d.u} besøkende, ${d.h} sidevisninger`"></i>
         </div>
         <p class="help">Hver ulike IP-adresse teller som én besøkende per dag (adressen lagres ikke, bare et tilfeldig avtrykk). {{ vis.returning }} har kommet tilbake på en ny dag. <b>Du telles ikke</b> – når du logger inn, fjernes tellingen fra denne IP-adressen og denne nettleseren.</p>
+      </section>
+
+      <!-- where I live: the weather and day / night at home -->
+      <section class="card">
+        <header><MapPin :size="18" /><h3>Bosted</h3><span class="pill" :class="home ? 'ok' : 'off'">{{ home ? home.name : 'Ikke satt' }}</span></header>
+        <p class="help">Når du velger bosted, regner det på nettsiden (og utenfor vinduet i 3D-rommet) når det regner der du bor, det snør når det snør, og rommet blir mørkt når det er natt der. Besøkende kan velge å følge dette med «Live» i lys/mørk-menyen. Bare stedsnavnet og været vises offentlig, aldri nøyaktig posisjon.</p>
+        <p v-if="home && live.configured" class="help">Akkurat nå: <b>{{ KIND[live.kind] || live.kind }}</b><template v-if="live.temp != null"> · {{ live.temp }} °C</template> · {{ live.isDay ? 'dag' : 'natt' }}</p>
+        <div class="hsearch"><input v-model="hq" placeholder="Søk etter byen din …" aria-label="Søk etter bosted" @input="searchHome" /></div>
+        <ul v-if="hres.length" class="hres"><li v-for="r in hres" :key="r.lat + ',' + r.lon"><button :disabled="busy === 'home'" @click="setHome(r)"><b>{{ r.name }}</b><small>{{ [r.region, r.country].filter(Boolean).join(', ') }}</small></button></li></ul>
+        <button v-if="home" class="btn small danger" :disabled="busy === 'home'" @click="clearHome"><Trash2 :size="14" />Fjern bosted</button>
       </section>
 
       <!-- Spotify -->
@@ -222,6 +255,11 @@ const langName = (c) => byCode[c]?.en || c
 .bfrow { flex-wrap: nowrap; }
 .bfin { flex: 2; min-width: 0; padding: 8px 12px; border: 1px solid var(--glass-border); border-radius: 10px; background: var(--bg); color: var(--text); font: 500 0.84rem var(--font); }
 .svc small { flex-basis: 100%; color: var(--text-3); }
+.hsearch input { width: 100%; padding: 10px 14px; border: 1px solid var(--glass-border); border-radius: 12px; background: var(--bg); color: var(--text); font: 500 0.92rem var(--font); }
+.hres { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.hres button { display: flex; flex-direction: column; align-items: flex-start; width: 100%; padding: 8px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.hres button:hover { background: var(--accent-soft); }
+.hres small { color: var(--text-3); }
 .msform { display: grid; grid-template-columns: 170px 1fr 1fr auto; gap: 8px; }
 .msform select, .msform input { min-width: 0; padding: 8px 12px; border: 1px solid var(--glass-border); border-radius: 10px; background: var(--bg); color: var(--text); font: 500 0.86rem var(--font); }
 .mslist { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }

@@ -9,6 +9,7 @@ import { timer, timerState, toggle as toggleTimer } from '../composables/useTime
 import { spotify, useSpotify, prefetchTracks, fetchTracks, fetchTempo, fetchQueue, control, findAlbum, addGuest } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 import { useVinylNoise } from '../composables/useVinylNoise'
+import { weather } from '../composables/useLive'
 import { shelfAlbums, loadGroups } from '../composables/useGroups'
 import { jp, loadJapanese } from '../composables/useJapanese'
 import { steam, loadSteam } from '../composables/useSteam'
@@ -92,9 +93,11 @@ onMounted(() => {
   room.api = api
   if (import.meta.env.DEV) window.__room = api
   api.setTheme(theme.value)
+  api.setWeather(weather.value)
   api.setTimerInterval(timer.interval)
   api.setMusic(sceneMusic())
   api.setStack(stackItems.value)
+  api.setNext(nextAlbum.value)
   if (spotify.now?.uri) fetchTempo(spotify.now.uri).then((b) => { if (api && spotify.now?.uri) api.setTempo(b) })
   if (data.loaded) api.setData(data)
   api.goTo(route.name || 'hjem', { duration: 2.6 })
@@ -110,36 +113,42 @@ watch(() => [steam.profile, steam.library, room.api], () => room.api?.setSteam({
 // …and the anime from the decks as DVDs stacked on the mat
 watch(() => [jp.anime, room.jpAnime, room.api], () => room.api?.setAnime(jp.anime, room.jpAnime), { immediate: true })
 watch(theme, (t) => api?.setTheme(t))
+watch(() => weather.value?.kind, () => api?.setWeather(weather.value))
 watch(() => timer.interval, (v) => api?.setTimerInterval(v))
 // the records stand in the shelf's order (by artist, or by my folders)
 // the stack on the table: the albums coming up in the queue on top (next first), the ones I heard last below
 const queuedTracks = ref([])
 async function loadQueue() { queuedTracks.value = spotify.connected && spotify.now?.name ? await fetchQueue() : [] }
 watch(() => [spotify.now?.uri, spotify.queueV, spotify.connected], loadQueue, { immediate: true })
+// "next": an album is only next when ALL of it has been put in the queue (not just one song from it)
+const nextAlbum = computed(() => {
+  const ctx = String(spotify.now?.context || '')
+  const by = new Map()
+  for (const t of queuedTracks.value) {
+    if (!t.album_uri || t.album_uri === ctx || t.album === spotify.now?.album) continue
+    const e = by.get(t.album_uri) || { n: 0, t }
+    e.n++
+    by.set(t.album_uri, e)
+  }
+  for (const [uri, e] of by) {
+    const total = findAlbum(uri)?.tracks
+    const need = total ? Math.max(3, Math.ceil(Math.min(total, 20) * 0.8)) : 4
+    if (e.n >= need) return { uri, name: e.t.album, artist: e.t.album_artist, image: e.t.album_image, image_large: e.t.album_image, queued: true }
+  }
+  return null
+})
+// the stack on the table: only the 3 albums I heard last (never the one that is on the turntable now)
 const stackItems = computed(() => {
   const ctx = String(spotify.now?.context || '')
-  const playingAlbum = ctx.startsWith('spotify:album:') ? ctx : null
-  const seen = new Set(playingAlbum ? [playingAlbum] : [])
   const out = []
-  // queued songs from other albums (only when an album, not a playlist, is playing – in a playlist the next songs
-  // would all look "queued")
-  if (!ctx || playingAlbum) {
-    for (const t of queuedTracks.value) {
-      if (!t.album_uri || seen.has(t.album_uri)) continue
-      seen.add(t.album_uri)
-      out.push({ uri: t.album_uri, name: t.album, artist: t.album_artist, image: t.album_image, image_large: t.album_image, queued: true })
-    }
-  }
-  let recent = 0
   for (const a of spotify.recent || []) {
-    if (recent >= 3) break
-    if (seen.has(a.uri)) continue
-    seen.add(a.uri)
-    recent++
+    if (out.length >= 3) break
+    if (a.uri === ctx || (spotify.now?.album && a.name === spotify.now.album)) continue
     out.push({ ...a, queued: false })
   }
   return out
 })
+watch(nextAlbum, (v) => api?.setNext(v), { deep: false })
 watch(stackItems, (v) => api?.setStack(v), { deep: false })
 // the turntable spins to the tempo of the song (4 beats – one bar – per turn)
 watch(() => spotify.now?.uri, async (uri) => {

@@ -1,6 +1,7 @@
 <script setup>
 import { shortcuts } from '../composables/useShortcuts'
 import LangSwitch from './LangSwitch.vue'
+import ThemeSwitch from './ThemeSwitch.vue'
 import AdminAvatar from './AdminAvatar.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { GROUPS, groupOf, groupTarget } from '../lib/nav'
@@ -137,12 +138,7 @@ onBeforeUnmount(() => {
       <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2.5" /><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M7 14h10" /></svg>
     </button>
 
-    <button class="theme glass" @click="toggle" :aria-label="theme === 'dark' ? 'Bytt til lyst tema' : 'Bytt til mørkt tema'">
-      <transition name="spin" mode="out-in">
-        <svg v-if="theme === 'dark'" key="sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
-        <svg v-else key="moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" /></svg>
-      </transition>
-    </button>
+    <ThemeSwitch />
   </header>
 </template>
 

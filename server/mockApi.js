@@ -257,6 +257,10 @@ export function mockApi() {
           case 'milestones': return send(res, 200, { items: mock.milestones || (mock.milestones = [{ key: 'rec:1', type: 'recording', title: 'Hotel California (akustisk)', sub: 'Nytt gitaropptak', image: null, t: Math.floor(Date.now() / 1000) - 3600 }, { key: 'anime:1', type: 'anime', title: 'Laid-Back Camp', sub: 'Klarer ordene i anime-en – 99 %', image: mockCover(160), t: Math.floor(Date.now() / 1000) - 86400 * 2 }, { key: 'book:1', type: 'book', title: 'The Order of Time', sub: 'Carlo Rovelli', image: mockCover(40), t: Math.floor(Date.now() / 1000) - 86400 * 6 }]) })
           case 'milestone_add': { if (!needAdmin()) return; (mock.milestones ||= []).unshift({ key: 'm' + Date.now(), type: b.type, title: b.title, sub: b.sub || '', image: null, t: Math.floor(Date.now() / 1000) }); return send(res, 200, { ok: true, items: mock.milestones }) }
           case 'milestone_delete': { if (!needAdmin()) return; mock.milestones = (mock.milestones || []).filter((m) => m.key !== b.key); return send(res, 200, { ok: true, items: mock.milestones }) }
+          case 'home_live': { const k = mock.weather || 'rain'; const now = Math.floor(Date.now() / 1000); return send(res, 200, { configured: true, name: 'Oslo', kind: k, code: 61, temp: 7, cloud: 90, wind: 14, precip: 0.6, is_day: (mock.day ?? true), sunrise: [now - 6 * 3600, now + 18 * 3600], sunset: [now + 6 * 3600, now + 30 * 3600] }) }
+          case 'home_get': if (!needAdmin()) return; return send(res, 200, { place: { name: 'Oslo' } })
+          case 'home_search': if (!needAdmin()) return; return send(res, 200, { results: [{ name: 'Oslo', region: 'Oslo', country: 'Norge', lat: 59.91, lon: 10.75 }, { name: 'Osloveien', region: 'Troms', country: 'Norge', lat: 69.6, lon: 18.9 }] })
+          case 'home_set': if (!needAdmin()) return; return send(res, 200, { ok: true })
           case 'admin_best_friend':
             if (!needAdmin()) return
             return send(res, 200, { ok: true, id: (b && b.id) || '76561198148569463' })

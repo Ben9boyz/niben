@@ -9,6 +9,7 @@ import GlobalMini from './components/GlobalMini.vue'
 import ShortcutsHelp from './components/ShortcutsHelp.vue'
 import LangSuggest from './components/LangSuggest.vue'
 import ContextMenu from './components/ContextMenu.vue'
+import WeatherFx from './components/WeatherFx.vue'
 import { useRoute } from 'vue-router'
 // three.js and the whole room are only fetched when the 3D version is used
 const RoomLayout = defineAsyncComponent(() => import('./components/RoomLayout.vue'))
@@ -33,6 +34,7 @@ const toTop = () => window.scrollTo(0, 0)
       <div class="blob b2"></div>
       <div class="blob b3"></div>
     </div>
+    <WeatherFx />
     <main>
       <SubTabs class="flat-tabs" />
       <router-view v-slot="{ route: r }">
