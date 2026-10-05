@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { Disc3, ListMusic, Search, X } from 'lucide-vue-next'
+import { Disc3, ListMusic, Library, Search, X } from 'lucide-vue-next'
 import { room } from '../composables/useRoom'
 import { spotify, useSpotify } from '../composables/useSpotify'
 import { shell } from '../composables/useShell'
@@ -12,6 +12,7 @@ import MiniNowPlaying from '../components/MiniNowPlaying.vue'
 import SegSwitch from '../components/SegSwitch.vue'
 import FolderTree from '../components/FolderTree.vue'
 import ArtistTree from '../components/ArtistTree.vue'
+import AllPanel from '../components/AllPanel.vue'
 import QueuePanel from '../components/QueuePanel.vue'
 import { loadGroups, groups, select } from '../composables/useGroups'
 import { peek, peekBack, peekClear } from '../composables/useBrowse'
@@ -27,13 +28,17 @@ const gq = ref('') // one search for playlists, albums and songs
 const ipod = computed(() => room.musicView.startsWith('ipod'))
 const playing = computed(() => !!spotify.now?.name)
 const sheet = ref(false) // phones: the full "now playing" card
-const LIB = [{ id: 'vinyl', label: 'Album', icon: Disc3 }, { id: 'ipod', label: 'Spillelister', icon: ListMusic }]
-const libView = computed({ get: () => (ipod.value ? 'ipod' : 'vinyl'), set: (v) => { gq.value = ''; show(v) } })
+const LIB = [{ id: 'vinyl', label: 'Album', icon: Disc3 }, { id: 'ipod', label: 'Spillelister', icon: ListMusic }, { id: 'all', label: 'Alt', icon: Library }]
+// "Alt": playlists and albums together (remembered)
+const allMode = ref((() => { try { return localStorage.getItem('niben-lib-all') === '1' } catch { return false } })())
+const setAll = (v) => { allMode.value = v; try { localStorage.setItem('niben-lib-all', v ? '1' : '0') } catch {} }
+const libView = computed({ get: () => (allMode.value ? 'all' : ipod.value ? 'ipod' : 'vinyl'), set: (v) => { gq.value = ''; if (v === 'all') { setAll(true); peekClear(); room.sel.musikk = null; room.ipod.playlist = null; room.ipod.view = 'menu' } else { setAll(false); show(v) } } })
+const showAll = computed(() => allMode.value && !room.sel.musikk && !room.ipod.playlist)
 const top = computed(() => peek.stack[peek.stack.length - 1] || null)
 const backLabel = computed(() => (peek.stack.length > 1 ? 'Tilbake' : gq.value.trim() ? 'Tilbake til søket' : 'Tilbake'))
 
-const byArtist = computed(() => !ipod.value && groups.on && groups.view === 'artist')
-const hasTree = computed(() => groups.on && groups.loaded && !byArtist.value)
+const byArtist = computed(() => !ipod.value && !showAll.value && groups.on && groups.view === 'artist')
+const hasTree = computed(() => groups.on && groups.loaded && !byArtist.value && !showAll.value)
 
 function show(view) {
   peekClear()
@@ -52,11 +57,14 @@ function show(view) {
         <div class="glass lib-card">
           <b class="lh">Biblioteket</b>
           <nav class="lib" role="tablist" aria-label="Bibliotek">
-            <button role="tab" :aria-selected="!ipod" :class="{ on: !ipod && !gq }" @click="gq = ''; show('vinyl')">
+            <button role="tab" :aria-selected="!ipod && !allMode" :class="{ on: !ipod && !allMode && !gq }" @click="gq = ''; setAll(false); show('vinyl')">
               <Disc3 class="ic" :size="19" aria-hidden="true" />Album<small>{{ spotify.albums.length || '' }}</small>
             </button>
-            <button role="tab" :aria-selected="ipod" :class="{ on: ipod && !gq }" @click="gq = ''; show('ipod')">
+            <button role="tab" :aria-selected="ipod && !allMode" :class="{ on: ipod && !allMode && !gq }" @click="gq = ''; setAll(false); show('ipod')">
               <ListMusic class="ic" :size="19" aria-hidden="true" />Spillelister<small>{{ spotify.playlists.length || '' }}</small>
+            </button>
+            <button role="tab" :aria-selected="allMode" :class="{ on: allMode && !gq }" @click="libView = 'all'">
+              <Library class="ic" :size="19" aria-hidden="true" />Alt<small>{{ spotify.albums.length + spotify.playlists.length || '' }}</small>
             </button>
           </nav>
           <!-- the folders of whatever I'm looking at: Album or Spillelister -->
@@ -88,6 +96,7 @@ function show(view) {
             <ArtistPage v-else :key="top.item.id || top.item.name" :artist="top.item" :back-label="backLabel" @back="peekBack" />
           </template>
           <SpotifySearch v-else-if="gq.trim()" :q="gq" scope="all" :tab="ipod ? 'ipod' : 'vinyl'" />
+          <AllPanel v-else-if="showAll" />
           <template v-else>
             <PlaylistPanel v-if="ipod" :search="false" />
             <VinylPanel v-else :search="false" />
