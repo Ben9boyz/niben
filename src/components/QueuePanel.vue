@@ -4,6 +4,7 @@ import { ListMusic, Music, ChevronRight, Pencil, Check, X, ArrowUp, ArrowDown, G
 import { spotify, fetchQueue, fetchTracks, fmtClock } from '../composables/useSpotify'
 import { queueDrop, queueOver, drag } from '../composables/useDrag'
 import { admin } from '../composables/useAdmin'
+import { openAlbumPage, openArtistPage, firstArtist } from '../composables/useBrowse'
 import { myQueue, loadMyQueue, removeAt, moveRange, clearMine, shuffleMine, locked } from '../composables/useQueue'
 
 // Under "now playing": what comes next. "Min kø" is MY list (admin): drag albums / songs around, move them with the
@@ -13,7 +14,7 @@ const queue = ref(null) // Spotify's queue
 const pos = ref(null) // { n, of, next } while an album plays
 let timer = 0
 let soon = 0
-const props = defineProps({ flat: Boolean, collapsible: Boolean }) // playlists: always the plain song list · collapsible: the list can be folded away (3D panel, mini player)
+const props = defineProps({ flat: Boolean, collapsible: Boolean, always: Boolean }) // playlists: always the plain song list · collapsible: the list can be folded away (3D panel, mini player)
 const KEY = 'niben-queue-open'
 const shut = ref(props.collapsible && (() => { try { return localStorage.getItem(KEY) !== '1' } catch { return true } })()) // folded away until I open it
 function toggleShut() { if (!props.collapsible) return; shut.value = !shut.value; try { localStorage.setItem(KEY, shut.value ? '0' : '1') } catch {} }
@@ -53,6 +54,9 @@ const rest = (g) => !!g.uri && g.uri === spotify.now?.context && !!pos.value?.ne
 const lockedG = (g) => g.tracks.some((x) => locked(x.idx))
 const mineCount = computed(() => myQueue.items.length)
 const totalCount = computed(() => mineCount.value + spotQueue.value.length)
+// the name of an album tile opens the album, the artist of a song opens the artist
+const openGroupAlbum = (g) => { const t = g.tracks[0].t; if (g.uri) openAlbumPage({ uri: g.uri, name: g.name, artist: t.album_artist || t.artist, image: g.image, image_large: g.image }) }
+const openArtistOf = (t) => { if (t?.artist) openArtistPage({ name: firstArtist(t.artist) }) }
 function toggle(k) { const o = new Set(open.value); o.has(k) ? o.delete(k) : o.add(k); open.value = o }
 
 // ── editing my list ──
@@ -99,7 +103,7 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
 </script>
 
 <template>
-  <section v-if="spotify.now?.name || mineCount" class="qp" :class="{ over: queueOver, armed: drag.track || drag.item, editing }" v-on="queueDrop">
+  <section v-if="spotify.now?.name || mineCount || always" class="qp" :class="{ over: queueOver, armed: drag.track || drag.item, editing }" v-on="queueDrop">
     <header :class="{ tap: collapsible }" :role="collapsible ? 'button' : null" :tabindex="collapsible ? 0 : null" :aria-expanded="collapsible ? !shut : null" @click="toggleShut" @keydown.enter="toggleShut">
       <b class="label-caps"><ListMusic :size="13" aria-hidden="true" />Neste i køen<small v-if="totalCount" class="cnt">{{ totalCount }}</small></b>
       <small v-if="pos" class="pos">Låt {{ pos.n }} av {{ pos.of }}</small>
@@ -119,11 +123,11 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
         <div v-for="(g, gi) in mine" :key="g.key" class="grp" :class="{ over: overKey === g.key, dragging: dragging === g }" @dragover="onDragOver($event, g.key)" @drop="onDrop($event, g)">
           <div class="gh">
             <span v-if="editing && !lockedG(g)" class="grip" draggable="true" title="Dra for å flytte" @dragstart="onDragStart($event, g)" @dragend="onDragEnd"><GripVertical :size="15" /></span>
-            <button class="open" :aria-expanded="open.has(g.key)" @click="toggle(g.key)">
+            <div class="open" role="button" tabindex="0" :aria-expanded="open.has(g.key)" @click="toggle(g.key)" @keydown.enter="toggle(g.key)">
               <img v-if="g.image" crossorigin="anonymous" :src="g.image" alt="" /><span v-else class="ph"><Music :size="13" /></span>
-              <span class="t" translate="no"><b>{{ g.name }}<Lock v-if="lockedG(g)" :size="11" class="lk" title="Spotify har den – kan ikke flyttes" /></b><small>{{ single(g) ? g.tracks[0].t.artist : `${g.tracks.length} låter` }} · {{ minutes(g) }}</small></span>
+              <span class="t" translate="no"><b><a v-if="g.uri && !single(g)" class="lnk" href="#" title="Åpne albumet" @click.stop.prevent="openGroupAlbum(g)">{{ g.name }}</a><template v-else>{{ g.name }}</template><Lock v-if="lockedG(g)" :size="11" class="lk" title="Spotify har den – kan ikke flyttes" /></b><small><a v-if="single(g) && g.tracks[0].t.artist" class="lnk" href="#" title="Åpne artisten" @click.stop.prevent="openArtistOf(g.tracks[0].t)">{{ g.tracks[0].t.artist }}</a><template v-else>{{ single(g) ? '' : `${g.tracks.length} låter` }}</template> · {{ minutes(g) }}</small></span>
               <ChevronRight v-if="!single(g)" :size="15" class="chev" :class="{ on: open.has(g.key) }" aria-hidden="true" />
-            </button>
+            </div>
             <span v-if="editing" class="acts">
               <button v-if="!lockedG(g)" aria-label="Flytt opp" title="Opp" :disabled="gi === 0" @click="moveGroup(g, -1)"><ArrowUp :size="14" /></button>
               <button v-if="!lockedG(g)" aria-label="Flytt ned" title="Ned" :disabled="gi === mine.length - 1" @click="moveGroup(g, 1)"><ArrowDown :size="14" /></button>
@@ -151,14 +155,14 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
         <p v-else-if="!spotQueue.length" class="muted">Ingenting mer i køen.</p>
         <ol v-else-if="asAlbums" class="albums">
           <li v-for="(g, i) in groups.slice(0, 20)" :key="(g.uri || g.name) + i" class="grp" :class="{ one: !isAlbum(g) }">
-            <button v-if="isAlbum(g)" class="gh" :aria-expanded="open.has('s' + i)" @click="toggle('s' + i)">
+            <div v-if="isAlbum(g)" class="gh" role="button" tabindex="0" :aria-expanded="open.has('s' + i)" @click="toggle('s' + i)" @keydown.enter="toggle('s' + i)">
               <img v-if="g.image" crossorigin="anonymous" :src="g.image" alt="" /><span v-else class="ph"><Music :size="13" /></span>
-              <span class="t" translate="no"><b>{{ rest(g) ? 'Resten av ' + g.name : g.name }}</b><small><i class="tag">Album</i>{{ g.tracks.length }} låter · {{ minutes(g) }}</small></span>
+              <span class="t" translate="no"><b><template v-if="rest(g)">Resten av </template><a v-if="g.uri" class="lnk" href="#" title="Åpne albumet" @click.stop.prevent="openGroupAlbum(g)">{{ g.name }}</a><template v-else>{{ g.name }}</template></b><small><i class="tag">Album</i>{{ g.tracks.length }} låter · {{ minutes(g) }}</small></span>
               <ChevronRight :size="15" class="chev" :class="{ on: open.has('s' + i) }" aria-hidden="true" />
-            </button>
+            </div>
             <div v-else class="gh single">
               <img v-if="g.tracks[0].t.img || g.image" crossorigin="anonymous" :src="g.tracks[0].t.img || g.image" alt="" /><span v-else class="ph"><Music :size="13" /></span>
-              <span class="t" translate="no"><b>{{ g.tracks[0].t.name }}</b><small><i class="tag pl">Spilleliste</i>{{ g.tracks[0].t.artist }}</small></span>
+              <span class="t" translate="no"><b>{{ g.tracks[0].t.name }}</b><small><i class="tag pl">Spilleliste</i><a v-if="g.tracks[0].t.artist" class="lnk" href="#" title="Åpne artisten" @click.prevent="openArtistOf(g.tracks[0].t)">{{ g.tracks[0].t.artist }}</a></small></span>
               <small class="d">{{ fmtClock(g.tracks[0].t.ms / 1000) }}</small>
             </div>
             <ol v-if="isAlbum(g) && open.has('s' + i)" class="songs">
@@ -169,7 +173,7 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
         <ol v-else>
           <li v-for="(t, i) in spotQueue.slice(0, 12)" :key="t.uri + i">
             <img v-if="t.img" crossorigin="anonymous" :src="t.img" alt="" /><span v-else class="ph"><Music :size="13" /></span>
-            <span class="t" translate="no"><b>{{ t.name }}</b><small>{{ t.artist }}</small></span>
+            <span class="t" translate="no"><b>{{ t.name }}</b><small><a v-if="t.artist" class="lnk" href="#" title="Åpne artisten" @click.prevent="openArtistOf(t)">{{ t.artist }}</a></small></span>
             <small class="d">{{ fmtClock(t.ms / 1000) }}</small>
           </li>
         </ol>
@@ -214,6 +218,8 @@ li img, .ph { width: 32px; height: 32px; border-radius: 5px; object-fit: cover; 
 .songs { display: grid; gap: 1px; margin: 2px 0 6px 50px; padding: 0; max-height: none; overflow: visible; }
 .songs li { grid-template-columns: 18px minmax(0, 1fr) auto; padding: 3px 4px; }
 .n { font-size: 0.7rem; color: var(--text-3); text-align: right; font-variant-numeric: tabular-nums; }
+.lnk { color: inherit; text-decoration: none; }
+.lnk:hover { color: var(--accent); text-decoration: underline; }
 .bar { display: flex; align-items: center; gap: 6px; }
 .edit { white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border: 0; border-radius: 999px; background: var(--glass); color: var(--text-2); font: 600 0.72rem var(--font); cursor: pointer; }
 .edit:hover { color: var(--accent); }

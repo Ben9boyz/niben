@@ -1,5 +1,5 @@
-import { Play, Pause, ListEnd, ListPlus, FolderInput, ExternalLink, Link, User, Disc3, Heart, HeartOff, FolderOpen, EyeOff } from 'lucide-vue-next'
-import { spotify, play, control, lockLeft, fmtClock, lockNote, notify, enqueue, enqueueAlbum, addToPlaylist, isSaved, toggleAlbumSaved, isLiked, setLiked, addGuest } from '../composables/useSpotify'
+import { Play, Pause, ListEnd, ListPlus, FolderInput, ExternalLink, Link, User, Disc3, Heart, HeartOff, FolderOpen, EyeOff, Trash2 } from 'lucide-vue-next'
+import { createPlaylist, deletePlaylist, spotify, play, control, lockLeft, fmtClock, lockNote, notify, enqueue, enqueueAlbum, addToPlaylist, isSaved, toggleAlbumSaved, isLiked, setLiked, addGuest } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
 import { groups, flatGroups, moveTo } from '../composables/useGroups'
 import { openAlbumPage, openArtistPage, albumOfTrack, firstArtist } from '../composables/useBrowse'
@@ -23,6 +23,18 @@ export async function playItem(it) {
   say(r.ok ? { text: `Spiller «${it.name}»${lockNote()}` } : { error: true, text: r.error })
 }
 
+/** Ask for a name and make a playlist (right-click menus). Returns the new playlist, or null. */
+export async function promptNewPlaylist() {
+  const name = (window.prompt('Navn på den nye spillelisten:') || '').trim()
+  if (!name) return null
+  const r = await createPlaylist(name)
+  return r.ok ? { uri: r.uri, name } : null
+}
+/** Right-click in the empty space of the playlists: make a new one. */
+export function playlistsMenu() {
+  return admin.loggedIn ? [{ label: 'Ny spilleliste …', icon: ListPlus, run: promptNewPlaylist }] : []
+}
+
 /** Menu for an album or playlist tile. `it`: { uri, name, sub?, image? }; `open` opens it. */
 export function itemMenu(it, open) {
   const isAlbum = typeOf(it.uri) === 'album'
@@ -40,6 +52,10 @@ export function itemMenu(it, open) {
   if (admin.loggedIn && isAlbum) {
     const saved = isSaved(it.uri)
     items.push({ label: saved ? 'Fjern fra biblioteket' : 'Lagre i biblioteket', icon: saved ? HeartOff : Heart, run: () => toggleAlbumSaved({ uri: it.uri, name: it.name, artist: it.sub, image: it.image, image_large: it.image, thumb: it.image }) })
+  }
+  if (admin.loggedIn && !isAlbum && own) {
+    items.push({ sep: true })
+    items.push({ label: 'Slett spillelisten', icon: Trash2, run: () => { if (window.confirm(`Slette «${it.name}»? Den tas ut av biblioteket ditt på Spotify.`)) deletePlaylist(it.uri, it.name) } })
   }
   if (admin.loggedIn && own && groups.on && groups.loaded) {
     items.push({ sep: true })
@@ -61,7 +77,7 @@ export function trackMenu(t, { onPlay, albumUri, playlists = true } = {}) {
     if (playlists) {
       items.push({
         label: 'Legg til i spilleliste', icon: ListPlus,
-        sub: spotify.playlists.filter((p) => p.editable !== false).map((p) => ({ label: p.name, img: p.thumb || p.image, run: async () => { const r = await addToPlaylist(p.uri, t.uri); say(r.ok ? { text: `«${t.name}» er lagt til i «${p.name}».` } : { error: true, text: r.error }) } })),
+        sub: [{ label: '＋ Ny spilleliste …', run: async () => { const p = await promptNewPlaylist(); if (p) { const r = await addToPlaylist(p.uri, t.uri); say(r.ok ? { text: `«${t.name}» er lagt til i «${p.name}».` } : { error: true, text: r.error }) } } }, ...spotify.playlists.filter((p) => p.editable !== false).map((p) => ({ label: p.name, img: p.thumb || p.image, run: async () => { const r = await addToPlaylist(p.uri, t.uri); say(r.ok ? { text: `«${t.name}» er lagt til i «${p.name}».` } : { error: true, text: r.error }) } }))],
       })
     }
     items.push({ label: 'Lagre i Likte sanger', icon: Heart, run: async () => { const liked = await isLiked(t.uri); setLiked(t.uri, !liked) } })

@@ -1,5 +1,5 @@
 import { reactive } from 'vue'
-import { addGuest } from './useSpotify'
+import { addGuest, spotify } from './useSpotify'
 import { pget, pset } from '../lib/pcache'
 
 // Spotify-style browsing on the flat music page: a song opens its album, an artist opens their albums.
@@ -15,6 +15,17 @@ export const openAlbumPage = (item) => { if (!item?.uri) return; addGuest(item);
 export const openArtistPage = (item) => { if (item?.id || item?.name) push({ kind: 'artist', item: { id: item.id || '', name: item.name || '' } }) }
 export const peekBack = () => { peek.stack.pop() }
 export const peekClear = () => { peek.stack = [] }
+
+/** The album / the artist of the song that plays now → their pages (for the cover and the names on "now playing"). */
+export function openNowAlbum() {
+  const n = spotify.now
+  const uri = n?.album_uri || (String(n?.context || '').startsWith('spotify:album:') ? n.context : null)
+  if (uri) openAlbumPage({ uri, name: n.album, artist: n.artist, image: n.image, image_large: n.image_large })
+}
+export function openNowArtist() {
+  const n = spotify.now
+  if (n?.artist) openArtistPage({ id: n.artist_id, name: String(n.artist).split(',')[0].trim() })
+}
 
 /** A track (from a playlist or from search) → the album it is on. */
 export const albumOfTrack = (t) => ({ uri: t.album_uri, name: t.album, artist: t.album_artist || t.artist, image: t.album_image || t.img, image_large: t.album_image_large || t.album_image || t.img, url: t.album_url })

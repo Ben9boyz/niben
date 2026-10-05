@@ -40,7 +40,7 @@ const top = computed(() => peek.stack[peek.stack.length - 1] || null)
 const backLabel = computed(() => (peek.stack.length > 1 ? 'Tilbake' : gq.value.trim() ? 'Tilbake til søket' : 'Tilbake'))
 
 const byArtist = computed(() => !ipod.value && !showAll.value && !room.discover && groups.on && groups.view === 'artist')
-const hasTree = computed(() => groups.on && groups.loaded && !byArtist.value && !showAll.value && !room.discover)
+const hasTree = computed(() => groups.on && groups.loaded && !byArtist.value && !room.discover) // ("Alt" has its folders too: they work across albums and playlists)
 
 function show(view) {
   peekClear()
@@ -79,7 +79,7 @@ function show(view) {
           </div>
           <div v-else-if="hasTree" class="mapper">
             <b class="lh">Mapper</b>
-            <FolderTree :kind="ipod ? 'playlist' : 'album'" @pick="gq = ''; peekClear(); select($event)" />
+            <FolderTree :kind="showAll ? 'all' : ipod ? 'playlist' : 'album'" @pick="gq = ''; peekClear(); select($event)" />
           </div>
           <a v-if="shell !== 'player'" href="#/musicplayer" class="as-player">Åpne som egen musikkspiller</a>
         </div>
@@ -114,12 +114,13 @@ function show(view) {
       <aside class="now-col">
         <div class="glass now-card">
           <NowPlaying v-if="playing" stacked />
-          <QueuePanel v-if="playing" class="queue" collapsible :flat="ipod" />
           <div v-else class="idle">
             <Disc3 :size="28" />
             <b>Ingenting spilles</b>
             <small>Velg et album eller en spilleliste.</small>
           </div>
+          <!-- the queue is always there in this view -->
+          <QueuePanel class="queue" always :flat="ipod" />
         </div>
       </aside>
     </div>

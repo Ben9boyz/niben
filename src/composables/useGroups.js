@@ -126,6 +126,19 @@ export async function moveTo(uri, id) {
   }
 }
 
+/** My own picture on a folder (admin): uploaded, resized by the server. */
+export async function uploadGroupImage(id, file) {
+  try {
+    const fd = new FormData()
+    fd.append('id', id)
+    fd.append('file', file)
+    apply(await api('spotify_group_image', fd))
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+}
+
 /** Save the list of groups (names / order / added / removed). */
 export async function saveGroups(list) {
   try {
@@ -166,6 +179,7 @@ export function itemsIn(id) {
 /** The picture for a group: the one I picked, none, or – automatically – the first cover found in it. */
 export function groupCover(id) {
   const g = groups.list.find((x) => x.id === id)
+  if (g?.img) return g.img // my own picture
   if (!g || g.cover === 'none') return null
   if (g.cover) return coverOfUri(g.cover)
   for (const u of itemsIn(id)) { const c = coverOfUri(u); if (c) return c }

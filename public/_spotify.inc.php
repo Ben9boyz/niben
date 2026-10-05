@@ -202,6 +202,8 @@ function sp_now(): ?array {
             'name' => $it['name'] ?? '',
             'artist' => implode(', ', array_map(fn($x) => $x['name'], $it['artists'] ?? [])) ?: ($album['publisher'] ?? ''),
             'album' => $album['name'] ?? '',
+            'album_uri' => $album['uri'] ?? null, // (so the name can open the album page)
+            'artist_id' => $it['artists'][0]['id'] ?? null,
             'image' => sp_img($album['images'] ?? [], 300),
             'image_large' => sp_img($album['images'] ?? [], 640),
             'uri' => $it['uri'] ?? null,
@@ -642,6 +644,43 @@ function sp_handle(string $action, bool $post): void {
         if ($s === 401) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
         if ($s >= 300) fail('Spotify svarte med feil (' . $s . '): ' . ($j['error']['message'] ?? ''), 502);
         kv_del('cache_playlists_v3');
+        out(['ok' => true]);
+    }
+
+    case 'spotify_playlist_create': {
+        // a new, empty playlist of my own (private)
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $name = mb_substr(trim((string)(body()['name'] ?? '')), 0, 100);
+        if ($name === '') fail('Gi spillelisten et navn.');
+        if (!sp_has_scope('playlist-modify-private') && !sp_has_scope('playlist-modify-public')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
+        $payload = ['name' => $name, 'public' => false, 'description' => 'Laget på niben.no'];
+        [$s, $j] = sp_api('POST', '/me/playlists', $payload); // (the newer path)
+        if ($s >= 400 && $s !== 401) {
+            [$ms, $me] = sp_api('GET', '/me');
+            if ($ms === 200 && !empty($me['id'])) [$s, $j] = sp_api('POST', '/users/' . rawurlencode($me['id']) . '/playlists', $payload);
+        }
+        if ($s === 401) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
+        if ($s >= 300 || empty($j['uri'])) fail('Spotify svarte med feil (' . $s . ').', 502);
+        kv_del('cache_playlists_v3', 'cache_playlists_v4');
+        out(['ok' => true, 'uri' => $j['uri'], 'name' => $j['name'] ?? $name]);
+    }
+
+    case 'spotify_playlist_delete': {
+        // "delete" a playlist = stop following it (Spotify never really deletes them – it only takes it out of my library)
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $pl = (string)(body()['playlist'] ?? '');
+        if (!preg_match('~^spotify:playlist:([A-Za-z0-9]{10,40})$~', $pl, $m)) fail('Ugyldig spilleliste.');
+        if (!sp_has_scope('playlist-modify-public') && !sp_has_scope('playlist-modify-private')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
+        [$s, $j] = sp_api('DELETE', '/playlists/' . $m[1] . '/followers');
+        if ($s >= 400 && $s !== 401) [$s, $j] = sp_api('DELETE', '/me/library?uris=' . rawurlencode($pl));
+        if ($s === 401) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
+        if ($s >= 300) fail('Spotify svarte med feil (' . $s . ').', 502);
+        kv_del('cache_playlists_v3', 'cache_playlists_v4');
+        // and out of my folders
+        $d = sp_groups_load();
+        if (isset($d['assign'][$pl])) { unset($d['assign'][$pl]); $d['auto'] = array_values(array_diff($d['auto'] ?? [], [$pl])); kv_set('groups', json_encode($d, JSON_UNESCAPED_UNICODE)); }
         out(['ok' => true]);
     }
 

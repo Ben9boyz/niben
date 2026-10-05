@@ -234,7 +234,7 @@ export function mockApi() {
           }
           case 'spotify_groups_save': {
             if (!needAdmin()) return
-            if (b.groups) { mock.groups.groups = b.groups.map((g, i) => ({ id: g.id || `g${i}${Date.now() % 1000}`, name: g.name, ...(g.parent ? { parent: g.parent } : {}), ...(g.cover ? { cover: g.cover } : {}) })); const ids = mock.groups.groups.map((g) => g.id); for (const u in mock.groups.assign) if (!ids.includes(mock.groups.assign[u])) mock.groups.assign[u] = ids[ids.length - 1] }
+            if (b.groups) { mock.groups.groups = b.groups.map((g, i) => ({ id: g.id || `g${i}${Date.now() % 1000}`, name: g.name, ...(g.parent ? { parent: g.parent } : {}), ...(g.cover ? { cover: g.cover } : {}), ...(g.img ? { img: g.img } : {}) })); const ids = mock.groups.groups.map((g) => g.id); for (const u in mock.groups.assign) if (!ids.includes(mock.groups.assign[u])) mock.groups.assign[u] = ids[ids.length - 1] }
             if (b.assign) for (const u in b.assign) { mock.groups.assign[u] = b.assign[u]; mock.groups.auto = mock.groups.auto.filter((x) => x !== u) }
             return send(res, 200, { ok: true, ...mock.groups })
           }
@@ -342,6 +342,28 @@ export function mockApi() {
             if (!needAdmin()) return
             if (isPost) { sp.liked = !!b.on; return send(res, 200, { ok: true, liked: sp.liked }) }
             return send(res, 200, { liked: !!sp.liked })
+          case 'spotify_group_image': {
+            if (!needAdmin()) return
+            if (!file) return send(res, 400, { error: 'Mangler bilde.' })
+            const g = mock.groups.groups.find((x) => x.id === b.id)
+            if (!g) return send(res, 400, { error: 'Fant ikke mappa.' })
+            g.img = await store('photos', file)
+            delete g.cover
+            return send(res, 200, { ok: true, ...mock.groups })
+          }
+          case 'spotify_playlist_create': {
+            if (!needAdmin()) return
+            const id = `mockpl${Date.now()}`.padEnd(22, '0').slice(0, 22)
+            const pl = { id, uri: `spotify:playlist:${id}`, name: b.name, owner: 'Meg', count: 0, image: mockCover(Math.floor(Math.random() * 300)), thumb: mockCover(Math.floor(Math.random() * 300)), editable: true }
+            SP_PLAYLISTS.push(pl)
+            return send(res, 200, { ok: true, uri: pl.uri, name: pl.name })
+          }
+          case 'spotify_playlist_delete': {
+            if (!needAdmin()) return
+            const i = SP_PLAYLISTS.findIndex((p) => p.uri === b.playlist)
+            if (i >= 0) SP_PLAYLISTS.splice(i, 1)
+            return send(res, 200, { ok: true })
+          }
           case 'spotify_follow':
             if (!needAdmin()) return
             return send(res, 200, { ok: true })

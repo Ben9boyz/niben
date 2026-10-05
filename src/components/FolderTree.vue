@@ -12,11 +12,11 @@ import { notify } from '../composables/useSpotify'
 // The folders under the library (PC): click one to show just that folder in the grid, click it again for all.
 // A folder with folders inside folds in and out.
 const props = defineProps({
-  kind: { type: String, default: 'album' }, // which list the numbers count
+  kind: { type: String, default: 'album' }, // which list the numbers count: 'album' | 'playlist' | 'all'
   active: { type: Boolean, default: true }, // is this the list I'm looking at (only then is a folder lit)
 })
 const emit = defineEmits(['pick'])
-const uris = computed(() => (props.kind === 'playlist' ? spotify.playlists : spotify.albums).map((x) => x.uri))
+const uris = computed(() => (props.kind === 'playlist' ? spotify.playlists : props.kind === 'all' ? [...spotify.albums, ...spotify.playlists] : spotify.albums).map((x) => x.uri))
 // drop an album / playlist tile on a folder to move it there
 const over = ref(null)
 const allow = (e, id) => { if (admin.loggedIn && drag.item) { e.preventDefault(); over.value = id } }

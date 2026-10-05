@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { Layers, Pencil, Plus, ArrowUp, ArrowDown, X, Check } from 'lucide-vue-next'
 import FolderIcon from './FolderIcon.vue'
 import SortButton from './SortButton.vue'
-import { groups, setGrouping, setView, saveGroups, groupCover, itemsIn, coverOfUri } from '../composables/useGroups'
+import { groups, setGrouping, setView, saveGroups, groupCover, itemsIn, coverOfUri, uploadGroupImage } from '../composables/useGroups'
 import { admin } from '../composables/useAdmin'
 import { notify } from '../composables/useSpotify'
 
@@ -21,7 +21,18 @@ const parents = (g) => (g.parent || draft.value.some((x) => x.parent === g.id) ?
 // the picture on a folder: pick one of the covers in it, "Automatisk" (the first) or none
 const picking = ref(null)
 const choices = (g) => (g.id ? itemsIn(g.id).map((u) => ({ uri: u, img: coverOfUri(u) })).filter((c) => c.img).slice(0, 16) : [])
-function setCover(g, v) { if (v) g.cover = v; else delete g.cover; picking.value = null; save() }
+function setCover(g, v) { delete g.img; if (v) g.cover = v; else delete g.cover; picking.value = null; save() }
+// my own picture on the folder
+const busyImg = ref(false)
+async function pickImage(g, e) {
+  const f = e.target.files?.[0]
+  e.target.value = ''
+  if (!f || !g.id) return
+  busyImg.value = true
+  const r = await uploadGroupImage(g.id, f)
+  busyImg.value = false
+  if (r.ok) { draft.value = groups.list.map((x) => ({ ...x })); picking.value = null } else notify(r.error, true)
+}
 const add = () => draft.value.push({ id: '', name: '' })
 const remove = (i) => { if (draft.value.length > 1) draft.value.splice(i, 1) }
 async function save() {
@@ -61,9 +72,10 @@ async function save() {
         <button aria-label="Slett gruppen" :disabled="draft.length < 2" @click="remove(i); save()"><X :size="14" /></button>
       </div>
       <div v-if="picking === i" class="covers">
-        <button class="c0" :class="{ on: !g.cover }" @click="setCover(g, '')">Automatisk</button>
-        <button class="c0" :class="{ on: g.cover === 'none' }" @click="setCover(g, 'none')">Ingen</button>
-        <button v-for="c in choices(g)" :key="c.uri" class="ci" :class="{ on: g.cover === c.uri }" :aria-label="'Bruk dette bildet'" @click="setCover(g, c.uri)"><img crossorigin="anonymous" :src="c.img" alt="" /></button>
+        <label v-if="g.id" class="c0 up" :class="{ on: !!g.img }"><input type="file" accept="image/*" hidden :disabled="busyImg" @change="pickImage(g, $event)" />{{ busyImg ? 'Laster opp …' : g.img ? 'Bytt eget bilde' : 'Last opp eget bilde' }}</label>
+        <button class="c0" :class="{ on: !g.cover && !g.img }" @click="setCover(g, '')">Automatisk</button>
+        <button class="c0" :class="{ on: g.cover === 'none' && !g.img }" @click="setCover(g, 'none')">Ingen</button>
+        <button v-for="c in choices(g)" :key="c.uri" class="ci" :class="{ on: g.cover === c.uri && !g.img }" :aria-label="'Bruk dette bildet'" @click="setCover(g, c.uri)"><img crossorigin="anonymous" :src="c.img" alt="" /></button>
         <small v-if="!choices(g).length">Legg noe i mappa for å velge et bilde.</small>
       </div>
       </template>
@@ -94,6 +106,7 @@ async function save() {
 .covers { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 6px 6px 8px 38px; }
 .covers small { color: var(--text-3); font-size: 0.74rem; }
 .c0 { padding: 4px 10px; border: 1px solid var(--glass-border); border-radius: 999px; background: transparent; color: var(--text-2); font: 600 0.72rem var(--font); cursor: pointer; }
+.c0.up { cursor: pointer; }
 .c0.on, .ci.on { border-color: var(--accent); color: var(--accent); outline: 2px solid var(--accent); outline-offset: 1px; }
 .ci { width: 34px; height: 34px; padding: 0; border: 0; border-radius: 6px; overflow: hidden; cursor: pointer; background: transparent; }
 .ci img { width: 100%; height: 100%; object-fit: cover; display: block; }

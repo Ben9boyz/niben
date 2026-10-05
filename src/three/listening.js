@@ -204,24 +204,25 @@ function drawIpodScreen(ctx, w, h, now, art, progressMs) {
 
 // ── wear: records that have been handled for years – scuffed edges and corners, a pale ring where the vinyl pressed through, specks ──
 function hash01(seed) { let h = 2166136261; for (const ch of String(seed)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) } return ((h >>> 0) % 100000) / 100000 }
+/** How worn a record looks: old albums a lot, new ones hardly at all (by the release year; unknown = middle). */
+function wearAmount(album) {
+  const y = parseInt(album?.year, 10)
+  if (!y) return 0.45
+  const age = new Date().getFullYear() - y
+  return Math.max(0.08, Math.min(1, (age - 1) / 45))
+}
 function wearSleeve(x, x0, y0, size, seed, amount = 1) {
   const R = (k) => hash01(seed + ':' + k)
   x.save()
   x.beginPath(); x.rect(x0, y0, size, size); x.clip()
   // yellowed, dirty edges
   const vg = x.createRadialGradient(x0 + size / 2, y0 + size / 2, size * 0.34, x0 + size / 2, y0 + size / 2, size * 0.72)
-  vg.addColorStop(0, 'rgba(90,70,40,0)'); vg.addColorStop(1, `rgba(90,70,40,${0.16 * amount})`)
+  vg.addColorStop(0, 'rgba(90,70,40,0)'); vg.addColorStop(1, `rgba(90,70,40,${0.11 * amount})`)
   x.fillStyle = vg; x.fillRect(x0, y0, size, size)
-  // ring wear: a faint pale circle where the record pushes through
-  x.strokeStyle = `rgba(255,255,255,${0.1 * amount})`
-  x.lineWidth = size * 0.022
-  x.beginPath(); x.arc(x0 + size * (0.5 + (R('rx') - 0.5) * 0.02), y0 + size * (0.5 + (R('ry') - 0.5) * 0.02), size * 0.455, 0, Math.PI * 2); x.stroke()
-  x.strokeStyle = `rgba(0,0,0,${0.05 * amount})`; x.lineWidth = size * 0.006
-  x.beginPath(); x.arc(x0 + size * 0.5, y0 + size * 0.5, size * 0.47, 0, Math.PI * 2); x.stroke()
   // scuffed edges: short pale strokes along the sides, more at the corners
-  for (let i = 0; i < 70; i++) {
+  for (let i = 0; i < Math.round(8 + 50 * amount); i++) {
     const side = Math.floor(R('s' + i) * 4), t = R('t' + i), len = size * (0.01 + R('l' + i) * 0.045), off = size * R('o' + i) * 0.012
-    x.strokeStyle = `rgba(240,236,226,${(0.12 + R('a' + i) * 0.3) * amount})`
+    x.strokeStyle = `rgba(240,236,226,${(0.1 + R('a' + i) * 0.22) * amount})`
     x.lineWidth = 1 + R('w' + i) * size * 0.003
     x.beginPath()
     if (side === 0) { x.moveTo(x0 + t * size, y0 + off); x.lineTo(x0 + t * size + len * (R('d' + i) - 0.5), y0 + off + len) }
@@ -232,13 +233,13 @@ function wearSleeve(x, x0, y0, size, seed, amount = 1) {
   }
   for (const [cx, cy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { // corners rubbed through to the cardboard
     const k = R('c' + cx + cy)
-    if (k < 0.35) continue
+    if (k < 0.45 + (1 - amount) * 0.4) continue
     const g = x.createRadialGradient(x0 + cx * size, y0 + cy * size, 0, x0 + cx * size, y0 + cy * size, size * (0.025 + k * 0.035))
-    g.addColorStop(0, `rgba(226,218,200,${0.75 * amount})`); g.addColorStop(1, 'rgba(226,218,200,0)')
+    g.addColorStop(0, `rgba(226,218,200,${0.6 * amount})`); g.addColorStop(1, 'rgba(226,218,200,0)')
     x.fillStyle = g; x.fillRect(x0, y0, size, size)
   }
   // specks and fine scratches
-  for (let i = 0; i < 160; i++) { x.fillStyle = `rgba(${R('v' + i) < 0.5 ? '255,255,255' : '0,0,0'},${0.05 + R('q' + i) * 0.12 * amount})`; x.fillRect(x0 + R('x' + i) * size, y0 + R('y' + i) * size, 1 + R('z' + i) * 2.5, 1 + R('u' + i) * 2.5) }
+  for (let i = 0; i < Math.round(160 * amount); i++) { x.fillStyle = `rgba(${R('v' + i) < 0.5 ? '255,255,255' : '0,0,0'},${0.05 + R('q' + i) * 0.12 * amount})`; x.fillRect(x0 + R('x' + i) * size, y0 + R('y' + i) * size, 1 + R('z' + i) * 2.5, 1 + R('u' + i) * 2.5) }
   x.restore()
 }
 
@@ -939,13 +940,14 @@ export function buildListeningCorner() {
     // worn spine: pale scuffs at the top and bottom ends and along the edges
     x.save()
     x.beginPath(); x.rect(x0, 0, COLW, AH); x.clip()
-    for (let k = 0; k < 14; k++) {
+    const wa = wearAmount(album)
+    for (let k = 0; k < Math.round(14 * wa); k++) {
       const top = hash01(album.uri + 'sw' + k) < 0.5
       const yy = top ? AH * 0.1 + hash01(album.uri + 'sy' + k) * 36 : AH - hash01(album.uri + 'sz' + k) * 40
-      x.fillStyle = `rgba(235,230,215,${0.12 + hash01(album.uri + 'sa' + k) * 0.25})`
+      x.fillStyle = `rgba(235,230,215,${(0.1 + hash01(album.uri + 'sa' + k) * 0.2) * wa})`
       x.fillRect(x0 + hash01(album.uri + 'sx' + k) * (COLW - 6), yy, 2 + hash01(album.uri + 'sl' + k) * 8, 1 + hash01(album.uri + 'sh' + k) * 3)
     }
-    x.fillStyle = 'rgba(235,230,215,0.14)'; x.fillRect(x0, AH * 0.1, 1, AH); x.fillRect(x0 + COLW - 1, AH * 0.1, 1, AH)
+    x.fillStyle = `rgba(235,230,215,${0.12 * wa})`; x.fillRect(x0, AH * 0.1, 1, AH); x.fillRect(x0 + COLW - 1, AH * 0.1, 1, AH)
     x.restore()
   }
 
@@ -1054,7 +1056,7 @@ export function buildListeningCorner() {
     for (const t of coverTex.values()) t.dispose()
     coverTex.clear()
     coverJobs = []
-    for (const l of loose.values()) group.remove(l.mesh)
+    for (const l of loose.values()) { group.remove(l.mesh); l.free?.() }
     loose.clear()
     // a little air before each new artist (not much – a few millimetres), so the shelf reads in groups
     const GAP = 0.012
@@ -1134,18 +1136,23 @@ export function buildListeningCorner() {
   function makeLoose(r) {
     // the cover glows a touch on its own so it stays readable in the shade of the shelf
     const cached = coverTex.get(r.album.uri) // the cover loaded in the background: on it from the first frame
+    // everything made here for this one record is freed again when it goes back (browsing many records must not eat the memory)
+    const ownTex = [], ownMat = [], ownGeo = []
+    const mkTex = (t) => { ownTex.push(t); return t }
     let ownMap = !cached
-    const coverMat = new THREE.MeshStandardMaterial({ map: cached || placeholderCover(r.album), roughness: 0.5, emissive: 0xffffff, emissiveIntensity: 0.16 })
+    const coverMat = new THREE.MeshStandardMaterial({ map: cached || (sleeveTpl ? null : mkTex(placeholderCover(r.album))), roughness: 0.5, emissive: 0xffffff, emissiveIntensity: 0.16 })
+    ownMat.push(coverMat)
     coverMat.emissiveMap = coverMat.map
     const src = r.album.image_large || r.album.image // the 640 px cover: sharp even when held up close
     if (src) {
       loader.load(src, (t) => {
         t.colorSpace = THREE.SRGBColorSpace
         t.anisotropy = 16 // stays crisp at a distance and at an angle (clamped to what the GPU allows)
-        if (ownMap && !paintCover) coverMat.map?.dispose() // (never the shared one)
-        ownMap = true
         paintLabelFn?.(t.image)
         if (paintCover) { paintCover(t.image); t.dispose() } else {
+          if (ownMap) coverMat.map?.dispose() // (never the shared one)
+          ownMap = true
+          mkTex(t)
           coverMat.map = t
           coverMat.emissiveMap = t
           coverMat.needsUpdate = true
@@ -1153,19 +1160,20 @@ export function buildListeningCorner() {
       }, undefined, () => {})
     }
     const backMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(r.color), roughness: 0.6 })
-    const spineMat = new THREE.MeshStandardMaterial({ map: spineTex(r.album, r.color), roughness: 0.6 })
+    ownMat.push(backMat)
     // the sleeve: the model (rounded corners, an opening) – its texture is made here: the back on the left half, the cover on the right half –
     // or a plain box (faces: +x front cover, -x back, +y/-y edges, +z spine, -z back edge) until the model has loaded
     let mesh, tint = (col) => backMat.color.set(col), paintCover = null, paintLabelFn = null
     if (sleeveTpl) {
       const cv = document.createElement('canvas')
-      cv.width = 2048; cv.height = 1024
-      const tex = new THREE.CanvasTexture(cv)
+      cv.width = 1536; cv.height = 768 // (drawn in a 2048 × 1024 grid, scaled down)
+      const tex = mkTex(new THREE.CanvasTexture(cv))
       tex.colorSpace = THREE.SRGBColorSpace
       tex.anisotropy = 16
       let backCol = r.color, coverImg = cached?.image || null
       const draw = () => {
         const x = cv.getContext('2d')
+        x.setTransform(0.75, 0, 0, 0.75, 0, 0)
         const g = x.createLinearGradient(0, 0, 1024, 1024)
         g.addColorStop(0, backCol); g.addColorStop(1, '#14161c')
         x.fillStyle = g; x.fillRect(0, 0, 1024, 1024) // the back
@@ -1173,8 +1181,9 @@ export function buildListeningCorner() {
         x.fillText(String(r.album.name || '').slice(0, 26), 512, 480); x.font = '600 38px Inter, sans-serif'; x.fillText(String(r.album.artist || '').slice(0, 30), 512, 540)
         x.fillStyle = backCol; x.fillRect(1024, 0, 1024, 1024)
         if (coverImg) x.drawImage(coverImg, 1024, 0, 1024, 1024) // the front
-        wearSleeve(x, 0, 0, 1024, r.album.uri + 'b', 1.1) // worn: the back and the front
-        wearSleeve(x, 1024, 0, 1024, r.album.uri + 'f', 0.9)
+        const wa = wearAmount(r.album)
+        wearSleeve(x, 0, 0, 1024, r.album.uri + 'b', wa * 0.9) // worn (old ones more): the back and the front
+        wearSleeve(x, 1024, 0, 1024, r.album.uri + 'f', wa * 0.75)
         tex.needsUpdate = true
       }
       draw()
@@ -1183,28 +1192,40 @@ export function buildListeningCorner() {
       coverMat.map = tex; coverMat.emissiveMap = tex; coverMat.needsUpdate = true
       mesh = new THREE.Group()
       const body = sleeveTpl.clone(true)
-      body.traverse((o) => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; if (/^cover/.test(o.material.name)) o.material = coverMat } })
+      body.traverse((o) => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; o.userData.sharedGeo = true; if (/^cover/.test(o.material.name)) o.material = coverMat } }) // (the geometry and the cardboard belong to the model: shared)
       mesh.add(body)
-    } else mesh = new THREE.Mesh(new THREE.BoxGeometry(SLEEVE_T, SLEEVE, SLEEVE), [coverMat, backMat, pageMat, pageMat, spineMat, pageMat])
+    } else {
+      const spineMat = new THREE.MeshStandardMaterial({ map: mkTex(spineTex(r.album, r.color)), roughness: 0.6 })
+      ownMat.push(spineMat)
+      const bg = new THREE.BoxGeometry(SLEEVE_T, SLEEVE, SLEEVE)
+      ownGeo.push(bg)
+      mesh = new THREE.Mesh(bg, [coverMat, backMat, pageMat, pageMat, spineMat, pageMat])
+    }
     // the vinyl itself, inside the sleeve: it slides a little way out of the top when the record is held, browsed or playing
     const labelCol = r.color || '#c9553a'
-    const discTex = canvasTex(512, 512, (x, w, h) => {
-      x.fillStyle = '#0c0c0e'; x.fillRect(0, 0, w, h)
-      const c = w / 2
-      for (let g = 0.36; g < 0.99; g += 0.011) { x.strokeStyle = `rgba(255,255,255,${0.025 + ((g * 977) % 1) * 0.05})`; x.lineWidth = 1; x.beginPath(); x.arc(c, c, c * g, 0, Math.PI * 2); x.stroke() }
-      x.strokeStyle = 'rgba(255,255,255,0.09)'; x.lineWidth = 3; x.beginPath(); x.arc(c, c, c * 0.355, 0, Math.PI * 2); x.stroke()
-      x.fillStyle = labelCol; x.beginPath(); x.arc(c, c, c * 0.33, 0, Math.PI * 2); x.fill()
-      x.fillStyle = 'rgba(255,255,255,0.18)'; x.beginPath(); x.arc(c, c, c * 0.33, 0, Math.PI * 2); x.arc(c, c, c * 0.27, 0, Math.PI * 2, true); x.fill()
-      x.fillStyle = '#0c0c0e'; x.beginPath(); x.arc(c, c, c * 0.028, 0, Math.PI * 2); x.fill()
-    })
-    const discMat = new THREE.MeshStandardMaterial({ map: discTex, roughness: 0.32, metalness: 0.15 })
-    const discEdge = new THREE.MeshStandardMaterial({ color: 0x0c0c0e, roughness: 0.4 })
-    let disc = new THREE.Mesh(new THREE.CylinderGeometry(DISC_R, DISC_R, 0.0016, 72), [discEdge, discMat, discMat])
-    disc.rotation.z = Math.PI / 2 // the disc's axis points the same way as the cover's
+    let disc
+    if (!recTpl) { // (the plain disc, until the record model has loaded)
+      const discTex = mkTex(canvasTex(512, 512, (x, w, h) => {
+        x.fillStyle = '#0c0c0e'; x.fillRect(0, 0, w, h)
+        const c = w / 2
+        for (let g = 0.36; g < 0.99; g += 0.011) { x.strokeStyle = `rgba(255,255,255,${0.025 + ((g * 977) % 1) * 0.05})`; x.lineWidth = 1; x.beginPath(); x.arc(c, c, c * g, 0, Math.PI * 2); x.stroke() }
+        x.strokeStyle = 'rgba(255,255,255,0.09)'; x.lineWidth = 3; x.beginPath(); x.arc(c, c, c * 0.355, 0, Math.PI * 2); x.stroke()
+        x.fillStyle = labelCol; x.beginPath(); x.arc(c, c, c * 0.33, 0, Math.PI * 2); x.fill()
+        x.fillStyle = 'rgba(255,255,255,0.18)'; x.beginPath(); x.arc(c, c, c * 0.33, 0, Math.PI * 2); x.arc(c, c, c * 0.27, 0, Math.PI * 2, true); x.fill()
+        x.fillStyle = '#0c0c0e'; x.beginPath(); x.arc(c, c, c * 0.028, 0, Math.PI * 2); x.fill()
+      }))
+      const discMat = new THREE.MeshStandardMaterial({ map: discTex, roughness: 0.32, metalness: 0.15 })
+      const discEdge = new THREE.MeshStandardMaterial({ color: 0x0c0c0e, roughness: 0.4 })
+      const dg = new THREE.CylinderGeometry(DISC_R, DISC_R, 0.0016, 72)
+      ownGeo.push(dg)
+      ownMat.push(discMat, discEdge)
+      disc = new THREE.Mesh(dg, [discEdge, discMat, discMat])
+      disc.rotation.z = Math.PI / 2 // the disc's axis points the same way as the cover's
+    }
     if (recTpl) { // the record model: the label shows the cover
       const dc = document.createElement('canvas')
       dc.width = dc.height = 512
-      const dt = new THREE.CanvasTexture(dc)
+      const dt = mkTex(new THREE.CanvasTexture(dc))
       dt.flipY = false; dt.colorSpace = THREE.SRGBColorSpace; dt.anisotropy = 8
       const paintLabel = (img) => {
         const x = dc.getContext('2d')
@@ -1215,7 +1236,9 @@ export function buildListeningCorner() {
       paintLabel(cached?.image || null)
       const dm = recTpl.material.clone()
       dm.map = dt; dm.metalness = 0.15
+      ownMat.push(dm)
       const model = new THREE.Mesh(recTpl.geometry, dm)
+      model.userData.sharedGeo = true
       model.applyMatrix4(recTpl.matrix)
       model.castShadow = true
       disc = new THREE.Group()
@@ -1223,6 +1246,11 @@ export function buildListeningCorner() {
       disc.add(model)
       disc.rotation.z = Math.PI / 2
       paintLabelFn = paintLabel
+    }
+    const free = () => { // give back what this record used (not the shared model geometry / cardboard)
+      for (const t of ownTex) { t.dispose(); if (t.image?.tagName === 'CANVAS') { t.image.width = 1; t.image.height = 1 } }
+      for (const m of ownMat) m.dispose()
+      for (const g of ownGeo) g.dispose()
     }
     disc.castShadow = true
     const discHolder = new THREE.Group()
@@ -1237,19 +1265,17 @@ export function buildListeningCorner() {
     if (r.guest) {
       // tumbling in from the window
       mesh.quaternion.setFromEuler(new THREE.Euler(0.8, -1.2, 0.5))
-      return { mesh, rec: r, disc: discHolder, tint, vel: new THREE.Vector3(0, 0.4, 0), returning: false }
+      return { mesh, rec: r, disc: discHolder, tint, free, vel: new THREE.Vector3(0, 0.4, 0), returning: false }
     }
     r.hidden = true
     writeInstance(r)
-    return { mesh, rec: r, disc: discHolder, tint, vel: new THREE.Vector3(), returning: false }
+    return { mesh, rec: r, disc: discHolder, tint, free, vel: new THREE.Vector3(), returning: false }
   }
   function dropLoose(uri) {
     const l = loose.get(uri)
     if (!l) return
     group.remove(l.mesh)
-    l.mesh.geometry.dispose()
-    l.disc?.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach((m) => { m.map?.dispose(); m.dispose() }) } })
-    l.mesh.material.forEach((m) => { if (m !== pageMat) { m.map?.dispose(); m.dispose() } })
+    l.free?.()
     loose.delete(uri)
     if (l.rec.guest) { guestRecs.delete(uri); return }
     l.rec.hidden = false

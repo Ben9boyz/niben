@@ -386,6 +386,21 @@ async function searchSpotifyNow(q) {
   return { albums: j.albums || [], tracks: j.tracks || [], playlists: j.playlists || [], artists: j.artists || [] }
 }
 
+/** A new, empty playlist of my own. */
+export async function createPlaylist(name) {
+  const r = await act('spotify_playlist_create', { name })
+  if (r.ok) { await refreshLists(true); notify(`«${name}» er laget.`) }
+  else notify(r.error || 'Klarte ikke å lage spillelisten.', true)
+  return r
+}
+/** Take a playlist out of my library ("delete": Spotify only lets go of it). */
+export async function deletePlaylist(uri, name = '') {
+  const r = await act('spotify_playlist_delete', { playlist: uri })
+  if (r.ok) { spotify.playlists = spotify.playlists.filter((p) => p.uri !== uri); refreshLists(true); notify(name ? `«${name}» er slettet.` : 'Spillelisten er slettet.') }
+  else notify(r.error || 'Klarte ikke å slette spillelisten.', true)
+  return r
+}
+
 /** Save someone else's playlist (from search) among mine. */
 export async function followPlaylist(uri) {
   try {

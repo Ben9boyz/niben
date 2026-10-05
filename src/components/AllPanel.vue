@@ -5,6 +5,10 @@ import { sort, sorted } from '../composables/useSort'
 import { room } from '../composables/useRoom'
 import GroupedGrid from './GroupedGrid.vue'
 import GroupBar from './GroupBar.vue'
+import { admin } from '../composables/useAdmin'
+import { showMenu } from '../composables/useContextMenu'
+import { playlistsMenu } from '../lib/menus'
+function emptyMenu(e) { if (!admin.loggedIn || e.defaultPrevented || e.target.closest?.('.cell, input, button, a')) return; showMenu(e, 'Spillelister', playlistsMenu()) }
 
 // "Alt": the albums and the playlists together in ONE pot – one grid, my folders / lists work across both
 // (but no "Artist" view). The sort button picks A–Å, or albums / playlists first.
@@ -30,7 +34,7 @@ function open(it) {
 </script>
 
 <template>
-  <div class="all">
+  <div class="all" @contextmenu="emptyMenu">
     <GroupBar all />
     <GroupedGrid :items="items" :playing-uri="spotify.now?.context" @pick="open" />
     <p v-if="!items.length" class="muted">Ingenting her ennå.</p>

@@ -11,6 +11,7 @@ import { queueDrop, queueOver } from '../composables/useDrag'
 import { mode } from '../composables/useMode'
 import { shell } from '../composables/useShell'
 import { admin } from '../composables/useAdmin'
+import { openNowAlbum, openNowArtist } from '../composables/useBrowse'
 
 // stacked: big cover on top (the plain music page's sidebar)
 const props = defineProps({ stacked: Boolean })
@@ -19,7 +20,7 @@ const now = computed(() => spotify.now)
 
 <template>
   <section class="now" :class="{ playing: now?.playing, admin: admin.loggedIn, stacked: props.stacked, dropping: queueOver }" v-on="queueDrop">
-    <div class="cover">
+    <div class="cover" :class="{ link: !!now?.name }" :role="now?.name ? 'button' : null" :tabindex="now?.name ? 0 : null" :title="now?.name ? 'Åpne albumet' : null" @click="openNowAlbum" @keydown.enter="openNowAlbum">
       <img crossorigin="anonymous" v-if="now?.image" :src="(props.stacked && now.image_large) || now.image" alt="" />
       <div v-else class="vinyl-ph"></div>
       <span v-if="now?.playing" class="eq" aria-hidden="true"><i></i><i></i><i></i></span>
@@ -31,7 +32,7 @@ const now = computed(() => spotify.now)
         <span class="tr"><NowAddButton /><LikeButton v-if="mode === 'rom' && shell !== 'player'" /><LockBadge /></span>
       </div>
       <b class="title" translate="no">{{ now?.name || '—' }}</b>
-      <span class="sub" translate="no">{{ now?.artist }}<template v-if="now?.album"> · {{ now.album }}</template></span>
+      <span class="sub" translate="no"><a v-if="now?.artist" class="lnk" href="#" title="Åpne artisten" @click.prevent="openNowArtist">{{ now.artist }}</a><template v-if="now?.album"> · <a class="lnk" href="#" title="Åpne albumet" @click.prevent="openNowAlbum">{{ now.album }}</a></template></span>
       <ProgressBar layout="below" />
     </div>
 
@@ -47,6 +48,9 @@ const now = computed(() => spotify.now)
 .now { position: relative; display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 4px 12px; align-items: center; padding: 10px; border-radius: 18px; background: var(--glass-strong); border: 1px solid var(--glass-border); box-shadow: inset 0 1px 0 var(--glass-hi); min-width: 0; }
 .cover { position: relative; width: 72px; height: 72px; border-radius: 10px; overflow: hidden; box-shadow: 0 6px 16px rgba(0,0,0,.22); }
 .cover img { width: 100%; height: 100%; object-fit: cover; }
+.cover.link { cursor: pointer; }
+.lnk { color: inherit; text-decoration: none; }
+.lnk:hover { color: var(--accent); text-decoration: underline; }
 .vinyl-ph { width: 100%; height: 100%; background: radial-gradient(circle, #555 0 12%, #111 13% 100%); }
 .eq { position: absolute; right: 5px; bottom: 5px; display: flex; gap: 2px; align-items: flex-end; height: 14px; }
 .eq i { width: 3px; background: #fff; border-radius: 2px; animation: eq 0.9s ease-in-out infinite; }

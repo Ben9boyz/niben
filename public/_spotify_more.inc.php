@@ -212,6 +212,9 @@ function sp_more_handle(string $action, bool $post): bool {
                 $seen[$gid] = true;
                 $g2 = ['id' => $gid, 'name' => $name];
                 // the picture on the folder: the cover of an album / playlist in my library, 'none', or automatic (left out)
+                // my own picture on the folder (uploaded with spotify_group_image): kept only if it is one of my uploads
+                $img = (string)($g['img'] ?? '');
+                if (preg_match('~^uploads/photos/[a-f0-9]{20}\.jpg$~', $img)) $g2['img'] = $img;
                 $cv = (string)($g['cover'] ?? '');
                 if ($cv === 'none' || preg_match('~^spotify:(album|playlist):[A-Za-z0-9]{10,40}$~', $cv)) $g2['cover'] = $cv;
                 // a folder inside another (one level only): the parent must be a top-level group listed before it
@@ -220,6 +223,9 @@ function sp_more_handle(string $action, bool $post): bool {
                 $groups[] = $g2;
             }
             if (!$groups) fail('Du trenger minst én gruppe.');
+            // pictures that are no longer on any folder are deleted
+            $keepImg = array_filter(array_column($groups, 'img'));
+            foreach ($d['groups'] as $og) if (!empty($og['img']) && !in_array($og['img'], $keepImg, true)) delete_upload($og['img']);
             $d['groups'] = $groups;
             // what was in a group that no longer exists moves to the last one
             $ids = array_column($groups, 'id');
@@ -234,6 +240,22 @@ function sp_more_handle(string $action, bool $post): bool {
                 $d['auto'] = array_values(array_diff($d['auto'], [$uri])); // I have decided this one
             }
         }
+        kv_set('groups', json_encode($d, JSON_UNESCAPED_UNICODE));
+        out(['ok' => true] + $d);
+    }
+    case 'spotify_group_image': {
+        // my own picture on a folder (multipart: id, file) – resized like the other photos
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $gid = (string)($_POST['id'] ?? '');
+        $d = sp_groups_load();
+        $at = null;
+        foreach ($d['groups'] as $k => $g) if (($g['id'] ?? '') === $gid) $at = $k;
+        if ($at === null) fail('Fant ikke mappa.');
+        [$path] = save_photo($_FILES['file'] ?? []);
+        if (!empty($d['groups'][$at]['img'])) delete_upload($d['groups'][$at]['img']);
+        $d['groups'][$at]['img'] = $path;
+        unset($d['groups'][$at]['cover']); // my picture wins
         kv_set('groups', json_encode($d, JSON_UNESCAPED_UNICODE));
         out(['ok' => true] + $d);
     }
