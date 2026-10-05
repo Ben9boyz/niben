@@ -164,14 +164,20 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
         <h4>Låter</h4>
         <div v-for="t in found.tracks" :key="t.uri" class="trk">
           <div class="row wrap" :draggable="admin.loggedIn || undefined" @dragstart="startTrackDrag($event, t)" @dragend="endDrag">
-            <button class="main" :class="{ dim: locked && spotify.now?.uri !== t.uri }" :disabled="!!busy" :title="locked ? `Låst ${fmtClock(lockLeft)}` : 'Spill låta i albumet'" @click="playTrack(t)">
-              <img v-if="t.album_image" crossorigin="anonymous" :src="t.album_image" alt="" class="art" />
-              <span v-else class="art ph"><Music :size="16" /></span>
-              <span class="t"><b>{{ t.name }}</b><small>{{ t.artist }} · {{ t.album }}</small></span>
-              <span class="d"><Lock v-if="locked" :size="13" /><Play v-else :size="13" fill="currentColor" /> {{ fmtClock(t.ms / 1000) }}</span>
-            </button>
-            <button v-if="admin.loggedIn && t.album_uri" class="act" title="Åpne albumet" @click="mode === 'rom' ? openAlbum(albumOf(t)) : openAlbumPage(albumOfTrack(t))"><Disc3 :size="15" /><span class="lb">Album</span></button>
-            <button v-if="admin.loggedIn && mode !== 'rom'" class="act" title="Åpne artisten og albumene" @click="openArtistPage({ id: t.artist_id, name: firstArtist(t.artist) })"><User :size="15" /><span class="lb">Artist</span></button>
+            <div class="main songrow" :class="{ dim: locked && spotify.now?.uri !== t.uri }">
+              <button class="plain" :disabled="!!busy" :title="locked ? `Låst ${fmtClock(lockLeft)}` : 'Spill låta i albumet'" :aria-label="`Spill ${t.name}`" @click="playTrack(t)">
+                <img v-if="t.album_image" crossorigin="anonymous" :src="t.album_image" alt="" class="art" />
+                <span v-else class="art ph"><Music :size="16" /></span>
+              </button>
+              <span class="t">
+                <button class="plain nm" :disabled="!!busy" @click="playTrack(t)"><b>{{ t.name }}</b></button>
+                <small>
+                  <a v-if="admin.loggedIn && mode !== 'rom'" class="lnk" href="#" title="Åpne artisten og albumene" @click.prevent="openArtistPage({ id: t.artist_id, name: firstArtist(t.artist) })">{{ t.artist }}</a><template v-else>{{ t.artist }}</template>
+                  · <a v-if="admin.loggedIn && t.album_uri" class="lnk" href="#" title="Åpne albumet" @click.prevent="mode === 'rom' ? openAlbum(albumOf(t)) : openAlbumPage(albumOfTrack(t))">{{ t.album }}</a><template v-else>{{ t.album }}</template>
+                </small>
+              </span>
+              <button class="plain d" :disabled="!!busy" @click="playTrack(t)"><Lock v-if="locked" :size="13" /><Play v-else :size="13" fill="currentColor" /> {{ fmtClock(t.ms / 1000) }}</button>
+            </div>
             <button class="act" title="Spill etterpå – i køen" aria-label="Spill etterpå" @click="enqueue(t.uri)"><ListEnd :size="15" /><span class="lb">Kø</span></button>
             <button class="act" title="Legg til i en spilleliste" @click="menuFor = menuFor === t.uri ? null : t.uri"><ListPlus :size="15" /><span class="lb">Liste</span></button>
           </div>
@@ -204,6 +210,12 @@ h4 { margin: 0 2px 4px; font-size: 0.72rem; letter-spacing: 0.12em; text-transfo
 .d { display: inline-flex; align-items: center; gap: 5px; color: var(--text-3); font-size: 0.78rem; font-variant-numeric: tabular-nums; flex: none; }
 .act { display: inline-flex; align-items: center; gap: 4px; flex: none; padding: 6px 10px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.75rem var(--font); cursor: pointer; }
 .act:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.songrow { cursor: default; }
+.plain { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+.plain:disabled { cursor: not-allowed; }
+.nm { display: block; max-width: 100%; }
+.lnk { color: inherit; text-decoration: none; }
+.lnk:hover { color: var(--accent); text-decoration: underline; }
 .menu { margin: 2px 0 6px 54px; }
 @media (max-width: 560px) {
   /* phones: the song gets the whole line, its buttons (album · artist · queue · playlist) sit under it */
@@ -211,5 +223,6 @@ h4 { margin: 0 2px 4px; font-size: 0.72rem; letter-spacing: 0.12em; text-transfo
   .trk .main { flex: 1 1 100%; }
   .trk .act { margin-left: 0; padding: 7px 12px; }
   .trk .row.wrap > .act:first-of-type { margin-left: 54px; }
+  .lnk { padding: 3px 0; }
 }
 </style>
