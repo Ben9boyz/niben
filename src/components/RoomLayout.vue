@@ -1,5 +1,5 @@
 <script setup>
-import { ChevronRight, PanelRightOpen } from 'lucide-vue-next'
+import { ChevronRight, PanelRightOpen, ChevronDown, PanelBottomOpen } from 'lucide-vue-next'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Room from './Room.vue'
@@ -74,7 +74,8 @@ function measure() {
     return
   }
   if (hidden.value) { room.api.setInsets({ left: mobile.value ? 0 : RAIL(), bottom: shell.value === 'player' ? 90 : 0 }); return }
-  if (mobile.value) room.api.setInsets({ bottom: window.innerHeight - r.top })
+  if (mobile.value && collapsed.value) { room.api.setInsets({ bottom: 90 }); return }
+  if (mobile.value) room.api.setInsets({ bottom: Math.min(window.innerHeight - r.top, window.innerHeight * 0.5) })
   else room.api.setInsets({ left: RAIL(), right: hidden.value ? 0 : window.innerWidth - r.left, bottom: shell.value === 'player' ? 90 : 0 })
 }
 const mq = window.matchMedia('(max-width: 900px)')
@@ -124,8 +125,9 @@ watch(() => route.name, () => (collapsed.value = false))
     :class="{ home: isHome, focus: isFocus, wide: isWide, expanded: isExpanded, big: isExpanded && route.name !== 'lytte', collapsed: collapsed && mobile && !isFocus, hidden }"
     :inert="hidden || undefined"
   >
-    <button v-if="mobile && !isHome && !isFocus" class="grabber" @click="collapsed = !collapsed" :aria-label="collapsed ? 'Vis panel' : 'Skjul panel'">
-      <span></span>
+    <!-- phones: the panel fills the screen like the flat version; this closes it so only the 3D room is left -->
+    <button v-if="mobile && !isHome && !isFocus" class="close-sheet glass" aria-label="Lukk panelet – se rommet" title="Se rommet" @click="collapsed = true">
+      <ChevronDown :size="20" aria-hidden="true" />
     </button>
     <router-view v-slot="{ Component, route: r }">
       <transition name="panel" mode="out-in" type="transition">
@@ -133,6 +135,11 @@ watch(() => route.name, () => (collapsed.value = false))
       </transition>
     </router-view>
   </aside>
+
+  <!-- phones, panel closed: one icon brings it back -->
+  <button v-if="mobile && collapsed && !isHome && !isFocus && room.ready" class="open-fab glass" aria-label="Åpne panelet" title="Åpne panelet" @click="collapsed = false">
+    <PanelBottomOpen :size="22" aria-hidden="true" />
+  </button>
 
   <!-- desktop: slide the panel away / bring it back -->
   <button
@@ -216,6 +223,8 @@ watch(() => route.name, () => (collapsed.value = false))
   backdrop-filter: blur(10px) saturate(120%);
 }
 
+.close-sheet, .open-fab { display: none; }
+@media (max-width: 900px) { .close-sheet, .open-fab { display: grid; } }
 .grabber {
   align-self: center;
   width: 64px;
@@ -237,24 +246,56 @@ watch(() => route.name, () => (collapsed.value = false))
 }
 
 @media (max-width: 900px) {
+  /* phones: an open panel takes (nearly) the whole screen, like the flat version – close it with the arrow and
+     only the 3D room is left, with one icon to open the panel again */
   .dock {
-    top: auto;
+    top: calc(64px + env(safe-area-inset-top));
     left: 10px;
     right: 10px;
     bottom: calc(84px + env(safe-area-inset-bottom));
     width: auto;
-    max-height: 46dvh;
-    transition: transform 0.5s var(--spring);
+    max-height: none;
+    transition: transform 0.5s var(--spring), opacity 0.3s;
   }
-  /* something chosen (a country, a guitar, a book …; not the music corner, which is always "expanded"): the sheet takes most of the screen and the
-     room shrinks to a strip above it; the header gets compact so the content has room */
   .dock.expanded { width: auto; }
-  .dock.big { max-height: 74dvh; }
   .dock.big :deep(.panel-head) { padding: 10px 18px 4px; }
   .dock.big :deep(.panel-head .eyebrow),
   .dock.big :deep(.panel-head p) { display: none; }
   .dock.big :deep(.panel-head h2) { font-size: 1.25rem; }
-  .dock.collapsed { transform: translateY(calc(100% - 60px)); }
+  .dock:not(.home):not(.focus) > :deep(.panel) { flex: 1 1 auto; min-height: 0; max-height: none; }
+  .dock.collapsed { transform: translateY(calc(100% + 120px)); opacity: 0; pointer-events: none; }
+  .dock.collapsed > :deep(*) { pointer-events: none; }
+  .close-sheet {
+    align-self: flex-end;
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    margin: 0 4px 6px 0;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    color: var(--text-2);
+    cursor: pointer;
+    pointer-events: auto;
+  }
+  .open-fab {
+    position: fixed;
+    z-index: 21;
+    right: 14px;
+    bottom: calc(96px + env(safe-area-inset-bottom));
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    color: var(--accent);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+    cursor: pointer;
+  }
   .dock.focus {
     top: 70px;
     left: 50%;

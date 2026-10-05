@@ -63,9 +63,36 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   // "ultra" in the desktop app (window.nibenApp): full Retina sharpness, sharper shadows, finer reflections.
   const coarse = window.matchMedia('(pointer: coarse)').matches
   const inApp = !!window.nibenApp
-  const quality = inApp ? 'ultra' : coarse || (navigator.hardwareConcurrency || 8) <= 4 ? 'low' : 'high'
   const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' })
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, inApp ? 2 : 1.25))
+  // What is this running on? Look at the graphics chip, the CPU cores, the memory and the screen, and pick a
+  // starting quality; while it runs, the frame time moves it up or down (see "Adaptive quality" below).
+  const spec = (() => {
+    let gpu = ''
+    try {
+      const gl = renderer.getContext()
+      const ext = gl.getExtension('WEBGL_debug_renderer_info')
+      gpu = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER) || '').toLowerCase()
+    } catch {}
+    const cores = navigator.hardwareConcurrency || 4
+    const mem = navigator.deviceMemory || 0 // GB (Chromium only)
+    const software = /swiftshader|llvmpipe|software|basic render|softpipe/.test(gpu)
+    const strongGpu = /apple m\d|rtx|gtx 1[06]|gtx 9|radeon rx|radeon pro|arc a|nvidia|geforce|apple gpu/.test(gpu) && !/mali|adreno|powervr/.test(gpu)
+    const weakGpu = /intel.*(hd|uhd|iris plus)|mali-[gt][1-6]\d\b|adreno \(?[1-5]\d\d\b|powervr|sgx|vivante|llvmpipe/.test(gpu)
+    // a score from 0 (very weak) to 10
+    let score = 5
+    if (strongGpu) score += 3
+    if (weakGpu) score -= 2
+    if (cores >= 8) score += 1
+    else if (cores <= 4) score -= 1
+    if (mem && mem <= 2) score -= 2
+    if (coarse && !strongGpu) score -= 1
+    if (window.devicePixelRatio > 2.5 && !strongGpu) score -= 1 // lots of pixels, no muscle
+    if (software) score = 0
+    score = Math.max(0, Math.min(10, score))
+    return { gpu, cores, mem, score, software }
+  })()
+  const quality = inApp || spec.score >= 8 ? 'ultra' : spec.score >= 4 ? 'high' : 'low'
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25))
   renderer.outputColorSpace = THREE.SRGBColorSpace
   renderer.toneMapping = THREE.AgXToneMapping
   renderer.shadowMap.enabled = true
@@ -657,10 +684,13 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
 
   let simT = 0
   // Adaptive quality: if frames get slow, lower the rendering resolution step by step.
-  const LEVELS = inApp
-    ? [{ pr: 2 }, { pr: 1.6 }, { pr: 1.25 }, { pr: 1.0 }, { pr: 0.85 }]
-    : [{ pr: 1.25 }, { pr: 1.0 }, { pr: 0.85 }, { pr: 0.7 }]
-  let level = 0
+  // The same ladder for everybody: sharpest first. The starting rung comes from the specs, the frame time moves
+  // along it – down when frames are slow, back up when there is plenty of room.
+  const LEVELS = [{ pr: 2 }, { pr: 1.6 }, { pr: 1.25 }, { pr: 1.0 }, { pr: 0.85 }, { pr: 0.7 }]
+  const startLevel = spec.software ? 5 : quality === 'ultra' ? 0 : quality === 'high' ? 2 : 4
+  let level = startLevel
+  let upCooldown = 0 // windows to wait before trying a sharper rung again
+  let fastWindows = 0
   let perfSum = 0
   let perfN = 0
   let perfSkip = 90 // ignore the first frames (shader compilation, intro)
@@ -669,7 +699,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, l.pr))
     resize()
   }
-  if (quality === 'low') { level = 1; applyLevel() }
+  applyLevel()
   function measure(raw) {
     if (document.hidden) return
     if (perfSkip > 0) { perfSkip--; return }
@@ -682,7 +712,19 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
         level++
         applyLevel()
         perfSkip = 30
-      }
+        fastWindows = 0
+        upCooldown = 6 // slow just now: don't go back up for a while
+      } else if (avg < 0.0125 && level > 0) {
+        // lots of headroom (under ~12 ms a frame): after a few quiet windows, try a sharper picture
+        if (upCooldown > 0) upCooldown--
+        else if (++fastWindows >= 3) {
+          level--
+          applyLevel()
+          perfSkip = 30
+          fastWindows = 0
+          upCooldown = 3
+        }
+      } else fastWindows = 0
     }
   }
 
@@ -864,6 +906,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
       return r
     },
     // test helper: advance the simulation without waiting for real frames
+    /** What the device was judged to be, and the picture quality now (for debugging). */
+    get perf() { return { ...spec, quality, level, pixelRatio: renderer.getPixelRatio() } },
     fastForward(seconds = 3) { for (let i = 0; i < seconds * 60; i++) step(1 / 60); renderer.shadowMap.needsUpdate = true; composer.render() },
     dispose() {
       running = false
