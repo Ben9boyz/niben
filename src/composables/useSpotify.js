@@ -1,5 +1,6 @@
 import { reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { api } from './useAdmin'
+import { pget, pset, pdel } from '../lib/pcache'
 
 // Shared Spotify state: what's saved, what's playing, and the 10-minute switch lock.
 export const spotify = reactive({
@@ -24,10 +25,11 @@ let pollTimer = 0
 let tickTimer = 0
 let fetchedAt = 0
 
-// The album/playlist lists are big and rarely change: keep them on this machine and only ask
-// the server again every 30 minutes. "Now playing" + the lock are tiny and polled often.
+// The album/playlist lists are big and rarely change – and when I change them from here the page updates them
+// itself. So keep them on this machine and only ask the server again once a day (or on "Oppdater fra Spotify").
+// "Now playing" + the lock are tiny and polled often.
 const LISTS_KEY = 'niben-spotify-lists-v2'
-const LISTS_MAX_AGE = 30 * 60 * 1000
+const LISTS_MAX_AGE = 24 * 60 * 60 * 1000
 let listsAt = 0
 let listsSig = ''
 let nowSig = ''
@@ -169,6 +171,7 @@ export const progressMs = computed(() => {
 
 export const fmtClock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
+const DAY = 86400000
 const trackCache = new Map()
 let prefetchTimer = 0
 /** Fetch a record's/list's tracks in the background when the pointer rests on it, so opening it is instant. */
@@ -178,30 +181,48 @@ export function prefetchTracks(uri) {
   prefetchTimer = setTimeout(() => fetchTracks(uri), 180) // only if it rests there a moment
 }
 const tempoCache = new Map()
-/** Tempo (BPM) of a song – 0 when nobody knows. Cached; the turntable in the 3D room spins to it. */
+/** Tempo (BPM) of a song – 0 when nobody knows. Asked once per song, then remembered here (30 days; an unknown
+ *  tempo is tried again after 3 days). The turntable in the 3D room spins to it. */
 export async function fetchTempo(uri) {
   const id = String(uri || '').split(':')[2]
   if (!id || !uri.startsWith('spotify:track:')) return 0
   if (tempoCache.has(id)) return tempoCache.get(id)
-  const p = fetch(`api.php?action=spotify_tempo&id=${encodeURIComponent(id)}`, { credentials: 'same-origin', headers: { 'X-Niben': '1' } })
-    .then((r) => r.json()).then((j) => Number(j.bpm) || 0).catch(() => { tempoCache.delete(id); return 0 })
+  const p = (async () => {
+    const saved = await pget(`tempo:${id}`, 30 * DAY)
+    if (saved !== undefined && (saved > 0 || (await pget(`tempo:${id}`, 3 * DAY)) !== undefined)) return saved
+    try {
+      const r = await fetch(`api.php?action=spotify_tempo&id=${encodeURIComponent(id)}`, { credentials: 'same-origin', headers: { 'X-Niben': '1' } })
+      const bpm = Number((await r.json()).bpm) || 0
+      if (r.ok) pset(`tempo:${id}`, bpm)
+      return bpm
+    } catch { tempoCache.delete(id); return 0 }
+  })()
   tempoCache.set(id, p)
   return p
 }
-/** Track list for 'spotify:album:…' / 'spotify:playlist:…' – { tracks, hidden }. */
+/** Track list for 'spotify:album:…' / 'spotify:playlist:…' – { tracks, hidden }. Fetched once: an album's songs never
+ *  change (kept 90 days), a playlist's are kept 6 hours – and dropped at once when I add something from here. */
 export async function fetchTracks(uri) {
   if (trackCache.has(uri)) return trackCache.get(uri)
   const [, type, id] = uri.split(':')
-  const p = fetch(`api.php?action=spotify_tracks&type=${type}&id=${encodeURIComponent(id)}`)
-    .then((r) => r.json())
-    .then((j) => ({ tracks: j.tracks || [], hidden: !!j.hidden }))
-    .catch(() => {
+  const p = (async () => {
+    const saved = await pget(`tracks:${uri}`, type === 'album' ? 90 * DAY : 6 * 3600000)
+    if (saved) return saved
+    try {
+      const j = await (await fetch(`api.php?action=spotify_tracks&type=${type}&id=${encodeURIComponent(id)}`)).json()
+      const out = { tracks: j.tracks || [], hidden: !!j.hidden }
+      if (!j.error && (out.tracks.length || out.hidden)) pset(`tracks:${uri}`, out)
+      return out
+    } catch {
       trackCache.delete(uri)
       return { tracks: [], error: true }
-    })
+    }
+  })()
   trackCache.set(uri, p)
   return p
 }
+/** Forget a saved track list (after I've changed the playlist from here). */
+export function forgetTracks(uri) { trackCache.delete(uri); pdel(`tracks:${uri}`) }
 
 /** Shuffle on / off (admin) – for whatever is playing, wherever it plays. */
 export async function setShuffle(on) {
@@ -337,7 +358,17 @@ export function useSpotify() {
 
 // ── search (admin) and saving ──
 /** Albums + tracks from all of Spotify. Throws with a readable message. */
+const searchCache = new Map() // the same search again within 10 minutes costs nothing
 export async function searchSpotify(q) {
+  const key = q.trim().toLowerCase()
+  const hit = searchCache.get(key)
+  if (hit && Date.now() - hit.t < 600000) return hit.v
+  const v = await searchSpotifyNow(q)
+  searchCache.set(key, { t: Date.now(), v })
+  if (searchCache.size > 40) searchCache.delete(searchCache.keys().next().value)
+  return v
+}
+async function searchSpotifyNow(q) {
   const r = await fetch(`api.php?action=spotify_search&q=${encodeURIComponent(q)}`, { cache: 'no-store', credentials: 'same-origin', headers: { 'X-Niben': '1' } })
   let j = {}
   try { j = await r.json() } catch {}
@@ -371,7 +402,12 @@ export async function saveAlbum(uri) {
 export async function addToPlaylist(playlistUri, trackUri) {
   try {
     await api('spotify_playlist_add', { playlist: playlistUri, uri: trackUri })
-    refreshLists(true)
+    // no need to fetch everything again: the playlist is one song longer, and its saved track list is out of date
+    const pl = spotify.playlists.find((p) => p.uri === playlistUri)
+    if (pl && typeof pl.count === 'number') pl.count++
+    forgetTracks(playlistUri)
+    listsSig = ''
+    try { localStorage.setItem(LISTS_KEY, JSON.stringify({ at: listsAt, sig: listsSig, albums: spotify.albums, playlists: spotify.playlists })) } catch {}
     return { ok: true }
   } catch (e) {
     return { ok: false, error: e.message }
@@ -428,11 +464,19 @@ export async function enqueue(uri) {
   return r
 }
 /** Is this song among my liked songs? / save or remove it. */
+const likedCache = new Map() // uri -> { t, v }: asked once per song (10 minutes), changed at once by the heart
 export async function isLiked(uri) {
-  try { return !!(await api('spotify_liked', null, { query: `&uri=${encodeURIComponent(uri)}` })).liked } catch { return false }
+  const hit = likedCache.get(uri)
+  if (hit && Date.now() - hit.t < 600000) return hit.v
+  try {
+    const v = !!(await api('spotify_liked', null, { query: `&uri=${encodeURIComponent(uri)}` })).liked
+    likedCache.set(uri, { t: Date.now(), v })
+    return v
+  } catch { return false }
 }
 export async function setLiked(uri, on) {
   const r = await act('spotify_liked', { uri, on })
+  if (r.ok) likedCache.set(uri, { t: Date.now(), v: !!on })
   if (r.ok) notify(on ? 'Lagret i «Likte sanger».' : 'Fjernet fra «Likte sanger».')
   return r
 }

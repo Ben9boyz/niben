@@ -2,6 +2,7 @@ import { reactive, watch, computed } from 'vue'
 import { api } from './useAdmin'
 import { spotify } from './useSpotify'
 import { room } from './useRoom'
+import { pget, pset } from '../lib/pcache'
 
 // My groups ("Jobb og fokus", "Trening" …) for albums and playlists. They live on the server (the same on every
 // device); the on/off switch for grouping is per browser. New things get a guessed group, marked as guessed
@@ -61,15 +62,23 @@ function apply(j) {
   groups.why = j.why || {}
   groups.audio = j.audio ?? null
   groups.loaded = true
+  pset('groups', j) // so the next visit starts from this (see loadGroups)
 }
 
 let loading = null
 export function loadGroups(force = false) {
   if (loading && !force) return loading
-  loading = fetch('api.php?action=spotify_groups', { cache: 'no-store' })
-    .then((r) => (r.ok ? r.json() : null))
-    .then(apply)
-    .catch(() => {})
+  // the groups are changed from here (and saved + cached at once), so ask the server again only every 6 hours
+  loading = (async () => {
+    if (!force) {
+      const saved = await pget('groups', 6 * 3600000)
+      if (saved?.groups) { apply(saved); return }
+    }
+    try {
+      const r = await fetch('api.php?action=spotify_groups', { cache: 'no-store' })
+      apply(r.ok ? await r.json() : null)
+    } catch {}
+  })()
   return loading
 }
 

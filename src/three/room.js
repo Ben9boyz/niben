@@ -110,7 +110,7 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
 
   const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, {
     type: THREE.HalfFloatType,
-    samples: quality === 'low' ? 2 : 4,
+    samples: quality === 'low' ? 2 : quality === 'ultra' ? Math.min(8, renderer.capabilities.maxSamples || 4) : 4,
   }))
   composer.addPass(new RenderPass(scene, camera))
   const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.5, 0.55, 0.88)
@@ -232,7 +232,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   sun.position.set(10, 5.2, 3.2)
   sun.target.position.set(0, 0, 0)
   sun.castShadow = true
-  sun.shadow.mapSize.set(inApp ? 4096 : 2048, inApp ? 4096 : 2048)
+  const shadowRes = quality === 'ultra' ? 4096 : quality === 'low' ? 1024 : 2048 // sharper shadows on strong machines
+  sun.shadow.mapSize.set(shadowRes, shadowRes)
   sun.shadow.radius = 3
   sun.shadow.camera.left = -6
   sun.shadow.camera.right = 6
@@ -686,8 +687,8 @@ export function createRoom(host, { onPick, onHover, onReady, timerState } = {}) 
   // Adaptive quality: if frames get slow, lower the rendering resolution step by step.
   // The same ladder for everybody: sharpest first. The starting rung comes from the specs, the frame time moves
   // along it – down when frames are slow, back up when there is plenty of room.
-  const LEVELS = [{ pr: 2 }, { pr: 1.6 }, { pr: 1.25 }, { pr: 1.0 }, { pr: 0.85 }, { pr: 0.7 }]
-  const startLevel = spec.software ? 5 : quality === 'ultra' ? 0 : quality === 'high' ? 2 : 4
+  const LEVELS = [{ pr: 3 }, { pr: 2 }, { pr: 1.6 }, { pr: 1.25 }, { pr: 1.0 }, { pr: 0.85 }, { pr: 0.7 }]
+  const startLevel = spec.software ? 6 : quality === 'ultra' ? 0 : quality === 'high' ? 2 : 4
   let level = startLevel
   let upCooldown = 0 // windows to wait before trying a sharper rung again
   let fastWindows = 0
