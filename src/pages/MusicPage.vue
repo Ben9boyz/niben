@@ -200,7 +200,7 @@ function show(view) {
 <style>
 /* the header of the grid (name + group buttons) sticks to the top of the card; tiles vanish under it */
 @media (min-width: 821px) {
-  .main-card .stick { position: sticky; top: -16px; z-index: 4; margin: -16px -16px 0; padding: 10px 16px 10px; background: color-mix(in srgb, var(--bg) 98%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  .main-card .stick { position: sticky; top: -16px; z-index: 4; margin: -16px -16px 0; padding: 10px 16px 10px; background: linear-gradient(var(--glass), var(--glass)), var(--bg); }
   html.player-shell .music .main-col { top: 84px; height: calc(100dvh - 104px); }
 }
 /* player mode has a fixed top bar: the sticky columns stop below it */
