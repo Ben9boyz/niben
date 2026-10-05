@@ -66,6 +66,15 @@ let ro
 // width of the nav rail on the left (desktop), from the --rail CSS variable
 const RAIL = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rail')) || 0
 const panelW = ref(0)
+// the hide / show button sits at the vertical middle of the panel that is actually showing (it is often shorter than the screen)
+const toggleTop = ref(null)
+function placeToggle() {
+  const el = dock.value?.querySelector(':scope > .panel, :scope > section, :scope > div:not(.grabber)')
+  if (!el || hidden.value) { toggleTop.value = null; return }
+  const r = el.getBoundingClientRect()
+  toggleTop.value = r.height > 20 ? Math.round(r.top + r.height / 2) : null
+}
+let toggleTimer = 0
 function measure() {
   if (dock.value && !hidden.value) panelW.value = dock.value.offsetWidth
   if (!room.api) return
@@ -86,12 +95,14 @@ const mq = window.matchMedia('(max-width: 900px)')
 const onMq = (e) => { mobile.value = e.matches; nextTick(measure) }
 
 onMounted(() => {
+  toggleTimer = setInterval(placeToggle, 250)
   ro = new ResizeObserver(measure)
   ro.observe(dock.value)
   window.addEventListener('resize', measure)
   mq.addEventListener('change', onMq)
 })
 onBeforeUnmount(() => {
+  clearInterval(toggleTimer)
   ro?.disconnect()
   window.removeEventListener('resize', measure)
   mq.removeEventListener('change', onMq)
@@ -153,7 +164,7 @@ watch(() => route.name, () => (collapsed.value = false))
     v-if="canHide && room.ready"
     class="hide-toggle glass"
     :class="{ out: hidden }"
-    :style="hidden ? null : { right: `${panelW + 20 - 16}px` }"
+    :style="[hidden ? null : { right: `${panelW + 20 - 16}px` }, toggleTop != null ? { top: `${toggleTop}px` } : null]"
     :aria-label="hidden ? 'Vis panelet' : 'Skjul panelet'"
     :title="hidden ? 'Vis panelet' : 'Skjul panelet'"
     @click="setHidden(!hidden)"
@@ -196,7 +207,7 @@ watch(() => route.name, () => (collapsed.value = false))
   color: var(--text-2);
   font: 600 0.85rem var(--font);
   cursor: pointer;
-  transition: right 0.5s var(--spring), color 0.2s;
+  transition: right 0.5s var(--spring), top 0.35s var(--ease, ease), color 0.2s;
 }
 .hide-toggle span { font-size: 1.3rem; line-height: 1; }
 .hide-toggle:hover { color: var(--accent); }
