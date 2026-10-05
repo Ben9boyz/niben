@@ -1,6 +1,6 @@
 import { watch } from 'vue'
 import { i18n } from '../composables/useLang'
-import { SOURCE } from './languages'
+import { SOURCE, byCode } from './languages'
 import { pget, pset } from './pcache'
 
 // Shows the page in the chosen language by translating the TEXT on the screen: every text node and the text
@@ -135,7 +135,7 @@ async function flush() {
     busy++
     i18n.working = busy > 0
     try {
-      const r = await fetch('api.php?action=translate', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Niben': '1' }, body: JSON.stringify({ lang, texts: chunk }) })
+      const r = await fetch('api.php?action=translate', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Niben': '1' }, body: JSON.stringify({ lang, name: byCode[lang]?.en || lang, texts: chunk }) })
       const j = await r.json().catch(() => ({}))
       if (j.error === 'not_configured' || r.status === 503) { unavailable.add(lang); i18n.unavailable = [...unavailable]; break }
       if (Array.isArray(j.texts)) {

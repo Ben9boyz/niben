@@ -13,6 +13,7 @@ import { room } from '../composables/useRoom'
 import { spotify } from '../composables/useSpotify'
 import { shell } from '../composables/useShell'
 import GlobalMini from './GlobalMini.vue'
+import MusicSwitch from './MusicSwitch.vue'
 import { admin } from '../composables/useAdmin'
 
 const data = useData()
@@ -139,6 +140,7 @@ watch(() => route.name, () => (collapsed.value = false))
     </router-view>
   </aside>
 
+  <MusicSwitch v-if="isMusic && room.ready" />
   <GlobalMini :show="miniOn" />
 
   <!-- phones, panel closed: one icon brings it back -->

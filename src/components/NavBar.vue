@@ -1,6 +1,7 @@
 <script setup>
 import { shortcuts } from '../composables/useShortcuts'
 import LangSwitch from './LangSwitch.vue'
+import AdminAvatar from './AdminAvatar.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { GROUPS, groupOf, groupTarget } from '../lib/nav'
 import { useRoute, useRouter } from 'vue-router'
@@ -126,9 +127,7 @@ onBeforeUnmount(() => {
       <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v-2a9 9 0 0 1 18 0v2" /><path d="M21 16a2 2 0 0 1-2 2h-1a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h3zM3 16a2 2 0 0 0 2 2h1a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1H3z" /></svg>
     </a>
     <!-- only when logged in; the way in is a double-click (or long-press) on the logo -->
-    <router-link v-if="admin.loggedIn" to="/admin" class="admin-chip glass on" title="Admin (innlogget)" aria-label="Admin">
-      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
-    </router-link>
+    <span v-if="admin.loggedIn" class="admin-chip glass on"><AdminAvatar /></span>
 
     <a v-if="desktopApp" class="install glass" :href="desktopApp.url" download :title="`Last ned niben-appen for ${desktopApp.os} – alltid oppdatert, med tyngre grafikk`">
       <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14" /></svg>

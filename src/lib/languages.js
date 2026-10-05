@@ -4,54 +4,27 @@
 export const SOURCE = 'nb'
 export const DEFAULT_LANG = 'en'
 
-export const LANGS = [
-  { code: 'en', name: 'English', en: 'English' },
-  { code: 'nb', name: 'Norsk (original)', en: 'Norwegian' },
-  { code: 'sv', name: 'Svenska', en: 'Swedish' },
-  { code: 'da', name: 'Dansk', en: 'Danish' },
-  { code: 'is', name: 'Íslenska', en: 'Icelandic' },
-  { code: 'fi', name: 'Suomi', en: 'Finnish' },
-  { code: 'de', name: 'Deutsch', en: 'German' },
-  { code: 'nl', name: 'Nederlands', en: 'Dutch' },
-  { code: 'fr', name: 'Français', en: 'French' },
-  { code: 'es', name: 'Español', en: 'Spanish' },
-  { code: 'pt', name: 'Português', en: 'Portuguese' },
-  { code: 'it', name: 'Italiano', en: 'Italian' },
-  { code: 'pl', name: 'Polski', en: 'Polish' },
-  { code: 'cs', name: 'Čeština', en: 'Czech' },
-  { code: 'sk', name: 'Slovenčina', en: 'Slovak' },
-  { code: 'hu', name: 'Magyar', en: 'Hungarian' },
-  { code: 'ro', name: 'Română', en: 'Romanian' },
-  { code: 'bg', name: 'Български', en: 'Bulgarian' },
-  { code: 'el', name: 'Ελληνικά', en: 'Greek' },
-  { code: 'hr', name: 'Hrvatski', en: 'Croatian' },
-  { code: 'sr', name: 'Српски', en: 'Serbian' },
-  { code: 'sl', name: 'Slovenščina', en: 'Slovenian' },
-  { code: 'et', name: 'Eesti', en: 'Estonian' },
-  { code: 'lv', name: 'Latviešu', en: 'Latvian' },
-  { code: 'lt', name: 'Lietuvių', en: 'Lithuanian' },
-  { code: 'uk', name: 'Українська', en: 'Ukrainian' },
-  { code: 'ru', name: 'Русский', en: 'Russian' },
-  { code: 'tr', name: 'Türkçe', en: 'Turkish' },
-  { code: 'ar', name: 'العربية', en: 'Arabic', rtl: true },
-  { code: 'he', name: 'עברית', en: 'Hebrew', rtl: true },
-  { code: 'fa', name: 'فارسی', en: 'Persian', rtl: true },
-  { code: 'ur', name: 'اردو', en: 'Urdu', rtl: true },
-  { code: 'hi', name: 'हिन्दी', en: 'Hindi' },
-  { code: 'bn', name: 'বাংলা', en: 'Bengali' },
-  { code: 'ta', name: 'தமிழ்', en: 'Tamil' },
-  { code: 'th', name: 'ไทย', en: 'Thai' },
-  { code: 'vi', name: 'Tiếng Việt', en: 'Vietnamese' },
-  { code: 'id', name: 'Bahasa Indonesia', en: 'Indonesian' },
-  { code: 'ms', name: 'Bahasa Melayu', en: 'Malay' },
-  { code: 'fil', name: 'Filipino', en: 'Filipino' },
-  { code: 'zh', name: '简体中文', en: 'Simplified Chinese' },
-  { code: 'zh-TW', name: '繁體中文', en: 'Traditional Chinese' },
-  { code: 'ja', name: '日本語', en: 'Japanese' },
-  { code: 'ko', name: '한국어', en: 'Korean' },
-  { code: 'sw', name: 'Kiswahili', en: 'Swahili' },
-  { code: 'af', name: 'Afrikaans', en: 'Afrikaans' },
-]
+// Every language the browser knows a name for: the codes below (ISO 639-1) + Chinese in two scripts, and the
+// names – in the language itself and in English – come from the browser (Intl.DisplayNames), so nothing is typed
+// by hand and the translator is simply told the code. A new language is one more code here.
+const CODES = ('en nb sv da is fi de nl fr es pt it pl cs sk hu ro bg el hr sr sl et lv lt uk ru tr ar he fa ur hi bn ta th vi id ms fil zh zh-TW ja ko sw af '
+  + 'sq am hy az eu be bs my ca ceb ny co cy eo fy gl ka gu ht ha haw hmn ig ga jv kn kk km rw ku ky lo la lb mk mg ml mt mi mr mn ne or ps pa sm gd st sn sd si so su tg tt te tk ug uz xh yi yo zu '
+  + 'nn se kl fo br oc sc').split(' ')
+const RTL = new Set(['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'ug', 'yi', 'ku', 'dv'])
+const dn = (loc) => { try { return new Intl.DisplayNames([loc], { type: 'language' }) } catch { return null } }
+const enNames = dn('en')
+const label = (code, inLoc) => {
+  try { return (inLoc ? dn(code === 'zh-TW' ? 'zh-Hant' : code) : enNames)?.of(code === 'zh-TW' ? 'zh-Hant' : code) || code } catch { return code }
+}
+const cap = (t) => (t ? t.charAt(0).toLocaleUpperCase() + t.slice(1) : t)
+export const LANGS = CODES.map((code) => {
+  const en = label(code, false)
+  let name = cap(label(code, true))
+  if (code === 'nb') name = 'Norsk (original)'
+  if (code === 'zh-TW') name = '繁體中文'
+  if (code === 'zh') name = '简体中文'
+  return { code, name, en: code === 'zh' ? 'Simplified Chinese' : code === 'zh-TW' ? 'Traditional Chinese' : en, rtl: RTL.has(code) }
+}).sort((a, b) => (a.code === 'en' ? -1 : b.code === 'en' ? 1 : a.code === 'nb' ? -1 : b.code === 'nb' ? 1 : a.en.localeCompare(b.en)))
 export const byCode = Object.fromEntries(LANGS.map((l) => [l.code, l]))
 
 // where in the world: the time zone is the best hint we have without asking for the position

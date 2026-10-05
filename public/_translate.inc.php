@@ -7,16 +7,6 @@
 const TR_MAX_TEXTS = 40;
 const TR_MAX_LEN = 600;
 const TR_MAX_TOTAL = 8000;
-// language codes the site offers (see src/lib/languages.js) -> the name the translator is told
-const TR_LANGS = [
-    'en' => 'English', 'sv' => 'Swedish', 'da' => 'Danish', 'is' => 'Icelandic', 'fi' => 'Finnish', 'de' => 'German', 'nl' => 'Dutch', 'fr' => 'French',
-    'es' => 'Spanish', 'pt' => 'Portuguese', 'it' => 'Italian', 'pl' => 'Polish', 'cs' => 'Czech', 'sk' => 'Slovak', 'hu' => 'Hungarian', 'ro' => 'Romanian',
-    'bg' => 'Bulgarian', 'el' => 'Greek', 'hr' => 'Croatian', 'sr' => 'Serbian', 'sl' => 'Slovenian', 'et' => 'Estonian', 'lv' => 'Latvian', 'lt' => 'Lithuanian',
-    'uk' => 'Ukrainian', 'ru' => 'Russian', 'tr' => 'Turkish', 'ar' => 'Arabic', 'he' => 'Hebrew', 'fa' => 'Persian', 'ur' => 'Urdu', 'hi' => 'Hindi',
-    'bn' => 'Bengali', 'ta' => 'Tamil', 'th' => 'Thai', 'vi' => 'Vietnamese', 'id' => 'Indonesian', 'ms' => 'Malay', 'fil' => 'Filipino',
-    'zh' => 'Simplified Chinese', 'zh-TW' => 'Traditional Chinese', 'ja' => 'Japanese', 'ko' => 'Korean', 'sw' => 'Swahili', 'af' => 'Afrikaans',
-];
-
 function tr_cfg(): ?array {
     static $cfg = false;
     if ($cfg === false) {
@@ -39,7 +29,7 @@ function tr_key(string $lang, string $text): string { return sha1($lang . "\0" .
 function tr_call(string $lang, array $texts): ?array {
     $cfg = tr_cfg();
     if (!$cfg) return null;
-    $name = TR_LANGS[$lang];
+    $name = $GLOBALS['tr_lang_name'] ?? $lang;
     if ($cfg['provider'] === 'google') {
         $body = http_build_query(['q' => $texts, 'source' => 'no', 'target' => $lang === 'zh-TW' ? 'zh-TW' : $lang, 'format' => 'text', 'key' => $cfg['key']]);
         // http_build_query numbers array keys (q[0]=…); Google wants q=…&q=… – build it by hand
@@ -77,7 +67,8 @@ function tr_handle(): void {
     $b = json_decode((string)file_get_contents('php://input'), true);
     $lang = (string)($b['lang'] ?? '');
     $texts = $b['texts'] ?? null;
-    if (!isset(TR_LANGS[$lang]) || !is_array($texts) || !$texts || count($texts) > TR_MAX_TEXTS) fail('Ugyldig forespørsel.', 400);
+    // any language code is fine (en, nb, zh-TW, haw …); the client also tells its English name, which is only used as a hint for the translator
+    if (!preg_match('~^[a-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$~', $lang) || $lang === 'nb' || $lang === 'no' || !is_array($texts) || !$texts || count($texts) > TR_MAX_TEXTS) fail('Ugyldig forespørsel.', 400);
     $total = 0;
     foreach ($texts as $t) {
         if (!is_string($t) || $t === '' || mb_strlen($t) > TR_MAX_LEN) fail('Ugyldig tekst.', 400);
@@ -85,6 +76,7 @@ function tr_handle(): void {
     }
     if ($total > TR_MAX_TOTAL) fail('For mye tekst.', 400);
     $texts = array_values($texts);
+    $GLOBALS['tr_lang_name'] = preg_match('~^[\p{L}\p{M} ()\-]{2,60}$~u', (string)($b['name'] ?? '')) ? (string)$b['name'] : $lang;
     if (!tr_cfg()) out(['texts' => null, 'error' => 'not_configured'], 503);
 
     tr_table();

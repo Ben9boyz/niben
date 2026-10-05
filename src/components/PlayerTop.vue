@@ -1,5 +1,9 @@
 <script setup>
 import BrandLogo from './BrandLogo.vue'
+import LangSwitch from './LangSwitch.vue'
+import AdminAvatar from './AdminAvatar.vue'
+import { Keyboard } from 'lucide-vue-next'
+import { shortcuts } from '../composables/useShortcuts'
 import { ref } from 'vue'
 import { Sun, Moon, LogIn, ArrowUpRight } from 'lucide-vue-next'
 import { useTheme } from '../composables/useTheme'
@@ -49,6 +53,9 @@ function toSite() {
         <button class="btn primary small" :disabled="busy || !pw">{{ busy ? 'Logger inn …' : 'Logg inn' }}</button>
       </form>
     </div>
+    <span v-if="admin.loggedIn" class="icon glass avatar"><AdminAvatar /></span>
+    <LangSwitch class="plang" />
+    <button class="icon glass" title="Hurtigtaster (?)" aria-label="Hurtigtaster" @click="shortcuts.open = true"><Keyboard :size="17" /></button>
     <button v-if="!inApp" class="icon glass" title="Til niben.no" aria-label="Til niben.no" @click="toSite"><ArrowUpRight :size="17" /></button>
     <button class="icon glass" :title="theme === 'dark' ? 'Lyst tema' : 'Mørkt tema'" aria-label="Bytt tema" @click="toggle">
       <Sun v-if="theme === 'dark'" :size="17" />
@@ -74,6 +81,9 @@ function toSite() {
 .login { position: absolute; top: calc(100% + 8px); right: 0; width: 260px; display: grid; gap: 8px; padding: 14px; border-radius: 16px; background: var(--bg); }
 .login b { font-size: 0.85rem; }
 .login input { padding: 9px 12px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--glass-strong); color: var(--text); font: 500 0.9rem var(--font); }
+.avatar { padding: 0; overflow: visible; }
 .err { margin: 0; font-size: 0.78rem; color: #d24b4b; }
 @media (max-width: 600px) { .brand b { display: none; } .brand { padding: 0 6px; } .seg button { padding: 8px 10px; } }
+.plang :deep(.langbtn) { width: 44px; height: 44px; border-radius: 50%; }
+.plang :deep(.menu) { left: auto; right: 16px; top: 72px; bottom: auto; }
 </style>
