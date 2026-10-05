@@ -39,7 +39,8 @@ const minutes = (g) => {
   const m = Math.round(g.tracks.reduce((a, t) => a + (t.ms || 0), 0) / 60000)
   return m >= 60 ? `${Math.floor(m / 60)} t ${m % 60} min` : `${m} min`
 }
-const rest = (g, i) => i === 0 && g.uri && g.uri === spotify.now?.context
+// Spotify plays what I queued BEFORE the rest of the playing album, so the first tile is not always the rest: it is the one that starts with the song after this one
+const rest = (g) => !!g.uri && g.uri === spotify.now?.context && !!pos.value?.next && g.tracks[0].uri === pos.value.next
 function toggle(i) { const o = new Set(open.value); o.has(i) ? o.delete(i) : o.add(i); open.value = o }
 watch(() => spotify.now?.uri, () => { open.value = new Set() })
 async function load() { queue.value = await fetchQueue() }
@@ -48,7 +49,7 @@ async function where() {
   if (!ctx?.startsWith('spotify:album:')) { pos.value = null; return }
   const list = (await fetchTracks(ctx)).tracks || []
   const i = list.findIndex((t) => t.uri === spotify.now?.uri)
-  pos.value = i >= 0 ? { n: i + 1, of: list.length } : null
+  pos.value = i >= 0 ? { n: i + 1, of: list.length, next: list[i + 1]?.uri || null } : null
 }
 // a new song: look again (a moment later, once Spotify has caught up)
 watch(() => spotify.now?.uri, () => { clearTimeout(soon); soon = setTimeout(() => { load(); where() }, 700) }, { immediate: true })
@@ -71,7 +72,7 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
       <li v-for="(g, i) in groups.slice(0, 14)" :key="(g.uri || g.name) + i" class="grp" :class="{ one: !isAlbum(g) }">
         <button v-if="isAlbum(g)" class="gh" :aria-expanded="open.has(i)" @click="toggle(i)">
           <img v-if="g.image" crossorigin="anonymous" :src="g.image" alt="" /><span v-else class="ph"><Music :size="13" /></span>
-          <span class="t" translate="no"><b>{{ rest(g, i) ? 'Resten av ' + g.name : g.name }}</b><small><i class="tag">Album</i>{{ g.tracks.length }} låter · {{ minutes(g) }}</small></span>
+          <span class="t" translate="no"><b>{{ rest(g) ? 'Resten av ' + g.name : g.name }}</b><small><i class="tag">Album</i>{{ g.tracks.length }} låter · {{ minutes(g) }}</small></span>
           <ChevronRight :size="15" class="chev" :class="{ on: open.has(i) }" aria-hidden="true" />
         </button>
         <div v-else class="gh single">
