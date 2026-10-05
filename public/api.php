@@ -256,6 +256,14 @@ require_once __DIR__ . '/_steam.inc.php';
 require_once __DIR__ . '/_about.inc.php';
 require_once __DIR__ . '/_site.inc.php';
 require_once __DIR__ . '/_github.inc.php';
+require_once __DIR__ . '/_translate.inc.php';
+require_once __DIR__ . '/_visits.inc.php';
+require_once __DIR__ . '/_milestones.inc.php';
+require_once __DIR__ . '/_home.inc.php';
+require_once __DIR__ . '/_extras.inc.php';
+require_once __DIR__ . '/_discover.inc.php';
+require_once __DIR__ . '/_decor.inc.php';
+require_once __DIR__ . '/_news.inc.php';
 
 try {
     if (str_starts_with($action, 'spotify_')) {
@@ -283,6 +291,66 @@ try {
         gh_handle($action);
         fail('Ukjent handling.', 404);
     }
+    if ($action === 'translate') tr_handle();
+    if (str_starts_with($action, 'news_') || $action === 'feed') { nw_handle($action, $post); fail('Ukjent handling.', 404); }
+    if (str_starts_with($action, 'decor_')) { decor_handle($action, $post); fail('Ukjent handling.', 404); }
+    if (str_starts_with($action, 'discover_')) { dc_handle($action, $post); fail('Ukjent handling.', 404); }
+    if ($action === 'texts_save') {
+        // the site's own wording (headings, intro lines …): { texts: { key: text } }. An empty text = back to the default.
+        if (!$post) fail('Bruk POST.', 405);
+        require_admin();
+        $in = (array)(body()['texts'] ?? []);
+        $clean = [];
+        foreach (array_slice($in, 0, 400, true) as $k => $v) {
+            if (!is_string($k) || !preg_match('~^[a-z0-9_.]{1,60}$~', $k) || !is_string($v)) continue;
+            $v = mb_substr(trim($v), 0, 1500);
+            if ($v !== '') $clean[$k] = $v;
+        }
+        kv_set('site_texts', json_encode($clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        out(['ok' => true, 'texts' => (object)$clean]);
+    }
+    if (in_array($action, ['guestbook_list', 'guestbook_add', 'admin_guestbook', 'admin_guestbook_set', 'practice_calendar', 'wrapped', 'admin_backup'], true)) ex_handle($action, $post);
+    if (in_array($action, ['home_live', 'home_search', 'home_set', 'home_get'], true)) hm_handle($action, $post);
+    if ($action === 'milestones' || $action === 'milestone_add' || $action === 'milestone_delete') ms_handle($action, $post);
+    if ($action === 'visit') {
+        if (!$post || ($_SERVER['HTTP_X_NIBEN'] ?? '') !== '1') out(['ok' => false]);
+        vi_count((string)(body()['path'] ?? ''));
+        out(['ok' => true]);
+    }
+    if ($action === 'admin_visits') { require_admin(); out(vi_stats()); }
+    if ($action === 'admin_status') {
+        require_admin();
+        $count = function (string $t) { try { return (int)db()->query("SELECT COUNT(*) FROM $t")->fetchColumn(); } catch (Throwable $e) { return 0; } };
+        $cfgSteam = function_exists('st_config') ? (bool)st_config() : false;
+        $cfgJp = function_exists('jp_config') ? (bool)jp_config() : false;
+        $sp = (bool)kv_get('refresh_token');
+        out([
+            'counts' => ['trips' => $count('trips'), 'books' => $count('books'), 'recordings' => $count('recordings'), 'photos' => $count('trip_photos')],
+            'spotify' => ['connected' => $sp, 'lock_seconds' => $sp ? sp_lock_seconds() : null, 'can_save' => $sp && sp_has_scope('user-library-modify'), 'can_playlists' => $sp && sp_has_scope('playlist-modify-private')],
+            'steam' => $cfgSteam, 'jpdb' => $cfgJp,
+            'translate' => tr_admin_status(),
+        ]);
+    }
+    if ($action === 'admin_best_friend') {
+        require_admin();
+        if (!$post) out(['id' => kv_get('st_best_friend') ?: ST_BEST_FRIEND]);
+        $b = json_decode((string)file_get_contents('php://input'), true) ?: [];
+        $v = trim((string)($b['id'] ?? ''));
+        if (preg_match('~/profiles/(\d{17})~', $v, $m)) $v = $m[1];
+        if ($v !== '' && !preg_match('~^\d{17}$~', $v)) fail('Bruk den 17-sifrede Steam-ID-en eller lenken til profilen (…/profiles/7656…).', 400);
+        kv_set('st_best_friend', $v === '' ? null : $v);
+        kv_del('st_friends'); // forget what was cached so it shows at once
+        out(['ok' => true, 'id' => $v ?: ST_BEST_FRIEND]);
+    }
+    if ($action === 'admin_translate_clear') {
+        require_admin();
+        if (!$post) fail('Bruk POST.', 405);
+        $b = json_decode((string)file_get_contents('php://input'), true) ?: [];
+        $l = (string)($b['lang'] ?? '');
+        if ($l !== '' && !preg_match('~^[a-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$~', $l)) fail('Ugyldig språk.', 400);
+        tr_admin_clear($l);
+        out(['ok' => true]);
+    }
     switch ($action) {
 
     case 'content': {
@@ -306,13 +374,21 @@ try {
             $books = $pdo->query('SELECT ' . $bookCols . $bookOrder)->fetchAll(); // "reading" column not added yet
         }
         $recs = $pdo->query('SELECT id, guitar, title, recorded_on, youtube, audio_path, notes FROM recordings ORDER BY COALESCE(recorded_on, created_at) DESC, id DESC')->fetchAll();
-        out(['trips' => $trips, 'books' => $books, 'recordings' => $recs, 'songs' => songs_list($pdo), 'about' => json_decode((string)kv_get('about'), true)]);
+        $payload = json_encode(['trips' => $trips, 'books' => $books, 'recordings' => $recs, 'songs' => songs_list($pdo), 'about' => json_decode((string)kv_get('about'), true), 'texts' => (object)(json_decode((string)kv_get('site_texts'), true) ?: [])], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        // unchanged content: the browser keeps its copy (304, no body)
+        $etag = '"' . md5($payload) . '"';
+        header('ETag: ' . $etag);
+        header('Cache-Control: private, no-cache');
+        if (($_SERVER['HTTP_IF_NONE_MATCH'] ?? '') === $etag) { http_response_code(304); exit; }
+        echo $payload;
+        exit;
     }
 
     case 'limits':
         out(function_exists('upload_limits') ? upload_limits() : []);
 
     case 'me':
+        if (is_admin() && empty($_COOKIE['niben_me'])) vi_mark_me(); // logged in from before the counter existed: that's me too
         out(['admin' => is_admin()]);
 
     case 'login': {
@@ -333,6 +409,7 @@ try {
         session_regenerate_id(true);
         $_SESSION['admin'] = true;
         $_SESSION['expires'] = time() + 60 * 60 * 8;
+        vi_mark_me(); // I'm not a visitor
         out(['admin' => true]);
     }
 
@@ -444,6 +521,8 @@ try {
                 ->execute($vals);
             $id = (int)db()->lastInsertId();
         }
+        // finished (a date, and not "reading"): a milestone – once per book
+        if (!empty($b['read_on']) && empty($b['reading']) && date_or_null($b['read_on'])) ms_add('book:' . $id, 'book', (string)$vals[0], (string)($vals[1] ?? ''), $vals[4] ?? null, strtotime((string)date_or_null($b['read_on']) . ' 12:00') ?: time(), null);
         out(['id' => $id]);
     }
 
@@ -478,6 +557,7 @@ try {
             db()->prepare('INSERT INTO recordings (guitar, title, recorded_on, youtube, audio_path, notes) VALUES (?,?,?,?,?,?)')
                 ->execute([$guitar, $title, date_or_null($b['recorded_on'] ?? null), $yt, $audio, str_or_null($b['notes'] ?? null, 5000)]);
             $id = (int)db()->lastInsertId();
+            // (the milestone is added when the list is read, from the recording's date – see ms_trips)
         }
         out(['id' => $id]);
     }

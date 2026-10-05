@@ -1,5 +1,7 @@
-<script setup>
+<script setup lang="ts">
+import { tx } from '../composables/useTexts'
 import RecordingList from '../components/RecordingList.vue'
+import NewsletterSignup from '../components/NewsletterSignup.vue'
 import { Timer } from 'lucide-vue-next'
 import { ref, computed } from 'vue'
 import { useData } from '../composables/useData'
@@ -13,8 +15,8 @@ const g = computed(() => data.gitarer?.[idx.value])
 <template>
   <div class="cpage">
     <header class="cpage-head">
-      <div class="eyebrow">Gitar</div>
-      <h1>Gitarene mine</h1>
+      <div class="eyebrow">{{ tx('guitar.eyebrow') }}</div>
+      <h1>{{ tx('guitar.pageTitle') }}</h1>
     </header>
 
     <div class="tabs">
@@ -30,13 +32,14 @@ const g = computed(() => data.gitarer?.[idx.value])
           <div class="muted">{{ [g.merke, g.type, g.aar].filter(Boolean).join(' · ') }}</div>
           <h2>{{ g.navn }}</h2>
           <p class="body">{{ g.beskrivelse }}</p>
-          <router-link to="/ovelse" class="btn small"><Timer :size="15" /> Øvingstimer</router-link>
+          <router-link to="/ovelse" class="btn small"><Timer :size="15" /> Øvingskroken</router-link>
         </div>
         <div class="glass card">
           <h3>Opptak</h3>
-          <div v-if="!g.opptak?.length" class="empty">Ingen opptak ennå.</div>
+          <div v-if="!g.opptak?.length" class="empty">{{ tx('guitar.none') }}</div>
           <RecordingList :items="g.opptak || []" />
         </div>
+        <NewsletterSignup />
         <p v-if="g.kreditt" class="credit">3D-modell: <a :href="g.kreditt.url" target="_blank" rel="noopener">{{ g.kreditt.tekst }}</a>, fargelagt for denne siden.</p>
       </div>
     </div>

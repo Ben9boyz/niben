@@ -1,22 +1,24 @@
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { ChevronLeft, ArrowUpRight, Plus } from 'lucide-vue-next'
-import { useData, reloadData } from '../../composables/useData'
-import { api } from '../../composables/useAdmin'
+import { useData, reloadData, type Song } from '../../composables/useData'
+import { api, errorMessage } from '../../composables/useAdmin'
 import { parseProgression, findChord, importSheet } from '../../lib/chords'
+import type { Flash } from '../../types'
 import ChordDiagram from '../ChordDiagram.vue'
 import StrumEditor from '../StrumEditor.vue'
 
 // Songs to practise in the practice corner: chords, tempo, capo and a link to Ultimate Guitar.
 const data = useData()
 const songs = computed(() => data.sanger || [])
-const editing = ref(null)
-const msg = ref(null)
+interface SongForm { id: number | null; title: string; artist: string; chords: string; bpm: number | string; beats: number; capo: number; ug_url: string; notes: string; sheet: string; practising: boolean; strum: string }
+const editing = ref<SongForm | null>(null)
+const msg = ref<Flash | null>(null)
 const busy = ref(false)
 
-function edit(s) {
+function edit(s?: Song | null) {
   msg.value = null
-  editing.value = reactive(s
+  editing.value = reactive<SongForm>(s
     ? { id: s.id, title: s.tittel, artist: s.artist || '', chords: s.akkorder, bpm: s.bpm || '', beats: s.slag || 4, capo: s.capo || 0, ug_url: s.ug || '', notes: s.notat || '', sheet: s.ark || '', practising: !!s.ovrer, strum: s.slagmonster || 'D-DU-UDU' }
     : { id: null, title: '', artist: '', chords: '', bpm: 80, beats: 4, capo: 0, ug_url: '', notes: '', sheet: '', practising: false, strum: 'D-DU-UDU' })
 }
@@ -28,12 +30,13 @@ const ugSearch = computed(() => {
 
 // a sheet pasted from Ultimate Guitar (or similar): tidy it and fill in what's missing
 const pasteNote = ref('')
-function onSheetPaste(e) {
+function onSheetPaste(e: ClipboardEvent) {
   const txt = e.clipboardData?.getData('text') || ''
   if (txt.length < 20) return
   e.preventDefault()
   const r = importSheet(txt)
   const ed = editing.value
+  if (!ed) return
   ed.sheet = r.sheet
   if (!ed.title && r.title) ed.title = r.title
   if (!ed.artist && r.artist) ed.artist = r.artist
@@ -50,20 +53,20 @@ async function save() {
     editing.value = null
     msg.value = { ok: 'Lagret.' }
   } catch (e) {
-    msg.value = { error: e.message }
+    msg.value = { error: errorMessage(e) }
   } finally {
     busy.value = false
   }
 }
 async function remove() {
   const e = editing.value
-  if (!e.id || !confirm(`Slette «${e.title}»?`)) return
+  if (!e?.id || !confirm(`Slette «${e.title}»?`)) return
   try {
     await api('song_delete', { id: e.id })
     await reloadData()
     editing.value = null
   } catch (err) {
-    msg.value = { error: err.message }
+    msg.value = { error: errorMessage(err) }
   }
 }
 </script>

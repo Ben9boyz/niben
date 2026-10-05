@@ -1,41 +1,47 @@
-<script setup>
-import { ChevronLeft, ChevronRight, Play, Lock, Shuffle } from 'lucide-vue-next'
+<script setup lang="ts">
+import { ChevronLeft, ChevronRight, Play, Lock, Shuffle, Folder, X } from 'lucide-vue-next'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { room } from '../composables/useRoom'
+import { ipodRows, ipodFolderName, type IpodRow } from '../composables/useIpodList'
+import { groups, openFolder } from '../composables/useGroups'
 import { spotify, useSpotify, lockLeft, progressMs, fmtClock, play, fetchTracks, lockNote, control, setShuffle } from '../composables/useSpotify'
 import { admin, checkLogin } from '../composables/useAdmin'
+import { targetEl } from '../lib/dom'
+import type { Track, TrackList, Playlist } from '../types'
 
 // HTML screen laid over the 3D iPod while it's held in front of the camera.
 useSpotify()
 checkLogin()
 
-const rect = ref(null)
+const rect = ref<{ x: number; y: number; w: number; h: number } | null>(null)
 // shared with the panel (room.ipod) so the iPod and the panel mirror each other
-const view = computed({ get: () => room.ipod.view, set: (v) => (room.ipod.view = v) })
-const playlist = computed({ get: () => room.ipod.playlist, set: (v) => (room.ipod.playlist = v) })
-const active = computed({ get: () => room.ipod.active, set: (v) => (room.ipod.active = v) })
-const tracks = ref(null)
+const view = computed({ get: () => room.ipod.view, set: (v: typeof room.ipod.view) => (room.ipod.view = v) })
+const playlist = computed({ get: () => room.ipod.playlist, set: (v: Playlist | null) => (room.ipod.playlist = v) })
+const active = computed({ get: () => room.ipod.active, set: (v: number) => (room.ipod.active = v) })
+const tracks = ref<TrackList | null>(null)
 watch(playlist, async (p) => {
   tracks.value = null
   if (p) tracks.value = await fetchTracks(p.uri)
 }, { immediate: true })
-const listEl = ref(null)
+const listEl = ref<HTMLElement | null>(null)
 const toast = ref('')
 let raf = 0
 
 const locked = computed(() => lockLeft.value > 0)
 const now = computed(() => spotify.now)
-const pct = computed(() => (now.value?.duration_ms ? (progressMs.value / now.value.duration_ms) * 100 : 0))
+const pct = computed(() => (now.value?.duration_ms ? (progressMs.value / now.value?.duration_ms) * 100 : 0))
 
 // rows for the current view, so arrow keys / click wheel work the same everywhere
-const rows = computed(() => {
+type Row = IpodRow | { kind: 'playall'; label: string } | { kind: 'track'; label: string; sub?: string; item: Track; ms?: number; img?: string | null }
+const itemUri = (r: Row): string => ('item' in r ? r.item.uri : r.label)
+const imgOf = (r: Row): string | null | undefined => ('img' in r ? r.img : null)
+const rows = computed<Row[]>(() => {
   if (view.value === 'menu') {
-    // same order as the panel's list so the highlight can be shared
-    const f = room.ipod.q.trim().toLowerCase()
-    return spotify.playlists.filter((p) => !f || p.name.toLowerCase().includes(f)).map((p) => ({ kind: 'playlist', label: p.name, sub: p.count ? `${p.count} låter` : p.owner, item: p, img: p.thumb || p.image }))
+    // the same list and order as the panel (folders first when grouping is on) so the highlight can be shared
+    return ipodRows.value
   }
   if (view.value === 'playlist') {
-    const r = []
+    const r: Row[] = []
     if (admin.loggedIn) {
       const here = now.value?.context === playlist.value?.uri
       r.push({ kind: 'playall', label: here ? (now.value?.playing ? 'Pause' : 'Spill videre') : locked.value ? `Låst ${fmtClock(lockLeft.value)}` : 'Spill av lista' })
@@ -46,8 +52,8 @@ const rows = computed(() => {
   return []
 })
 
-watch(() => room.ipod.q, () => { if (view.value === 'menu') active.value = 0 })
-const title = computed(() => (view.value === 'menu' ? 'Spillelister' : view.value === 'now' ? 'Spilles nå' : playlist.value?.name || ''))
+watch(() => [room.ipod.q, groups.sel], () => { if (view.value === 'menu') active.value = 0 })
+const title = computed(() => (view.value === 'menu' ? (!room.ipod.q.trim() && ipodFolderName.value) || 'Spillelister' : view.value === 'now' ? 'Spilles nå' : playlist.value?.name || ''))
 
 function frame() {
   raf = requestAnimationFrame(frame)
@@ -55,9 +61,9 @@ function frame() {
   rect.value = r && r.w > 40 ? r : null
 }
 
-async function open(row) {
+async function open(row: Row | undefined) {
   if (!row) return
-  if (row.kind === 'now') { view.value = 'now'; return }
+  if (row.kind === 'folder') { openFolder(row.id); active.value = 0; return }
   if (row.kind === 'playlist') {
     playlist.value = row.item
     view.value = 'playlist'
@@ -67,41 +73,46 @@ async function open(row) {
   if (row.kind === 'playall' || row.kind === 'track') {
     if (!admin.loggedIn) return
     // what's already playing can be paused / resumed even while locked
-    const current = row.kind === 'track' ? now.value?.uri === row.item.uri : now.value?.context === playlist.value.uri
+    const pl = playlist.value
+    if (!pl) return
+    const current = row.kind === 'track' ? now.value?.uri === row.item.uri : now.value?.context === pl.uri
     if (current) { wheel('toggle'); return }
     if (locked.value) { toast.value = `Låst – hør ferdig (${fmtClock(lockLeft.value)})`; setTimeout(() => (toast.value = ''), 2600); return }
     toast.value = 'Starter …'
-    const r = await play(playlist.value.uri, row.kind === 'track' ? row.item.uri : null)
-    toast.value = r.ok ? `Spiller${lockNote()}` : r.error
+    const r = await play(pl.uri, row.kind === 'track' ? row.item.uri : null)
+    toast.value = r.ok ? `Spiller${lockNote()}` : r.error ?? ''
     setTimeout(() => (toast.value = ''), 2600)
     if (r.ok) setTimeout(() => (view.value = 'now'), 900)
   }
 }
 
 // the click wheel: shuffle (top), previous / next track, play / pause (bottom)
-async function wheel(op) {
+async function wheel(op: 'shuffle' | 'toggle' | 'previous' | 'next') {
   if (!admin.loggedIn) { toast.value = 'Logg inn for å styre musikken'; setTimeout(() => (toast.value = ''), 2200); return }
   const r = op === 'shuffle'
     ? await setShuffle(!spotify.now?.shuffle)
     : await control(op === 'toggle' ? (spotify.now?.playing ? 'pause' : 'resume') : op)
-  toast.value = !r.ok ? r.error : op === 'shuffle' ? (spotify.now?.shuffle ? 'Shuffle på' : 'Shuffle av') : ''
+  toast.value = !r.ok ? r.error ?? '' : op === 'shuffle' ? (spotify.now?.shuffle ? 'Shuffle på' : 'Shuffle av') : ''
   if (toast.value) setTimeout(() => (toast.value = ''), 2200)
 }
 
 function back() {
-  if (view.value === 'menu') room.musicView = 'ipodDock'
-  else { view.value = 'menu'; active.value = 0 }
+  if (view.value === 'menu') {
+    // inside a folder: up one level (to its parent folder, or the top); at the top: put the iPod down
+    if (groups.on && groups.sel && !room.ipod.q.trim()) { const par = groups.list.find((g) => g.id === groups.sel)?.parent; groups.sel = par || null; active.value = 0 }
+    else room.musicView = 'ipodDock'
+  } else { view.value = 'menu'; active.value = 0 }
 }
 
-function move(d) {
+function move(d: number) {
   const n = rows.value.length
   if (!n) return
   active.value = (active.value + d + n) % n
   nextTick(() => listEl.value?.querySelector('.row.on')?.scrollIntoView({ block: 'nearest' }))
 }
 
-function onKey(e) {
-  if (e.target.tagName === 'INPUT') return
+function onKey(e: KeyboardEvent) {
+  if (targetEl(e).tagName === 'INPUT') return
   if (e.key === 'ArrowDown') { move(1); e.preventDefault() }
   else if (e.key === 'ArrowUp') { move(-1); e.preventDefault() }
   else if (e.key === 'Enter' || e.key === 'ArrowRight') { open(rows.value[active.value]); e.preventDefault() }
@@ -121,9 +132,12 @@ onBeforeUnmount(() => {
 <template>
   <div v-if="rect" class="ipod" :style="{ left: `${rect.x}px`, top: `${rect.y}px`, width: `${rect.w}px`, height: `${rect.h}px`, '--u': `${rect.h / 100}px` }">
     <header>
-      <button class="back" @click="back" :aria-label="view === 'menu' ? 'Legg fra deg iPoden' : 'Tilbake'"><ChevronLeft size="1em" /></button>
-      <span><Shuffle v-if="now?.shuffle" size="0.75em" class="shf" />{{ title }}</span>
-      <button class="np" :class="{ on: now?.playing }" @click="view = 'now'" aria-label="Spilles nå"><Play size="1em" fill="currentColor" /></button>
+      <button class="back" @click="back" :aria-label="view === 'menu' ? 'Legg fra deg iPoden' : 'Tilbake'"><ChevronLeft width="1em" height="1em" /></button>
+      <span><Shuffle v-if="now?.shuffle" width="0.75em" height="0.75em" class="shf" />{{ title }}</span>
+      <span class="rt">
+        <button class="np" :class="{ on: now?.playing }" @click="view = 'now'" aria-label="Spilles nå"><Play width="1em" height="1em" fill="currentColor" /></button>
+        <button class="np px" @click="room.musicView = 'ipodDock'" aria-label="Legg fra deg iPoden" title="Legg fra deg iPoden"><X width="1em" height="1em" /></button>
+      </span>
     </header>
 
     <div v-if="view === 'now'" class="nowview">
@@ -137,7 +151,7 @@ onBeforeUnmount(() => {
         <div class="bar"><span :style="{ width: `${pct}%` }"></span></div>
         <div class="times"><span>{{ fmtClock(progressMs / 1000) }}</span><span>-{{ fmtClock(Math.max(0, now.duration_ms - progressMs) / 1000) }}</span></div>
       </div>
-      <div v-if="locked" class="lockline"><Lock size="0.9em" /> Låst i {{ fmtClock(lockLeft) }}</div>
+      <div v-if="locked" class="lockline"><Lock width="0.9em" height="0.9em" /> Låst i {{ fmtClock(lockLeft) }}</div>
     </div>
 
     <div v-else ref="listEl" class="list">
@@ -146,16 +160,16 @@ onBeforeUnmount(() => {
       <div v-else-if="view === 'playlist' && tracks?.hidden" class="msg">Spotify viser bare låtene i spillelister du har laget selv.</div>
       <button
         v-for="(r, i) in rows"
-        :key="r.kind + (r.item?.uri || r.label) + i"
+        :key="r.kind + itemUri(r) + i"
         class="row"
         :class="{ on: i === active, dim: (r.kind === 'playall' && locked && now?.context !== playlist?.uri) || (r.kind === 'track' && (!admin.loggedIn || (locked && now?.uri !== r.item.uri))) }"
         @click="active = i; open(r)"
         @mouseenter="active = i"
       >
-        <img v-if="r.img" crossorigin="anonymous" :src="r.img" alt="" class="art" loading="lazy" />
-        <span class="l"><Play v-if="r.kind === 'playall' && !locked" size="0.8em" fill="currentColor" class="pa" />{{ r.label }}</span>
-        <span v-if="r.ms" class="r">{{ fmtClock(r.ms / 1000) }}</span>
-        <span v-else-if="r.kind === 'playlist' || r.kind === 'now'" class="r"><ChevronRight size="1em" /></span>
+        <img v-if="imgOf(r)" crossorigin="anonymous" :src="imgOf(r) || undefined" alt="" class="art" loading="lazy" />
+        <span class="l"><Play v-if="r.kind === 'playall' && !locked" width="0.8em" height="0.8em" fill="currentColor" class="pa" /><Folder v-if="r.kind === 'folder'" width="0.85em" height="0.85em" class="pa" />{{ r.label }}</span>
+        <span v-if="r.kind === 'track' && r.ms" class="r">{{ fmtClock((r.ms ?? 0) / 1000) }}</span>
+        <span v-else-if="r.kind === 'playlist' || r.kind === 'folder'" class="r"><ChevronRight width="1em" height="1em" /></span>
       </button>
       <div v-if="view === 'menu' && !rows.length" class="msg">{{ room.ipod.q ? 'Ingen treff.' : 'Ingen spillelister.' }}</div>
     </div>
@@ -164,7 +178,7 @@ onBeforeUnmount(() => {
   </div>
 
   <!-- the 3D click wheel: shuffle (top), ⏮ / ⏭ previous / next track, ⏯ play / pause, centre = choose -->
-  <div v-if="rect" class="wheel" :style="{ left: `${rect.x + rect.w / 2}px`, top: `${rect.y + rect.h * 1.51}px`, width: `${rect.h * 1.04}px`, height: `${rect.h * 1.04}px` }">
+  <div v-if="rect" class="wheel" :style="{ left: `${rect.x + rect.w / 2}px`, top: `${rect.y + rect.h * 1.9}px`, width: `${rect.h * 1.574}px`, height: `${rect.h * 1.574}px` }">
     <button class="w-menu" :aria-label="spotify.now?.shuffle ? 'Shuffle av' : 'Shuffle på'" title="Shuffle" @click="wheel('shuffle')"></button>
     <button class="w-prev" aria-label="Forrige låt" title="Forrige låt" @click="wheel('previous')"></button>
     <button class="w-next" aria-label="Neste låt" title="Neste låt" @click="wheel('next')"></button>
@@ -172,9 +186,6 @@ onBeforeUnmount(() => {
     <button class="w-center" aria-label="Velg" @click="open(rows[active])"></button>
   </div>
 
-  <button v-if="rect" class="putdown glass" :style="{ left: `${rect.x + rect.w / 2}px`, top: `${rect.y + rect.h * 2.3 + 12}px` }" @click="room.musicView = 'ipodDock'">
-    Legg fra deg iPoden
-  </button>
 </template>
 
 <style scoped>
@@ -195,7 +206,7 @@ onBeforeUnmount(() => {
 @keyframes on { from { filter: brightness(0.2); } }
 header {
   display: grid;
-  grid-template-columns: calc(var(--u) * 16) minmax(0, 1fr) calc(var(--u) * 16);
+  grid-template-columns: calc(var(--u) * 16) minmax(0, 1fr) calc(var(--u) * 24);
   padding: 0 calc(var(--u) * 1.5);
   align-items: center;
   height: calc(var(--u) * 13);
@@ -208,6 +219,8 @@ header {
 header span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .np { display: grid; place-items: center; border: 0; background: none; cursor: pointer; color: #9aa; font-size: 0.8em; padding: 0; height: 100%; }
 .np.on { color: #1db954; }
+.rt { display: grid; grid-template-columns: 1fr 1fr; height: 100%; }
+.np.px:hover { color: #d24b4b; }
 .back {
   display: grid;
   place-items: center;
@@ -268,7 +281,7 @@ header span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .w-play { left: 32%; right: 32%; bottom: 2%; height: 30%; }
 .w-prev { top: 32%; bottom: 32%; left: 2%; width: 30%; }
 .w-next { top: 32%; bottom: 32%; right: 2%; width: 30%; }
-.w-center { left: 33%; top: 33%; width: 34%; height: 34%; }
+.w-center { left: 36%; top: 36%; width: 28%; height: 28%; }
 .putdown {
   position: fixed;
   z-index: 25;

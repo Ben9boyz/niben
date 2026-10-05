@@ -1,6 +1,8 @@
-<script setup>
+<script setup lang="ts">
+import PracticeCalendar from './PracticeCalendar.vue'
+import VocabChart from './VocabChart.vue'
 import PitchReading from './PitchReading.vue'
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, type Component } from 'vue'
 import { GraduationCap, ArrowUpRight, Tv, Check, LayoutDashboard, ScanText, BookA } from 'lucide-vue-next'
 import { jp, loadJapanese, jpdbUrl, ANIME_READY } from '../composables/useJapanese'
 import { admin, checkLogin } from '../composables/useAdmin'
@@ -10,20 +12,26 @@ import JapanReader from './JapanReader.vue'
 import SegSwitch from './SegSwitch.vue'
 import JapanWords from './JapanWords.vue'
 import KanjiPractice from './KanjiPractice.vue'
+import Fold from './Fold.vue'
 
 // The Japanese corner's content (3D panel and plain page): progress from jpdb, the word of the day,
 // and – for the admin – flashcard practice.
 loadJapanese()
 checkLogin()
 
-const view = ref('home') // 'home' | 'les' | 'ord' | 'kanji'
-const TABS = [
+type View = 'home' | 'les' | 'ord' | 'kanji'
+const view = ref<View>('home')
+const TABS: { id: View; label: string; icon: Component | string }[] = [
   { id: 'home', label: 'Oversikt', icon: LayoutDashboard },
   { id: 'les', label: 'Les tekst', icon: ScanText },
   { id: 'ord', label: 'Ordliste', icon: BookA },
   { id: 'kanji', label: 'Kanji', icon: 'M5 4h14M12 4v16M7 9h10l-2 5H9zM4 20h16' },
 ]
-const practicing = computed({ get: () => room.jpPractice, set: (v) => (room.jpPractice = v) })
+// phones: the overview shows the word, the button and the numbers – the rest (chart, calendar, anime, decks) folds away
+const phoneMq = window.matchMedia('(max-width: 720px)')
+const phone = ref(phoneMq.matches)
+phoneMq.addEventListener('change', () => { phone.value = phoneMq.matches })
+const practicing = computed({ get: () => room.jpPractice, set: (v: boolean) => (room.jpPractice = v) })
 const total = computed(() => jp.count.due + jp.count.learning + jp.count.known + jp.count.new)
 const word = computed(() => jp.word)
 watch(() => admin.loggedIn, (on) => { if (!on) practicing.value = false })
@@ -31,8 +39,8 @@ watch(() => admin.loggedIn, (on) => { if (!on) practicing.value = false })
 // anime: the shows in the decks; enough coverage = ready to watch. A DVD clicked in the room is
 // highlighted here (and the other way round).
 const ready = computed(() => jp.anime.filter((a) => a.known >= ANIME_READY))
-const animeEl = ref(null)
-const pickAnime = (i) => { room.jpAnime = room.jpAnime === i ? -1 : i }
+const animeEl = ref<HTMLElement | null>(null)
+const pickAnime = (i: number) => { room.jpAnime = room.jpAnime === i ? -1 : i }
 watch(() => room.jpAnime, async (i) => {
   if (i < 0) return
   await nextTick()
@@ -64,7 +72,7 @@ watch(() => room.jpAnime, async (i) => {
           <div class="r" lang="ja">
             <PitchReading v-if="word.reading !== word.spelling" :reading="word.reading" :pitch="word.pitch" />
           </div>
-          <p class="m">{{ (word.meanings?.[0] || []).join('; ') }}</p>
+          <p class="m" translate="no">{{ (word.meanings?.[0] || []).join('; ') }}</p>
           <a :href="jpdbUrl(word)" target="_blank" rel="noopener" class="jl">Se på jpdb <ArrowUpRight :size="13" /></a>
         </article>
 
@@ -86,15 +94,20 @@ watch(() => room.jpAnime, async (i) => {
           <i class="learning" :style="{ width: `${((jp.count.learning + jp.count.due) / total) * 100}%` }"></i>
         </div>
 
+        <Fold title="Ordforråd over tid" :fold="phone"><VocabChart /></Fold>
+
+        <Fold title="Øvingskalender" :hint="'' " :fold="phone"><PracticeCalendar /></Fold>
+
         </div>
         <div class="ov-col">
-        <section v-if="jp.anime.length" ref="animeEl" class="anime">
-          <b class="label-caps"><Tv :size="14" /> Anime <small>{{ ready.length ? `${ready.length} klar til å se` : `klar ved ${ANIME_READY} % kjent` }}</small></b>
+        <Fold v-if="jp.anime.length" title="Anime" :hint="ready.length ? `${ready.length} klar til å se` : ''" :fold="phone">
+        <section ref="animeEl" class="anime">
+          <b v-if="!phone" class="label-caps"><Tv :size="14" /> Anime <small>{{ ready.length ? `${ready.length} klar til å se` : `klar ved ${ANIME_READY} % kjent` }}</small></b>
           <div v-for="(a, i) in jp.anime" :key="a.anilist" :data-i="i" class="show" :class="{ on: room.jpAnime === i, ready: a.known >= ANIME_READY }" @click="pickAnime(i)">
             <img v-if="a.cover" :src="`${a.cover}?cors`" alt="" loading="lazy" crossorigin="anonymous" :style="{ background: a.color || undefined }" />
             <div class="si">
-              <span class="st-t">{{ a.en || a.title }}</span>
-              <small lang="ja">{{ a.native }}<template v-if="a.year"> · {{ a.year }}</template><template v-if="a.parts > 1"> · {{ a.parts }} deler</template></small>
+              <span class="st-t" translate="no">{{ a.en || a.title }}</span>
+              <small lang="ja">{{ a.native }}<template v-if="a.year"> · {{ a.year }}</template><template v-if="(a.parts ?? 0) > 1"> · {{ a.parts }} deler</template></small>
               <div class="dbar"><i class="known" :style="{ width: `${a.known}%` }"></i><i class="learning" :style="{ width: `${Math.max(0, a.learning - a.known)}%` }"></i><b class="goal" :style="{ left: `${ANIME_READY}%` }"></b></div>
               <small class="sp">
                 <span v-if="a.known >= ANIME_READY" class="ok"><Check :size="12" /> Klar til å se</span>
@@ -104,19 +117,22 @@ watch(() => room.jpAnime, async (i) => {
             </div>
           </div>
         </section>
+        </Fold>
 
-        <section v-if="jp.decks.length" class="decks">
-          <b class="label-caps">Kortstokker</b>
+        <Fold v-if="jp.decks.length" title="Kortstokker" :hint="`${jp.decks.length}`" :fold="phone">
+        <section class="decks">
+          <b v-if="!phone" class="label-caps">Kortstokker</b>
           <div v-for="d in jp.decks" :key="d.id" class="deck">
-            <div class="dn"><span>{{ d.name }}</span><small>{{ d.words }} ord</small></div>
+            <div class="dn"><span translate="no">{{ d.name }}</span><small>{{ d.words }} ord</small></div>
             <div class="dbar"><i class="known" :style="{ width: `${d.known}%` }"></i><i class="learning" :style="{ width: `${Math.max(0, d.learning - d.known)}%` }"></i></div>
             <small class="dp">{{ d.known }} % kjent · {{ d.learning }} % påbegynt</small>
           </div>
         </section>
+        </Fold>
         </div>
         </div>
         </template>
-        <p class="src">Ordene og fremgangen kommer fra <a href="https://jpdb.io" target="_blank" rel="noopener">jpdb.io</a>.</p>
+        <p v-if="!phone || view === 'home'" class="src">Ordene og fremgangen kommer fra <a href="https://jpdb.io" target="_blank" rel="noopener">jpdb.io</a>.</p>
       </template>
     </template>
   </div>
@@ -125,7 +141,7 @@ watch(() => room.jpAnime, async (i) => {
 <style scoped>
 /* wide: two columns – today's word, practice and numbers | anime and decks */
 .ov { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
-.ov-col { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.ov-col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-content: start; min-width: 0; }
 @container (min-width: 860px) { .ov { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; } }
 .jpc { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .wotd {
@@ -156,7 +172,7 @@ watch(() => room.jpAnime, async (i) => {
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .st { display: flex; flex-direction: column; align-items: center; padding: 10px 4px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--glass-border); }
 .st b { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
-.st span { font-size: 0.7rem; color: var(--text-3); }
+.st span { font-size: 0.7rem; color: var(--text-3); text-align: center; }
 .st.due b { color: #c0392b; }
 .st.learning b { color: #c9a227; }
 .st.known b { color: #3aa76d; }
@@ -164,13 +180,13 @@ watch(() => room.jpAnime, async (i) => {
 .bar, .dbar { display: flex; height: 6px; border-radius: 6px; background: var(--accent-soft); overflow: hidden; }
 .bar .known, .dbar .known { background: #3aa76d; }
 .bar .learning, .dbar .learning { background: #c9a227; }
-.decks { display: grid; gap: 10px; }
+.decks { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; }
 .deck { display: grid; gap: 5px; padding: 12px 14px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--glass-border); }
 .dn { display: flex; justify-content: space-between; gap: 10px; font-size: 0.88rem; font-weight: 600; }
 .dn span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dn small { flex: none; color: var(--text-3); font-weight: 500; }
 .dp { font-size: 0.72rem; color: var(--text-3); }
-.anime { display: grid; gap: 8px; }
+.anime { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
 .anime > .label-caps { display: flex; align-items: center; gap: 6px; }
 .anime > .label-caps small { margin-left: auto; font-size: 0.7rem; font-weight: 600; letter-spacing: 0; text-transform: none; }
 .show { display: flex; gap: 12px; padding: 10px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--glass-border); cursor: pointer; transition: border-color 0.2s, transform 0.2s; }
@@ -186,6 +202,12 @@ watch(() => room.jpAnime, async (i) => {
 .sp { display: flex; justify-content: space-between; gap: 8px; }
 .sp .ok { display: inline-flex; align-items: center; gap: 3px; color: #3aa76d; font-weight: 700; }
 .sp a { display: inline-flex; align-items: center; gap: 2px; color: var(--accent); text-decoration: none; font-weight: 600; }
+@media (max-width: 720px) {
+  .wotd { padding: 16px 14px 12px; }
+  .wotd .w { font-size: 2.2rem; }
+  .start { padding: 14px 16px; }
+  .show { padding: 8px; gap: 10px; }
+}
 .src { font-size: 0.72rem; color: var(--text-3); margin: 0; }
 .src a { color: inherit; }
 </style>

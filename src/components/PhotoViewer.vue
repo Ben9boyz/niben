@@ -1,16 +1,13 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { ChevronLeft, ChevronRight, X, LayoutGrid } from 'lucide-vue-next'
 import { thumb } from '../lib/photos'
+import type { TripPhoto } from '../composables/useData'
 
 // Full-screen photos for a trip: a grid of every photo, and a viewer for one photo at a time
 // (arrows / swipe / keys, a film strip below). `index` null = the grid.
-const props = defineProps({
-  title: { type: String, default: '' },
-  photos: { type: Array, required: true },
-  index: { type: Number, default: null },
-})
-const emit = defineEmits(['close', 'update:index'])
+const props = withDefaults(defineProps<{ title?: string; photos: TripPhoto[]; index?: number | null }>(), { title: '', index: null })
+const emit = defineEmits<{ close: []; 'update:index': [index: number | null] }>()
 
 const i = computed(() => props.index)
 const cur = computed(() => (i.value === null ? null : props.photos[i.value]))
@@ -18,14 +15,14 @@ const n = computed(() => props.photos.length)
 // opened straight on a photo (from the trip card) → back closes; opened via the grid → back to the grid
 const cameFromGrid = ref(props.index === null)
 
-function go(k) { emit('update:index', k) }
-function step(d) { if (i.value !== null) go((i.value + d + n.value) % n.value) }
+function go(k: number | null) { emit('update:index', k) }
+function step(d: number) { if (i.value !== null) go((i.value + d + n.value) % n.value) }
 function toGrid() { cameFromGrid.value = true; go(null) }
 function back() { if (i.value !== null && cameFromGrid.value) go(null); else emit('close') }
 
 // full image: show the 900 px copy at once, swap in the full one when it has loaded
-const loaded = ref(new Set())
-function preload(k) {
+const loaded = ref(new Set<string>())
+function preload(k: number) {
   const p = props.photos[(k + n.value) % n.value]
   if (!p || loaded.value.has(p.src)) return
   const img = new Image()
@@ -40,10 +37,10 @@ watch(i, (k) => {
 
 // swipe (touch / pen / mouse drag)
 const dx = ref(0)
-let start = null
-function onDown(e) { if (e.button === 0 || e.pointerType !== 'mouse') start = { x: e.clientX, y: e.clientY, t: performance.now() } }
-function onMove(e) { if (start) dx.value = e.clientX - start.x }
-function onUp(e) {
+let start: { x: number; y: number; t: number } | null = null
+function onDown(e: PointerEvent) { if (e.button === 0 || e.pointerType !== 'mouse') start = { x: e.clientX, y: e.clientY, t: performance.now() } }
+function onMove(e: PointerEvent) { if (start) dx.value = e.clientX - start.x }
+function onUp(e: PointerEvent) {
   if (!start) return
   const d = e.clientX - start.x
   const fast = Math.abs(d) > 30 && performance.now() - start.t < 300
@@ -52,12 +49,12 @@ function onUp(e) {
   dx.value = 0
 }
 
-function onKey(e) {
+function onKey(e: KeyboardEvent) {
   if (e.key === 'Escape') { e.preventDefault(); back() }
   else if (i.value !== null && e.key === 'ArrowRight') step(1)
   else if (i.value !== null && e.key === 'ArrowLeft') step(-1)
 }
-const strip = ref(null)
+const strip = ref<HTMLElement | null>(null)
 let prevOverflow = ''
 onMounted(() => {
   window.addEventListener('keydown', onKey)
@@ -92,13 +89,13 @@ onBeforeUnmount(() => {
           <button class="ic" :aria-label="cameFromGrid ? 'Alle bilder' : 'Lukk'" @click="cameFromGrid ? toGrid() : emit('close')">
             <LayoutGrid v-if="cameFromGrid" :size="18" /><X v-else :size="20" />
           </button>
-          <span class="count">{{ i + 1 }} / {{ n }}</span>
+          <span class="count">{{ (i ?? 0) + 1 }} / {{ n }}</span>
           <span class="right">
             <button v-if="!cameFromGrid && n > 1" class="ic" aria-label="Alle bilder" title="Alle bilder" @click="toGrid"><LayoutGrid :size="18" /></button>
             <button v-if="cameFromGrid" class="ic" aria-label="Lukk" @click="emit('close')"><X :size="20" /></button>
           </span>
         </header>
-        <div class="stage" :style="{ transform: dx ? `translateX(${dx}px)` : null, transition: dx ? 'none' : null }">
+        <div class="stage" :style="{ transform: dx ? `translateX(${dx}px)` : undefined, transition: dx ? 'none' : undefined }">
           <img :key="cur.src" class="photo" :src="loaded.has(cur.src) ? cur.src : thumb(cur.src, 900)" :alt="cur.tekst || ''" draggable="false" />
         </div>
         <p v-if="cur.tekst" class="cap">{{ cur.tekst }}</p>

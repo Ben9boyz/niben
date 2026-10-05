@@ -1,7 +1,8 @@
-<script setup>
+<script setup lang="ts">
+import { tx } from '../composables/useTexts'
 import { Plane } from 'lucide-vue-next'
 import { computed } from 'vue'
-import { useData } from '../composables/useData'
+import { useData, type Trip } from '../composables/useData'
 import { room } from '../composables/useRoom'
 import { atlasName, norskNavn } from '../three/countries'
 import CountryPicker from '../components/CountryPicker.vue'
@@ -9,11 +10,13 @@ import TripCards from '../components/TripCards.vue'
 
 const data = useData()
 const byCountry = computed(() => {
-  const m = new Map()
+  const m = new Map<string, Trip[]>()
   for (const r of data.reiser || []) {
     const key = atlasName(r.land)
-    if (!m.has(key)) m.set(key, [])
-    m.get(key).push(r)
+    if (!key) continue
+    const list = m.get(key)
+    if (list) list.push(r)
+    else m.set(key, [r])
   }
   for (const list of m.values()) list.sort((a, b) => sortKey(b).localeCompare(sortKey(a)))
   return m
@@ -21,28 +24,29 @@ const byCountry = computed(() => {
 const visited = computed(() => new Set(byCountry.value.keys()))
 const countries = computed(() =>
   [...byCountry.value.entries()]
-    .map(([en, trips]) => ({ en, no: norskNavn(en), trips, years: [...new Set(trips.map(year).filter(Boolean))].sort() }))
+    .map(([en, trips]) => ({ en, no: norskNavn(en), trips, years: [...new Set(trips.map(year).filter((y): y is number => !!y))].sort() }))
     .sort((a, b) => (b.years.at(-1) || 0) - (a.years.at(-1) || 0) || a.no.localeCompare(b.no, 'nb')),
 )
-const trips = computed(() => byCountry.value.get(room.sel.land) || [])
+const trips = computed(() => (room.sel.land ? byCountry.value.get(room.sel.land) : undefined) || [])
 const totalPhotos = computed(() => (data.reiser || []).reduce((n, t) => n + (t.bilder?.length || 0), 0))
 
-function sortKey(t) { return String(t.dato || t.aar || '') }
-function year(t) { return t.aar || (t.dato ? Number(String(t.dato).slice(0, 4)) : null) }
-const yearsLabel = (ys) => (ys.length > 3 ? `${ys[0]}–${ys.at(-1)}` : ys.join(', '))
+const pickCountry = (c: string) => { room.sel.land = c }
+function sortKey(t: Trip) { return String(t.dato || t.aar || '') }
+function year(t: Trip) { return t.aar || (t.dato ? Number(String(t.dato).slice(0, 4)) : null) }
+const yearsLabel = (ys: number[]) => (ys.length > 3 ? `${ys[0]}–${ys.at(-1)}` : ys.join(', '))
 
 </script>
 
 <template>
   <section class="panel glass">
     <header class="panel-head">
-      <div class="eyebrow">Reiser</div>
-      <h2>{{ room.sel.land ? norskNavn(room.sel.land) : 'Verden' }}</h2>
+      <div class="eyebrow">{{ tx('travel.eyebrow') }}</div>
+      <h2>{{ room.sel.land ? norskNavn(room.sel.land) : tx('travel.title') }}</h2>
       <p v-if="!room.sel.land">{{ countries.length }} land · {{ (data.reiser || []).length }} reiser<template v-if="totalPhotos"> · {{ totalPhotos }} bilder</template></p>
     </header>
 
     <div v-if="!room.sel.land" class="search">
-      <CountryPicker :highlight="visited" clear-on-pick placeholder="Søk etter et land …" @pick="(c) => (room.sel.land = c)" />
+      <CountryPicker :highlight="visited" clear-on-pick placeholder="Søk etter et land …" @pick="pickCountry" />
     </div>
 
     <div class="panel-body">

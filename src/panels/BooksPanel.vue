@@ -1,26 +1,28 @@
-<script setup>
+<script setup lang="ts">
+import { hideImg } from '../lib/dom'
+import { tx } from '../composables/useTexts'
 import { computed } from 'vue'
-import { useData } from '../composables/useData'
+import { useData, type Book } from '../composables/useData'
 import { room } from '../composables/useRoom'
 import Stars from '../components/Stars.vue'
 
 const data = useData()
 const list = computed(() => data.boker || [])
 const b = computed(() => list.value[room.sel.bok])
-const cover = (book, size = 'M') =>
+const cover = (book: Book, size = 'M') =>
   book.omslag || (book.isbn ? `https://covers.openlibrary.org/b/isbn/${String(book.isbn).replace(/[^0-9X]/gi, '')}-${size}.jpg` : null)
 const avg = computed(() => {
   const r = list.value.filter((x) => x.vurdering)
-  return r.length ? (r.reduce((s, x) => s + x.vurdering, 0) / r.length).toFixed(1) : null
+  return r.length ? (r.reduce((s, x) => s + (x.vurdering ?? 0), 0) / r.length).toFixed(1) : null
 })
 </script>
 
 <template>
   <section class="panel glass">
     <header class="panel-head">
-      <div class="eyebrow">Bøker</div>
-      <h2>{{ b ? b.tittel : 'Bokhylla' }}</h2>
-      <p v-if="!b">{{ list.length }} bøker lest<span v-if="avg"> · snitt {{ avg }} / 5</span>. Trykk på en bok for å lese hva jeg synes.</p>
+      <div class="eyebrow">{{ tx('books.eyebrow') }}</div>
+      <h2>{{ b ? b.tittel : tx('books.title') }}</h2>
+      <p v-if="!b">{{ list.length }} bøker lest<span v-if="avg"> · snitt {{ avg }} / 5</span>. {{ tx('books.hint') }}</p>
     </header>
 
     <div class="panel-body">
@@ -30,7 +32,7 @@ const avg = computed(() => {
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 6l-6 6 6 6" /></svg>
             Alle bøker
           </button>
-          <img v-if="cover(b, 'L')" :src="cover(b, 'L')" alt="" class="big-cover" />
+          <img v-if="cover(b, 'L')" :src="cover(b, 'L') || undefined" alt="" class="big-cover" />
           <div class="muted">{{ b.forfatter }}<span v-if="b.lest"> · lest {{ b.lest }}</span></div>
           <div class="rating"><Stars :value="b.vurdering || 0" /></div>
           <p class="body">{{ b.tanker }}</p>
@@ -40,7 +42,7 @@ const avg = computed(() => {
         <div v-else class="list" key="list">
           <button v-for="(item, i) in list" :key="i" class="row" :style="{ '--i': i }" @click="room.sel.bok = i">
             <span class="thumb">
-              <img v-if="cover(item, 'S')" :src="cover(item, 'S')" alt="" loading="lazy" @error="(e) => (e.target.style.display = 'none')" />
+              <img v-if="cover(item, 'S')" :src="cover(item, 'S') || undefined" alt="" loading="lazy" @error="hideImg" />
             </span>
             <span class="meta">
               <span class="name">{{ item.tittel }}</span>

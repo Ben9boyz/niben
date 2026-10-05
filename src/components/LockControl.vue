@@ -1,20 +1,22 @@
-<script setup>
+<script setup lang="ts">
+import { errorMessage } from '../composables/useAdmin'
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Lock, LockOpen } from 'lucide-vue-next'
 import { spotify, lockLeft, fmtClock, fmtLock, setLockSeconds } from '../composables/useSpotify'
+import { targetEl } from '../lib/dom'
 
 // The lock length setting (admin): a pill with the length / countdown, or – `tiny` – just a small
 // round icon for the 3D views (the held record, the iPod). The menu floats above everything.
-const props = defineProps({ tiny: Boolean })
+defineProps<{ tiny?: boolean }>()
 
 const CHOICES = [0, 5, 10, 15, 30, 60].map((m) => m * 60)
 const open = ref(false)
 const msg = ref('')
 const locked = computed(() => lockLeft.value > 0)
 const label = computed(() => (spotify.lockSeconds > 0 ? fmtLock(spotify.lockSeconds) : 'Av'))
-const btn = ref(null)
-const menu = ref(null)
-const pos = ref({})
+const btn = ref<HTMLElement | null>(null)
+const menu = ref<HTMLElement | null>(null)
+const pos = ref<Record<string, string>>({})
 
 async function toggle() {
   msg.value = ''
@@ -22,24 +24,25 @@ async function toggle() {
   if (!open.value) return
   await nextTick()
   // below the button, kept on screen (above it if there's no room)
-  const r = btn.value.getBoundingClientRect()
+  const r = btn.value?.getBoundingClientRect()
+  if (!r) return
   const w = 220
   const h = menu.value?.offsetHeight || 150
   const left = Math.min(Math.max(8, r.right - w), window.innerWidth - w - 8)
   const top = r.bottom + 6 + h > window.innerHeight - 8 ? Math.max(8, r.top - 6 - h) : r.bottom + 6
   pos.value = { left: `${left}px`, top: `${top}px` }
 }
-async function choose(sec) {
+async function choose(sec: number) {
   if (locked.value) return
   try {
     await setLockSeconds(sec)
     open.value = false
   } catch (e) {
-    msg.value = e.message
+    msg.value = errorMessage(e)
   }
 }
-function onDocDown(e) {
-  if (open.value && !btn.value?.contains(e.target) && !menu.value?.contains(e.target)) open.value = false
+function onDocDown(e: Event) {
+  if (open.value && !btn.value?.contains(targetEl(e)) && !menu.value?.contains(targetEl(e))) open.value = false
 }
 onMounted(() => document.addEventListener('pointerdown', onDocDown))
 onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocDown))
@@ -62,7 +65,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocDown))
       <div v-if="open" ref="menu" class="lockmenu glass" :style="pos" @click.stop>
         <b>Lås etter avspilling</b>
         <p v-if="locked" class="lm-note">Låsen er på nå. Du kan endre den om {{ fmtClock(lockLeft) }}.</p>
-        <div class="chips">
+        <div class="chips pills">
           <button v-for="s in CHOICES" :key="s" :class="{ on: s === spotify.lockSeconds }" :disabled="locked" @click="choose(s)">{{ s ? fmtLock(s) : 'Av' }}</button>
         </div>
         <p v-if="msg" class="lm-err">{{ msg }}</p>
@@ -82,10 +85,6 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocDown))
 .lockmenu { position: fixed; z-index: 60; width: 220px; padding: 12px; border-radius: 14px; background: var(--bg, #fff); box-shadow: var(--shadow-2, 0 12px 30px rgba(0, 0, 0, 0.2)); display: grid; gap: 8px; color: var(--text); text-align: left; }
 .lockmenu > b { font-size: 0.78rem; }
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
-.chips button { padding: 5px 10px; border: 1px solid var(--glass-border); border-radius: 999px; background: transparent; color: var(--text); font: 600 0.78rem var(--font); cursor: pointer; }
-.chips button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-.chips button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-.chips button:disabled { opacity: 0.45; cursor: not-allowed; }
 .lm-note { font-size: 0.72rem; color: var(--text-3); margin: 0; }
 .lm-err { font-size: 0.72rem; color: #d24b4b; margin: 0; }
 </style>

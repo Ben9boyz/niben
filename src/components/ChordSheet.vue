@@ -1,29 +1,31 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue'
 import { ChevronLeft, Minus, Plus, Play, Pause, ArrowUpRight, Timer, Guitar, Save } from 'lucide-vue-next'
 import ChordDiagram from './ChordDiagram.vue'
 import StrumEditor from './StrumEditor.vue'
 import { parseSheet, transposeChord, parseProgression, findChord } from '../lib/chords'
-import { playSong } from '../lib/strum'
-import { admin, api } from '../composables/useAdmin'
+import { playSong, type SongOptions } from '../lib/strum'
+import type { Song } from '../composables/useData'
+import type { SheetSection } from '../lib/chords'
+import { admin, api, errorMessage } from '../composables/useAdmin'
 import { reloadData } from '../composables/useData'
 
 // My chord sheet for a song, like on Ultimate Guitar: transpose, text size, auto-scroll – plus the
 // strumming pattern, hearing it strummed through the chords (the chord being played lights up in the
 // sheet), a metronome, and the chord shape when you point at (or tap) a chord in the sheet.
-const props = defineProps({ song: { type: Object, required: true } })
-defineEmits(['back'])
+const props = defineProps<{ song: Song }>()
+defineEmits<{ back: [] }>()
 
 const shift = ref(0)
 const size = ref(1)
 const scrolling = ref(false)
 const speed = ref(3)
-const root = ref(null)
+const root = ref<HTMLElement | null>(null)
 const sections = computed(() => parseSheet(props.song.ark, shift.value))
 
 // every chord in the sheet in reading order (that's the order they're played in), with its place
 const seq = computed(() => {
-  const out = []
+  const out: { t: string; key: string }[] = []
   sections.value.forEach((s, si) => s.lines.forEach((l, li) => l.forEach((x, k) => { if (x.chord) out.push({ t: x.t, key: `${si}-${li}-${k}` }) })))
   return out
 })
@@ -40,12 +42,12 @@ const playing = ref(false) // the chords strummed
 const metronome = ref(false)
 const follow = ref(true) // keep the chord being played in view
 const now = ref({ chord: -1, slot: -1, beat: -1 })
-let player = null
+let player: ReturnType<typeof playSong> | null = null
 
 function syncPlayer() {
   const want = playing.value || metronome.value
   if (!want) { player?.stop(); player = null; now.value = { chord: -1, slot: -1, beat: -1 }; return }
-  const opts = { chords: progression.value, pattern: pattern.value, bpm: bpm.value, beatsPerChord: beatsPerChord.value, capo: props.song.capo || 0, strum: playing.value, click: metronome.value, onStep: (s) => { now.value = s } }
+  const opts: Partial<SongOptions> & { chords: string[] } = { chords: progression.value, pattern: pattern.value, bpm: bpm.value, beatsPerChord: beatsPerChord.value, capo: props.song.capo || 0, strum: playing.value, click: metronome.value, onStep: (s) => { now.value = s } }
   if (player) player.set(opts)
   else player = playSong(opts)
 }
@@ -70,25 +72,25 @@ async function savePattern() {
     await reloadData()
     saveMsg.value = 'Lagret.'
   } catch (e) {
-    saveMsg.value = e.message
+    saveMsg.value = errorMessage(e)
   }
   setTimeout(() => (saveMsg.value = ''), 2500)
 }
 
 // ── the chord shape under the pointer (or tapped) ──
-const tip = ref(null) // { name, x, y }
-function showTip(e, name) {
-  const r = e.currentTarget.getBoundingClientRect()
+const tip = ref<{ name: string; x: number; y: number } | null>(null)
+function showTip(e: Event, name: string) {
+  const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
   const x = Math.min(Math.max(8, r.left + r.width / 2 - 60), window.innerWidth - 128)
   const y = r.top > 190 ? r.top - 172 : r.bottom + 8
   tip.value = { name, x, y }
 }
-const tapTip = (e, name) => (tip.value?.name === name ? (tip.value = null) : showTip(e, name))
+const tapTip = (e: Event, name: string) => (tip.value?.name === name ? (tip.value = null) : showTip(e, name))
 
 // ── auto-scroll ──
 let raf = 0
 let last = 0
-function loop(t) {
+function loop(t: number) {
   if (!scrolling.value) return
   const el = scroller()
   if (el && last) el.scrollTop += ((t - last) / 1000) * speed.value * 8
@@ -96,8 +98,8 @@ function loop(t) {
   raf = requestAnimationFrame(loop)
 }
 // the panel scrolls, not the window – find the nearest scrolling parent
-function scroller() {
-  let el = root.value?.parentElement
+function scroller(): Element | null {
+  let el = root.value?.parentElement ?? null
   while (el && el.scrollHeight <= el.clientHeight + 1) el = el.parentElement
   return el || document.scrollingElement
 }
@@ -110,7 +112,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
 </script>
 
 <template>
-  <div ref="root" class="sheet" :style="{ '--s': size }">
+  <div ref="root" class="sheet" translate="no" :style="{ '--s': size }">
     <header>
       <button class="back" @click="$emit('back')"><ChevronLeft :size="16" />Sanger</button>
       <div class="sh-title">
@@ -154,7 +156,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
           <span
             v-if="tok.chord"
             class="ch"
-            :class="{ now: activeKey === `${i}-${j}-${k}`, done: playing && seqIndex.get(`${i}-${j}-${k}`) < now.chord }"
+            :class="{ now: activeKey === `${i}-${j}-${k}`, done: playing && (seqIndex.get(`${i}-${j}-${k}`) ?? Infinity) < now.chord }"
             :data-k="`${i}-${j}-${k}`"
             tabindex="0"
             @mouseenter="showTip($event, tok.t)"

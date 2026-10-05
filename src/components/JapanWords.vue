@@ -1,48 +1,50 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Search, Plus, Pencil, Eraser, Trash2, Volume2 } from 'lucide-vue-next'
-import { fetchWords, stateOf, STATE_LABEL, deckAction } from '../composables/useJapanese'
-import { admin } from '../composables/useAdmin'
+import { fetchWords, stateOf, STATE_LABEL, deckAction, type JpWord, type WordList } from '../composables/useJapanese'
+import { admin, errorMessage } from '../composables/useAdmin'
 import { speak, canSpeak } from '../lib/speak'
 import JapanWord from './JapanWord.vue'
+import type { Flash } from '../types'
 
 // Every word in my decks: search (kanji, kana or English), filter by how well I know it, sort.
-const words = ref(null)
+const words = ref<JpWord[] | null>(null)
 const error = ref('')
 const q = ref('')
 const filter = ref('all')
 const sort = ref('freq')
-const picked = ref(null)
+const picked = ref<JpWord | null>(null)
 const shown = ref(60)
-const decks = ref([])
+const decks = ref<NonNullable<WordList['decks']>>([])
 async function reload(force = false) {
-  try { const r = await fetchWords(force); words.value = r.words; decks.value = r.decks || [] } catch (e) { error.value = e.message }
+  try { const r = await fetchWords(force); words.value = r.words; decks.value = r.decks || [] } catch (e) { error.value = errorMessage(e) }
 }
 onMounted(() => reload())
 
 // my own decks on jpdb (admin): new / rename / empty / delete
-const deckMsg = ref(null)
-async function deck(op, d) {
-  let extra = {}
+const deckMsg = ref<Flash | null>(null)
+type DeckOp = 'create' | 'rename' | 'clear' | 'delete'
+async function deck(op: DeckOp, d?: { id: number | string; name: string }) {
+  let extra: Record<string, unknown> = {}
   if (op === 'create' || op === 'rename') {
     const name = prompt(op === 'create' ? 'Navn på den nye kortstokken:' : 'Nytt navn:', d?.name || '')
     if (!name) return
     extra = { name }
-  } else if (!confirm(op === 'clear' ? `Tømme «${d.name}» for alle ord?` : `Slette kortstokken «${d.name}» på jpdb?`)) return
+  } else if (!confirm(op === 'clear' ? `Tømme «${d?.name}» for alle ord?` : `Slette kortstokken «${d?.name}» på jpdb?`)) return
   if (d) extra.id = d.id
   try {
     await deckAction(op, extra)
     deckMsg.value = { ok: { create: 'Kortstokken er laget.', rename: 'Navnet er endret.', clear: 'Kortstokken er tømt.', delete: 'Kortstokken er slettet.' }[op] }
     await reload(true)
   } catch (e) {
-    deckMsg.value = { error: e.message }
+    deckMsg.value = { error: errorMessage(e) }
   }
 }
 
-const FILTERS = [['all', 'Alle'], ['due', 'Repetisjon'], ['learning', 'Lærer'], ['known', 'Kan'], ['new', 'Nye']]
+const FILTERS: [string, string][] = [['all', 'Alle'], ['due', 'Repetisjon'], ['learning', 'Lærer'], ['known', 'Kan'], ['new', 'Nye']]
 const counts = computed(() => {
-  const c = { all: 0, due: 0, learning: 0, known: 0, new: 0 }
-  for (const w of words.value || []) { const s = stateOf(w.state); c.all++; if (c[s] !== undefined) c[s]++ }
+  const c: Record<string, number> = { all: 0, due: 0, learning: 0, known: 0, new: 0 }
+  for (const w of words.value || []) { const s = stateOf(w.state); c.all++; if (c[s] !== undefined) c[s] = (c[s] ?? 0) + 1 }
   return c
 })
 const list = computed(() => {
@@ -67,7 +69,7 @@ const list = computed(() => {
         <b>Mine kortstokker</b>
         <div class="dl">
           <div v-for="d in decks" :key="d.id" class="dk">
-            <span>{{ d.name }}<small v-if="d.words != null"> · {{ d.words }} ord</small></span>
+            <span translate="no">{{ d.name }}<small v-if="d.words != null"> · {{ d.words }} ord</small></span>
             <button title="Gi nytt navn" @click="deck('rename', d)"><Pencil :size="13" /></button>
             <button title="Tøm" @click="deck('clear', d)"><Eraser :size="13" /></button>
             <button title="Slett" @click="deck('delete', d)"><Trash2 :size="13" /></button>
@@ -78,7 +80,7 @@ const list = computed(() => {
         <p v-if="deckMsg?.error" class="notice error">{{ deckMsg.error }}</p>
       </section>
       <label class="find"><Search :size="15" /><input v-model="q" placeholder="Søk: 猫, ねこ eller cat" @input="shown = 60" /></label>
-      <div class="filters">
+      <div class="filters pills">
         <button v-for="[id, label] in FILTERS" :key="id" :class="{ on: filter === id, [id]: true }" @click="filter = id; shown = 60">{{ label }} <small>{{ counts[id] }}</small></button>
         <select v-model="sort" aria-label="Sorter"><option value="freq">Vanligste først</option><option value="kana">Etter lesning</option></select>
       </div>
@@ -89,7 +91,7 @@ const list = computed(() => {
             <span class="dot" :class="stateOf(w.state)" :title="STATE_LABEL[stateOf(w.state)]"></span>
             <b lang="ja">{{ w.spelling }}</b>
             <small lang="ja">{{ w.reading !== w.spelling ? w.reading : '' }}</small>
-            <span class="m">{{ w.meaning }}</span>
+            <span class="m" translate="no">{{ w.meaning }}</span>
             <span v-if="canSpeak()" class="say" role="button" aria-label="Hør ordet" @click.stop="speak(w.reading || w.spelling)"><Volume2 :size="14" /></span>
           </button>
         </li>
@@ -106,9 +108,6 @@ const list = computed(() => {
 .find { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 12px; background: var(--glass-strong); border: 1px solid var(--glass-border); color: var(--text-3); }
 .find input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text); font: 500 0.92rem var(--font); outline: none; }
 .filters { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
-.filters button { padding: 5px 11px; border: 1px solid var(--glass-border); border-radius: 999px; background: transparent; color: var(--text-2); font: 600 0.78rem var(--font); cursor: pointer; }
-.filters button small { opacity: 0.6; }
-.filters button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .filters select { margin-left: auto; padding: 5px 8px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--glass-strong); color: var(--text); font: 500 0.78rem var(--font); }
 .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .list button { display: grid; grid-template-columns: 10px auto auto minmax(0, 1fr) auto; align-items: baseline; gap: 8px; width: 100%; padding: 7px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }

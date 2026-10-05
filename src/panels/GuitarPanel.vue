@@ -1,6 +1,8 @@
-<script setup>
+<script setup lang="ts">
+import { tx } from '../composables/useTexts'
 import RecordingList from '../components/RecordingList.vue'
-import { Guitar } from 'lucide-vue-next'
+import NewsletterSignup from '../components/NewsletterSignup.vue'
+import { Guitar, Music2, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { useData } from '../composables/useData'
 import { room } from '../composables/useRoom'
@@ -15,16 +17,16 @@ function strum() { room.api?.strum(room.sel.gitar) }
 <template>
   <section class="panel glass">
     <header class="panel-head">
-      <div class="eyebrow">Gitar</div>
-      <h2>{{ g ? g.navn : 'Gitarveggen' }}</h2>
-      <p v-if="!g">Trykk på en gitar for å se den og høre opptak.</p>
+      <div class="eyebrow">{{ tx('guitar.eyebrow') }}</div>
+      <h2>{{ g ? g.navn : tx('guitar.title') }}</h2>
+      <p v-if="!g">{{ tx('guitar.hint') }}</p>
     </header>
 
     <div class="panel-body">
       <transition name="fade" mode="out-in">
         <div v-if="g" :key="room.sel.gitar" class="detail">
           <button class="back" @click="room.sel.gitar = -1">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 6l-6 6 6 6" /></svg>
+            <ChevronLeft :size="16" />
             Alle gitarer
           </button>
           <div class="muted">{{ [g.merke, g.type, g.aar].filter(Boolean).join(' · ') }}</div>
@@ -36,6 +38,7 @@ function strum() { room.api?.strum(room.sel.gitar) }
           <div class="section-label">Opptak</div>
           <div v-if="!g.opptak?.length" class="empty">Ingen opptak lagt inn ennå.</div>
           <RecordingList :items="g.opptak || []" />
+          <NewsletterSignup />
           <p v-if="g.kreditt" class="credit">
             3D-modell: <a :href="g.kreditt.url" target="_blank" rel="noopener">{{ g.kreditt.tekst }}</a>, fargelagt for denne siden.
           </p>
@@ -48,7 +51,7 @@ function strum() { room.api?.strum(room.sel.gitar) }
               <span class="name">{{ item.navn }}</span>
               <span class="sub">{{ [item.type, item.aar, item.opptak?.length ? `${item.opptak.length} opptak` : null].filter(Boolean).join(' · ') }}</span>
             </span>
-            <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6" /></svg>
+            <ChevronRight class="chev" :size="18" />
           </button>
           <div v-if="!list.length" class="empty">Ingen gitarer lagt inn ennå.</div>
         </div>
@@ -56,13 +59,14 @@ function strum() { room.api?.strum(room.sel.gitar) }
     </div>
 
     <footer class="panel-foot">
-      <router-link class="timer" to="/ovelse">
+      <router-link class="tune" to="/ovelse" @click="room.practiceTab = 'stemmer'"><Music2 :size="16" />Stem gitaren</router-link>
+      <router-link class="timer" to="/ovelse" @click="room.practiceTab = 'timer'">
         <span class="ring"></span>
         <span class="meta">
-          <b>Øvingstimer</b>
-          <span>Gå til øvingskroken med klokka</span>
+          <b>Øvingskroken</b>
+          <span>Timer, akkorder, tuner og metronom</span>
         </span>
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6" /></svg>
+        <ChevronRight :size="18" />
       </router-link>
     </footer>
   </section>
@@ -78,6 +82,8 @@ function strum() { room.api?.strum(room.sel.gitar) }
 }
 .credit { margin-top: 14px; font-size: 0.75rem; color: var(--text-3); }
 .credit a { color: var(--text-2); text-decoration: underline; text-underline-offset: 2px; }
+.tune { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 0 6px; padding: 11px 14px; border-radius: 16px; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 0.9rem; transition: transform 0.4s var(--spring); }
+.tune:hover { transform: translateY(-2px); }
 .timer {
   display: flex;
   align-items: center;

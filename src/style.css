@@ -211,6 +211,33 @@ button { font: inherit; color: inherit; }
 }
 .btn.primary:hover { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 12px 32px var(--accent-glow); }
 
+/* One design language for everyday controls:
+   · flat – `.pbtn` / `.pills > button` (filters, presets, small switches), tabs through <SegSwitch>, `.btn` (glass)
+   · glossy 3D – only the main action of a view: `.btn.primary`, the play / start buttons. Use it sparingly. */
+.pbtn, .pills > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: var(--glass-strong);
+  color: var(--text-2);
+  font: 600 0.82rem var(--font);
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+.pbtn:hover:not(:disabled), .pills > button:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.pbtn.on, .pills > button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.pbtn:disabled, .pills > button:disabled { opacity: 0.45; cursor: default; }
+.pbtn small, .pills > button small { opacity: 0.6; font-weight: 600; }
+.btn.soft { background: var(--accent-soft); border-color: transparent; box-shadow: none; color: var(--accent); }
+
 .chip {
   display: inline-flex;
   align-items: center;
@@ -387,6 +414,9 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 .form-actions .spacer { flex: 1; }
 .btn.danger { color: #e5484d; }
 .btn.small { padding: 8px 14px; font-size: 0.85rem; }
+/* small buttons are everyday controls: flat blue, no glow (the glossy look is for the one main action) */
+.btn.primary.small { background: var(--accent); box-shadow: none; }
+.btn.primary.small:hover { box-shadow: var(--shadow-1); }
 .notice { padding: 10px 14px; border-radius: 12px; font-size: 0.88rem; }
 .notice.error { background: rgba(229, 72, 77, 0.12); color: #e5484d; }
 .notice.ok { background: rgba(60, 196, 126, 0.14); color: #2a9d63; }
@@ -407,7 +437,7 @@ html.player-shell { --rail: 0px; }
 .cpage-head p { color: var(--text-2); margin-top: 8px; font-size: 1.05rem; max-width: 60ch; }
 .card { border-radius: 24px; padding: 20px; }
 .grid { display: grid; gap: 16px; }
-@media (max-width: 720px) { .cpage { padding: calc(76px + env(safe-area-inset-top)) 16px 120px; } }
+@media (max-width: 720px) { .cpage { padding: calc(76px + env(safe-area-inset-top)) 16px 40px; } }
 
 /* panels grow when something is selected – let their content grow with them */
 .panel { container-type: inline-size; }
@@ -426,11 +456,11 @@ html.player-shell { --rail: 0px; }
 .back { display: inline-flex; align-items: center; gap: 2px; }
 
 /* ── player mode (niben.no/#/musicplayer and the "niben musikk" app) ── */
-html.player-shell .dock:not(.focus) { top: 136px !important; bottom: 104px !important; }
-html.player-shell .cpage { padding-top: 80px; padding-bottom: 130px; }
+html.player-shell .dock:not(.focus) { top: 136px !important; bottom: 20px !important; }
+html.player-shell .cpage { padding-top: 80px; padding-bottom: 40px; }
 @media (max-width: 900px) {
-  html.player-shell .dock:not(.focus) { top: auto !important; bottom: 132px !important; }
-  html.player-shell .cpage { padding-bottom: 160px; }
+  html.player-shell .dock:not(.focus) { top: auto !important; bottom: 12px !important; }
+  html.player-shell .cpage { padding-bottom: 80px; }
 }
 
 /* phones: the page title takes too much room. With sub-tabs, the tabs are the title; otherwise a
@@ -450,7 +480,7 @@ html.player-shell .cpage { padding-top: 80px; padding-bottom: 130px; }
   html.classic .mtop {
     position: fixed; z-index: 39; top: 0; left: 0; right: 0;
     display: flex; align-items: center; gap: 10px;
-    height: calc(60px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 120px 0 16px;
+    height: calc(60px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 112px 0 66px;
     background: color-mix(in srgb, var(--bg) 72%, transparent);
     -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%);
     border-bottom: 1px solid transparent; transition: border-color 0.2s, box-shadow 0.2s;
@@ -459,12 +489,6 @@ html.player-shell .cpage { padding-top: 80px; padding-bottom: 130px; }
   .mtop-brand { display: flex; align-items: center; height: 30px; pointer-events: auto; }
   .mtop-brand svg { height: 30px; }
   .mtop b { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  /* the buttons sit in the bar: smaller, flat */
-  html.classic .nav-wrap .theme, html.classic .nav-wrap .mode { top: calc(10px + env(safe-area-inset-top)); width: 40px; height: 40px; padding: 0; justify-content: center; box-shadow: none; }
-  html.classic .nav-wrap .theme { right: 12px; }
-  html.classic .nav-wrap .mode { right: 58px; }
-  html.classic .nav-wrap .mode span { display: none; }
-  html.classic .nav-wrap .admin-chip { top: calc(10px + env(safe-area-inset-top)); left: auto; right: 104px; width: 40px; height: 40px; }
 }
 @media (max-width: 720px) { .flat-tabs ~ .cpage { padding-top: 16px; } }
 
@@ -475,3 +499,28 @@ html.player-shell .cpage { padding-top: 80px; padding-bottom: 130px; }
 .more-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px; border: 0; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font: 600 0.86rem var(--font); cursor: pointer; transition: filter 0.2s; }
 .more-btn:hover { filter: brightness(1.06); }
 .more-btn .up { transform: rotate(180deg); }
+
+/* phones: no pinch- or double-tap zoom (the 3D room's canvas has its own touch handling), and fields are
+   16 px so iOS doesn't zoom in when one is tapped */
+@media (pointer: coarse) {
+  html, body { touch-action: pan-x pan-y; }
+  input, select, textarea { font-size: 16px !important; }
+}
+
+/* the little player in the top-right corner (flat version): the pages start a little lower so nothing hides under it */
+@media (min-width: 721px) { html.has-mini:not(.player-shell) #app > main > .cpage { padding-top: 84px; } }
+
+
+/* ── one scrollbar everywhere (the thin soft-blue one the home page has) ── */
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 35%, transparent) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--accent) 55%, transparent); background-clip: content-box; }
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* ── Rolig modus: nothing moves, nothing glows ── */
+html.calm *, html.calm *::before, html.calm *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+html.calm .blob { display: none; }
+html.calm .glass, html.calm .card, html.calm [class*="glow"] { box-shadow: none !important; }
+html.calm .live, html.calm .tag.live { box-shadow: none !important; }

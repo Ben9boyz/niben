@@ -1,6 +1,8 @@
-<script setup>
+<script setup lang="ts">
+import { tx } from '../composables/useTexts'
 import { computed, onMounted, onBeforeUnmount } from 'vue'
-import { Music, BookOpen, Languages, Guitar, Gamepad2, Plane, ArrowRight, Radio } from 'lucide-vue-next'
+import { Music, BookOpen, Languages, Guitar, Gamepad2, Plane, ArrowRight, Radio, PartyPopper, Mic, Tv, Trophy, Disc3 } from 'lucide-vue-next'
+import { milestones, loadMilestones } from '../composables/useMilestones'
 import { useRouter } from 'vue-router'
 import { useData } from '../composables/useData'
 import { useSpotify } from '../composables/useSpotify'
@@ -8,18 +10,54 @@ import { steam, watchSteam, headerImg, fmtHours } from '../composables/useSteam'
 import { jp, loadJapanese } from '../composables/useJapanese'
 import { parseProgression } from '../lib/chords'
 import { room } from '../composables/useRoom'
+import { dailyAlbum, dailyRec, loadDaily } from '../composables/useDaily'
+import { hideRec } from '../composables/useDiscover'
+import { admin } from '../composables/useAdmin'
+import type { Song, Trip } from '../composables/useData'
+import type { Component } from 'vue'
 
 // "Nå": what I'm doing right now – listening, reading, Japanese, a song on the guitar, games and
 // travel. Everything comes from the places that already hold it, so there is nothing extra to keep up.
 const router = useRouter()
 const data = useData()
 const spotify = useSpotify()
-let stopSteam
-onMounted(() => { stopSteam = watchSteam(); loadJapanese() })
+let stopSteam: (() => void) | undefined
+onMounted(() => { stopSteam = watchSteam(); loadJapanese(); loadMilestones() })
 onBeforeUnmount(() => stopSteam?.())
+
+// ── milestones: what I just managed (new recording, finished book, anime, song) – kept for 30 days ──
+const MS_ICON: Record<string, Component> = { recording: Mic, book: BookOpen, anime: Tv, song: Guitar, trip: Plane, album: Disc3, other: Trophy }
+const MS_LABEL: Record<string, string> = { recording: 'Nytt opptak', book: 'Ferdig lest', anime: 'Klarer anime', song: 'Sang lært', trip: 'På reise', album: 'Nytt album', other: 'Klart' }
+const MS_TO: Record<string, string> = { recording: '/gitar', book: '/boker', anime: '/japansk', song: '/ovelse', trip: '/reiser', album: '/lytte', other: '/' }
+// the timeline: milestones (30 days) + albums I saved in the last week
+interface Entry { key: string; type: string; title: string; sub?: string; image?: string | null; url?: string | null; t: number }
+const recent = computed<Entry[]>(() => {
+  const now = Date.now() / 1000
+  const albums = (spotify.albums || []).filter((a) => a.added && now - a.added < 7 * 86400).slice(0, 4).map((a): Entry => ({ key: 'alb:' + a.uri, type: 'album', title: a.name, sub: a.artist, image: a.thumb || a.image, t: a.added ?? 0 }))
+  return [...(milestones.items || []).filter((m) => now - m.t < 30 * 86400), ...albums].sort((a, b) => b.t - a.t).slice(0, 7)
+})
+const fresh = computed(() => { const first = recent.value[0]; return !!first && Date.now() / 1000 - first.t < 4 * 86400 })
+const msAgo = (t: number) => {
+  const d = Math.floor((Date.now() / 1000 - t) / 86400)
+  return d <= 0 ? 'i dag' : d === 1 ? 'i går' : d < 7 ? `for ${d} dager siden` : `for ${Math.round(d / 7)} uker siden`
+}
 
 // ── music ──
 const track = computed(() => (spotify.now?.name ? spotify.now : null))
+
+// ── the record of the day ──
+function openDaily() {
+  const a = dailyAlbum.value
+  if (!a) return
+  room.musicView = 'vinyl'
+  room.sel.musikk = { kind: 'album', uri: a.uri, t: Date.now() }
+  router.push('/lytte')
+}
+
+function openRec() {
+  room.discover = true
+  router.push('/lytte')
+}
 
 // ── book ──
 const reading = computed(() => (data.boker || []).filter((b) => b.leser))
@@ -30,7 +68,7 @@ const word = computed(() => jp.word)
 
 // ── guitar ──
 const songs = computed(() => (data.sanger || []).filter((s) => s.ovrer))
-function practise(s) {
+function practise(_s: Song) {
   room.chordMode = 'sanger'
   router.push('/ovelse')
 }
@@ -42,49 +80,79 @@ const topGames = computed(() => (steam.library?.top || []).slice(0, 3))
 
 // ── travel: the latest past trip and the next one coming up ──
 const today = new Date().toISOString().slice(0, 10)
-const startOf = (t) => t.dato || (t.aar ? `${t.aar}-01-01` : '')
+const startOf = (t: Trip) => t.dato || (t.aar ? `${t.aar}-01-01` : '')
 const lastTrip = computed(() => [...(data.reiser || [])].filter((t) => startOf(t) && startOf(t) <= today).sort((a, b) => startOf(b).localeCompare(startOf(a)))[0] || null)
 const nextTrip = computed(() => [...(data.reiser || [])].filter((t) => startOf(t) > today).sort((a, b) => startOf(a).localeCompare(startOf(b)))[0] || null)
-const fmt = (d) => (d ? new Date(d).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' }) : '')
-const inDays = (t) => {
-  const d = Math.ceil((new Date(startOf(t)) - new Date(today)) / 86400000)
+const fmt = (d: string | null | undefined) => (d ? new Date(d).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' }) : '')
+const inDays = (t: Trip) => {
+  const d = Math.ceil((new Date(startOf(t)).getTime() - new Date(today).getTime()) / 86400000)
   return d <= 1 ? 'i morgen' : d < 60 ? `om ${d} dager` : `om ${Math.round(d / 30)} mnd.`
 }
 </script>
 
 <template>
   <div class="now">
+    <!-- just happened -->
+    <section v-if="recent.length" class="card wide ms" :class="{ fresh }">
+      <h3><PartyPopper :size="15" />{{ fresh ? 'Nytt!' : 'Nylig' }}</h3>
+      <ul>
+        <li v-for="m in recent" :key="m.key">
+          <router-link :to="m.url || MS_TO[m.type] || '/'" class="msrow">
+            <img v-if="m.image" :src="m.image" alt="" class="msart" />
+            <span v-else class="msart ic"><component :is="MS_ICON[m.type] || Trophy" :size="18" /></span>
+            <span class="txt"><b translate="no">{{ m.title }}</b><small>{{ MS_LABEL[m.type] || 'Klart' }}<template v-if="m.sub && m.type !== 'recording'"> · <span translate="no">{{ m.sub }}</span></template> · {{ msAgo(m.t) }}</small></span>
+          </router-link>
+        </li>
+      </ul>
+    </section>
+
     <!-- listening -->
     <section class="card">
-      <h3><Music :size="15" />Hører på</h3>
+      <h3><Music :size="15" />{{ tx('now.listen') }}</h3>
       <router-link v-if="track" to="/lytte" class="row">
         <img v-if="track.image" :src="track.image" alt="" class="art" />
         <span class="txt"><b>{{ track.name }}</b><small>{{ track.artist }}<template v-if="track.album"> · {{ track.album }}</template></small></span>
         <span v-if="track.playing" class="live"><Radio :size="12" />spiller</span>
       </router-link>
-      <p v-else class="none">Ingenting akkurat nå.</p>
+      <p v-else class="none">{{ tx('now.listen.none') }}</p>
+    </section>
+
+    <!-- the record of the day -->
+    <section v-if="dailyAlbum" class="card">
+      <h3><Disc3 :size="15" />{{ tx('now.daily') }}</h3>
+      <button class="row daily" @click="openDaily">
+        <img v-if="dailyAlbum.thumb || dailyAlbum.image" :src="dailyAlbum.thumb || dailyAlbum.image || undefined" alt="" class="art" crossorigin="anonymous" />
+        <span class="txt"><b>{{ dailyAlbum.name }}</b><small>{{ dailyAlbum.artist }}<template v-if="dailyAlbum.year"> · {{ dailyAlbum.year }}</template></small></span>
+      </button>
+      <div v-if="dailyRec" class="recrow">
+      <button class="row daily rec" @click="openRec">
+        <img v-if="dailyRec.thumb || dailyRec.image" :src="dailyRec.thumb || dailyRec.image || undefined" alt="" class="art" crossorigin="anonymous" />
+        <span class="txt"><small class="lbl">Anbefalt i dag</small><b>{{ dailyRec.name }}</b><small>{{ dailyRec.artist }}<template v-if="dailyRec.why"> · {{ dailyRec.why }}</template></small></span>
+      </button>
+      <button v-if="admin.loggedIn" class="hide" title="Skjul dette forslaget" aria-label="Skjul dette forslaget" @click="hideRec(dailyRec.uri).then(() => loadDaily(true))">✕</button>
+      </div>
     </section>
 
     <!-- book -->
     <section class="card">
-      <h3><BookOpen :size="15" />Leser</h3>
+      <h3><BookOpen :size="15" />{{ tx('now.read') }}</h3>
       <router-link v-for="b in reading" :key="b.id" to="/boker" class="row">
         <img v-if="b.omslag" :src="b.omslag" alt="" class="art book" />
         <span class="txt"><b>{{ b.tittel }}</b><small>{{ b.forfatter }}</small></span>
       </router-link>
-      <p v-if="!reading.length" class="none">Ingen bok i gang.</p>
+      <p v-if="!reading.length" class="none">{{ tx('now.read.none') }}</p>
     </section>
 
     <!-- Japanese -->
     <section class="card">
-      <h3><Languages :size="15" />Japansk</h3>
+      <h3><Languages :size="15" />{{ tx('now.jp') }}</h3>
       <router-link v-if="anime" to="/japansk" class="row">
         <img v-if="anime.cover" :src="anime.cover" alt="" class="art book" />
-        <span class="txt"><b>{{ anime.title }}</b><small>Anime · {{ Math.round(anime.known) }} % av ordene kan jeg</small></span>
+        <span class="txt"><b translate="no">{{ anime.title }}</b><small>Anime · {{ Math.round(anime.known) }} % av ordene kan jeg</small></span>
       </router-link>
       <router-link v-if="word" to="/japansk" class="word">
         <span lang="ja" class="jp">{{ word.spelling }}</span>
-        <span class="mean"><small v-if="word.reading !== word.spelling" lang="ja">{{ word.reading }}</small>{{ (word.meanings?.[0] || []).slice(0, 2).join('; ') }}</span>
+        <span class="mean" translate="no"><small v-if="word.reading !== word.spelling" lang="ja">{{ word.reading }}</small>{{ (word.meanings?.[0] || []).slice(0, 2).join('; ') }}</span>
       </router-link>
       <p v-if="jp.loaded && jp.count?.due" class="due"><b>{{ jp.count.due }}</b> kort venter på repetisjon</p>
       <p v-if="jp.loaded && !jp.configured" class="none">jpdb er ikke koblet til.</p>
@@ -92,25 +160,25 @@ const inDays = (t) => {
 
     <!-- guitar -->
     <section class="card">
-      <h3><Guitar :size="15" />Øver på gitar</h3>
+      <h3><Guitar :size="15" />{{ tx('now.guitar') }}</h3>
       <div v-for="s in songs" :key="s.id" class="song">
         <span class="txt"><b>{{ s.tittel }}</b><small>{{ s.artist }}<template v-if="s.capo"> · capo {{ s.capo }}</template></small></span>
         <span class="chips"><i v-for="(c, i) in [...new Set(parseProgression(s.akkorder))]" :key="i">{{ c }}</i></span>
         <button class="go" @click="practise(s)">Øv <ArrowRight :size="13" /></button>
       </div>
-      <p v-if="!songs.length" class="none">Ingen låt valgt.</p>
+      <p v-if="!songs.length" class="none">{{ tx('now.guitar.none') }}</p>
     </section>
 
     <!-- games -->
     <section class="card wide">
-      <h3><Gamepad2 :size="15" />Spill</h3>
+      <h3><Gamepad2 :size="15" />{{ tx('now.games') }}</h3>
       <router-link v-if="playing || lastGame" to="/gaming" class="row">
-        <img :src="headerImg((playing || lastGame).appid)" alt="" class="art wideimg" />
-        <span class="txt"><b>{{ playing ? playing.name : lastGame.name }}</b><small>{{ playing ? 'Spiller nå' : 'Sist spilt' }}</small></span>
+        <img :src="headerImg((playing || lastGame)?.appid ?? 0)" alt="" class="art wideimg" />
+        <span class="txt"><b>{{ playing ? playing.name : lastGame?.name }}</b><small>{{ playing ? 'Spiller nå' : 'Sist spilt' }}</small></span>
         <span v-if="playing" class="live"><Radio :size="12" />live</span>
       </router-link>
       <div v-if="topGames.length" class="top">
-        <small>Mest spilt</small>
+        <small>{{ tx('now.games.top') }}</small>
         <router-link v-for="(g, i) in topGames" :key="g.appid" to="/gaming"><b>{{ i + 1 }}</b>{{ g.name }}<em>{{ fmtHours(g.hours) }}</em></router-link>
       </div>
       <p v-if="steam.loaded && !steam.configured" class="none">Steam er ikke koblet til ennå.</p>
@@ -136,10 +204,26 @@ const inDays = (t) => {
 </template>
 
 <style scoped>
-.now { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.card { display: grid; gap: 8px; align-content: start; padding: 14px; border-radius: 16px; background: var(--glass-strong); border: 1px solid var(--glass-border); min-width: 0; }
+.now { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; container-type: inline-size; }
+/* wide (the plain home page): three columns, the cards sit side by side instead of in two tall stacks */
+.card:has(> .none:last-child:nth-child(2)) { opacity: 0.7; }
+.card { display: grid; gap: 8px; align-content: start; padding: 16px; border-radius: 16px; background: var(--glass-strong); border: 1px solid var(--glass-border); min-width: 0; }
 .card.wide { grid-column: span 2; }
+.ms ul { margin: 0; padding: 0 0 0 14px; list-style: none; display: grid; gap: 6px; border-left: 2px solid var(--glass-border); }
+.ms li { position: relative; }
+.ms li::before { content: ''; position: absolute; left: -20px; top: 20px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--glass-strong); }
+.msrow { display: flex; align-items: center; gap: 12px; padding: 4px; border-radius: 12px; color: inherit; text-decoration: none; }
+.msrow:hover { background: var(--accent-soft); }
+.msart { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; flex: none; }
+.msart.ic { display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.ms.fresh { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, var(--glass-strong)), var(--glass-strong)); border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 10%, transparent); }
+.ms.fresh h3 { color: var(--accent); }
 h3 { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
+.recrow { display: flex; align-items: center; gap: 6px; }
+.recrow .row { flex: 1; min-width: 0; }
+.hide { flex: none; width: 24px; height: 24px; border: 0; border-radius: 50%; background: var(--glass); color: var(--text-3); cursor: pointer; font-size: 0.75rem; }
+.hide:hover { color: #d24b4b; }
+.row.daily { width: 100%; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; font: inherit; }
 .row, .word { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; min-width: 0; }
 .art { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex: none; }
 .art.book { width: 40px; height: 56px; border-radius: 4px; }
@@ -171,4 +255,6 @@ h3 { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 0.7rem;
 .trip b { font-size: 1.05rem; }
 .trip span { font-size: 0.8rem; opacity: 0.85; }
 @media (max-width: 560px) { .now { grid-template-columns: 1fr; } .card.wide { grid-column: auto; } }
+/* wide (the plain home page): three columns */
+@container (min-width: 760px) { .now { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; } .card.wide:last-child, .card.wide.ms { grid-column: span 3; } }
 </style>

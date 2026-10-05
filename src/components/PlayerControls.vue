@@ -1,55 +1,51 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { Shuffle, SkipBack, SkipForward, Play, Pause, Repeat, Repeat1, Heart, ListMusic, MonitorSpeaker, Smartphone, Speaker, Laptop, Volume2 } from 'lucide-vue-next'
-import { spotify, control, setShuffle, cycleRepeat, isLiked, setLiked, fetchQueue, fetchDevices, transferTo, setDeviceVolume, lockLeft, fmtClock, notify } from '../composables/useSpotify'
+import { Shuffle, SkipBack, SkipForward, Play, Pause, Repeat, Repeat1, MonitorSpeaker, Smartphone, Speaker, Laptop, Volume2 } from 'lucide-vue-next'
+import WebPlayerToggle from './WebPlayerToggle.vue'
+import { playPref, setPlayPref } from '../composables/usePlayOn'
+import { vinyl, setVinyl, setVinylLevel } from '../composables/useVinylNoise'
+import { mode } from '../composables/useMode'
+import { targetEl, inputOf } from '../lib/dom'
+import type { Result } from '../types'
+import type { Component } from 'vue'
+import { spotify, control, type SpotifyDevice, setShuffle, cycleRepeat, fetchDevices, transferTo, setDeviceVolume, lockLeft, fmtClock, notify } from '../composables/useSpotify'
 
 // The player's buttons (admin): shuffle · back · play/pause · next · repeat, the heart (liked songs),
 // what's up next, and which device plays (with its volume). Everything answers at once on screen and
 // the request goes to Spotify behind it.
-const props = defineProps({ compact: Boolean })
+defineProps<{ compact?: boolean }>()
 const now = computed(() => spotify.now)
 const locked = computed(() => lockLeft.value > 0)
 
-async function run(p) {
+async function run(p: Promise<Result>) {
   const r = await p
   if (r && !r.ok && r.error) notify(r.error, true)
 }
 const toggle = () => {
-  if (!now.value) return
-  const was = now.value.playing
-  now.value.playing = !was // instantly; the poll confirms
+  const n = spotify.now
+  if (!n) return
+  const was = n.playing
+  n.playing = !was // instantly; the poll confirms
   run(control(was ? 'pause' : 'resume'))
 }
-const skip = (op) => (locked.value ? notify(`Låst – hør ferdig (${fmtClock(lockLeft.value)} igjen)`, true) : run(control(op)))
+const skip = (op: 'next' | 'previous') => (locked.value ? notify(`Låst – hør ferdig (${fmtClock(lockLeft.value)} igjen)`, true) : run(control(op)))
 const shuffle = () => run(setShuffle(!now.value?.shuffle))
 
-// ── liked ──
-const liked = ref(false)
-watch(() => now.value?.uri, async (uri) => { liked.value = uri?.startsWith('spotify:track:') ? await isLiked(uri) : false }, { immediate: true })
-async function like() {
-  if (!now.value?.uri) return
-  liked.value = !liked.value
-  const r = await setLiked(now.value.uri, liked.value)
-  if (!r.ok) liked.value = !liked.value
-}
-
-// ── popovers: queue / devices ──
-const open = ref(null) // 'queue' | 'devices'
-const queue = ref(null)
-const devices = ref(null)
-async function show(which) {
+// ── popover: devices ──
+const open = ref<'devices' | null>(null)
+const devices = ref<SpotifyDevice[] | null>(null)
+async function show(which: 'devices') {
   open.value = open.value === which ? null : which
-  if (open.value === 'queue') { queue.value = null; queue.value = await fetchQueue() }
   if (open.value === 'devices') { devices.value = null; devices.value = await fetchDevices() }
 }
-async function pick(d) {
+async function pick(d: SpotifyDevice) {
   if (d.active) return
   const r = await transferTo(d.id, !!now.value?.playing)
-  if (r.ok) { notify(`Spiller på «${d.name}».`); open.value = null } else notify(r.error, true)
+  if (r.ok) { notify(`Spiller på «${d.name}».`); open.value = null } else notify(r.error ?? '', true)
 }
-const DEV_ICON = { Computer: Laptop, Smartphone, Speaker, TV: MonitorSpeaker }
-const root = ref(null)
-const onDoc = (e) => { if (open.value && !root.value?.contains(e.target)) open.value = null }
+const DEV_ICON: Record<string, Component> = { Computer: Laptop, Smartphone, Speaker, TV: MonitorSpeaker }
+const root = ref<HTMLElement | null>(null)
+const onDoc = (e: Event) => { if (open.value && !root.value?.contains(targetEl(e))) open.value = null }
 onMounted(() => document.addEventListener('pointerdown', onDoc))
 onBeforeUnmount(() => document.removeEventListener('pointerdown', onDoc))
 </script>
@@ -64,40 +60,33 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDoc))
       <button class="ib" :class="{ on: now?.repeat && now.repeat !== 'off' }" :title="{ off: 'Gjenta: av', context: 'Gjenta lista / albumet', track: 'Gjenta låta' }[now?.repeat || 'off']" aria-label="Gjenta" @click="run(cycleRepeat())">
         <Repeat1 v-if="now?.repeat === 'track'" :size="16" /><Repeat v-else :size="16" />
       </button>
-    </div>
-    <div class="extras">
-      <button class="ib" :class="{ liked }" :title="liked ? 'Fjern fra Likte sanger' : 'Lagre i Likte sanger'" aria-label="Likte sanger" @click="like"><Heart :size="16" :fill="liked ? 'currentColor' : 'none'" /></button>
-      <button class="ib" :class="{ on: open === 'queue' }" title="Neste i køen" aria-label="Kø" @click="show('queue')"><ListMusic :size="16" /></button>
-      <button class="ib dev" :class="{ on: open === 'devices' }" :title="now?.device ? `Spiller på ${now.device}` : 'Velg enhet'" aria-label="Enhet" @click="show('devices')"><MonitorSpeaker :size="16" /><span v-if="!compact && now?.device">{{ now.device }}</span></button>
-    </div>
-
-    <!-- up next -->
-    <div v-if="open === 'queue'" class="pop glass">
-      <b class="label-caps">Neste i køen</b>
-      <p v-if="!queue" class="muted">Henter …</p>
-      <p v-else-if="!queue.length" class="muted">Køen er tom.</p>
-      <ol v-else class="q">
-        <li v-for="(t, i) in queue.slice(0, 12)" :key="t.uri + i">
-          <img v-if="t.img" :src="t.img" alt="" crossorigin="anonymous" /><span class="qt"><b>{{ t.name }}</b><small>{{ t.artist }}</small></span><small class="d">{{ fmtClock(t.ms / 1000) }}</small>
-        </li>
-      </ol>
+      <button class="ib dev" :class="{ on: open === 'devices' }" :title="now?.device ? `Spiller på ${now.device}` : 'Velg enhet'" aria-label="Enhet" @click="show('devices')"><MonitorSpeaker :size="16" /></button>
     </div>
 
     <!-- devices + volume -->
     <div v-if="open === 'devices'" class="pop glass">
       <b class="label-caps">Spill på</b>
+      <WebPlayerToggle class="here" />
+      <div v-if="mode === 'rom'" class="po" role="group" aria-label="Hvor lyden kommer fra i rommet">
+        <span class="pt" title="Album spilles på platespilleren, spillelister og søkte låter på iPod-en. Her kan du tvinge det ene.">Spilles på</span>
+        <button :class="{ on: playPref.v === 'auto' }" @click="setPlayPref('auto')">Auto</button>
+        <button :class="{ on: playPref.v === 'ipod' }" @click="setPlayPref('ipod')">iPod</button>
+        <button :class="{ on: playPref.v === 'vinyl' }" @click="setPlayPref('vinyl')">Plate</button>
+      </div>
+      <label v-if="mode === 'rom'" class="vin" title="Svak vinylknitring over musikken i 3D-rommet"><input type="checkbox" :checked="vinyl.on" @change="setVinyl(inputOf($event).checked)" /><span class="sw"><i></i></span>Vinylknitring</label>
+      <label v-if="mode === 'rom' && vinyl.on" class="vol vlv" title="Hvor sterk vinylknitringen er"><span class="vt">Knitring</span><input type="range" min="0" max="100" :value="vinyl.level" aria-label="Styrke på vinylknitring" @input="setVinylLevel(+inputOf($event).value)" /></label>
       <p v-if="!devices" class="muted">Henter enheter …</p>
       <p v-else-if="!devices.length" class="muted">Ingen Spotify-enheter er åpne.</p>
       <button v-for="d in devices || []" :key="d.id" class="dv" :class="{ active: d.active }" :disabled="d.restricted" @click="pick(d)">
         <component :is="DEV_ICON[d.type] || Speaker" :size="16" /><span>{{ d.name }}</span><small v-if="d.active">spiller her</small>
       </button>
-      <label v-if="now?.volume != null" class="vol"><Volume2 :size="15" /><input type="range" min="0" max="100" :value="now.volume" aria-label="Volum" @input="setDeviceVolume(+$event.target.value)" /></label>
+      <label v-if="now?.volume != null" class="vol"><Volume2 :size="15" /><input type="range" min="0" max="100" :value="now.volume" aria-label="Volum" @input="setDeviceVolume(+inputOf($event).value)" /></label>
     </div>
   </div>
 </template>
 
 <style scoped>
-.pc { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.pc { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
 .transport, .extras { display: flex; align-items: center; gap: 4px; }
 .ib { display: inline-flex; align-items: center; gap: 5px; height: 32px; min-width: 32px; justify-content: center; padding: 0 6px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); cursor: pointer; transition: color 0.15s, background 0.15s; }
 .ib:hover { color: var(--text); background: var(--accent-soft); }
@@ -109,6 +98,13 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDoc))
 .play:hover { transform: scale(1.06); }
 .compact .play { width: 34px; height: 34px; }
 .pop { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 8px); display: grid; gap: 6px; padding: 12px; border-radius: 16px; background: var(--bg); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25); max-height: 340px; overflow-y: auto; }
+.vin { display: flex; align-items: center; gap: 10px; padding: 6px 10px; font-size: 0.78rem; color: var(--text-2); cursor: pointer; }
+.vin input { position: absolute; opacity: 0; pointer-events: none; }
+.vin .sw { position: relative; flex: none; width: 34px; height: 20px; border-radius: 999px; background: rgba(120, 130, 145, 0.35); transition: background 0.2s; }
+.vin .sw i { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform 0.2s; }
+.vin input:checked + .sw { background: #1db954; }
+.vin input:checked + .sw i { transform: translateX(14px); }
+.here { padding: 4px 10px 8px; border-bottom: 1px solid var(--glass-border); }
 .muted { margin: 0; color: var(--text-3); font-size: 0.82rem; }
 .q { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .q li { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
@@ -123,4 +119,9 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDoc))
 .dv:disabled { opacity: 0.45; cursor: default; }
 .vol { display: flex; align-items: center; gap: 8px; padding: 6px 10px 2px; color: var(--text-3); }
 .vol input { flex: 1; accent-color: #1db954; }
+.po { display: flex; align-items: center; gap: 4px; padding: 6px 10px; }
+.po .pt { margin-right: auto; font-size: 0.78rem; color: var(--text-2); }
+.po button { padding: 4px 10px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.74rem var(--font); cursor: pointer; }
+.po button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.vlv .vt { font-size: 0.74rem; font-weight: 600; white-space: nowrap; }
 </style>

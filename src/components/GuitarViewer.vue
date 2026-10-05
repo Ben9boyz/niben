@@ -1,34 +1,46 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { buildGuitar } from '../three/guitar'
 import { prepareGuitarModel } from '../three/guitarModel'
+import type { Guitar } from '../composables/useData'
 
 // A single guitar on a turntable – used by the plain (non-3D-room) version of the site.
-const props = defineProps({ guitar: { type: Object, default: null } })
-const host = ref(null)
+const props = withDefaults(defineProps<{ guitar?: Guitar | null }>(), { guitar: null })
+const host = ref<HTMLElement | null>(null)
 const loading = ref(false)
-let renderer, scene, camera, controls, current, raf = 0, ro, io, visible = true
+let renderer: THREE.WebGLRenderer | undefined
+let scene: THREE.Scene | undefined
+let camera: THREE.PerspectiveCamera | undefined
+let controls: OrbitControls | undefined
+let current: THREE.Object3D | undefined
+let intro = 0 // 0 → 1 while the new guitar grows into place
+let baseScale: number | undefined
+let raf = 0
+let ro: ResizeObserver | undefined
+let io: IntersectionObserver | undefined
+let visible = true
 const loader = new GLTFLoader()
-const cache = new Map()
+const cache = new Map<string, Promise<GLTF>>()
 
-function dispose(o) {
+function dispose(o: THREE.Object3D | undefined) {
   o?.traverse((c) => {
-    if (c.isMesh && !c.userData.shared) c.geometry?.dispose()
+    if (c instanceof THREE.Mesh && !c.userData.shared) c.geometry.dispose()
   })
 }
 
-async function show(spec) {
+async function show(spec: Guitar | null | undefined) {
   if (!spec || !scene) return
-  let model
+  let model: THREE.Object3D | null = null
   if (spec.modell) {
     loading.value = true
     try {
-      if (!cache.has(spec.modell)) cache.set(spec.modell, loader.loadAsync(spec.modell))
-      const gltf = await cache.get(spec.modell)
+      let load = cache.get(spec.modell)
+      if (!load) { load = loader.loadAsync(spec.modell); cache.set(spec.modell, load) }
+      const gltf = await load
       if (spec !== props.guitar) return
       model = prepareGuitarModel(gltf.scene, spec)
     } catch {
@@ -43,50 +55,57 @@ async function show(spec) {
   }
   if (current) { scene.remove(current); dispose(current) }
   current = model
-  current.userData.intro = 0
+  intro = 0
+  baseScale = undefined
   scene.add(current)
 }
 
 onMounted(() => {
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75))
-  renderer.outputColorSpace = THREE.SRGBColorSpace
-  renderer.toneMapping = THREE.AgXToneMapping
-  renderer.toneMappingExposure = 1.2
-  host.value.appendChild(renderer.domElement)
+  const el = host.value
+  if (!el) return
+  const gl = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+  renderer = gl
+  gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.75))
+  gl.outputColorSpace = THREE.SRGBColorSpace
+  gl.toneMapping = THREE.AgXToneMapping
+  gl.toneMappingExposure = 1.2
+  el.appendChild(gl.domElement)
 
-  scene = new THREE.Scene()
-  const pmrem = new THREE.PMREMGenerator(renderer)
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+  const sc = new THREE.Scene()
+  scene = sc
+  const pmrem = new THREE.PMREMGenerator(gl)
+  sc.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
   const key = new THREE.DirectionalLight(0xffffff, 2)
   key.position.set(2, 3, 3)
   const rim = new THREE.DirectionalLight(0x8fd3ff, 2)
   rim.position.set(-3, 1, -2)
-  scene.add(key, rim, new THREE.AmbientLight(0xffffff, 0.3))
+  sc.add(key, rim, new THREE.AmbientLight(0xffffff, 0.3))
 
-  camera = new THREE.PerspectiveCamera(30, 1, 0.05, 50)
-  camera.position.set(0.6, 0.15, 2.2)
-  controls = new OrbitControls(camera, renderer.domElement)
-  controls.enableDamping = true
-  controls.enablePan = false
-  controls.minDistance = 1
-  controls.maxDistance = 4
-  controls.autoRotate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  controls.autoRotateSpeed = 1.2
-  controls.addEventListener('start', () => (controls.autoRotate = false))
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.05, 50)
+  camera = cam
+  cam.position.set(0.6, 0.15, 2.2)
+  const ctl = new OrbitControls(cam, gl.domElement)
+  controls = ctl
+  ctl.enableDamping = true
+  ctl.enablePan = false
+  ctl.minDistance = 1
+  ctl.maxDistance = 4
+  ctl.autoRotate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  ctl.autoRotateSpeed = 1.2
+  ctl.addEventListener('start', () => (ctl.autoRotate = false))
 
   const resize = () => {
-    const w = host.value.clientWidth || 1, h = host.value.clientHeight || 1
-    renderer.setSize(w, h, false)
-    camera.aspect = w / h
-    camera.position.setLength(w / h < 0.8 ? 2.8 : 2.2)
-    camera.updateProjectionMatrix()
+    const w = el.clientWidth || 1, h = el.clientHeight || 1
+    gl.setSize(w, h, false)
+    cam.aspect = w / h
+    cam.position.setLength(w / h < 0.8 ? 2.8 : 2.2)
+    cam.updateProjectionMatrix()
   }
   ro = new ResizeObserver(resize)
-  ro.observe(host.value)
+  ro.observe(el)
   resize()
-  io = new IntersectionObserver(([e]) => (visible = e.isIntersecting))
-  io.observe(host.value)
+  io = new IntersectionObserver(([e]) => { visible = !!e?.isIntersecting })
+  io.observe(el)
 
   const clock = new THREE.Timer()
   const loop = () => {
@@ -95,19 +114,20 @@ onMounted(() => {
     clock.update()
     const dt = Math.min(clock.getDelta(), 0.05)
     if (current) {
-      current.userData.intro = Math.min(1, current.userData.intro + dt * 1.6)
-      const e = 1 - Math.pow(1 - current.userData.intro, 3)
-      current.scale.setScalar((current.userData.baseScale ??= current.scale.x) * (0.6 + 0.4 * e))
+      intro = Math.min(1, intro + dt * 1.6)
+      const e = 1 - Math.pow(1 - intro, 3)
+      baseScale ??= current.scale.x
+      current.scale.setScalar(baseScale * (0.6 + 0.4 * e))
       current.position.y = Math.sin(clock.getElapsed() * 1.1) * 0.015
     }
-    controls.update()
-    renderer.render(scene, camera)
+    ctl.update()
+    gl.render(sc, cam)
   }
   loop()
-  show(props.guitar)
+  void show(props.guitar)
 })
 
-watch(() => props.guitar, (g) => show(g))
+watch(() => props.guitar, (g) => void show(g))
 
 onBeforeUnmount(() => {
   cancelAnimationFrame(raf)

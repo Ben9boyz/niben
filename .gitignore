@@ -22,3 +22,7 @@ desktop/dist/
 *.log
 .vscode/
 .idea/
+public/_translate.php
+
+# desktop app: compiled TypeScript
+desktop/out/

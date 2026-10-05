@@ -1,30 +1,32 @@
-<script setup>
+<script setup lang="ts">
+import GuestBook from './GuestBook.vue'
+import MadeWith from './MadeWith.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Guitar, Music, BookOpen, Plane, Languages, Gamepad2, Code2, ArrowUpRight, Pencil, Plus, X, Check, Sparkles, ImageUp } from 'lucide-vue-next'
-import { useData } from '../composables/useData'
+import { useData, type About, type AboutLink } from '../composables/useData'
 import { useSpotify } from '../composables/useSpotify'
 import { steam, loadSteam } from '../composables/useSteam'
 import { jp, loadJapanese } from '../composables/useJapanese'
-import { admin, checkLogin, api, shrinkImage } from '../composables/useAdmin'
+import { admin, checkLogin, api, shrinkImage, errorMessage } from '../composables/useAdmin'
 import { reloadData } from '../composables/useData'
 import { thumb } from '../lib/photos'
 import { atlasName } from '../three/countries'
 
 // "Om meg": a short text I write myself (edited right here when logged in) and everything else
 // counted live from the other corners – nothing to keep up to date by hand.
-defineProps({ compact: Boolean }) // the 3D side panel: no big photo
+defineProps<{ compact?: boolean }>() // the 3D side panel: no big photo
 const router = useRouter()
 const data = useData()
 const spotify = useSpotify()
 onMounted(() => { loadSteam(); loadJapanese(); checkLogin(); loadAbout() })
 
 // ── my own text ──
-const about = ref(null)
+const about = ref<About | null>(null)
 async function loadAbout() {
   try {
     const r = await fetch('api.php?action=about_get', { cache: 'no-store' })
-    about.value = (await r.json()).about || null
+    about.value = ((await r.json()) as { about?: About | null }).about || null
   } catch {}
 }
 // data.json's old text is a template placeholder – don't show it
@@ -34,20 +36,21 @@ const tagline = computed(() => about.value?.tagline || '')
 // my photo: uploaded on this page (stored on the server like the trip photos), else the one in data.json
 const photo = computed(() => about.value?.bilde || data.om?.bilde || '')
 const photoBusy = ref(false)
-async function uploadPhoto(e) {
-  const f = e.target.files?.[0]
-  e.target.value = ''
+async function uploadPhoto(e: Event) {
+  const input = e.target as HTMLInputElement
+  const f = input.files?.[0]
+  input.value = ''
   if (!f) return
   photoBusy.value = true
   msg.value = ''
   try {
     const fd = new FormData()
     fd.append('file', await shrinkImage(f, 1600))
-    const r = await api('about_photo', fd)
+    const r = await api<{ bilde: string }>('about_photo', fd)
     about.value = { ...(about.value || {}), bilde: r.bilde }
     reloadData() // the home page and the frame in the room use it too
   } catch (err) {
-    msg.value = err.message
+    msg.value = errorMessage(err)
   } finally {
     photoBusy.value = false
   }
@@ -59,12 +62,12 @@ const photos = computed(() => (data.reiser || []).reduce((n, t) => n + (t.bilder
 const books = computed(() => data.boker || [])
 const avg = computed(() => {
   const r = books.value.filter((b) => b.vurdering)
-  return r.length ? (r.reduce((n, b) => n + b.vurdering, 0) / r.length).toFixed(1).replace('.', ',') : null
+  return r.length ? (r.reduce((n, b) => n + (b.vurdering ?? 0), 0) / r.length).toFixed(1).replace('.', ',') : null
 })
 const recordings = computed(() => (data.gitarer || []).reduce((n, g) => n + (g.opptak?.length || 0), 0))
 const cards = computed(() => [
   { to: '/gitar', icon: Guitar, title: 'Gitar', big: (data.gitarer || []).length, unit: 'gitarer', sub: recordings.value ? `${recordings.value} opptak · ${(data.sanger || []).length} sanger på øvelista` : `${(data.sanger || []).length} sanger på øvelista` },
-  { to: '/lytte', icon: Music, title: 'Musikk', big: spotify.albums.length || '–', unit: 'album', sub: spotify.now?.name ? `Hører på ${spotify.now.name}` : `${spotify.playlists.length} spillelister` },
+  { to: '/lytte', icon: Music, title: 'Musikk', big: spotify.albums.length || '–', unit: 'album', sub: spotify.now?.name ? `Hører på ${spotify.now?.name}` : `${spotify.playlists.length} spillelister` },
   { to: '/boker', icon: BookOpen, title: 'Bøker', big: books.value.length, unit: 'lest', sub: avg.value ? `snitt ${avg.value} av 5 stjerner` : '' },
   { to: '/reiser', icon: Plane, title: 'Reiser', big: countries.value, unit: 'land', sub: `${(data.reiser || []).length} turer · ${photos.value} bilder` },
   { to: '/japansk', icon: Languages, title: 'Japansk', big: jp.count?.known || 0, unit: 'ord kan jeg', sub: jp.anime?.[0] ? `${jp.anime[0].en || jp.anime[0].title}: ${String(jp.anime[0].known).replace('.', ',')} %` : 'øver på jpdb' },
@@ -75,15 +78,13 @@ const cards = computed(() => [
 // ── links: my own + the profiles the site already knows ──
 const links = computed(() => {
   const own = about.value?.lenker || data.om?.lenker || []
-  const auto = [
-    { navn: 'GitHub', url: 'https://github.com/Ben9boyz' },
-    steam.profile?.url && { navn: 'Steam', url: steam.profile.url },
-  ].filter(Boolean)
+  const auto: AboutLink[] = [{ navn: 'GitHub', url: 'https://github.com/Ben9boyz' }]
+  if (steam.profile?.url) auto.push({ navn: 'Steam', url: steam.profile.url })
   return [...own, ...auto.filter((a) => !own.some((o) => o.navn.toLowerCase() === a.navn.toLowerCase()))]
 })
 
 // ── editing (admin) ──
-const editing = ref(null)
+const editing = ref<{ tagline: string; tekst: string; lenker: AboutLink[] } | null>(null)
 const busy = ref(false)
 const msg = ref('')
 function edit() {
@@ -98,11 +99,11 @@ async function save() {
   busy.value = true
   msg.value = ''
   try {
-    const r = await api('about_save', editing.value)
+    const r = await api<{ about: About }>('about_save', editing.value)
     about.value = r.about
     editing.value = null
   } catch (e) {
-    msg.value = e.message
+    msg.value = errorMessage(e)
   } finally {
     busy.value = false
   }
@@ -163,22 +164,10 @@ async function save() {
       </div>
     </section>
 
-    <!-- about the site itself -->
-    <section class="site">
-      <b class="label-caps">Om siden</b>
-      <div class="site-card">
-        <Sparkles :size="20" class="spark" />
-        <p>
-          niben.no er et hobbyprosjekt – laget sammen med <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code</a>,
-          Anthropic sin AI-kodeassistent. Fra 3D-rommet og musikkspilleren til japansk-hjørnet: jeg sier hva jeg vil ha, og vi bygger det sammen.
-          All koden ligger åpent på GitHub.
-        </p>
-        <div class="site-links">
-          <a class="chip" href="https://github.com/Ben9boyz/niben" target="_blank" rel="noopener">Koden på GitHub <ArrowUpRight :size="13" /></a>
-          <span class="chip muted-chip">Vue · Three.js · PHP</span>
-        </div>
-      </div>
-    </section>
+    <GuestBook v-if="!compact" />
+
+    <!-- a small credit, centred -->
+    <MadeWith />
 
     <!-- the way in for me (also: double-click the logo) – small, at the very bottom -->
     <router-link v-if="!admin.loggedIn" to="/admin" class="login">Logg inn</router-link>
@@ -215,14 +204,6 @@ h1 { font-size: clamp(2.2rem, 4.5vw, 3.4rem); font-weight: 800; letter-spacing: 
 .big b { font-size: 1.6rem; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .card small { font-size: 0.76rem; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.site { display: grid; gap: 10px; }
-.site-card { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; align-items: start; padding: 16px 18px; border-radius: 18px; border: 1px solid var(--glass-border); background: linear-gradient(135deg, color-mix(in srgb, #d97757 10%, var(--glass-strong)), var(--glass-strong)); }
-.site-card p { margin: 0; color: var(--text-2); line-height: 1.6; font-size: 0.95rem; }
-.site-card a { color: var(--accent); }
-.spark { color: #d97757; margin-top: 2px; }
-.site-links { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.muted-chip { color: var(--text-3); cursor: default; }
-.muted-chip:hover { border-color: var(--glass-border); color: var(--text-3); }
 .login { justify-self: center; padding: 4px 10px; font-size: 0.75rem; color: var(--text-3); opacity: 0.6; text-decoration: none; }
 .login:hover { opacity: 1; color: var(--accent); }
 .edit { display: grid; gap: 8px; margin-top: 12px; }
@@ -241,4 +222,7 @@ h1 { font-size: clamp(2.2rem, 4.5vw, 3.4rem); font-weight: 800; letter-spacing: 
   .photo { max-width: 220px; }
   .cards { grid-template-columns: 1fr 1fr; }
 }
+.made { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 8px 0 0; color: var(--text-3); font-size: 0.82rem; }
+.made a { color: var(--text-2); text-decoration: underline; text-decoration-color: var(--glass-border); text-underline-offset: 3px; }
+.made a:hover { color: var(--accent); }
 </style>

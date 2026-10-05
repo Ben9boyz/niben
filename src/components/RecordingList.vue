@@ -1,35 +1,36 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Play, ChevronDown } from 'lucide-vue-next'
+import type { Recording } from '../composables/useData'
 
 // A guitar's recordings. YouTube videos show as a thumbnail until clicked (a dozen embedded
 // players made the page heavy and very long); long lists fold after the first few.
-const props = defineProps({ items: { type: Array, default: () => [] } })
+const props = withDefaults(defineProps<{ items?: Recording[] }>(), { items: () => [] })
 const FIRST = 5
 
 const all = ref(false)
 const shown = computed(() => (all.value ? props.items : props.items.slice(0, FIRST)))
-const playing = ref(new Set())
+const playing = ref(new Set<string | number>())
 
-function ytId(v) {
+function ytId(v: string | null | undefined) {
   if (!v) return null
   const m = String(v).match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/)
   return m ? m[1] : /^[\w-]{11}$/.test(v) ? v : null
 }
-function fmt(d) {
+function fmt(d: string | null | undefined) {
   if (!d) return ''
   const t = new Date(d)
   return Number.isNaN(+t) ? d : t.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', year: 'numeric' })
 }
-const key = (o, i) => o.id || i
-function play(o, i) { playing.value = new Set(playing.value).add(key(o, i)) }
+const key = (o: Recording, i: number) => o.id || i
+function play(o: Recording, i: number) { playing.value = new Set(playing.value).add(key(o, i)) }
 </script>
 
 <template>
   <div class="recs">
     <div v-for="(o, i) in shown" :key="key(o, i)" class="rec" :style="{ '--i': i }">
       <div class="rec-head">
-        <b>{{ o.tittel }}</b>
+        <b translate="no">{{ o.tittel }}</b>
         <span v-if="o.dato" class="date">{{ fmt(o.dato) }}</span>
       </div>
       <div v-if="ytId(o.youtube)" class="video">

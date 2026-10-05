@@ -1,19 +1,20 @@
-<script setup>
+<script setup lang="ts">
+import { tx } from '../composables/useTexts'
 import { ref } from 'vue'
 import { ArrowUpRight, BookOpenText } from 'lucide-vue-next'
 import RepoBrowser from '../components/RepoBrowser.vue'
-import { useData } from '../composables/useData'
+import { useData, type Project } from '../composables/useData'
 const data = useData()
 // a project on my GitHub can be read right here (RepoBrowser)
-const repoOf = (p) => (/github\.com\/Ben9boyz\/([\w.-]+)/i.exec(p?.kode || '') || [])[1] || null
-const reading = ref(null)
+const repoOf = (p: Project | undefined) => (/github\.com\/Ben9boyz\/([\w.-]+)/i.exec(p?.kode || '') || [])[1] || null
+const reading = ref<string | null>(null)
 </script>
 
 <template>
   <div class="cpage">
     <header class="cpage-head">
-      <div class="eyebrow">Kode</div>
-      <h1>Prosjekter</h1>
+      <div class="eyebrow">{{ tx('code.eyebrow') }}</div>
+      <h1>{{ tx('code.title') }}</h1>
     </header>
     <div class="grid projects">
       <article v-for="(p, i) in data.prosjekter" :key="i" class="glass card proj rise" :style="{ '--i': i }">

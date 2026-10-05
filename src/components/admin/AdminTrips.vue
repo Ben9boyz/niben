@@ -1,27 +1,31 @@
-<script setup>
+<script setup lang="ts">
 import { ChevronLeft, ChevronRight, X } from 'lucide-vue-next'
 import { ref, reactive, computed } from 'vue'
-import { useData, reloadData } from '../../composables/useData'
-import { api, shrinkImage } from '../../composables/useAdmin'
+import { useData, reloadData, type Trip } from '../../composables/useData'
+import { api, shrinkImage, errorMessage } from '../../composables/useAdmin'
 import { norskNavn } from '../../three/countries'
 import CountryPicker from '../CountryPicker.vue'
+import { inputOf } from '../../lib/dom'
 
 const data = useData()
-const editing = ref(null) // form object or null
-const msg = ref(null)
+interface PhotoForm { id: number; src: string; caption: string }
+interface TripForm { id: number | null; country: string | null; place: string; title: string; year: number | string; date_from: string; date_to: string; body: string; photos: PhotoForm[] }
+interface Upload { name: string; progress: number; error: string | null }
+const editing = ref<TripForm | null>(null) // form object or null
+const msg = ref<{ ok?: string; error?: string } | null>(null)
 const busy = ref(false)
-const uploads = ref([]) // { name, progress, error }
-const fileInput = ref(null)
+const uploads = ref<Upload[]>([])
+const fileInput = ref<HTMLInputElement | null>(null)
 
 const trips = computed(() => data.reiser || [])
 
-function blankTrip() {
-  return reactive({ id: null, country: null, place: '', title: '', year: new Date().getFullYear(), date_from: '', date_to: '', body: '', photos: [] })
+function blankTrip(): TripForm {
+  return reactive<TripForm>({ id: null, country: null, place: '', title: '', year: new Date().getFullYear(), date_from: '', date_to: '', body: '', photos: [] })
 }
-function edit(t) {
+function edit(t?: Trip | null) {
   msg.value = null
   editing.value = t
-    ? reactive({
+    ? reactive<TripForm>({
         id: t.id, country: t.land, place: t.sted || '', title: t.tittel || '', year: t.aar || '',
         date_from: t.dato || '', date_to: t.til || '', body: t.tekst || '',
         photos: (t.bilder || []).map((b) => ({ id: b.id, src: b.src, caption: b.tekst || '' })),
@@ -29,8 +33,7 @@ function edit(t) {
     : blankTrip()
 }
 
-function payload() {
-  const f = editing.value
+function payload(f: TripForm) {
   return {
     id: f.id, country: f.country, place: f.place, title: f.title, year: f.year || null,
     date_from: f.date_from || null, date_to: f.date_to || null, body: f.body,
@@ -40,17 +43,18 @@ function payload() {
 
 async function save({ quiet = false } = {}) {
   const f = editing.value
+  if (!f) return false
   if (!f.country) { msg.value = { error: 'Velg et land.' }; return false }
   if (!f.title.trim()) { msg.value = { error: 'Skriv en tittel.' }; return false }
   busy.value = true
   try {
-    const r = await api('trip_save', payload())
+    const r = await api<{ id: number }>('trip_save', payload(f))
     f.id = r.id
     await reloadData()
     if (!quiet) msg.value = { ok: 'Lagret.' }
     return true
   } catch (e) {
-    msg.value = { error: e.message }
+    msg.value = { error: errorMessage(e) }
     return false
   } finally {
     busy.value = false
@@ -59,60 +63,62 @@ async function save({ quiet = false } = {}) {
 
 async function remove() {
   const f = editing.value
-  if (!f.id || !confirm(`Slette «${f.title}» med alle bildene?`)) return
+  if (!f?.id || !confirm(`Slette «${f.title}» med alle bildene?`)) return
   try {
     await api('trip_delete', { id: f.id })
     await reloadData()
     editing.value = null
   } catch (e) {
-    msg.value = { error: e.message }
+    msg.value = { error: errorMessage(e) }
   }
 }
 
-async function addPhotos(files) {
+async function addPhotos(files: File[] | FileList | null | undefined) {
   const f = editing.value
-  if (!files?.length) return
+  if (!f || !files?.length) return
   // the trip must exist before photos can be attached to it
   if (!f.id && !(await save({ quiet: true }))) return
   msg.value = null
   for (const file of files) {
-    const u = reactive({ name: file.name, progress: 0, error: null })
+    const u = reactive<Upload>({ name: file.name, progress: 0, error: null })
     uploads.value.push(u)
     try {
       const small = await shrinkImage(file)
       const fd = new FormData()
-      fd.append('trip_id', f.id)
+      fd.append('trip_id', String(f.id))
       fd.append('file', small)
-      const r = await api('photo_upload', fd, { onProgress: (p) => (u.progress = p) })
+      const r = await api<{ id: number; path: string }>('photo_upload', fd, { onProgress: (p) => (u.progress = p) })
       f.photos.push({ id: r.id, src: r.path, caption: '' })
       uploads.value = uploads.value.filter((x) => x !== u)
     } catch (e) {
-      u.error = e.message.includes('decode') || e.name === 'InvalidStateError' ? 'Kunne ikke lese bildet (prøv JPEG/PNG)' : e.message
+      u.error = errorMessage(e).includes('decode') || (e instanceof Error && e.name === 'InvalidStateError') ? 'Kunne ikke lese bildet (prøv JPEG/PNG)' : errorMessage(e)
     }
   }
   await reloadData()
 }
 
-async function removePhoto(p) {
+async function removePhoto(p: PhotoForm) {
   if (!confirm('Slette bildet?')) return
   try {
     await api('photo_delete', { id: p.id })
-    editing.value.photos = editing.value.photos.filter((x) => x !== p)
+    if (editing.value) editing.value.photos = editing.value.photos.filter((x) => x !== p)
     await reloadData()
   } catch (e) {
-    msg.value = { error: e.message }
+    msg.value = { error: errorMessage(e) }
   }
 }
-function move(i, d) {
-  const list = editing.value.photos
+function move(i: number, d: number) {
+  const list = editing.value?.photos
   const j = i + d
-  if (j < 0 || j >= list.length) return
-  ;[list[i], list[j]] = [list[j], list[i]]
+  const a = list?.[i], b = list?.[j]
+  if (!list || !a || !b) return
+  list[i] = b
+  list[j] = a
 }
-function onDrop(e) {
-  addPhotos([...e.dataTransfer.files].filter((f) => f.type.startsWith('image/')))
+function onDrop(e: DragEvent) {
+  addPhotos([...(e.dataTransfer?.files ?? [])].filter((f) => f.type.startsWith('image/')))
 }
-function when(t) {
+function when(t: Trip) {
   if (t.dato) return new Date(t.dato).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', year: 'numeric' })
   return t.aar || ''
 }
@@ -174,8 +180,8 @@ function when(t) {
 
       <div class="field">
         <span>Bilder</span>
-        <div class="drop" @dragover.prevent @drop.prevent="onDrop" @click="fileInput.click()">
-          <input ref="fileInput" type="file" accept="image/*" multiple hidden @change="(e) => { addPhotos([...e.target.files]); e.target.value = '' }" />
+        <div class="drop" @dragover.prevent @drop.prevent="onDrop" @click="fileInput?.click()">
+          <input ref="fileInput" type="file" accept="image/*" multiple hidden @change="(e: Event) => { addPhotos([...(inputOf(e).files ?? [])]); inputOf(e).value = '' }" />
           <b>Slipp bilder her</b> eller klikk for å velge
           <small>Bildene krympes og GPS-posisjon fjernes før opplasting.</small>
         </div>

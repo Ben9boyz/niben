@@ -1,8 +1,15 @@
-<script setup>
+<script setup lang="ts">
 import { computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { timer, timerState, formatTime, toggle, reset, setIntervalSeconds, setSound } from '../composables/useTimer'
 import { room } from '../composables/useRoom'
 import ChordPractice from '../components/ChordPractice.vue'
+import GuitarTuner from '../components/GuitarTuner.vue'
+import Metronome from '../components/Metronome.vue'
+import SegSwitch from '../components/SegSwitch.vue'
+import { targetEl, inputOf } from '../lib/dom'
+
+// The practice corner: the interval timer, chords, a tuner (with half-step-down / up tunings) and a metronome.
+const TABS = [{ id: 'timer', label: 'Timer' }, { id: 'akkorder', label: 'Akkorder' }, { id: 'stemmer', label: 'Stemmer' }, { id: 'metronom', label: 'Metronom' }]
 
 // re-evaluates every frame while the timer runs (timer.now ticks)
 const st = computed(() => { void timer.now; void timer.running; void timer.pausedMs; void timer.interval; return timerState() })
@@ -13,22 +20,23 @@ const R = 46
 const C = 2 * Math.PI * R
 const dash = computed(() => C * (1 - (st.value.go ? 1 : st.value.progress)))
 
-function onKey(e) {
-  if (e.target.tagName === 'INPUT' || room.practiceTab !== 'timer') return
+function onKey(e: KeyboardEvent) {
+  if (targetEl(e).tagName === 'INPUT' || room.practiceTab !== 'timer') return
   if (e.code === 'Space') { e.preventDefault(); toggle() }
   else if (e.key === 'r' || e.key === 'R') reset()
 }
 
-// keep the screen awake while practising
-let lock = null
-async function wake(on) {
+// keep the screen awake while practising (the timer running, or the tuner / metronome open – the phone shouldn't go dark mid-song)
+const awake = computed(() => timer.running || room.practiceTab === 'stemmer' || room.practiceTab === 'metronom')
+let lock: WakeLockSentinel | null = null
+async function wake(on: boolean) {
   try {
     if (on && !lock && 'wakeLock' in navigator) lock = await navigator.wakeLock.request('screen')
     if (!on && lock) { await lock.release(); lock = null }
   } catch { lock = null }
 }
-watch(() => timer.running, (r) => wake(r), { immediate: true })
-const onVis = () => { if (!document.hidden && timer.running) { lock = null; wake(true) } }
+watch(awake, (r) => wake(r), { immediate: true })
+const onVis = () => { if (!document.hidden && awake.value) { lock = null; wake(true) } }
 
 onMounted(() => {
   window.addEventListener('keydown', onKey)
@@ -43,12 +51,11 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="focus glass" :class="{ go: st.go && room.practiceTab === 'timer', running: st.running, chords: room.practiceTab === 'akkorder' }">
-    <nav class="ptabs" role="tablist" aria-label="Øving">
-      <button role="tab" :aria-selected="room.practiceTab === 'timer'" :class="{ on: room.practiceTab === 'timer' }" @click="room.practiceTab = 'timer'">Timer</button>
-      <button role="tab" :aria-selected="room.practiceTab === 'akkorder'" :class="{ on: room.practiceTab === 'akkorder' }" @click="room.practiceTab = 'akkorder'">Akkorder</button>
-    </nav>
+    <SegSwitch v-model="room.practiceTab" :items="TABS" small stretch label="Øving" class="ptabs" />
 
     <ChordPractice v-if="room.practiceTab === 'akkorder'" class="chordpane" />
+    <GuitarTuner v-else-if="room.practiceTab === 'stemmer'" />
+    <Metronome v-else-if="room.practiceTab === 'metronom'" />
 
     <template v-else>
     <button class="dial" @click="toggle" :aria-label="st.running ? 'Pause' : 'Start'">
@@ -71,21 +78,20 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="settings">
-      <div class="presets" role="group" aria-label="Intervall">
-        <button v-for="p in presets" :key="p" class="chip-btn" :class="{ on: timer.interval === p }" @click="setIntervalSeconds(p)">{{ p }}s</button>
+      <div class="presets pills" role="group" aria-label="Intervall">
+        <button v-for="p in presets" :key="p" :class="{ on: timer.interval === p }" @click="setIntervalSeconds(p)">{{ p }}s</button>
         <label class="custom">
-          <input type="number" min="1" max="3600" :value="timer.interval" @change="(e) => setIntervalSeconds(e.target.value)" aria-label="Eget intervall i sekunder" />
+          <input type="number" min="1" max="3600" :value="timer.interval" @change="(e: Event) => setIntervalSeconds(inputOf(e).value)" aria-label="Eget intervall i sekunder" />
           <span>s</span>
         </label>
       </div>
       <label class="toggle">
-        <input type="checkbox" :checked="timer.sound" @change="(e) => setSound(e.target.checked)" />
+        <input type="checkbox" :checked="timer.sound" @change="(e: Event) => setSound(inputOf(e).checked)" />
         <span class="sw"></span>
         Pip
       </label>
     </div>
 
-    <p class="keys">Trykk på ringen eller mellomrom for start/pause · R nullstiller</p>
     </template>
   </section>
 </template>
@@ -107,9 +113,7 @@ onBeforeUnmount(() => {
 .focus.go { --c: #3cc47e; }
 .focus.chords { align-items: stretch; overflow-y: auto; max-height: 100%; }
 .chordpane { width: 100%; }
-.ptabs { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--glass-strong); border: 1px solid var(--glass-border); align-self: center; }
-.ptabs button { padding: 7px 18px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: 700 0.9rem var(--font); cursor: pointer; }
-.ptabs button.on { background: var(--text); color: var(--bg); }
+.ptabs { align-self: stretch; }
 
 .dial {
   position: relative;
@@ -162,19 +166,6 @@ onBeforeUnmount(() => {
 
 .settings { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; }
 .presets { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
-.chip-btn {
-  padding: 7px 13px;
-  border-radius: 999px;
-  border: 1px solid var(--glass-border);
-  background: transparent;
-  color: var(--text-2);
-  font-weight: 600;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s, transform 0.4s var(--spring);
-}
-.chip-btn:hover { transform: translateY(-2px); }
-.chip-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .custom { display: flex; align-items: center; gap: 4px; color: var(--text-3); font-size: 0.85rem; }
 .custom input {
   width: 60px;
@@ -192,12 +183,10 @@ onBeforeUnmount(() => {
 .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25); transition: transform 0.4s var(--spring); }
 .toggle input:checked + .sw { background: var(--accent); }
 .toggle input:checked + .sw::after { transform: translateX(14px); }
-.keys { font-size: 0.78rem; color: var(--text-3); text-align: center; }
 
 @media (max-width: 900px) {
   .focus { padding: 20px 16px 16px; gap: 14px; }
   .dial { width: min(44vh, 84vw); }
   .btn.big { min-width: 120px; padding: 12px 20px; }
-  .keys { display: none; }
 }
 </style>

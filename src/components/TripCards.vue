@@ -1,14 +1,15 @@
-<script setup>
+<script setup lang="ts">
 import { Images } from 'lucide-vue-next'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { thumb } from '../lib/photos'
 import PhotoViewer from './PhotoViewer.vue'
+import type { Trip } from '../composables/useData'
 
-defineProps({ trips: { type: Array, default: () => [] } })
+withDefaults(defineProps<{ trips?: Trip[] }>(), { trips: () => [] })
 
-function year(t) { return t.aar || (t.dato ? Number(String(t.dato).slice(0, 4)) : null) }
-function when(t) {
-  const fmt = (d) => new Date(d).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })
+function year(t: Trip) { return t.aar || (t.dato ? Number(String(t.dato).slice(0, 4)) : null) }
+function when(t: Trip) {
+  const fmt = (d: string) => new Date(d).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })
   if (t.dato && t.til && t.til !== t.dato) {
     const a = new Date(t.dato), b = new Date(t.til)
     const sameMonth = a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()
@@ -19,17 +20,17 @@ function when(t) {
 
 // a few photos as a mosaic on the card; the rest are one tap away in the full-screen viewer
 // (narrow: 3 columns – big + 5; wide: 4 columns – big + 4, two rows either way)
-const root = ref(null)
+const root = ref<HTMLElement | null>(null)
 const wide = ref(false)
-let ro = null
+let ro: ResizeObserver | undefined
 onMounted(() => {
-  ro = new ResizeObserver(([e]) => { wide.value = e.contentRect.width >= 560 })
-  ro.observe(root.value)
+  ro = new ResizeObserver(([e]) => { wide.value = (e?.contentRect.width ?? 0) >= 560 })
+  if (root.value) ro.observe(root.value)
 })
 onBeforeUnmount(() => ro?.disconnect())
-const SHOWN = (n) => (n >= 6 ? (wide.value ? 5 : 6) : n >= 3 ? 3 : n)
-const viewer = ref(null) // { trip, index } – index null = the grid of all photos
-const open = (trip, index = null) => { viewer.value = { trip, index } }
+const SHOWN = (n: number) => (n >= 6 ? (wide.value ? 5 : 6) : n >= 3 ? 3 : n)
+const viewer = ref<{ trip: Trip; index: number | null } | null>(null) // index null = the grid of all photos
+const open = (trip: Trip, index: number | null = null) => { viewer.value = { trip, index } }
 </script>
 
 <template>

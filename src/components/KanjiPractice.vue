@@ -1,25 +1,27 @@
-<script setup>
+<script setup lang="ts">
+import { errorMessage } from '../composables/useAdmin'
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { Play, Volume2, RotateCcw, ArrowUpRight } from 'lucide-vue-next'
 import { fetchWords, stateOf } from '../composables/useJapanese'
-import { kanjiFromWords, kanjiInfo, strokes, session, gradeKanji, srsStats } from '../composables/useKanji'
+import { kanjiFromWords, kanjiInfo, strokes, session, gradeKanji, srsStats, type KanjiEntry, type KanjiInfo, type KanjiGrade } from '../composables/useKanji'
 import { speak, canSpeak } from '../lib/speak'
+import { targetEl } from '../lib/dom'
 
 // Kanji cards from the kanji in my own words: the kanji → (space) meaning, on/kun readings, the
 // stroke order drawn out, and my words that use it → how well did I know it. The schedule lives in
 // this browser (spaced repetition: again / hard / good / easy).
-const all = ref([])
-const queue = ref([])
+const all = ref<KanjiEntry[]>([])
+const queue = ref<KanjiEntry[]>([])
 const i = ref(0)
 const revealed = ref(false)
-const info = ref(null)
-const paths = ref([])
-const parts = ref([]) // what the kanji is built from, with a meaning each
+const info = ref<KanjiInfo | null>(null)
+const paths = ref<string[]>([])
+const parts = ref<{ p: string; m: string }[]>([]) // what the kanji is built from, with a meaning each
 const drawn = ref(0) // strokes shown so far (animation)
 const error = ref('')
 const loading = ref(true)
 const fresh = ref(10)
-const stats = ref(null)
+const stats = ref<ReturnType<typeof srsStats> | null>(null)
 
 const card = computed(() => queue.value[i.value] || null)
 const done = computed(() => !loading.value && !card.value)
@@ -35,7 +37,7 @@ async function load() {
     revealed.value = false
     stats.value = srsStats(all.value)
   } catch (e) {
-    error.value = e.message
+    error.value = errorMessage(e)
   } finally {
     loading.value = false
   }
@@ -43,7 +45,7 @@ async function load() {
 onMounted(load)
 
 // details + stroke order for the current card
-let timer = 0
+let timer: ReturnType<typeof setInterval> | undefined
 watch(card, async (c) => {
   info.value = null
   paths.value = []
@@ -74,7 +76,7 @@ function reveal() {
   revealed.value = true
   animate()
 }
-function grade(g) {
+function grade(g: KanjiGrade) {
   if (!card.value || !revealed.value) return
   gradeKanji(card.value.kanji, g)
   if (g === 'again') queue.value.push(card.value) // once more this session
@@ -82,14 +84,15 @@ function grade(g) {
   revealed.value = false
   stats.value = srsStats(all.value)
 }
-function onKey(e) {
-  if (e.target.closest?.('input, textarea, select')) return
+function onKey(e: KeyboardEvent) {
+  if (targetEl(e).closest('input, textarea, select')) return
   if (e.key === ' ' && !revealed.value) { e.preventDefault(); reveal() }
-  else if (revealed.value && ['1', '2', '3', '4'].includes(e.key)) grade(['again', 'hard', 'good', 'easy'][+e.key - 1])
+  else if (revealed.value && ['1', '2', '3', '4'].includes(e.key)) grade(GRADE_KEYS[+e.key - 1] ?? 'again')
 }
 onMounted(() => window.addEventListener('keydown', onKey))
 onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); clearInterval(timer) })
-const GR = [['again', 'Igjen', '1'], ['hard', 'Vanskelig', '2'], ['good', 'Greit', '3'], ['easy', 'Lett', '4']]
+const GRADE_KEYS: KanjiGrade[] = ['again', 'hard', 'good', 'easy']
+const GR: [KanjiGrade, string, string][] = [['again', 'Igjen', '1'], ['hard', 'Vanskelig', '2'], ['good', 'Greit', '3'], ['easy', 'Lett', '4']]
 </script>
 
 <template>
@@ -119,7 +122,7 @@ const GR = [['again', 'Igjen', '1'], ['hard', 'Vanskelig', '2'], ['good', 'Greit
           </svg>
           <span v-else class="char">{{ card.kanji }}</span>
         </div>
-        <p v-if="!revealed" class="hint">Hva betyr den, og hvordan leses den? <kbd>mellomrom</kbd> eller trykk for svaret</p>
+        <p v-if="!revealed" class="hint">Hva betyr den, og hvordan leses den? Trykk for svaret.</p>
 
         <div v-else class="kback" @click.stop>
           <div class="keyword" lang="en">{{ info ? info.keyword : '…' }}</div>
@@ -139,12 +142,12 @@ const GR = [['again', 'Igjen', '1'], ['hard', 'Vanskelig', '2'], ['good', 'Greit
           </div>
           <ul class="words">
             <li v-for="w in card.words" :key="w.vid + ':' + w.sid">
-              <b lang="ja">{{ w.spelling }}</b><small lang="ja">{{ w.reading }}</small><span>{{ w.meaning }}</span>
+              <b lang="ja">{{ w.spelling }}</b><small lang="ja">{{ w.reading }}</small><span translate="no">{{ w.meaning }}</span>
               <button v-if="canSpeak()" class="say" aria-label="Hør ordet" @click="speak(w.reading)"><Volume2 :size="14" /></button>
             </li>
           </ul>
           <div class="grades">
-            <button v-for="[g, label, key] in GR" :key="g" :class="g" @click="grade(g)">{{ label }}<kbd>{{ key }}</kbd></button>
+            <button v-for="[g, label] in GR" :key="g" :class="g" @click="grade(g)">{{ label }}</button>
           </div>
         </div>
       </article>
@@ -168,7 +171,6 @@ const GR = [['again', 'Igjen', '1'], ['hard', 'Vanskelig', '2'], ['good', 'Greit
 .strokes path.on { opacity: 1; }
 .strokes path.last { stroke: #c0392b; }
 .hint { margin: 0; font-size: 0.82rem; color: #666; text-align: center; }
-kbd { padding: 1px 6px; border-radius: 5px; border: 1px solid rgba(0, 0, 0, 0.15); font: 600 0.7rem system-ui, sans-serif; background: #fff; }
 .kback { display: grid; gap: 8px; width: 100%; cursor: default; }
 .keyword { text-align: center; font: 800 1.5rem system-ui, sans-serif; text-transform: lowercase; }
 .meanings { text-align: center; font: 500 0.88rem system-ui, sans-serif; color: #555; }
@@ -188,7 +190,6 @@ a.redraw { text-decoration: none; }
 .say { display: grid; place-items: center; width: 26px; height: 26px; border: 0; border-radius: 50%; background: rgba(155, 44, 34, 0.1); color: #9b2c22; cursor: pointer; align-self: center; }
 .grades { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 4px; }
 .grades button { display: grid; justify-items: center; gap: 3px; padding: 9px 4px; border: 0; border-radius: 12px; color: #fff; font: 700 0.82rem system-ui, sans-serif; cursor: pointer; }
-.grades kbd { background: rgba(255, 255, 255, 0.25); border: 0; color: #fff; }
 .grades .again { background: #d24b4b; }
 .grades .hard { background: #c98a27; }
 .grades .good { background: #3aa76d; }

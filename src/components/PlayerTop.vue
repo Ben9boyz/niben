@@ -1,13 +1,17 @@
-<script setup>
+<script setup lang="ts">
 import BrandLogo from './BrandLogo.vue'
+import LangSwitch from './LangSwitch.vue'
+import ThemeSwitch from './ThemeSwitch.vue'
+import AdminAvatar from './AdminAvatar.vue'
+import { Keyboard } from 'lucide-vue-next'
+import { shortcuts } from '../composables/useShortcuts'
 import { ref } from 'vue'
-import { Box, LayoutGrid, Sun, Moon, LogIn, ArrowUpRight } from 'lucide-vue-next'
-import { mode, toggleMode } from '../composables/useMode'
+import { Sun, Moon, LogIn, ArrowUpRight } from 'lucide-vue-next'
 import { useTheme } from '../composables/useTheme'
-import { admin, checkLogin, login } from '../composables/useAdmin'
+import { admin, checkLogin, login, errorMessage } from '../composables/useAdmin'
 import { leavePlayer } from '../composables/useShell'
 
-// Top bar of the music player: name, 3D / flat, light / dark, and logging in (needed to play).
+// Top bar of the music player: name, light / dark, and logging in (needed to play).
 const { theme, toggle } = useTheme()
 checkLogin()
 const inApp = !!window.nibenApp
@@ -16,7 +20,6 @@ const pw = ref('')
 const err = ref('')
 const busy = ref(false)
 
-function setMode(m) { if (mode.value !== m) toggleMode() }
 async function doLogin() {
   busy.value = true
   err.value = ''
@@ -25,7 +28,7 @@ async function doLogin() {
     pw.value = ''
     showLogin.value = false
   } catch (e) {
-    err.value = e.message
+    err.value = errorMessage(e)
   } finally {
     busy.value = false
   }
@@ -40,11 +43,6 @@ function toSite() {
   <header class="ptop">
     <div class="brand glass"><BrandLogo mark class="mark" /><b>musikk</b></div>
 
-    <div class="seg glass" role="tablist" aria-label="Visning">
-      <button role="tab" :aria-selected="mode === 'rom'" :class="{ on: mode === 'rom' }" @click="setMode('rom')"><Box :size="15" />3D</button>
-      <button role="tab" :aria-selected="mode !== 'rom'" :class="{ on: mode !== 'rom' }" @click="setMode('enkel')"><LayoutGrid :size="15" />Flat</button>
-    </div>
-
     <span class="spacer"></span>
 
     <div v-if="!admin.loggedIn && admin.checked" class="login-wrap">
@@ -56,11 +54,11 @@ function toSite() {
         <button class="btn primary small" :disabled="busy || !pw">{{ busy ? 'Logger inn …' : 'Logg inn' }}</button>
       </form>
     </div>
+    <span v-if="admin.loggedIn" class="icon glass avatar"><AdminAvatar /></span>
+    <LangSwitch class="plang" />
+    <button class="icon glass" title="Hurtigtaster (?)" aria-label="Hurtigtaster" @click="shortcuts.open = true"><Keyboard :size="17" /></button>
     <button v-if="!inApp" class="icon glass" title="Til niben.no" aria-label="Til niben.no" @click="toSite"><ArrowUpRight :size="17" /></button>
-    <button class="icon glass" :title="theme === 'dark' ? 'Lyst tema' : 'Mørkt tema'" aria-label="Bytt tema" @click="toggle">
-      <Sun v-if="theme === 'dark'" :size="17" />
-      <Moon v-else :size="17" />
-    </button>
+    <ThemeSwitch class="icon" />
   </header>
 </template>
 
@@ -81,6 +79,9 @@ function toSite() {
 .login { position: absolute; top: calc(100% + 8px); right: 0; width: 260px; display: grid; gap: 8px; padding: 14px; border-radius: 16px; background: var(--bg); }
 .login b { font-size: 0.85rem; }
 .login input { padding: 9px 12px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--glass-strong); color: var(--text); font: 500 0.9rem var(--font); }
+.avatar { padding: 0; overflow: visible; }
 .err { margin: 0; font-size: 0.78rem; color: #d24b4b; }
 @media (max-width: 600px) { .brand b { display: none; } .brand { padding: 0 6px; } .seg button { padding: 8px 10px; } }
+.plang :deep(.langbtn) { width: 44px; height: 44px; border-radius: 50%; }
+.plang :deep(.menu) { left: auto; right: 16px; top: 72px; bottom: auto; }
 </style>

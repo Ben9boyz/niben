@@ -1,32 +1,32 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import { allCountries, searchCountries, norskNavn } from '../three/countries'
+import { allCountries, searchCountries, norskNavn, type Country } from '../three/countries'
 
-const props = defineProps({
-  modelValue: { type: String, default: null }, // atlas (English) name
-  placeholder: { type: String, default: 'Søk etter land …' },
-  highlight: { type: Object, default: null }, // Set of atlas names to mark (e.g. visited)
-  clearOnPick: { type: Boolean, default: false },
-})
-const emit = defineEmits(['update:modelValue', 'pick'])
+const props = withDefaults(defineProps<{
+  modelValue?: string | null // atlas (English) name
+  placeholder?: string
+  highlight?: Set<string> | null // atlas names to mark (e.g. visited)
+  clearOnPick?: boolean
+}>(), { modelValue: null, placeholder: 'Søk etter land …', highlight: null, clearOnPick: false })
+const emit = defineEmits<{ 'update:modelValue': [en: string]; pick: [en: string] }>()
 
 const all = allCountries()
 const q = ref(props.modelValue ? norskNavn(props.modelValue) : '')
 const open = ref(false)
 const active = ref(0)
-const list = ref(null)
+const list = ref<HTMLElement | null>(null)
 
 const results = computed(() => searchCountries(q.value, all).slice(0, 60))
 watch(() => props.modelValue, (v) => { if (!open.value) q.value = v ? norskNavn(v) : '' })
 watch(q, () => (active.value = 0))
 
-function pick(c) {
+function pick(c: Country) {
   emit('update:modelValue', c.en)
   emit('pick', c.en)
   q.value = props.clearOnPick ? '' : c.no
   open.value = false
 }
-function onKey(e) {
+function onKey(e: KeyboardEvent) {
   if (!open.value && (e.key === 'ArrowDown' || e.key === 'Enter')) { open.value = true; return }
   if (e.key === 'ArrowDown') { active.value = Math.min(results.value.length - 1, active.value + 1); scroll() ; e.preventDefault() }
   else if (e.key === 'ArrowUp') { active.value = Math.max(0, active.value - 1); scroll(); e.preventDefault() }

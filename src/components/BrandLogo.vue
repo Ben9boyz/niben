@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 // The niben logo: N = a book (the letter is the cover, pages and back cover behind it), i = a plain i
 // with a star for its dot, b = a guitar (neck = the tall stroke, body = the belly), e = the guitar
 // cable writing it on its way to the amp, n = a piece of that cable in the amp.

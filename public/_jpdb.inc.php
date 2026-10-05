@@ -129,6 +129,8 @@ function jp_anime(array $decks): array {
         $out[] = ['title' => $t, 'parts' => count($s['decks']), 'known' => round($s['k'] / $s['w'], 1), 'learning' => round($s['l'] / $s['w'], 1)] + $al;
     }
     usort($out, fn($a, $b) => $b['known'] <=> $a['known']);
+    // an anime I can follow (nearly every word known): a milestone, once
+    if (function_exists('ms_add')) foreach ($out as $a) if (($a['known'] ?? 0) >= 80) ms_add('anime:' . $a['title'], 'anime', (string)($a['en'] ?? $a['title']), 'Du forstår anime-en – ' . round($a['known']) . ' %', $a['cover'] ?? null);
     return $out;
 }
 
@@ -138,6 +140,11 @@ function jp_handle(string $action, bool $post): void {
     if (!jp_config()) out(['configured' => false]);
 
     switch ($action) {
+    case 'jpdb_history': {
+        // the daily snapshots: { d: 'YYYY-MM-DD', known, learning, new, due } – for the vocabulary curve
+        $l = json_decode(kv_get('jp_snaps') ?: '[]', true);
+        out(['points' => is_array($l) ? $l : []]);
+    }
     case 'jpdb_public': {
         // statistics + word of the day for everyone (cached for 10 minutes)
         $data = sp_cached('jp_public_v2', 600, function () {
@@ -159,6 +166,7 @@ function jp_handle(string $action, bool $post): void {
             $word = $pool ? $pool[crc32(date('Y-m-d')) % count($pool)] : null;
             if ($word) unset($word['due']);
             $decks = array_map(fn($d) => array_diff_key($d, ['occ' => 1, 'builtin' => 1]), $all['decks']);
+            ex_snap('jp_snaps', ['known' => $count['known'], 'learning' => $count['learning'], 'new' => $count['new'], 'due' => $count['due']]); // one point a day (kept ~2 years): the vocabulary curve
             return ['decks' => $decks, 'anime' => jp_anime($all['decks']), 'count' => $count, 'word' => $word, 'at' => time()];
         });
         if (!$data) fail('Fikk ikke kontakt med jpdb.', 502);
@@ -191,6 +199,7 @@ function jp_handle(string $action, bool $post): void {
         [$s, $j] = jp_api('review', ['vid' => $vid, 'sid' => $sid, 'grade' => $grade]);
         if ($s !== 200) fail('jpdb svarte: ' . ($j['error_message'] ?? $s), 502);
         kv_del('jp_public_v2');
+        ex_practice_hit(); // a card graded today: the practice calendar
         // the card's new state
         [$ls, $lj] = jp_api('lookup-vocabulary', ['list' => [[$vid, $sid]], 'fields' => ['card_state', 'due_at']]);
         $info = $lj['vocabulary_info'][0] ?? null;
@@ -209,7 +218,7 @@ function jp_handle(string $action, bool $post): void {
         }
         if ($text === '') fail('Skriv eller lim inn en japansk tekst.');
         if (mb_strlen($text) > $max) fail("Teksten er for lang (maks $max tegn).");
-        $data = sp_cached('jp_parse2_' . md5($text), 600, function () use ($text) {
+        $data = sp_cached('jpp_' . md5($text), 600, function () use ($text) {
             [$s, $j] = jp_api('parse', [
                 'text' => $text,
                 'position_length_encoding' => 'utf16', // positions that match JavaScript strings

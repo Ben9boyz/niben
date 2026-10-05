@@ -1,24 +1,27 @@
-<script setup>
+<script setup lang="ts">
 import { tick as metronomeTick } from '../lib/strum'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Play, Square, ArrowUpRight, Search, Trophy, ArrowLeftRight, BookOpen } from 'lucide-vue-next'
 import ChordDiagram from './ChordDiagram.vue'
+import SegSwitch from './SegSwitch.vue'
 import ChordSheet from './ChordSheet.vue'
 import { CHORDS, GROUPS, PAIRS, parseProgression, findChord } from '../lib/chords'
-import { useData } from '../composables/useData'
-import { room } from '../composables/useRoom'
+import { targetEl } from '../lib/dom'
+import { useData, type Song } from '../composables/useData'
+import { room, type ChordMode } from '../composables/useRoom'
 
 // Chord practice in the practice corner: one-minute changes, a progression with a metronome,
 // my songs (with links to Ultimate Guitar) and a chord library.
 const data = useData()
-const mode = computed({ get: () => room.chordMode, set: (v) => (room.chordMode = v) })
+const mode = computed({ get: () => room.chordMode, set: (v: ChordMode) => (room.chordMode = v) })
 const songs = computed(() => data.sanger || [])
 const names = Object.keys(CHORDS)
-const sheetId = ref(null) // the song whose chord sheet is open
+const MODES: { id: ChordMode; label: string }[] = [{ id: 'bytte', label: 'Bytte' }, { id: 'progresjon', label: 'Progresjon' }, { id: 'sanger', label: 'Sanger' }, { id: 'grep', label: 'Grep' }]
+const sheetId = ref<number | null>(null) // the song whose chord sheet is open
 const sheetSong = computed(() => songs.value.find((x) => x.id === sheetId.value) || null)
 
 // the metronome click is shared with the chord sheet (lib/strum)
-const click = (accent) => metronomeTick(accent)
+const click = (accent: boolean) => metronomeTick(accent)
 
 // ── one-minute changes ──
 const BEST_KEY = 'niben-chord-best'
@@ -28,8 +31,8 @@ const changes = ref(0)
 const left = ref(60)
 const running = ref(false)
 const best = ref(readBest())
-let tick = 0
-function readBest() { try { return JSON.parse(localStorage.getItem(BEST_KEY) || '{}') } catch { return {} } }
+let tick: ReturnType<typeof setInterval> | undefined
+function readBest(): Record<string, number> { try { return JSON.parse(localStorage.getItem(BEST_KEY) || '{}') as Record<string, number> } catch { return {} } }
 const pairKey = computed(() => [pairA.value, pairB.value].sort().join('↔'))
 const bestHere = computed(() => best.value[pairKey.value] || 0)
 const newRecord = ref(false)
@@ -57,7 +60,7 @@ function finishChanges() {
   }
 }
 function countChange() { if (running.value) changes.value++ }
-function pickPair(p) { if (!running.value) { pairA.value = p[0]; pairB.value = p[1] } }
+function pickPair(p: [string, string]) { if (!running.value) { pairA.value = p[0]; pairB.value = p[1] } }
 
 // ── progression with a metronome ──
 const progText = ref('G D Em C')
@@ -67,7 +70,7 @@ const capo = ref(0)
 const playing = ref(false)
 const step = ref(0) // which chord
 const beat = ref(0) // beat within the chord
-let metro = 0
+let metro: ReturnType<typeof setInterval> | undefined
 const prog = computed(() => parseProgression(progText.value))
 const current = computed(() => prog.value[step.value % Math.max(1, prog.value.length)])
 const next = computed(() => prog.value[(step.value + 1) % Math.max(1, prog.value.length)])
@@ -86,14 +89,14 @@ function startProg() {
   }, 60000 / bpm.value)
 }
 function stopProg() { clearInterval(metro); playing.value = false }
-function practiseSong(s) {
+function practiseSong(s: Song) {
   progText.value = s.akkorder
   if (s.bpm) bpm.value = s.bpm
   if (s.slag) beats.value = s.slag
   capo.value = s.capo || 0
   mode.value = 'progresjon'
 }
-const ugLink = (s) => s.ug || `https://www.ultimate-guitar.com/search.php?search_type=title&value=${encodeURIComponent(`${s.artist || ''} ${s.tittel}`.trim())}`
+const ugLink = (s: Song) => s.ug || `https://www.ultimate-guitar.com/search.php?search_type=title&value=${encodeURIComponent(`${s.artist || ''} ${s.tittel}`.trim())}`
 
 // ── library ──
 const q = ref('')
@@ -103,8 +106,8 @@ const groups = computed(() => {
 })
 
 // space counts a change / starts and stops the metronome
-function onKey(e) {
-  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return
+function onKey(e: KeyboardEvent) {
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(targetEl(e).tagName)) return
   if (e.code !== 'Space') return
   e.preventDefault()
   if (mode.value === 'bytte') running.value ? countChange() : startChanges()
@@ -116,13 +119,11 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); clearInter
 
 <template>
   <div class="cp">
-    <nav class="sub" role="tablist">
-      <button v-for="m in [['bytte', 'Bytte'], ['progresjon', 'Progresjon'], ['sanger', 'Sanger'], ['grep', 'Grep']]" :key="m[0]" role="tab" :aria-selected="mode === m[0]" :class="{ on: mode === m[0] }" @click="mode = m[0]">{{ m[1] }}</button>
-    </nav>
+    <SegSwitch v-model="mode" :items="MODES" small stretch label="Akkordøving" />
 
     <!-- one-minute changes -->
     <section v-if="mode === 'bytte'" class="pane">
-      <p class="hint">Bytt mellom to akkorder så mange ganger du klarer på ett minutt. Trykk på knappen (eller mellomrom) for hvert bytte.</p>
+      <p class="hint">Bytt mellom to akkorder så mange ganger du klarer på ett minutt. Trykk på knappen for hvert bytte.</p>
       <div class="pair">
         <select v-model="pairA" :disabled="running" aria-label="Første akkord"><option v-for="n in names" :key="n">{{ n }}</option></select>
         <ChordDiagram :name="pairA" :size="110" />
@@ -130,7 +131,7 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); clearInter
         <ChordDiagram :name="pairB" :size="110" />
         <select v-model="pairB" :disabled="running" aria-label="Andre akkord"><option v-for="n in names" :key="n">{{ n }}</option></select>
       </div>
-      <div class="quick">
+      <div class="quick pills">
         <button v-for="p in PAIRS" :key="p.join()" :class="{ on: p[0] === pairA && p[1] === pairB }" :disabled="running" @click="pickPair(p)">{{ p[0] }}–{{ p[1] }}</button>
       </div>
       <button class="counter" :class="{ running }" @click="running ? countChange() : startChanges()">
@@ -171,8 +172,8 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); clearInter
       <div v-if="!songs.length" class="empty">Ingen sanger ennå – legg dem til under «Sanger» på admin-siden.</div>
       <article v-for="s in songs" :key="s.id" class="song">
         <div class="sm">
-          <b>{{ s.tittel }}</b>
-          <small>{{ s.artist }}<template v-if="s.capo"> · capo {{ s.capo }}</template><template v-if="s.bpm"> · {{ s.bpm }} BPM</template></small>
+          <b translate="no">{{ s.tittel }}</b>
+          <small translate="no">{{ s.artist }}<template v-if="s.capo"> · capo {{ s.capo }}</template><template v-if="s.bpm"> · {{ s.bpm }} BPM</template></small>
           <div class="chips small"><span v-for="(c, i) in parseProgression(s.akkorder)" :key="i">{{ c }}</span></div>
           <p v-if="s.notat" class="note">{{ s.notat }}</p>
         </div>
@@ -197,17 +198,12 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); clearInter
 
 <style scoped>
 .cp { display: grid; gap: 14px; }
-.sub { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--glass-strong); border: 1px solid var(--glass-border); justify-self: center; }
-.sub button { padding: 7px 14px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: 600 0.85rem var(--font); cursor: pointer; }
-.sub button.on { background: var(--accent); color: #fff; }
 .pane { display: grid; gap: 14px; justify-items: center; }
 .hint { margin: 0; font-size: 0.85rem; color: var(--text-2); text-align: center; max-width: 46ch; }
 .pair { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .pair select, .controls select { padding: 6px 8px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--glass-strong); color: var(--text); font: 600 0.9rem var(--font); }
 .arrow { color: var(--text-3); }
 .quick { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
-.quick button { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--glass-border); background: transparent; color: var(--text-2); font: 600 0.75rem var(--font); cursor: pointer; }
-.quick button.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
 .counter { width: 180px; height: 180px; border-radius: 50%; border: 0; display: grid; place-items: center; align-content: center; gap: 4px; background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: #fff; cursor: pointer; box-shadow: 0 14px 36px var(--accent-glow); transition: transform 0.12s; user-select: none; }
 .counter:active { transform: scale(0.96); }
 .counter b { font-size: 3.2rem; line-height: 1; font-variant-numeric: tabular-nums; }

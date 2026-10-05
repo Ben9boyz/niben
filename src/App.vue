@@ -1,25 +1,34 @@
-<script setup>
+<script setup lang="ts">
 import NavBar from './components/NavBar.vue'
 import MusicToast from './components/MusicToast.vue'
 import { useMediaSession } from './composables/useMediaSession'
 import { defineAsyncComponent } from 'vue'
 import SubTabs from './components/SubTabs.vue'
+import DropTray from './components/DropTray.vue'
+import GlobalMini from './components/GlobalMini.vue'
+import ShortcutsHelp from './components/ShortcutsHelp.vue'
+import GraphicsSettings from './components/GraphicsSettings.vue'
+import LangSuggest from './components/LangSuggest.vue'
+import ContextMenu from './components/ContextMenu.vue'
+import NewPlaylistDialog from './components/NewPlaylistDialog.vue'
+import WeatherFx from './components/WeatherFx.vue'
+import { useRoute } from 'vue-router'
 // three.js and the whole room are only fetched when the 3D version is used
 const RoomLayout = defineAsyncComponent(() => import('./components/RoomLayout.vue'))
 import { useData } from './composables/useData'
 import { mode } from './composables/useMode'
 import { shell } from './composables/useShell'
 import PlayerTop from './components/PlayerTop.vue'
-import PlayerBar from './components/PlayerBar.vue'
 
 const data = useData()
 useMediaSession()
+const route = useRoute()
 const toTop = () => window.scrollTo(0, 0)
 
 </script>
 
 <template>
-  <RoomLayout v-if="mode === 'rom'" />
+  <RoomLayout v-if="mode === 'rom' && shell !== 'player'" />
 
   <template v-else>
     <div class="backdrop" aria-hidden="true">
@@ -27,6 +36,7 @@ const toTop = () => window.scrollTo(0, 0)
       <div class="blob b2"></div>
       <div class="blob b3"></div>
     </div>
+    <WeatherFx />
     <main>
       <SubTabs class="flat-tabs" />
       <router-view v-slot="{ route: r }">
@@ -38,10 +48,16 @@ const toTop = () => window.scrollTo(0, 0)
   </template>
 
   <MusicToast />
+  <DropTray />
+  <ShortcutsHelp />
+  <GraphicsSettings />
+  <LangSuggest />
+  <ContextMenu />
+  <NewPlaylistDialog />
+  <GlobalMini v-if="mode !== 'rom' || shell === 'player'" :show="route.name !== 'lytte' && route.name !== 'admin'" />
   <NavBar v-if="shell !== 'player'" />
   <template v-else>
     <PlayerTop />
-    <PlayerBar />
   </template>
   <p v-if="data.error" class="data-error glass">Kunne ikke laste innholdet (data.json): {{ data.error }}</p>
 </template>

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import AboutContent from '../components/AboutContent.vue'
 </script>
 

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { Play, Pause } from 'lucide-vue-next'
 import { spotify, progressMs, control } from '../composables/useSpotify'
@@ -9,7 +9,7 @@ import LockControl from './LockControl.vue'
 // the panel back.
 const emit = defineEmits(['open'])
 const now = computed(() => spotify.now)
-const pct = computed(() => (now.value?.duration_ms ? (progressMs.value / now.value.duration_ms) * 100 : 0))
+const pct = computed(() => (now.value?.duration_ms ? (progressMs.value / now.value?.duration_ms) * 100 : 0))
 const toggle = () => control(now.value?.playing ? 'pause' : 'resume')
 </script>
 
