@@ -122,7 +122,7 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); clearInter
 
     <!-- one-minute changes -->
     <section v-if="mode === 'bytte'" class="pane">
-      <p class="hint">Bytt mellom to akkorder så mange ganger du klarer på ett minutt. Trykk på knappen (eller mellomrom) for hvert bytte.</p>
+      <p class="hint">Bytt mellom to akkorder så mange ganger du klarer på ett minutt. Trykk på knappen for hvert bytte.</p>
       <div class="pair">
         <select v-model="pairA" :disabled="running" aria-label="Første akkord"><option v-for="n in names" :key="n">{{ n }}</option></select>
         <ChordDiagram :name="pairA" :size="110" />

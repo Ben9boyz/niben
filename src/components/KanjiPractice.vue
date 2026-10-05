@@ -119,7 +119,7 @@ const GR = [['again', 'Igjen', '1'], ['hard', 'Vanskelig', '2'], ['good', 'Greit
           </svg>
           <span v-else class="char">{{ card.kanji }}</span>
         </div>
-        <p v-if="!revealed" class="hint">Hva betyr den, og hvordan leses den? <kbd>mellomrom</kbd> eller trykk for svaret</p>
+        <p v-if="!revealed" class="hint">Hva betyr den, og hvordan leses den? Trykk for svaret.</p>
 
         <div v-else class="kback" @click.stop>
           <div class="keyword" lang="en">{{ info ? info.keyword : '…' }}</div>
@@ -144,7 +144,7 @@ const GR = [['again', 'Igjen', '1'], ['hard', 'Vanskelig', '2'], ['good', 'Greit
             </li>
           </ul>
           <div class="grades">
-            <button v-for="[g, label, key] in GR" :key="g" :class="g" @click="grade(g)">{{ label }}<kbd>{{ key }}</kbd></button>
+            <button v-for="[g, label] in GR" :key="g" :class="g" @click="grade(g)">{{ label }}</button>
           </div>
         </div>
       </article>
@@ -168,7 +168,6 @@ const GR = [['again', 'Igjen', '1'], ['hard', 'Vanskelig', '2'], ['good', 'Greit
 .strokes path.on { opacity: 1; }
 .strokes path.last { stroke: #c0392b; }
 .hint { margin: 0; font-size: 0.82rem; color: #666; text-align: center; }
-kbd { padding: 1px 6px; border-radius: 5px; border: 1px solid rgba(0, 0, 0, 0.15); font: 600 0.7rem system-ui, sans-serif; background: #fff; }
 .kback { display: grid; gap: 8px; width: 100%; cursor: default; }
 .keyword { text-align: center; font: 800 1.5rem system-ui, sans-serif; text-transform: lowercase; }
 .meanings { text-align: center; font: 500 0.88rem system-ui, sans-serif; color: #555; }
@@ -188,7 +187,6 @@ a.redraw { text-decoration: none; }
 .say { display: grid; place-items: center; width: 26px; height: 26px; border: 0; border-radius: 50%; background: rgba(155, 44, 34, 0.1); color: #9b2c22; cursor: pointer; align-self: center; }
 .grades { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 4px; }
 .grades button { display: grid; justify-items: center; gap: 3px; padding: 9px 4px; border: 0; border-radius: 12px; color: #fff; font: 700 0.82rem system-ui, sans-serif; cursor: pointer; }
-.grades kbd { background: rgba(255, 255, 255, 0.25); border: 0; color: #fff; }
 .grades .again { background: #d24b4b; }
 .grades .hard { background: #c98a27; }
 .grades .good { background: #3aa76d; }

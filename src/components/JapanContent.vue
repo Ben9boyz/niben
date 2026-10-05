@@ -12,6 +12,7 @@ import JapanReader from './JapanReader.vue'
 import SegSwitch from './SegSwitch.vue'
 import JapanWords from './JapanWords.vue'
 import KanjiPractice from './KanjiPractice.vue'
+import Fold from './Fold.vue'
 
 // The Japanese corner's content (3D panel and plain page): progress from jpdb, the word of the day,
 // and – for the admin – flashcard practice.
@@ -25,6 +26,10 @@ const TABS = [
   { id: 'ord', label: 'Ordliste', icon: BookA },
   { id: 'kanji', label: 'Kanji', icon: 'M5 4h14M12 4v16M7 9h10l-2 5H9zM4 20h16' },
 ]
+// phones: the overview shows the word, the button and the numbers – the rest (chart, calendar, anime, decks) folds away
+const phoneMq = window.matchMedia('(max-width: 720px)')
+const phone = ref(phoneMq.matches)
+phoneMq.addEventListener('change', () => { phone.value = phoneMq.matches })
 const practicing = computed({ get: () => room.jpPractice, set: (v) => (room.jpPractice = v) })
 const total = computed(() => jp.count.due + jp.count.learning + jp.count.known + jp.count.new)
 const word = computed(() => jp.word)
@@ -88,14 +93,15 @@ watch(() => room.jpAnime, async (i) => {
           <i class="learning" :style="{ width: `${((jp.count.learning + jp.count.due) / total) * 100}%` }"></i>
         </div>
 
-        <VocabChart />
+        <Fold title="Ordforråd over tid" :fold="phone"><VocabChart /></Fold>
 
-        <PracticeCalendar />
+        <Fold title="Øvingskalender" :hint="'' " :fold="phone"><PracticeCalendar /></Fold>
 
         </div>
         <div class="ov-col">
-        <section v-if="jp.anime.length" ref="animeEl" class="anime">
-          <b class="label-caps"><Tv :size="14" /> Anime <small>{{ ready.length ? `${ready.length} klar til å se` : `klar ved ${ANIME_READY} % kjent` }}</small></b>
+        <Fold v-if="jp.anime.length" title="Anime" :hint="ready.length ? `${ready.length} klar til å se` : ''" :fold="phone">
+        <section ref="animeEl" class="anime">
+          <b v-if="!phone" class="label-caps"><Tv :size="14" /> Anime <small>{{ ready.length ? `${ready.length} klar til å se` : `klar ved ${ANIME_READY} % kjent` }}</small></b>
           <div v-for="(a, i) in jp.anime" :key="a.anilist" :data-i="i" class="show" :class="{ on: room.jpAnime === i, ready: a.known >= ANIME_READY }" @click="pickAnime(i)">
             <img v-if="a.cover" :src="`${a.cover}?cors`" alt="" loading="lazy" crossorigin="anonymous" :style="{ background: a.color || undefined }" />
             <div class="si">
@@ -110,19 +116,22 @@ watch(() => room.jpAnime, async (i) => {
             </div>
           </div>
         </section>
+        </Fold>
 
-        <section v-if="jp.decks.length" class="decks">
-          <b class="label-caps">Kortstokker</b>
+        <Fold v-if="jp.decks.length" title="Kortstokker" :hint="`${jp.decks.length}`" :fold="phone">
+        <section class="decks">
+          <b v-if="!phone" class="label-caps">Kortstokker</b>
           <div v-for="d in jp.decks" :key="d.id" class="deck">
             <div class="dn"><span translate="no">{{ d.name }}</span><small>{{ d.words }} ord</small></div>
             <div class="dbar"><i class="known" :style="{ width: `${d.known}%` }"></i><i class="learning" :style="{ width: `${Math.max(0, d.learning - d.known)}%` }"></i></div>
             <small class="dp">{{ d.known }} % kjent · {{ d.learning }} % påbegynt</small>
           </div>
         </section>
+        </Fold>
         </div>
         </div>
         </template>
-        <p class="src">Ordene og fremgangen kommer fra <a href="https://jpdb.io" target="_blank" rel="noopener">jpdb.io</a>.</p>
+        <p v-if="!phone || view === 'home'" class="src">Ordene og fremgangen kommer fra <a href="https://jpdb.io" target="_blank" rel="noopener">jpdb.io</a>.</p>
       </template>
     </template>
   </div>
@@ -131,7 +140,7 @@ watch(() => room.jpAnime, async (i) => {
 <style scoped>
 /* wide: two columns – today's word, practice and numbers | anime and decks */
 .ov { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
-.ov-col { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.ov-col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-content: start; min-width: 0; }
 @container (min-width: 860px) { .ov { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; } }
 .jpc { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .wotd {
@@ -162,7 +171,7 @@ watch(() => room.jpAnime, async (i) => {
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .st { display: flex; flex-direction: column; align-items: center; padding: 10px 4px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--glass-border); }
 .st b { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
-.st span { font-size: 0.7rem; color: var(--text-3); }
+.st span { font-size: 0.7rem; color: var(--text-3); text-align: center; }
 .st.due b { color: #c0392b; }
 .st.learning b { color: #c9a227; }
 .st.known b { color: #3aa76d; }
@@ -170,13 +179,13 @@ watch(() => room.jpAnime, async (i) => {
 .bar, .dbar { display: flex; height: 6px; border-radius: 6px; background: var(--accent-soft); overflow: hidden; }
 .bar .known, .dbar .known { background: #3aa76d; }
 .bar .learning, .dbar .learning { background: #c9a227; }
-.decks { display: grid; gap: 10px; }
+.decks { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; }
 .deck { display: grid; gap: 5px; padding: 12px 14px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--glass-border); }
 .dn { display: flex; justify-content: space-between; gap: 10px; font-size: 0.88rem; font-weight: 600; }
 .dn span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dn small { flex: none; color: var(--text-3); font-weight: 500; }
 .dp { font-size: 0.72rem; color: var(--text-3); }
-.anime { display: grid; gap: 8px; }
+.anime { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
 .anime > .label-caps { display: flex; align-items: center; gap: 6px; }
 .anime > .label-caps small { margin-left: auto; font-size: 0.7rem; font-weight: 600; letter-spacing: 0; text-transform: none; }
 .show { display: flex; gap: 12px; padding: 10px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--glass-border); cursor: pointer; transition: border-color 0.2s, transform 0.2s; }
@@ -192,6 +201,12 @@ watch(() => room.jpAnime, async (i) => {
 .sp { display: flex; justify-content: space-between; gap: 8px; }
 .sp .ok { display: inline-flex; align-items: center; gap: 3px; color: #3aa76d; font-weight: 700; }
 .sp a { display: inline-flex; align-items: center; gap: 2px; color: var(--accent); text-decoration: none; font-weight: 600; }
+@media (max-width: 720px) {
+  .wotd { padding: 16px 14px 12px; }
+  .wotd .w { font-size: 2.2rem; }
+  .start { padding: 14px 16px; }
+  .show { padding: 8px; gap: 10px; }
+}
 .src { font-size: 0.72rem; color: var(--text-3); margin: 0; }
 .src a { color: inherit; }
 </style>

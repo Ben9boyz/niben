@@ -26,6 +26,18 @@ export const SHORTCUT_GROUPS = [
     ['Esc', 'Snu tilbake / legg platen tilbake / forlat hylla'],
     ['Klikk på platespilleren', 'Pause / spill'],
   ] },
+  { title: 'Japansk – kort og kanji', keys: [
+    ['Mellomrom  eller  Enter', 'Vis svaret'],
+    ['1 – 5', 'Velg hvor godt du husket det (kanji: 1 – 4)'],
+    ['S', 'Si ordet høyt'],
+    ['Esc', 'Avslutt øvingen'],
+  ] },
+  { title: 'Gitar-øving', keys: [
+    ['Mellomrom', 'Timer: start / pause · Akkorder: tell et bytte, start / stopp · Metronom: start / stopp'],
+    ['R', 'Timer: nullstill'],
+    ['↑ / →', 'Metronom: ett slag raskere'],
+    ['↓ / ←', 'Metronom: ett slag saktere'],
+  ] },
   { title: 'Generelt', keys: [
     ['?', 'Vis og skjul denne lista'],
     ['Esc', 'Lukk det som er åpent'],

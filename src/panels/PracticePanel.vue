@@ -92,7 +92,6 @@ onBeforeUnmount(() => {
       </label>
     </div>
 
-    <p class="keys">Trykk på ringen eller mellomrom for start/pause · R nullstiller</p>
     </template>
   </section>
 </template>
@@ -199,13 +198,11 @@ onBeforeUnmount(() => {
 .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25); transition: transform 0.4s var(--spring); }
 .toggle input:checked + .sw { background: var(--accent); }
 .toggle input:checked + .sw::after { transform: translateX(14px); }
-.keys { font-size: 0.78rem; color: var(--text-3); text-align: center; }
 
 @media (max-width: 900px) {
   .focus { padding: 20px 16px 16px; gap: 14px; }
   .dial { width: min(44vh, 84vw); }
   .btn.big { min-width: 120px; padding: 12px 20px; }
-  .keys { display: none; }
   .ptabs { width: 100%; }
   .ptabs button { padding: 9px 6px; font-size: 0.82rem; }
 }

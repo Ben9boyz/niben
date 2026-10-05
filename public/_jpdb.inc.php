@@ -218,7 +218,7 @@ function jp_handle(string $action, bool $post): void {
         }
         if ($text === '') fail('Skriv eller lim inn en japansk tekst.');
         if (mb_strlen($text) > $max) fail("Teksten er for lang (maks $max tegn).");
-        $data = sp_cached('jp_parse2_' . md5($text), 600, function () use ($text) {
+        $data = sp_cached('jpp_' . md5($text), 600, function () use ($text) {
             [$s, $j] = jp_api('parse', [
                 'text' => $text,
                 'position_length_encoding' => 'utf16', // positions that match JavaScript strings
