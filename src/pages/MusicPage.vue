@@ -81,6 +81,8 @@ function show(view) {
       </aside>
     </div>
 
+    <a v-if="shell !== 'player'" href="#/musicplayer" class="as-player">Åpne som egen musikkspiller</a>
+
     <!-- phones: a small player above the menu; tap for the full card -->
     <MiniNowPlaying v-if="shell !== 'player' && playing" class="m-mini" @open="sheet = true" />
     <teleport to="body">
@@ -122,6 +124,8 @@ function show(view) {
 .idle b { color: var(--text-2); font-size: 0.95rem; }
 .idle small { font-size: 0.8rem; }
 .m-mini { display: none; }
+.as-player { display: block; width: max-content; margin: 18px auto 0; font-size: 0.78rem; color: var(--text-3); opacity: 0.7; text-decoration: none; }
+.as-player:hover { opacity: 1; color: var(--accent); }
 
 /* in-between widths: no right column – what's playing goes on top of the library */
 @media (max-width: 1180px) {

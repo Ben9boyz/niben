@@ -1,6 +1,6 @@
 // Kanji practice: the kanji in my jpdb words, details from kanjiapi.dev, stroke order from KanjiVG,
 // and a small spaced-repetition schedule kept in this browser.
-const INFO_KEY = 'niben-kanji-info'
+const INFO_KEY = 'niben-kanji-info2'
 const SRS_KEY = 'niben-kanji-srs'
 // days until the next review per box (box 0 = again in this session)
 export const BOX_DAYS = [0, 1, 3, 7, 16, 35, 90]
@@ -31,14 +31,17 @@ export async function kanjiInfo(k) {
   const r = await fetch(`https://kanjiapi.dev/v1/kanji/${encodeURIComponent(k)}`)
   if (!r.ok) throw new Error('Fant ikke kanjien.')
   const j = await r.json()
-  const info = { meanings: j.meanings || [], on: j.on_readings || [], kun: j.kun_readings || [], strokes: j.stroke_count, jlpt: j.jlpt, grade: j.grade }
+  // keyword: the same kind of one-word key jpdb uses (Heisig), else the first meaning
+  const info = { keyword: j.heisig_en || (j.meanings || [])[0] || '', meanings: j.meanings || [], on: j.on_readings || [], kun: j.kun_readings || [], strokes: j.stroke_count, jlpt: j.jlpt, grade: j.grade }
   infoCache = { ...infoCache, [k]: info }
   write(INFO_KEY, infoCache)
   return info
 }
 
+// KanjiVG writes some parts in their "inside a kanji" shape – look them up as the stand-alone radical
+const RADICAL = { '⺨': '犭', '⺅': '亻', '⺡': '氵', '⺘': '扌', '⺌': '小', '⺾': '艹', '⻌': '辶', '⻏': '阝', '⻖': '阝', '⺮': '竹', '⺗': '心', '⺣': '火', '⻊': '足', '⺼': '月', '⻗': '雨', '⺋': '卩', '⺊': '卜', '⻂': '衣', '⺪': '疋' }
 const svgCache = new Map()
-/** Stroke paths in drawing order (KanjiVG), as SVG path strings in a 109×109 box. */
+/** Stroke paths in drawing order (KanjiVG, 109×109 box) and the parts the kanji is built from. */
 export async function strokes(k) {
   if (svgCache.has(k)) return svgCache.get(k)
   const code = k.codePointAt(0).toString(16).padStart(5, '0')
@@ -46,8 +49,13 @@ export async function strokes(k) {
   if (!r.ok) throw new Error('Ingen tegnerekkefølge for denne.')
   const txt = await r.text()
   const paths = [...txt.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) => m[1])
-  svgCache.set(k, paths)
-  return paths
+  // the top-level parts: the groups directly inside the kanji's own group
+  const doc = new DOMParser().parseFromString(txt, 'image/svg+xml')
+  const root = doc.getElementById(`kvg:${code}`)
+  const parts = [...(root?.children || [])].map((g) => g.getAttribute('kvg:element')).filter((p) => p && p !== k).map((p) => RADICAL[p] || p)
+  const out = { paths, parts: [...new Set(parts)] }
+  svgCache.set(k, out)
+  return out
 }
 
 // ── schedule ──

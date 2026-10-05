@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import { Play, Volume2, RotateCcw } from 'lucide-vue-next'
+import { Play, Volume2, RotateCcw, ArrowUpRight } from 'lucide-vue-next'
 import { fetchWords, stateOf } from '../composables/useJapanese'
 import { kanjiFromWords, kanjiInfo, strokes, session, gradeKanji, srsStats } from '../composables/useKanji'
 import { speak, canSpeak } from '../lib/speak'
@@ -14,6 +14,7 @@ const i = ref(0)
 const revealed = ref(false)
 const info = ref(null)
 const paths = ref([])
+const parts = ref([]) // what the kanji is built from, with a meaning each
 const drawn = ref(0) // strokes shown so far (animation)
 const error = ref('')
 const loading = ref(true)
@@ -51,7 +52,14 @@ watch(card, async (c) => {
   if (!c) return
   const k = c.kanji
   kanjiInfo(k).then((x) => { if (card.value?.kanji === k) info.value = x }).catch(() => {})
-  strokes(k).then((p) => { if (card.value?.kanji === k) { paths.value = p; drawn.value = p.length } }).catch(() => {})
+  parts.value = []
+  strokes(k).then(async (st) => {
+    if (card.value?.kanji !== k) return
+    paths.value = st.paths
+    drawn.value = st.paths.length
+    const withMeaning = await Promise.all(st.parts.map(async (p) => ({ p, m: await kanjiInfo(p).then((x) => x.keyword).catch(() => '') })))
+    if (card.value?.kanji === k) parts.value = withMeaning
+  }).catch(() => {})
 }, { immediate: true })
 function animate() {
   clearInterval(timer)
@@ -114,7 +122,11 @@ const GR = [['again', 'Igjen', '1'], ['hard', 'Vanskelig', '2'], ['good', 'Greit
         <p v-if="!revealed" class="hint">Hva betyr den, og hvordan leses den? <kbd>mellomrom</kbd> eller trykk for svaret</p>
 
         <div v-else class="kback" @click.stop>
-          <div class="meanings" lang="en">{{ info ? info.meanings.slice(0, 4).join(', ') : '…' }}</div>
+          <div class="keyword" lang="en">{{ info ? info.keyword : '…' }}</div>
+          <div v-if="info && info.meanings.length > 1" class="meanings" lang="en">{{ info.meanings.slice(0, 4).join(', ') }}</div>
+          <div v-if="parts.length" class="parts" lang="ja">
+            <span v-for="(x, n) in parts" :key="x.p"><template v-if="n"> + </template><b>{{ x.p }}</b><small lang="en">{{ x.m }}</small></span>
+          </div>
           <div v-if="info" class="readings" lang="ja">
             <span v-if="info.on.length"><small lang="nb">on</small> {{ info.on.slice(0, 4).join('・') }}</span>
             <span v-if="info.kun.length"><small lang="nb">kun</small> {{ info.kun.slice(0, 4).join('・') }}</span>
@@ -123,6 +135,7 @@ const GR = [['again', 'Igjen', '1'], ['hard', 'Vanskelig', '2'], ['good', 'Greit
             <span>{{ info.strokes }} strøk</span>
             <span v-if="info.jlpt">JLPT N{{ info.jlpt }}</span>
             <button v-if="paths.length" class="redraw" @click="animate"><Play :size="12" /> Tegn på nytt</button>
+            <a class="redraw" :href="`https://jpdb.io/kanji/${encodeURIComponent(card.kanji)}`" target="_blank" rel="noopener" title="Kanjien på jpdb – huskeregel, lesninger, og repetisjon der">Øv på jpdb <ArrowUpRight :size="12" /></a>
           </div>
           <ul class="words">
             <li v-for="w in card.words" :key="w.vid + ':' + w.sid">
@@ -157,7 +170,12 @@ const GR = [['again', 'Igjen', '1'], ['hard', 'Vanskelig', '2'], ['good', 'Greit
 .hint { margin: 0; font-size: 0.82rem; color: #666; text-align: center; }
 kbd { padding: 1px 6px; border-radius: 5px; border: 1px solid rgba(0, 0, 0, 0.15); font: 600 0.7rem system-ui, sans-serif; background: #fff; }
 .kback { display: grid; gap: 8px; width: 100%; cursor: default; }
-.meanings { text-align: center; font: 700 1.25rem system-ui, sans-serif; }
+.keyword { text-align: center; font: 800 1.5rem system-ui, sans-serif; text-transform: lowercase; }
+.meanings { text-align: center; font: 500 0.88rem system-ui, sans-serif; color: #555; }
+.parts { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px; font-size: 1.05rem; color: #333; }
+.parts b { font: 700 1.15rem "Hiragino Sans", "Noto Sans JP", sans-serif; }
+.parts small { margin-left: 3px; font: 600 0.72rem system-ui, sans-serif; color: #9b2c22; }
+a.redraw { text-decoration: none; }
 .readings { display: flex; justify-content: center; flex-wrap: wrap; gap: 14px; font: 600 1.05rem "Hiragino Sans", "Noto Sans JP", sans-serif; }
 .readings small { font: 700 0.65rem system-ui, sans-serif; text-transform: uppercase; color: #9b2c22; margin-right: 3px; }
 .meta { display: flex; justify-content: center; align-items: center; gap: 12px; font-size: 0.78rem; color: #666; }
