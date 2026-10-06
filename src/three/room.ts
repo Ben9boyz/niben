@@ -1322,7 +1322,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     bloom.resolution.set(eff.bloom === 'full' ? w : w / 2, eff.bloom === 'full' ? h : h / 2)
     camera.aspect = w / h
     // narrow screens: widen the lens so the subject fits
-    camera.fov = w / h < 0.8 ? 62 : w / h < 1.2 ? 52 : 42
+    camera.fov = roam.on ? 68 : w / h < 0.8 ? 62 : w / h < 1.2 ? 52 : 42
     distK = w / h < 0.8 ? 1.3 : 1
     camera.updateProjectionMatrix()
     if (station === 'lytte' && (lyttePose === 'ipod' || lyttePose === 'topipod')) goTo('lytte', { instant: true }) // (the iPod fills the same share of a new shape)
@@ -1462,9 +1462,12 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     camera.lookAt(lookAt)
 
     // view offset for UI panels
-    if (Math.abs(inset.tx - inset.x) > 0.3 || Math.abs(inset.ty - inset.y) > 0.3) active = true
-    inset.x += (inset.tx - inset.x) * Math.min(1, dt * 5)
-    inset.y += (inset.ty - inset.y) * Math.min(1, dt * 5)
+    // walking around: the whole screen is the picture – no shift for a panel (it shifts the centre of the lens: everything looks off-axis)
+    const itx = roam.on ? 0 : inset.tx, ity = roam.on ? 0 : inset.ty
+    if (Math.abs(itx - inset.x) > 0.3 || Math.abs(ity - inset.y) > 0.3) active = true
+    const ik = roam.on ? 1 : Math.min(1, dt * 5)
+    inset.x += (itx - inset.x) * ik
+    inset.y += (ity - inset.y) * ik
     const w = host.clientWidth, h = host.clientHeight
     if (Math.abs(inset.x) > 0.5 || Math.abs(inset.y) > 0.5) camera.setViewOffset(w, h, inset.x, inset.y, w, h)
     else camera.clearViewOffset()
@@ -1675,8 +1678,10 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
         const d = tmp.subVectors(lookAt, camera.position)
         roam.yaw = Math.atan2(-d.x, -d.z); roam.pitch = -0.05
         zoomTarget = 1
+        camera.fov = 68 // a natural view for walking (the stations use a narrow lens, which looks odd up close)
+        camera.updateProjectionMatrix()
         invalidate(1)
-      } else { goTo(station); invalidate(1) }
+      } else { resize(); goTo(station); invalidate(1) } // (resize puts the station lens back)
     },
     /** The joystick on a phone: x right / left, z back / forward, both −1 … 1. */
     roamMove(x: number, z: number) { roam.mx = x; roam.mz = z; invalidate(0.4) },
