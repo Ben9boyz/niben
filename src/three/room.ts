@@ -1356,14 +1356,10 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     // pointer parallax (camera-relative)
     const dir = tmp.subVectors(camTarget, camPos).normalize()
     right.crossVectors(dir, up).normalize()
-    // the listening corner holds perfectly still so records and the iPod are easy to click
-    const par = station === 'hjem' ? 0.35 : station === 'lytte' ? 0 : 0.06
-    const px = pointer.inside && !dragging ? pointer.x : 0
-    const py = pointer.inside && !dragging ? pointer.y : 0
+    // the camera stays put: it does not follow the mouse
     // narrow screens: step back so the subject still fits
     zoom += (zoomTarget - zoom) * Math.min(1, dt * 8)
     const wantPos = camTarget.clone().addScaledVector(tmp2.subVectors(camPos, camTarget), distK * zoom)
-      .addScaledVector(right, px * par).addScaledVector(up, py * par * 0.6)
     if (firstFrame) { camera.position.copy(wantPos); firstFrame = false }
     let active = !!flight || performance.now() < renderUntil || Math.abs(zoomTarget - zoom) > 0.0005
     if (camera.position.distanceToSquared(wantPos) > 1e-8 || lookAt.distanceToSquared(camTarget) > 1e-8) active = true
