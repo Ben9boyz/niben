@@ -47,9 +47,11 @@ function toSite() {
         <button class="btn primary small" :disabled="busy || !pw">{{ busy ? 'Logger inn …' : 'Logg inn' }}</button>
       </form>
     </div>
+    <div class="pbtm">
     <button v-if="!inApp" class="icon glass" title="Til hovedversjonen (niben.no)" aria-label="Til hovedversjonen" @click="toSite"><ArrowUpRight :size="18" /></button>
     <ViewSwitch class="pv" />
     <SettingsMenu />
+    </div>
   </header>
 </template>
 
@@ -65,6 +67,8 @@ function toSite() {
 .login input { padding: 9px 12px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--glass-strong); color: var(--text); font: 500 0.9rem var(--font); }
 .avatar { padding: 0; overflow: visible; }
 .err { margin: 0; font-size: 0.78rem; color: #d24b4b; }
+/* PC: the user at the top-left; the rest down in the bottom-left corner, like the main version of the app */
+.pbtm { position: fixed; left: max(32px, calc((100vw - 1680px) / 2 + 32px)); bottom: 16px; display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
 /* phones: the row sits flat in the top-left corner */
-@media (max-width: 820px) { .ptop { top: 10px; left: 10px; } }
+@media (max-width: 820px) { .ptop { top: 10px; left: 10px; } .pbtm { position: static; flex-direction: row; } }
 </style>

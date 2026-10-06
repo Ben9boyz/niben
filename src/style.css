@@ -456,7 +456,7 @@ html.player-shell { --rail: 0px; }
 .back { display: inline-flex; align-items: center; gap: 2px; }
 
 /* ── player mode (niben.no/#/musicplayer and the "niben musikk" app) ── */
-html.player-shell .dock:not(.focus) { top: 136px !important; bottom: 20px !important; }
+html.player-shell .dock:not(.focus) { top: 20px !important; bottom: 20px !important; }
 html.player-shell .cpage { padding-top: 80px; padding-bottom: 40px; }
 @media (max-width: 900px) {
   html.player-shell .dock:not(.focus) { top: auto !important; bottom: 12px !important; }
@@ -555,7 +555,7 @@ html[data-vt='in'] ::view-transition-new(root) { animation-name: vtRoomIn; }
 @keyframes vtRoomIn { from { opacity: 0; transform: scale(1.18); filter: blur(10px); } }
 
 /* the music player on its own, in 3D: the camera buttons start to the right of its little row of controls */
-html.player-shell .msw { left: 252px !important; }
+html.player-shell .msw { left: calc(max(32px, (100vw - 1680px) / 2 + 32px) + 56px) !important; }
 @media (max-width: 720px) {
   /* phones: the player's little row keeps its buttons in a line (the 2D / 3D button and the cog otherwise sit in the corners) */
   html.player-shell body .ptop .vs.vs, html.player-shell body .ptop .sm.sm { position: static; width: 44px; height: 44px; min-width: 44px; padding: 0; border-radius: 50%; background: var(--glass-strong); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
