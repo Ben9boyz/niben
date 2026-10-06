@@ -3,10 +3,10 @@ import assert from 'node:assert/strict'
 import { launch, openPage, closePages } from './helpers.mjs'
 
 // The room must stay light enough for a weak machine. What one plain render costs, per view, may not grow past this:
-//   a corner you look at: < 150 draw calls, < 70 000 triangles
+//   a corner you look at: < 150 draw calls, < 70 000 triangles (the guitar wall – several many-part models – < 200 / 90 000)
 //   the overview (everything in view): < 550 calls, < 200 000 triangles
 // (A glass material with `transmission` once made the whole scene be drawn twice – 1100 calls for the overview.)
-const BUDGET = { hjem: [550, 200000], lytte: [150, 70000], boker: [150, 70000], kode: [150, 70000], gitar: [150, 70000], japansk: [150, 70000], reiser: [150, 70000], ovelse: [150, 70000], om: [150, 70000] }
+const BUDGET = { hjem: [550, 200000], lytte: [150, 70000], boker: [150, 70000], kode: [150, 70000], gitar: [200, 90000], japansk: [150, 70000], reiser: [150, 70000], ovelse: [150, 70000], om: [150, 70000] }
 
 let browser
 before(async () => { browser = await launch() })
