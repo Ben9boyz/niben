@@ -360,7 +360,11 @@ export async function play(uri: string, track: string | null = null, opts: { fro
     // the page's player is still starting up: wait a moment for it rather than playing elsewhere
     // or another tab is the player: take it over here (that tab lets go)
     if (playDevice.id) body.device = playDevice.id
-    else if (playDevice.waitReady) body.device = (await playDevice.waitReady(6000)) || undefined
+    else if (playDevice.waitReady) {
+      body.device = (await playDevice.waitReady(6000)) || undefined
+      // still not registered with Spotify: drop it and register again once, rather than playing into the void
+      if (!body.device && playDevice.reconnect) body.device = (await playDevice.reconnect()) || undefined
+    }
     else if (playDevice.start) body.device = (await playDevice.start()) || undefined
     let r: PlayReply
     try {

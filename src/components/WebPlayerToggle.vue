@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { spotify } from '../composables/useSpotify'
 import { admin } from '../composables/useAdmin'
-import { web, setEnabled, setVolume } from '../composables/useWebPlayer'
+import { web, setEnabled, setVolume, retry } from '../composables/useWebPlayer'
 import { inputOf } from '../lib/dom'
 
 // niben.no as a Spotify speaker (admin): the switch, where it plays, "connect again", and the volume.
@@ -26,6 +26,7 @@ const label = computed(() => ({
     </label>
     <span v-if="!compact" class="wl">{{ label }}</span>
     <a v-if="web.status === 'reconnect'" class="btn small primary" href="api.php?action=spotify_login">Koble til</a>
+    <button v-if="web.enabled && (web.status === 'error' || web.status === 'loading') && !web.unavailable" class="btn small" type="button" @click="retry">Prøv igjen</button>
     <input v-if="web.status === 'ready'" class="vol" type="range" min="0" max="1" step="0.05" :value="web.volume" aria-label="Volum" @input="setVolume(+inputOf($event).value)" />
   </div>
 </template>

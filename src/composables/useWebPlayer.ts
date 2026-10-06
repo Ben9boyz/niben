@@ -45,6 +45,32 @@ chan?.addEventListener('message', (e: MessageEvent<TakeMessage | undefined>) => 
 
 let player: SpotifyPlayer | null = null
 let retryTimer = 0
+// ── the watchdog ──
+// Now and then the SDK connects but Spotify never says "ready" (most often when nothing has played for a while), and the
+// status then stayed on "Kobler til …" for good. Now: no device after a few seconds → throw that player away and register
+// a new one, a few times with growing pauses; after that it says so, and plays go to another of my devices.
+let watchdog = 0
+let attempts = 0
+let fatal = false // Premium missing / login refused / no DRM: trying again won't help
+function armWatchdog(): void {
+  clearTimeout(watchdog)
+  watchdog = window.setTimeout(() => {
+    if (!player || playDevice.id) return
+    if (fatal || !admin.mine || !web.enabled) return
+    attempts++
+    if (attempts > 4) { fail('Spilleren på siden fikk ikke kontakt med Spotify. Trykk «Prøv igjen», eller spill fra en annen Spotify-enhet.'); return }
+    stop()
+    void start({ force: true })
+  }, 8000 + attempts * 3000)
+}
+/** A fresh try from the user's side (the button), or when the page comes back into view and nothing is registered. */
+export function retry(): void {
+  attempts = 0
+  fatal = false
+  if (!admin.mine || web.unavailable || !web.enabled) return
+  stop()
+  void start({ force: true })
+}
 let activeHere = false // Spotify is currently playing through this page
 const readyWaiters: ((id: string | null) => void)[] = []
 
@@ -59,6 +85,12 @@ async function getToken(cb: (token: string) => void): Promise<void> {
     }
     cb(r.token)
   } catch (e) {
+    // one more try before giving up: a hiccup in the request would leave the SDK waiting for a token for good
+    try {
+      await new Promise((r) => setTimeout(r, 1000))
+      const r2 = await api<{ streaming?: boolean; token: string }>('spotify_token', {})
+      if (r2.token) { cb(r2.token); return }
+    } catch { /* fall through */ }
     fail(errorMessage(e))
   }
 }
@@ -90,6 +122,8 @@ export async function start({ force = false }: { force?: boolean } = {}): Promis
   player = p
   p.addListener('ready', ({ device_id }) => {
     playDevice.id = device_id
+    attempts = 0
+    clearTimeout(watchdog)
     web.status = 'ready'
     readyWaiters.splice(0).forEach((w) => w(device_id))
   })
@@ -99,11 +133,12 @@ export async function start({ force = false }: { force?: boolean } = {}): Promis
     web.status = 'loading'
     clearTimeout(retryTimer)
     retryTimer = window.setTimeout(() => { if (player && !playDevice.id) void playDevice.reconnect?.() }, 3000)
+    armWatchdog()
   })
   // this browser can't play Spotify (no DRM etc.): plays go to my other Spotify devices instead
-  p.addListener('initialization_error', ({ message }) => { fail(`Nettleseren støtter ikke Spotify-avspilling (${message}) – spiller på andre enheter.`); web.unavailable = true; stop() })
-  p.addListener('authentication_error', () => fail('Spotify godtok ikke innloggingen – koble til på nytt.'))
-  p.addListener('account_error', () => fail('Avspilling i nettleseren krever Spotify Premium.'))
+  p.addListener('initialization_error', ({ message }) => { fail(`Nettleseren støtter ikke Spotify-avspilling (${message}) – spiller på andre enheter.`); web.unavailable = true; fatal = true; stop() })
+  p.addListener('authentication_error', () => { fatal = true; fail('Spotify godtok ikke innloggingen – koble til på nytt.') })
+  p.addListener('account_error', () => { fatal = true; fail('Avspilling i nettleseren krever Spotify Premium.') })
   p.addListener('playback_error', ({ message }) => { web.error = message })
   p.addListener('player_state_changed', (st) => {
     activeHere = !!st
@@ -163,6 +198,7 @@ export async function start({ force = false }: { force?: boolean } = {}): Promis
     })
   }
   const ok = await p.connect()
+  armWatchdog()
   if (!ok && web.status === 'loading') fail('Klarte ikke å koble til Spotify.')
 }
 
@@ -175,6 +211,7 @@ playDevice.start = async () => {
 }
 
 export function stop(): void {
+  clearTimeout(watchdog)
   clearInterval(leaseTimer)
   freeLease()
   player?.disconnect()
@@ -224,3 +261,8 @@ watch(() => admin.mine, (on) => {
   if (on && web.enabled) void start()
   else if (!on) stop()
 }, { immediate: true })
+
+// back on the page (or back online) and the player never got registered: try again from the start
+const comeBack = (): void => { if (!document.hidden && admin.mine && web.enabled && !playDevice.id && (web.status === 'loading' || web.status === 'error') && !fatal) retry() }
+document.addEventListener('visibilitychange', comeBack)
+window.addEventListener('online', comeBack)
