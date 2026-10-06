@@ -15,7 +15,7 @@ import WeatherFx from '@/components/layout/WeatherFx.vue'
 import { useRoute } from 'vue-router'
 // three.js and the whole room are only fetched when the 3D version is used
 const RoomLayout = defineAsyncComponent(() => import('@/components/room/RoomLayout.vue'))
-import { useData } from './composables/useData'
+import { useData } from '@/composables/site/useData'
 import { mode } from './composables/useMode'
 import { shell } from './composables/useShell'
 import PlayerTop from '@/components/layout/PlayerTop.vue'

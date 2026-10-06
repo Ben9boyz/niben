@@ -1,8 +1,8 @@
 import * as THREE from 'three'
 import { meshAdder } from './helpers'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
-import type { Project } from '../composables/useData'
-import type { SteamGame, SteamLibrary, SteamProfile } from '../composables/useSteam'
+import type { Project } from '@/composables/site/useData'
+import type { SteamGame, SteamLibrary, SteamProfile } from '@/composables/site/useSteam'
 import { wrapText, canvasTex, context2d } from './textures'
 
 const W = 1280, H = 720

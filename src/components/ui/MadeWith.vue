@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { tx } from '@/composables/useTexts'
+import { tx } from '@/composables/site/useTexts'
 import { Sparkles } from 'lucide-vue-next'
 </script>
 

@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { RotateCcw, RotateCw, Minus, Plus, ArrowUp, ArrowDown, Eye, EyeOff, Trash2, Check, Upload, Move } from 'lucide-vue-next'
 import { decor, uploadDecor, removeDecor, changed } from '@/composables/room/useDecor'
 import { room } from '@/composables/room/useRoom'
-import { admin } from '@/composables/useAdmin'
+import { admin } from '@/composables/site/useAdmin'
 import { pickedFile } from '@/lib/dom'
 import type { DecorItem } from '@/composables/room/useDecor'
 

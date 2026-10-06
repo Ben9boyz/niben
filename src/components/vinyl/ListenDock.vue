@@ -4,7 +4,7 @@ import { Ellipsis, ChevronLeft, ChevronRight, ArrowUpFromLine, Library, ScanEye,
 import { room } from '@/composables/room/useRoom'
 import { shelfAlbums } from '@/composables/music/useGroups'
 import { spotify, lockLeft, play, control, findAlbum, fmtClock } from '@/composables/music/useSpotify'
-import { admin } from '@/composables/useAdmin'
+import { admin } from '@/composables/site/useAdmin'
 import { targetEl } from '@/lib/dom'
 import { showMenu } from '@/composables/useContextMenu'
 import { itemMenu } from '@/lib/menus'

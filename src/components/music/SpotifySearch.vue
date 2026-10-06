@@ -4,7 +4,7 @@ import { Play, Lock, Plus, Check, Music, CirclePlus, ListEnd } from 'lucide-vue-
 import { spotify, lockLeft, type SearchResults, fmtClock, play, lockNote, searchSpotify, saveAlbum, addToPlaylist, addGuest, control, followPlaylist, enqueue } from '@/composables/music/useSpotify'
 import { room } from '@/composables/room/useRoom'
 import { mode } from '@/composables/useMode'
-import { admin, errorMessage } from '@/composables/useAdmin'
+import { admin, errorMessage } from '@/composables/site/useAdmin'
 import type { Album, Playlist, Track } from '@/types'
 import MusicDetail from './MusicDetail.vue'
 import AddMenu from './AddMenu.vue'

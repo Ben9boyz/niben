@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { tx } from '@/composables/useTexts'
+import { tx } from '@/composables/site/useTexts'
 import { ref, computed, watch, onMounted } from 'vue'
 import { Share2, Download, Music, BookOpen, Plane, Gamepad2, Languages, Guitar, Loader } from 'lucide-vue-next'
 import { toPng } from 'html-to-image'

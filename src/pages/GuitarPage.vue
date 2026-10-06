@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { tx } from '../composables/useTexts'
+import { tx } from '@/composables/site/useTexts'
 import RecordingList from '@/components/guitar/RecordingList.vue'
 import NewsletterSignup from '@/components/content/NewsletterSignup.vue'
 import { Timer } from 'lucide-vue-next'
 import { ref, computed } from 'vue'
-import { useData } from '../composables/useData'
+import { useData } from '@/composables/site/useData'
 import GuitarViewer from '@/components/guitar/GuitarViewer.vue'
 
 const data = useData()

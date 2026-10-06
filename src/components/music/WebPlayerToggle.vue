@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { spotify } from '@/composables/music/useSpotify'
-import { admin } from '@/composables/useAdmin'
+import { admin } from '@/composables/site/useAdmin'
 import { web, setEnabled, setVolume, retry } from '@/composables/music/useWebPlayer'
 import { inputOf } from '@/lib/dom'
 

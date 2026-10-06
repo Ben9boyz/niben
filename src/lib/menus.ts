@@ -1,7 +1,7 @@
 import { Play, Pause, ListEnd, ListPlus, FolderInput, ExternalLink, Link, User, Disc3, Heart, HeartOff, FolderOpen, EyeOff, Trash2 } from 'lucide-vue-next'
 import { deletePlaylist, spotify, play, control, lockLeft, fmtClock, lockNote, notify, enqueue, enqueueAlbum, addToPlaylist, isSaved, toggleAlbumSaved, isLiked, setLiked, addGuest } from '@/composables/music/useSpotify'
 import type { Album, Track } from '../types'
-import { admin } from '../composables/useAdmin'
+import { admin } from '@/composables/site/useAdmin'
 import type { MenuEntry } from '../composables/useContextMenu'
 import { askNewPlaylist } from '@/composables/music/usePlaylistDialog'
 import { groups, flatGroups, moveTo } from '@/composables/music/useGroups'

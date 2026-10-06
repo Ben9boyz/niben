@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { meshAdder } from './helpers'
-import { formatTime, type TimerState } from '../composables/useTimer'
+import { formatTime, type TimerState } from '@/composables/site/useTimer'
 import { canvasTex, context2d } from './textures'
 
 const R = 0.34 // clock radius (m)

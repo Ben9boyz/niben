@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { RefreshCw, Trash2, Plus, Lock } from 'lucide-vue-next'
-import { errorMessage, api } from '../../composables/useAdmin'
+import { errorMessage, api } from '@/composables/site/useAdmin'
 import { spotify, setLockSeconds, refreshSpotify, fmtLock } from '@/composables/music/useSpotify'
 import { discover, loadDiscover, addPick, delPick, refreshRecs } from '@/composables/music/useDiscover'
 import type { Flash } from '../../types'

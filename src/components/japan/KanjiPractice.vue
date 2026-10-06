@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { errorMessage } from '@/composables/useAdmin'
+import { errorMessage } from '@/composables/site/useAdmin'
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { Play, Volume2, RotateCcw, ArrowUpRight } from 'lucide-vue-next'
 import { fetchWords, stateOf } from '@/composables/japan/useJapanese'

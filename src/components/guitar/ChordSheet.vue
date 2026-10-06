@@ -5,10 +5,10 @@ import ChordDiagram from './ChordDiagram.vue'
 import StrumEditor from './StrumEditor.vue'
 import { parseSheet, transposeChord, parseProgression, findChord } from '@/lib/chords'
 import { playSong, type SongOptions } from '@/lib/strum'
-import type { Song } from '@/composables/useData'
+import type { Song } from '@/composables/site/useData'
 import type { SheetSection } from '@/lib/chords'
-import { admin, api, errorMessage, canManage } from '@/composables/useAdmin'
-import { reloadData } from '@/composables/useData'
+import { admin, api, errorMessage, canManage } from '@/composables/site/useAdmin'
+import { reloadData } from '@/composables/site/useData'
 
 // My chord sheet for a song, like on Ultimate Guitar: transpose, text size, auto-scroll – plus the
 // strumming pattern, hearing it strummed through the chords (the chord being played lights up in the

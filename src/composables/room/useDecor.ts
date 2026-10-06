@@ -1,5 +1,5 @@
 import { reactive } from 'vue'
-import { api, errorMessage } from '@/composables/useAdmin'
+import { api, errorMessage } from '@/composables/site/useAdmin'
 
 // My own 3D models in the room (uploaded as .glb in Admin → Rom, moved around in "Rediger rommet").
 export interface DecorItem {

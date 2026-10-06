@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { tx } from '../composables/useTexts'
+import { tx } from '@/composables/site/useTexts'
 import NowContent from '@/components/content/NowContent.vue'
 import MadeWith from '@/components/ui/MadeWith.vue'
-import { useData } from '../composables/useData'
+import { useData } from '@/composables/site/useData'
 
 const data = useData()
 </script>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Download, Users, Gamepad2, Languages, Globe2, BookOpen, Plane, Mic, Trash2 } from 'lucide-vue-next'
-import { api, errorMessage } from '../../composables/useAdmin'
+import { api, errorMessage } from '@/composables/site/useAdmin'
 import { byCode } from '../../lib/languages'
 import { pwa, install, desktopApp } from '../../composables/usePwa'
 

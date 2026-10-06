@@ -1,4 +1,4 @@
-import type { RoomProfile, SectionId } from '../composables/useData'
+import type { RoomProfile, SectionId } from '@/composables/site/useData'
 
 // Which corner of the room a page belongs to – a user can switch corners off (Admin → Innstillinger), and then the page,
 // its menu entry and its place in the 3D room are gone. (a page not listed here – home, admin, Året – is for every room).

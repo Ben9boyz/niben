@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { errorMessage } from '@/composables/useAdmin'
+import { errorMessage } from '@/composables/site/useAdmin'
 import PitchReading from './PitchReading.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ArrowUpRight, RotateCcw, X, Volume2 } from 'lucide-vue-next'

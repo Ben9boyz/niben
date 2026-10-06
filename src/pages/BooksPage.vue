@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { hideImg } from '../lib/dom'
-import { tx } from '../composables/useTexts'
+import { tx } from '@/composables/site/useTexts'
 import { X } from 'lucide-vue-next'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { useData, type Book } from '../composables/useData'
+import { useData, type Book } from '@/composables/site/useData'
 import Stars from '@/components/ui/Stars.vue'
 
 const data = useData()

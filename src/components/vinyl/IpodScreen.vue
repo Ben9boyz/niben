@@ -5,7 +5,7 @@ import { room } from '@/composables/room/useRoom'
 import { ipodRows, ipodFolderName, type IpodRow } from '@/composables/music/useIpodList'
 import { groups, openFolder } from '@/composables/music/useGroups'
 import { spotify, useSpotify, lockLeft, progressMs, fmtClock, play, fetchTracks, lockNote, control, setShuffle } from '@/composables/music/useSpotify'
-import { admin, checkLogin } from '@/composables/useAdmin'
+import { admin, checkLogin } from '@/composables/site/useAdmin'
 import { targetEl } from '@/lib/dom'
 import type { Track, TrackList, Playlist } from '@/types'
 

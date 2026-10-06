@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { groups, resetGroups, setGrouping, setView } from '@/composables/music/useGroups'
 import { spotify, resetSpotify } from '@/composables/music/useSpotify'
-import { milestones, resetMilestones, setMilestones } from '../../src/composables/useMilestones'
+import { milestones, resetMilestones, setMilestones } from '@/composables/site/useMilestones'
 import { myQueue, resetQueue } from '@/composables/music/useQueue'
 import { discover, resetDiscover } from '@/composables/music/useDiscover'
 import { jp, resetJapanese } from '@/composables/japan/useJapanese'
-import { steam, resetSteam } from '../../src/composables/useSteam'
+import { steam, resetSteam } from '@/composables/site/useSteam'
 
 // Switching rooms does not reload the page, so every store that holds something of a room has to be emptied and read
 // again from what this browser kept for the NEW room. That is what these check.

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { Check, KeyRound, ExternalLink, Music2, MapPin, Plug, Download, Mail, Trash2, Lock } from 'lucide-vue-next'
-import { api, errorMessage, account } from '../../composables/useAdmin'
-import { reloadData, type SectionId } from '../../composables/useData'
+import { api, errorMessage, account } from '@/composables/site/useAdmin'
+import { reloadData, type SectionId } from '@/composables/site/useData'
 import type { Flash } from '../../types'
 
 // One component, three admin tabs: `rommet` (which corners it shows), `tilkoblinger` (Spotify, Steam, jpdb … the

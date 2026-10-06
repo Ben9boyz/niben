@@ -5,7 +5,7 @@ import { libView } from '@/composables/music/useLibView'
 import { spotify } from '@/composables/music/useSpotify'
 import { playItem, itemMenu } from '@/lib/menus'
 import { showMenu, longPress, type MenuPoint } from '@/composables/useContextMenu'
-import { admin } from '@/composables/useAdmin'
+import { admin } from '@/composables/site/useAdmin'
 import { selectOf } from '@/lib/dom'
 import type { GridItem } from '@/types'
 

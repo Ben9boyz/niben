@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { tx } from '@/composables/useTexts'
+import { tx } from '@/composables/site/useTexts'
 import { ref, computed, onMounted } from 'vue'
 import { Flame } from 'lucide-vue-next'
 

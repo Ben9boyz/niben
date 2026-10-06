@@ -1,6 +1,6 @@
 import { reactive, watch } from 'vue'
 import type { QueueItem, Result, Track } from '@/types'
-import { api, admin } from '@/composables/useAdmin'
+import { api, admin } from '@/composables/site/useAdmin'
 import { spotify, progressMs, notify, fetchTracks, findAlbum, playDevice } from './useSpotify'
 import { roomKey } from '@/lib/room'
 

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { tx } from '@/composables/useTexts'
+import { tx } from '@/composables/site/useTexts'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Gamepad2, Clock, Trophy, Library, ArrowUpRight, ChevronDown, Radio, Users, Newspaper, Heart, Flame, Archive, Monitor } from 'lucide-vue-next'
-import { steam, watchSteam, type SteamGame, headerImg, coverImg, storeUrl, ago, fmtHours, sessionLen, fmtDate, fmtYears } from '@/composables/useSteam'
+import { steam, watchSteam, type SteamGame, headerImg, coverImg, storeUrl, ago, fmtHours, sessionLen, fmtDate, fmtYears } from '@/composables/site/useSteam'
 
 // The gaming corner's content (3D panel and plain page): Steam profile, what's on right now,
 // recently played (with achievements) and the most-played games.

@@ -4,7 +4,7 @@ import { Layers, Pencil, Plus, ArrowUp, ArrowDown, X, Check } from 'lucide-vue-n
 import FolderIcon from '@/components/ui/FolderIcon.vue'
 import SortButton from './SortButton.vue'
 import { groups, setGrouping, setView, saveGroups, groupCover, itemsIn, coverOfUri, uploadGroupImage } from '@/composables/music/useGroups'
-import { admin } from '@/composables/useAdmin'
+import { admin } from '@/composables/site/useAdmin'
 import { notify } from '@/composables/music/useSpotify'
 import { pickedFile } from '@/lib/dom'
 import type { Group } from '@/types'

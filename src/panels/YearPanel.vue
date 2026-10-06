@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { tx } from '../composables/useTexts'
+import { tx } from '@/composables/site/useTexts'
 import YearContent from '@/components/content/YearContent.vue'
 </script>
 

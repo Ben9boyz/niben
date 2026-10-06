@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { errorMessage } from '@/composables/useAdmin'
-import { tx } from '@/composables/useTexts'
+import { errorMessage } from '@/composables/site/useAdmin'
+import { tx } from '@/composables/site/useTexts'
 import { ref, onMounted } from 'vue'
 import { MessageCircle, Send } from 'lucide-vue-next'
 

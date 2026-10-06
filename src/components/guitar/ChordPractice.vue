@@ -7,7 +7,7 @@ import SegSwitch from '@/components/ui/SegSwitch.vue'
 import ChordSheet from './ChordSheet.vue'
 import { CHORDS, GROUPS, PAIRS, parseProgression, findChord } from '@/lib/chords'
 import { targetEl } from '@/lib/dom'
-import { useData, type Song } from '@/composables/useData'
+import { useData, type Song } from '@/composables/site/useData'
 import { room, type ChordMode } from '@/composables/room/useRoom'
 
 // Chord practice in the practice corner: one-minute changes, a progression with a metronome,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { errorMessage } from '@/composables/useAdmin'
+import { errorMessage } from '@/composables/site/useAdmin'
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Lock, LockOpen } from 'lucide-vue-next'
 import { spotify, lockLeft, fmtClock, fmtLock, setLockSeconds } from '@/composables/music/useSpotify'

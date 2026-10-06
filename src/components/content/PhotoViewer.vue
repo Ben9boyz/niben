@@ -2,7 +2,7 @@
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { ChevronLeft, ChevronRight, X, LayoutGrid } from 'lucide-vue-next'
 import { thumb } from '@/lib/photos'
-import type { TripPhoto } from '@/composables/useData'
+import type { TripPhoto } from '@/composables/site/useData'
 
 // Full-screen photos for a trip: a grid of every photo, and a viewer for one photo at a time
 // (arrows / swipe / keys, a film strip below). `index` null = the grid.

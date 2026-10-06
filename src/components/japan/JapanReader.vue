@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { errorMessage } from '@/composables/useAdmin'
+import { errorMessage } from '@/composables/site/useAdmin'
 import { ref, computed } from 'vue'
 import { ScanText, Eye, EyeOff } from 'lucide-vue-next'
 import { parseText, stateOf, type ParsedText, type JpWord, type CardState } from '@/composables/japan/useJapanese'

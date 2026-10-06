@@ -1,6 +1,6 @@
 import { reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import type { Album, Notice, NowPlaying, PlayOrigin, Playlist, Result, Track, TrackList } from '@/types'
-import { api, ApiError, errorMessage } from '@/composables/useAdmin'
+import { api, ApiError, errorMessage } from '@/composables/site/useAdmin'
 import { pget, pset, pdel } from '@/lib/pcache'
 import { CUSTOM_QUEUE, addSongs, addCollection, startQueueDriver, releaseSent, myQueue } from './useQueue'
 import { roomKey } from '@/lib/room'

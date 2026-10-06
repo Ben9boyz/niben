@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { spotify, lockLeft, progressMs, fmtClock, control, notify } from '@/composables/music/useSpotify'
-import { admin } from '@/composables/useAdmin'
+import { admin } from '@/composables/site/useAdmin'
 
 // The progress bar with the times – shared by the "now playing" card and the player bar. Click to jump
 // (admin; locked like switching). 'below': times under the bar · 'sides': times left and right of it.

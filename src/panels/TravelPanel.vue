@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { tx } from '../composables/useTexts'
+import { tx } from '@/composables/site/useTexts'
 import { Plane } from 'lucide-vue-next'
 import { computed } from 'vue'
-import { useData, type Trip } from '../composables/useData'
+import { useData, type Trip } from '@/composables/site/useData'
 import { room } from '@/composables/room/useRoom'
 import { atlasName, norskNavn } from '../three/countries'
 import CountryPicker from '@/components/content/CountryPicker.vue'

@@ -8,7 +8,7 @@ import { shortcuts } from '@/composables/useShortcuts'
 import { ref } from 'vue'
 import { Sun, Moon, LogIn, ArrowUpRight } from 'lucide-vue-next'
 import { useTheme } from '@/composables/useTheme'
-import { admin, signedIn, checkLogin, login, errorMessage } from '@/composables/useAdmin'
+import { admin, signedIn, checkLogin, login, errorMessage } from '@/composables/site/useAdmin'
 import { leavePlayer } from '@/composables/useShell'
 
 // Top bar of the music player: name, light / dark, and logging in (needed to play).

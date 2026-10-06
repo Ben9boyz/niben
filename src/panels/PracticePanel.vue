@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { timer, timerState, formatTime, toggle, reset, setIntervalSeconds, setSound } from '../composables/useTimer'
+import { timer, timerState, formatTime, toggle, reset, setIntervalSeconds, setSound } from '@/composables/site/useTimer'
 import { room } from '@/composables/room/useRoom'
 import ChordPractice from '@/components/guitar/ChordPractice.vue'
 import GuitarTuner from '@/components/guitar/GuitarTuner.vue'

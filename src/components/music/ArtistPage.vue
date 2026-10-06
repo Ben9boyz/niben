@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { errorMessage } from '@/composables/useAdmin'
+import { errorMessage } from '@/composables/site/useAdmin'
 import { ref, watch } from 'vue'
 import { ChevronLeft, ArrowUpRight, User } from 'lucide-vue-next'
 import CoverGrid from './CoverGrid.vue'

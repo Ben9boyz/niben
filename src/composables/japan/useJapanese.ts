@@ -1,5 +1,5 @@
 import { reactive } from 'vue'
-import { api } from '@/composables/useAdmin'
+import { api } from '@/composables/site/useAdmin'
 import { roomKey } from '@/lib/room'
 
 // Japanese corner (jpdb.io via the server): public statistics + word of the day, and for the admin

@@ -10,7 +10,7 @@ import { spotify } from '@/composables/music/useSpotify'
 import { queueDrop, queueOver } from '@/composables/music/useDrag'
 import { mode } from '@/composables/useMode'
 import { shell } from '@/composables/useShell'
-import { admin } from '@/composables/useAdmin'
+import { admin } from '@/composables/site/useAdmin'
 import { openNowAlbum, openNowArtist } from '@/composables/music/useBrowse'
 
 // stacked: big cover on top (the plain music page's sidebar)

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ChevronLeft, ChevronRight, X } from 'lucide-vue-next'
 import { ref, reactive, computed } from 'vue'
-import { useData, reloadData, type Trip } from '../../composables/useData'
-import { api, shrinkImage, errorMessage } from '../../composables/useAdmin'
+import { useData, reloadData, type Trip } from '@/composables/site/useData'
+import { api, shrinkImage, errorMessage } from '@/composables/site/useAdmin'
 import { norskNavn } from '../../three/countries'
 import CountryPicker from '@/components/content/CountryPicker.vue'
 import { inputOf } from '../../lib/dom'

@@ -2,7 +2,7 @@ import { watch } from 'vue'
 import { spotify, control, lockLeft, notify, setShuffle, cycleRepeat, isLiked, setLiked, toggleAlbumSaved, findAlbum } from './useSpotify'
 import { room } from '@/composables/room/useRoom'
 import { shortcuts } from '@/composables/useShortcuts'
-import { admin } from '@/composables/useAdmin'
+import { admin } from '@/composables/site/useAdmin'
 import { web } from './useWebPlayer'
 
 // What's playing shows up where the system shows music (lock screen, media keys, headphones, the

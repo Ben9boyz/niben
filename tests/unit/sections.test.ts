@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { routeAllowed } from '../../src/lib/sections'
-import type { RoomProfile, SectionId } from '../../src/composables/useData'
+import type { RoomProfile, SectionId } from '@/composables/site/useData'
 
 const ALL: SectionId[] = ['reiser', 'boker', 'gitar', 'ovelse', 'japansk', 'lytte', 'gaming', 'kode', 'om']
 const profile = (off: SectionId[] = [], owner = false): RoomProfile => ({

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Check, Ban, Trash2, RotateCcw, Users } from 'lucide-vue-next'
-import { api, errorMessage } from '../../composables/useAdmin'
+import { api, errorMessage } from '@/composables/site/useAdmin'
 
 // The owner's list of accounts: approve the ones that ask, switch one off, or remove it (with everything it made).
 interface AccountRow {

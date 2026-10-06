@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { tx } from '../composables/useTexts'
+import { tx } from '@/composables/site/useTexts'
 import { ArrowUpRight, BookOpenText } from 'lucide-vue-next'
 import RepoBrowser from '@/components/content/RepoBrowser.vue'
 import { computed, ref } from 'vue'
-import { useData, type Project } from '../composables/useData'
+import { useData, type Project } from '@/composables/site/useData'
 import { room } from '@/composables/room/useRoom'
 
 const data = useData()

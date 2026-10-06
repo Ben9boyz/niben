@@ -4,7 +4,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ArrowUpRight, Plus, Check, X, Volume2, Infinity as Forever, EyeOff, Trash2, Quote } from 'lucide-vue-next'
 import { jpdbUrl, stateOf, STATE_LABEL, fetchWords, addWord, cardAction, type JpWord, type WordList } from '@/composables/japan/useJapanese'
 import { speak, canSpeak } from '@/lib/speak'
-import { admin, errorMessage, canManage } from '@/composables/useAdmin'
+import { admin, errorMessage, canManage } from '@/composables/site/useAdmin'
 import type { Flash } from '@/types'
 
 // One word in detail (from the reader or the word list): spelling, reading with pitch accent,

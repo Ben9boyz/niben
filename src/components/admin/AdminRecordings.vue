@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ChevronLeft, Play, Music } from 'lucide-vue-next'
 import { ref, reactive, computed } from 'vue'
-import { useData, reloadData, type Recording } from '../../composables/useData'
-import { api, errorMessage } from '../../composables/useAdmin'
+import { useData, reloadData, type Recording } from '@/composables/site/useData'
+import { api, errorMessage } from '@/composables/site/useAdmin'
 import { recordingDate, needsMp3, toMp3 } from '../../lib/media'
 import { inputOf } from '../../lib/dom'
 import type { Flash } from '../../types'

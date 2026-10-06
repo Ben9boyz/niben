@@ -1,5 +1,5 @@
 import { reactive } from 'vue'
-import { TEXT_DEFAULTS } from '../lib/textDefs'
+import { TEXT_DEFAULTS } from '@/lib/textDefs'
 
 // The site's own wording (headings, hints, empty-state lines …). The standard texts are in lib/textDefs.ts; whatever
 // I have written in Admin → Tekster overrides them (and reaches every visitor with the page's content).

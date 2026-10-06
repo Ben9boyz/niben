@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { CirclePlus } from 'lucide-vue-next'
 import AddMenu from './AddMenu.vue'
 import { spotify, enqueue, addToPlaylist, notify } from '@/composables/music/useSpotify'
-import { admin } from '@/composables/useAdmin'
+import { admin } from '@/composables/site/useAdmin'
 import { targetEl } from '@/lib/dom'
 import type { Playlist } from '@/types'
 

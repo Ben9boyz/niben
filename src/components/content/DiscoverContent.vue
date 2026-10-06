@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Plus, RefreshCw, Trash2, ArrowUpRight, Play, KeyRound, Sparkles } from 'lucide-vue-next'
-import { tx } from '@/composables/useTexts'
-import { admin } from '@/composables/useAdmin'
+import { tx } from '@/composables/site/useTexts'
+import { admin } from '@/composables/site/useAdmin'
 import { discover, loadDiscover, addPick, delPick, saveKey, refreshRecs, hideRec, type Pick } from '@/composables/music/useDiscover'
 import { openAlbumPage, openArtistPage, peek } from '@/composables/music/useBrowse'
 import { play, notify } from '@/composables/music/useSpotify'

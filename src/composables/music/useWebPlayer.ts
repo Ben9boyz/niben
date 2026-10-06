@@ -1,5 +1,5 @@
 import { reactive, watch } from 'vue'
-import { api, admin, errorMessage } from '@/composables/useAdmin'
+import { api, admin, errorMessage } from '@/composables/site/useAdmin'
 import { playDevice, setLocalNow } from './useSpotify'
 import { loadSpotifySdk } from '@/lib/spotifySdk'
 
