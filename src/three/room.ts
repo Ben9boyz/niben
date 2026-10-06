@@ -655,7 +655,9 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     if (station === 'lytte' && (lyttePose === 'ipod' || lyttePose === 'topipod')) {
       // the iPod stays on its stand: the camera comes to it (the lens on a narrow screen pushes the camera back by distK, so start nearer)
       const v = listening.ipodView(camera.fov, camera.aspect)
-      const near = { pos: v.target.clone().add(v.pos.sub(v.target).divideScalar(distK)), target: v.target }
+      // a phone: the iPod has to fit between the bar on top and the one at the bottom – not under them
+      const fill = camera.aspect < 0.9 ? Math.max(0.45, Math.min(1, (host.clientHeight - bars.top - bars.bottom) / Math.max(1, host.clientHeight))) : 1
+      const near = { pos: v.target.clone().add(v.pos.sub(v.target).divideScalar(distK * fill)), target: v.target }
       if (lyttePose === 'ipod') to = near
       else {
         // "Spiller nå" while a playlist plays on the iPod: the table as before, but turned and moved towards the iPod so it is a main part of the picture
@@ -762,10 +764,14 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
 
   // ── Insets (UI panels) shift the view so the subject stays centred in the free area ──
   const inset = { x: 0, y: 0, tx: 0, ty: 0 }
-  function setInsets({ right = 0, bottom = 0, left = 0 }: { right?: number; bottom?: number; left?: number }): void {
+  const bars = { top: 0, bottom: 0 } // phones: the space taken by the bar on top and the one at the bottom (the iPod is fitted between them)
+  function setInsets({ right = 0, bottom = 0, left = 0, top = 0 }: { right?: number; bottom?: number; left?: number; top?: number }): void {
     invalidate(0.3)
     inset.tx = right / 2 - left / 2
-    inset.ty = bottom / 2
+    inset.ty = (bottom - top) / 2
+    const was = bars.top + bars.bottom
+    bars.top = top; bars.bottom = bottom
+    if (was !== top + bottom && station === 'lytte' && (lyttePose === 'ipod' || lyttePose === 'topipod') && camera.aspect < 0.9) goTo('lytte', { duration: 0.5 }) // (the iPod is fitted to the free height)
   }
 
   // ── Interaction ────────────────────────────────────────

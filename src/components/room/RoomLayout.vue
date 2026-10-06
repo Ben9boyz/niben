@@ -99,6 +99,8 @@ function placeToggle() {
   toggleTop.value = r.height > 20 ? Math.round(r.top + r.height / 2) : null
 }
 let toggleTimer: ReturnType<typeof setInterval> | undefined
+/** the notch / status bar on a phone (env(safe-area-inset-top)) in px */
+function safeTop(): number { const d = document.createElement('div'); d.style.cssText = 'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top)'; document.body.appendChild(d); const v = parseFloat(getComputedStyle(d).paddingTop) || 0; d.remove(); return v }
 function measure() {
   if (dock.value && !hidden.value) panelW.value = dock.value.offsetWidth
   if (!room.api) return
@@ -116,7 +118,7 @@ function measure() {
     return
   }
   if (hidden.value) { room.api.setInsets({ left: mobile.value ? 0 : RAIL(), bottom: shell.value === 'player' ? 90 : 0 }); return }
-  if (mobile.value && collapsed.value) { room.api.setInsets({ bottom: 90 }); return }
+  if (mobile.value && collapsed.value) { room.api.setInsets({ bottom: 90, top: isMusic.value ? 58 + safeTop() : 0 }); return }
   if (mobile.value) room.api.setInsets({ bottom: Math.min(window.innerHeight - r.top, window.innerHeight * 0.5) })
   else room.api.setInsets({ left: RAIL(), right: hidden.value ? 0 : window.innerWidth - r.left, bottom: shell.value === 'player' ? 90 : 0 })
 }
