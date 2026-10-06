@@ -146,7 +146,7 @@ function sp_cached(string $key, int $ttl, callable $fetch, bool $shared = false)
         kv_scope($room);
         $d = $fetch();
         if ($shared) kv_scope(0);
-        $partial = is_array($d) && !empty($d['partial']); // (an incomplete list is shown, but not kept)
+        $partial = is_array($d) && (!empty($d['partial']) || ($d === [] && str_starts_with($key, 'cache_'))); // (an incomplete or EMPTY list is shown, but not kept: an empty answer must never sit in the cache for half an hour)
         if ($d !== null && !$partial) kv_set($key, json_encode(['t' => time(), 'd' => $d], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         elseif ($raw && !$partial) return json_decode($raw, true)['d'] ?? null; // keep stale data if Spotify hiccups
         return $d;
@@ -163,7 +163,7 @@ function sp_recent_error(): ?int {
     if (!preg_match('~^(\d+)\|(\d+)$~', $v, $m)) return null;
     return (int)$m[2] > time() - 120 ? (int)$m[1] : null;
 }
-function sp_denied(): bool { return (int)kv_get('sp_denied') > time() - 600; }
+function sp_denied(): bool { return (int)kv_get('sp_denied') > time() - 90; } // (asked again after a minute and a half – not ten minutes of an empty shelf)
 
 /** A small fingerprint of the library (how many albums / playlists, and which is newest), from two tiny calls that are
  *  themselves kept for 45 s. When it changes, something was added or removed in Spotify – the lists are fetched again
@@ -488,7 +488,7 @@ function sp_handle(string $action, bool $post): void {
         $__albums = sp_albums() ?? []; // (first: it finds out whether Spotify lets this account in)
         $__playlists = sp_playlists() ?? [];
         $diag = null; // the owner with an empty shelf: ask Spotify why, so the page can say it
-        if (!$__albums && !$__playlists && viewing_own_room()) {
+        if ((!$__albums || !$__playlists) && viewing_own_room()) {
             [$d1, $j1] = sp_api('GET', '/me/albums?limit=1');
             [$d2, $j2] = sp_api('GET', '/me/playlists?limit=1');
             $diag = ['albums' => $d1, 'albums_msg' => $j1['error']['message'] ?? null, 'playlists' => $d2, 'playlists_msg' => $j2['error']['message'] ?? null,

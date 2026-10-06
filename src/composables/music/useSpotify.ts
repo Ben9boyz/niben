@@ -187,7 +187,7 @@ export async function refreshLists(force = false): Promise<void> {
     spotify.error = null
     if (j.diag) { // empty shelf: say what Spotify answers
       const d = j.diag
-      spotify.error = `Biblioteket er tomt. Spotify svarer ${d.albums}${d.albums_msg ? ` «${d.albums_msg}»` : ''} på album og ${d.playlists}${d.playlists_msg ? ` «${d.playlists_msg}»` : ''} på spillelister`
+      spotify.error = `Noe mangler i biblioteket. Spotify svarer ${d.albums}${d.albums_msg ? ` «${d.albums_msg}»` : ''} på album og ${d.playlists}${d.playlists_msg ? ` «${d.playlists_msg}»` : ''} på spillelister`
         + (d.albums === 200 ? ` (${d.albums_total ?? 0} album, ${d.playlists_total ?? 0} spillelister på kontoen).` : '.')
     }
   } catch (e) {
