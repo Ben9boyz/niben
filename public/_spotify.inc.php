@@ -145,8 +145,34 @@ function sp_cached(string $key, int $ttl, callable $fetch, bool $shared = false)
  *  login works, every question afterwards is a 403. Remembered, so the room can say so instead of showing an empty shelf. */
 function sp_denied(): bool { return (int)kv_get('sp_denied') > time() - 600; }
 
+/** A small fingerprint of the library (how many albums / playlists, and which is newest), from two tiny calls that are
+ *  themselves kept for 45 s. When it changes, something was added or removed in Spotify – the lists are fetched again
+ *  at once instead of waiting for the half hour they are normally kept. '' = could not tell. */
+function sp_library_stamp(): string {
+    $r = sp_cached('probe_lib', 45, function () {
+        $one = function (string $path, string $field) {
+            [$s, $j] = sp_api('GET', $path);
+            return $s === 200 ? ((int)($j['total'] ?? 0)) . ':' . (string)($field === 'album' ? ($j['items'][0]['album']['id'] ?? '') : ($j['items'][0]['id'] ?? '')) : null;
+        };
+        $a = $one('/me/albums?limit=1', 'album');
+        $p = $one('/me/playlists?limit=1', 'playlist');
+        return $a === null || $p === null ? null : ['s' => $a . '|' . $p];
+    });
+    return is_array($r) ? (string)$r['s'] : '';
+}
+function sp_sync_library(): void {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    $stamp = sp_library_stamp();
+    if ($stamp === '' || kv_get('lib_stamp') === $stamp) return;
+    kv_del('cache_albums_v4', 'cache_playlists_v3');
+    kv_set('lib_stamp', $stamp);
+}
+
 function sp_albums(): ?array {
     if (sp_denied()) return [];
+    sp_sync_library();
     return sp_cached('cache_albums_v4', 1800, function () {
         $out = [];
         for ($offset = 0; $offset < 1000; $offset += 50) {
@@ -179,6 +205,7 @@ function sp_albums(): ?array {
 }
 
 function sp_playlists(): ?array {
+    sp_sync_library();
     return sp_cached('cache_playlists_v3', 1800, function () {
         $out = [];
         [$ms, $me] = sp_api('GET', '/me');
@@ -430,6 +457,7 @@ function sp_handle(string $action, bool $post): void {
             'configured' => true,
             'connected' => true,
             'denied' => sp_denied(),
+            'lib' => sp_library_stamp(),
             'now' => sp_now(),
             'albums' => $__albums,
             'playlists' => sp_playlists() ?? [],
@@ -443,7 +471,7 @@ function sp_handle(string $action, bool $post): void {
         // tiny response for frequent polling – the album/playlist lists are fetched rarely
         if (!kv_get('refresh_token')) out(['room' => kv_scope(), 'configured' => true, 'connected' => false]);
         $__now = sp_now();
-        out(['room' => kv_scope(), 'denied' => sp_denied(), 'configured' => true, 'connected' => true, 'now' => $__now, 'recent' => sp_note_recent($__now), 'lock_until' => sp_lock_until(), 'lock_seconds' => sp_lock_seconds(), 'server_time' => time()]);
+        out(['room' => kv_scope(), 'denied' => sp_denied(), 'lib' => sp_library_stamp(), 'configured' => true, 'connected' => true, 'now' => $__now, 'recent' => sp_note_recent($__now), 'lock_until' => sp_lock_until(), 'lock_seconds' => sp_lock_seconds(), 'server_time' => time()]);
     }
 
     case 'spotify_tracks': {

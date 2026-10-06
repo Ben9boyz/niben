@@ -30,6 +30,7 @@ export const spotify = reactive({
 /** What the server answers on spotify_now / spotify_public. */
 interface PublicReply {
   room?: number
+  lib?: string // a fingerprint of the library: when it changes, something was added / removed in Spotify
   denied?: boolean
   configured?: boolean
   connected?: boolean
@@ -41,7 +42,7 @@ interface PublicReply {
   lock_seconds?: number
   server_time?: number
 }
-interface SavedLists { at?: number; room?: string; sig?: string; albums?: Album[]; playlists?: Playlist[] }
+interface SavedLists { at?: number; room?: string; lib?: string; sig?: string; albums?: Album[]; playlists?: Playlist[] }
 
 let subscribers = 0
 let pollTimer = 0
@@ -56,6 +57,8 @@ const LISTS_MAX_AGE = 24 * 60 * 60 * 1000
 let listsAt = 0
 let listsSig = ''
 let nowSig = ''
+let libSig = '' // the fingerprint the lists on screen were fetched under
+let listsBusy = false
 let cachedRoom = '' // the room the saved lists came from (as the server told us)
 let roomSeen = ''
 
@@ -71,6 +74,7 @@ function hydrate(): void {
       listsAt = c.at ?? 0
       listsSig = c.sig ?? ''
       cachedRoom = c.room ?? ''
+      libSig = c.lib ?? ''
     }
   } catch { /* nothing saved */ }
 }
@@ -136,8 +140,11 @@ function applyNow(j: PublicReply): void {
 /** Polls what's playing (cheap). */
 export async function refreshNow(): Promise<void> {
   try {
-    applyNow(await getJson('spotify_now'))
+    const j = await getJson('spotify_now')
+    applyNow(j)
     spotify.error = null
+    // something was added / removed in Spotify since the lists on screen were fetched: fetch them again now
+    if (j.connected && j.lib && j.lib !== libSig && (libSig || spotify.albums.length)) void refreshLists(true)
   } catch (e) {
     spotify.error = errorMessage(e)
   } finally {
@@ -148,9 +155,12 @@ export async function refreshNow(): Promise<void> {
 /** Fetches albums + playlists (big) – only when stale, or when forced. */
 export async function refreshLists(force = false): Promise<void> {
   if (!force && Date.now() - listsAt < LISTS_MAX_AGE && spotify.albums.length) return
+  if (listsBusy) return
+  listsBusy = true
   try {
     const j = await getJson('spotify_public')
     applyNow(j)
+    libSig = j.lib ?? ''
     if (j.connected) {
       const sig = JSON.stringify([j.albums?.map((a) => a.uri + a.thumb), j.playlists?.map((p) => p.uri + p.count + p.thumb)])
       if (sig !== listsSig) {
@@ -159,7 +169,7 @@ export async function refreshLists(force = false): Promise<void> {
         spotify.playlists = j.playlists ?? []
       }
       listsAt = Date.now()
-      try { localStorage.setItem(listsKey(), JSON.stringify({ at: listsAt, sig, room: roomSeen, albums: spotify.albums, playlists: spotify.playlists })) } catch {}
+      try { localStorage.setItem(listsKey(), JSON.stringify({ at: listsAt, sig, room: roomSeen, lib: libSig, albums: spotify.albums, playlists: spotify.playlists })) } catch {}
     } else {
       spotify.albums = []
       spotify.playlists = []
@@ -169,6 +179,7 @@ export async function refreshLists(force = false): Promise<void> {
   } catch (e) {
     spotify.error = errorMessage(e)
   } finally {
+    listsBusy = false
     spotify.loaded = true
   }
 }
@@ -547,7 +558,7 @@ async function act<T extends object = Record<string, never>>(action: string, bod
 }
 /** Remembers the lists on this machine (see hydrate). */
 function saveLists(): void {
-  try { localStorage.setItem(listsKey(), JSON.stringify({ at: listsAt, sig: listsSig, room: roomSeen, albums: spotify.albums, playlists: spotify.playlists })) } catch { /* private mode / full */ }
+  try { localStorage.setItem(listsKey(), JSON.stringify({ at: listsAt, sig: listsSig, room: roomSeen, lib: libSig, albums: spotify.albums, playlists: spotify.playlists })) } catch { /* private mode / full */ }
 }
 /** Up next in Spotify's queue. */
 export async function fetchQueue(): Promise<Track[]> {
