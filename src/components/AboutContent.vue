@@ -8,10 +8,11 @@ import { useData, type About, type AboutLink } from '../composables/useData'
 import { useSpotify } from '../composables/useSpotify'
 import { steam, loadSteam } from '../composables/useSteam'
 import { jp, loadJapanese } from '../composables/useJapanese'
-import { admin, checkLogin, api, shrinkImage, errorMessage } from '../composables/useAdmin'
+import { admin, checkLogin, api, shrinkImage, errorMessage, canManage, signedIn } from '../composables/useAdmin'
 import { reloadData } from '../composables/useData'
 import { thumb } from '../lib/photos'
 import { atlasName } from '../three/countries'
+import { routeAllowed } from '../lib/sections'
 
 // "Om meg": a short text I write myself (edited right here when logged in) and everything else
 // counted live from the other corners – nothing to keep up to date by hand.
@@ -73,12 +74,12 @@ const cards = computed(() => [
   { to: '/japansk', icon: Languages, title: 'Japansk', big: jp.count?.known || 0, unit: 'ord kan jeg', sub: jp.anime?.[0] ? `${jp.anime[0].en || jp.anime[0].title}: ${String(jp.anime[0].known).replace('.', ',')} %` : 'øver på jpdb' },
   { to: '/gaming', icon: Gamepad2, title: 'Spill', big: steam.library?.hours?.toLocaleString('nb-NO') || '–', unit: 'timer', sub: steam.profile?.playing ? `Spiller ${steam.profile.playing.name}` : steam.library ? `${steam.library.count} spill på Steam` : '' },
   { to: '/kode', icon: Code2, title: 'Kode', big: (data.prosjekter || []).length, unit: 'prosjekter', sub: 'blant annet denne siden' },
-])
+].filter((c) => routeAllowed(c.to.slice(1), data.profile)))
 
 // ── links: my own + the profiles the site already knows ──
 const links = computed(() => {
   const own = about.value?.lenker || data.om?.lenker || []
-  const auto: AboutLink[] = [{ navn: 'GitHub', url: 'https://github.com/Ben9boyz' }]
+  const auto: AboutLink[] = data.profile.owner ? [{ navn: 'GitHub', url: 'https://github.com/Ben9boyz' }] : []
   if (steam.profile?.url) auto.push({ navn: 'Steam', url: steam.profile.url })
   return [...own, ...auto.filter((a) => !own.some((o) => o.navn.toLowerCase() === a.navn.toLowerCase()))]
 })
@@ -115,7 +116,7 @@ async function save() {
     <header class="hero">
       <div v-if="!compact" class="photo-wrap">
         <img v-if="photo" :src="thumb(photo, 900)" alt="" class="photo" />
-        <label v-if="admin.loggedIn" class="photo-btn" :class="{ busy: photoBusy }">
+        <label v-if="canManage" class="photo-btn" :class="{ busy: photoBusy }">
           <ImageUp :size="15" />{{ photoBusy ? 'Laster opp …' : 'Bytt bilde' }}
           <input type="file" accept="image/*" hidden @change="uploadPhoto" />
         </label>
@@ -144,10 +145,10 @@ async function save() {
         </form>
         <template v-else>
           <p v-if="text" class="text">{{ text }}</p>
-          <p v-else-if="admin.loggedIn" class="text muted">Her står det ingenting om deg ennå – trykk «Rediger».</p>
+          <p v-else-if="canManage" class="text muted">Her står det ingenting om deg ennå – trykk «Rediger».</p>
           <div class="links">
             <a v-for="l in links" :key="l.url" :href="l.url" target="_blank" rel="noopener" class="chip">{{ l.navn }}<ArrowUpRight :size="13" /></a>
-            <button v-if="admin.loggedIn" class="chip edit-btn" @click="edit"><Pencil :size="13" />Rediger</button>
+            <button v-if="canManage" class="chip edit-btn" @click="edit"><Pencil :size="13" />Rediger</button>
           </div>
         </template>
       </div>
@@ -170,7 +171,7 @@ async function save() {
     <MadeWith />
 
     <!-- the way in for me (also: double-click the logo) – small, at the very bottom -->
-    <router-link v-if="!admin.loggedIn" to="/admin" class="login">Logg inn</router-link>
+    <router-link v-if="!signedIn" to="/admin" class="login">Logg inn</router-link>
   </div>
 </template>
 

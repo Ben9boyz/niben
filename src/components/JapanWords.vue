@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Search, Plus, Pencil, Eraser, Trash2, Volume2 } from 'lucide-vue-next'
 import { fetchWords, stateOf, STATE_LABEL, deckAction, type JpWord, type WordList } from '../composables/useJapanese'
-import { admin, errorMessage } from '../composables/useAdmin'
+import { admin, errorMessage, canManage } from '../composables/useAdmin'
 import { speak, canSpeak } from '../lib/speak'
 import JapanWord from './JapanWord.vue'
 import type { Flash } from '../types'
@@ -65,7 +65,7 @@ const list = computed(() => {
     <p v-if="error" class="notice error">{{ error }}</p>
     <p v-else-if="!words" class="muted">Henter ordene …</p>
     <template v-else>
-      <section v-if="admin.loggedIn" class="decks">
+      <section v-if="canManage" class="decks">
         <b>Mine kortstokker</b>
         <div class="dl">
           <div v-for="d in decks" :key="d.id" class="dk">

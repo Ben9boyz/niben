@@ -67,7 +67,7 @@ watch(selectedUri, async () => {
 
     <div v-if="spotify.loaded && !spotify.connected" class="empty">
       <template v-if="!spotify.configured">Spotify er ikke satt opp ennå.</template>
-      <template v-else-if="admin.loggedIn">
+      <template v-else-if="admin.mine">
         <p>Koble til Spotify-kontoen din for å fylle albumene dine.</p>
         <a class="btn primary" href="api.php?action=spotify_login">Koble til Spotify</a>
       </template>
@@ -90,7 +90,7 @@ watch(selectedUri, async () => {
               <b>Album</b>
               <span v-if="search" class="tools">
                 <input v-model="q" type="search" class="search" placeholder="Søk i albumene …" aria-label="Søk i albumene" />
-                <button v-if="admin.loggedIn" class="spot" title="Søk i hele Spotify" @click="spot = true"><SearchIcon :size="14" />Spotify</button>
+                <button v-if="admin.mine" class="spot" title="Søk i hele Spotify" @click="spot = true"><SearchIcon :size="14" />Spotify</button>
               </span>
             </div>
             <GroupBar artist />

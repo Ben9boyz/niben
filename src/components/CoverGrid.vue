@@ -31,7 +31,7 @@ const emit = defineEmits<{ pick: [item: T]; hover: [item: T]; move: [uri: string
 const go = playItem
 const menu = (e: MenuPoint, it: T) => showMenu(e, it.name, itemMenu(it, () => emit('pick', it)))
 const holds = (it: T) => longPress((e) => menu(e, it))
-const playable = (it: T) => admin.loggedIn && /^spotify:(album|playlist):/.test(it.uri || '')
+const playable = (it: T) => admin.mine && /^spotify:(album|playlist):/.test(it.uri || '')
 // phones can show the library as a list (see useLibView)
 const mq = window.matchMedia('(max-width: 820px)')
 const small = ref(mq.matches)

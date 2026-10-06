@@ -20,7 +20,7 @@ const toggle = () => control(now.value?.playing ? 'pause' : 'resume')
       <img v-if="now?.image" crossorigin="anonymous" :src="now?.image || undefined" alt="" />
       <span v-else class="ph"><Disc3 :size="20" /></span>
       <span class="tx"><b translate="no">{{ now?.name }}</b><small translate="no">{{ now?.artist }}</small></span>
-      <span v-if="admin.loggedIn" class="ctl" @click.stop>
+      <span v-if="admin.mine" class="ctl" @click.stop>
         <button aria-label="Forrige låt" @click="control('previous')"><SkipBack :size="20" fill="currentColor" /></button>
         <button class="pp" :aria-label="now?.playing ? 'Pause' : 'Spill'" @click="toggle"><Pause v-if="now?.playing" :size="22" fill="currentColor" /><Play v-else :size="22" fill="currentColor" /></button>
         <button aria-label="Neste låt" @click="control('next')"><SkipForward :size="20" fill="currentColor" /></button>

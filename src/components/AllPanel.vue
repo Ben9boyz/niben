@@ -11,7 +11,7 @@ import { targetEl } from '../lib/dom'
 import type { GridItem } from '../types'
 import { playlistsMenu, promptNewPlaylist } from '../lib/menus'
 import { Plus } from 'lucide-vue-next'
-function emptyMenu(e: MouseEvent) { if (!admin.loggedIn || e.defaultPrevented || targetEl(e).closest('.cell, input, button, a')) return; showMenu(e, 'Spillelister', playlistsMenu()) }
+function emptyMenu(e: MouseEvent) { if (!admin.mine || e.defaultPrevented || targetEl(e).closest('.cell, input, button, a')) return; showMenu(e, 'Spillelister', playlistsMenu()) }
 
 // "Alt": the albums and the playlists together in ONE pot – one grid, my folders / lists work across both
 // (but no "Artist" view). The sort button picks A–Å, or albums / playlists first.
@@ -38,7 +38,7 @@ function open(it: GridItem) {
 
 <template>
   <div class="all" @contextmenu="emptyMenu">
-    <button v-if="admin.loggedIn" class="newpl" aria-label="Ny spilleliste" @click="promptNewPlaylist"><Plus :size="15" />Ny spilleliste</button>
+    <button v-if="admin.mine" class="newpl" aria-label="Ny spilleliste" @click="promptNewPlaylist"><Plus :size="15" />Ny spilleliste</button>
     <GroupBar all />
     <GroupedGrid :items="items" :playing-uri="spotify.now?.context" @pick="open" />
     <p v-if="!items.length" class="muted">Ingenting her ennå.</p>

@@ -25,7 +25,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDoc))
 </script>
 
 <template>
-  <span v-if="admin.loggedIn && spotify.connected && now?.uri?.startsWith('spotify:track:')" ref="root" class="na">
+  <span v-if="admin.mine && spotify.connected && now?.uri?.startsWith('spotify:track:')" ref="root" class="na">
     <button class="plus" :class="{ on: open }" title="Legg til i kø eller spilleliste" aria-label="Legg til i kø eller spilleliste" @click.stop="open = !open"><CirclePlus :size="15" /></button>
     <div v-if="open" class="pop"><AddMenu @queue="queue" @pick="pick" @close="open = false" /></div>
   </span>

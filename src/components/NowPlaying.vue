@@ -19,7 +19,7 @@ const now = computed(() => spotify.now)
 </script>
 
 <template>
-  <section class="now" :class="{ playing: now?.playing, admin: admin.loggedIn, stacked: props.stacked, dropping: queueOver }" v-on="queueDrop">
+  <section class="now" :class="{ playing: now?.playing, admin: admin.mine, stacked: props.stacked, dropping: queueOver }" v-on="queueDrop">
     <div class="cover" :class="{ link: !!now?.name }" :role="now?.name ? 'button' : undefined" :tabindex="now?.name ? 0 : undefined" :title="now?.name ? 'Åpne albumet' : undefined" @click="openNowAlbum" @keydown.enter="openNowAlbum">
       <img crossorigin="anonymous" v-if="now?.image" :src="(props.stacked && now.image_large) || now.image" alt="" />
       <div v-else class="vinyl-ph"></div>
@@ -37,7 +37,7 @@ const now = computed(() => spotify.now)
     </div>
 
     <!-- the player's buttons (admin) -->
-    <PlayerControls v-if="admin.loggedIn && spotify.connected && now?.name" class="pctrl" :compact="!props.stacked" />
+    <PlayerControls v-if="admin.mine && spotify.connected && now?.name" class="pctrl" :compact="!props.stacked" />
 
     <!-- niben.no as a Spotify speaker (admin) -->
     <WebPlayerToggle v-if="!now?.name" class="ctrl" />

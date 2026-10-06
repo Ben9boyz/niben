@@ -54,7 +54,7 @@ function hm_handle(string $action, bool $post): void {
         out($l ? ['configured' => true] + $l : ['configured' => (bool)hm_place(), 'name' => null]);
     }
     case 'home_search': {
-        require_admin();
+        require_room_owner();
         $q = trim((string)($_GET['q'] ?? ''));
         if (mb_strlen($q) < 2) out(['results' => []]);
         [$s, $res] = http_req('GET', 'https://geocoding-api.open-meteo.com/v1/search?count=6&language=no&format=json&name=' . rawurlencode(mb_substr($q, 0, 80)), ['Accept: application/json']);
@@ -65,7 +65,7 @@ function hm_handle(string $action, bool $post): void {
         out(['results' => $out]);
     }
     case 'home_set': {
-        require_admin();
+        require_room_owner();
         if (!$post) fail('Bruk POST.', 405);
         $b = json_decode((string)file_get_contents('php://input'), true) ?: [];
         if (($b['clear'] ?? false)) { kv_set('home_place', null); kv_del('home_live'); out(['ok' => true, 'place' => null]); }
@@ -78,7 +78,7 @@ function hm_handle(string $action, bool $post): void {
         out(['ok' => true, 'place' => ['name' => $name]]);
     }
     case 'home_get': {
-        require_admin();
+        require_room_owner();
         $p = hm_place();
         out(['place' => $p ? ['name' => $p['name']] : null]);
     }

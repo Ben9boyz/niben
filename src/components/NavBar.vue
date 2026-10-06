@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import SettingsMenu from './SettingsMenu.vue'
+import RoomSwitch from './RoomSwitch.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, type ComponentPublicInstance } from 'vue'
-import { GROUPS, groupOf, groupTarget } from '../lib/nav'
+import { navGroups, groupOf, groupTarget } from '../lib/nav'
 import { useRoute, useRouter } from 'vue-router'
 import { admin, checkLogin } from '../composables/useAdmin'
 import BrandLogo from './BrandLogo.vue'
@@ -22,7 +23,7 @@ function pressEnd() { clearTimeout(pressTimer) }
 
 // the menu shows the main tabs; the sub-tabs are pills inside the page (SubTabs). A tab opens the
 // sub-tab you were last on.
-const links = computed(() => GROUPS.map((g) => ({ name: g.id, label: g.label, icon: g.icon, to: groupTarget(g) })))
+const links = computed(() => navGroups.value.map((g) => ({ name: g.id, label: g.label, icon: g.icon, to: groupTarget(g) })))
 const activeGroup = computed(() => groupOf(route.name)?.id)
 // phones (plain version): a top bar with the page's name – the group (its sub-tabs sit just below)
 const barTitle = computed(() => (route.name === 'hjem' ? '' : route.name === 'admin' ? 'Admin' : groupOf(route.name)?.label || route.meta?.title || ''))
@@ -137,11 +138,13 @@ onBeforeUnmount(() => {
 
     <span class="spacer" aria-hidden="true"></span>
     <!-- me / settings: my photo (logged in) or a cog – opens the menu with view, theme, language … -->
+    <RoomSwitch v-if="!isPhone" />
     <SettingsMenu v-if="!isPhone" />
   </header>
   <!-- phones: the whole menu sits behind the logo (tap it); the settings cog is in the other corner -->
   <div v-if="isPhone" class="mbar" aria-hidden="true"></div>
   <button v-if="isPhone" class="mlogo glass" :aria-expanded="navOpen" aria-label="Meny" @click="navOpen = !navOpen" @dblclick.prevent="toAdmin" @pointerdown="pressStart" @pointerup="pressEnd" @pointerleave="pressEnd"><X v-if="navOpen" :size="24" aria-hidden="true" /><Menu v-else :size="24" aria-hidden="true" /></button>
+  <RoomSwitch v-if="isPhone" />
   <SettingsMenu v-if="isPhone" />
 </template>
 

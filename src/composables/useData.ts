@@ -76,8 +76,13 @@ export interface Project {
 export interface AboutLink { navn: string; url: string }
 /** "Om meg": the text written in the admin page (or the placeholder in data.json). */
 export interface About { bilde?: string | null; tagline?: string; tekst?: string; lenker?: AboutLink[] }
+/** Whose room this is and which corners of it are switched on. */
+export const SECTION_IDS = ['reiser', 'boker', 'gitar', 'ovelse', 'japansk', 'lytte', 'gaming', 'kode', 'om'] as const
+export type SectionId = (typeof SECTION_IDS)[number]
+export interface RoomProfile { username: string; owner: boolean; mine: boolean; github?: string; sections: Record<SectionId, boolean> }
 export interface SiteData {
   loaded: boolean
+  profile: RoomProfile
   error: string | null
   fromDb: boolean
   version: number
@@ -97,8 +102,11 @@ interface DbTrip { id: number; country: string; place: string | null; title: str
 interface DbBook { id: number; title: string; author: string | null; isbn: string | null; cover_url: string | null; published_year: number | null; pages: number | null; read_on: string | null; rating: number | null; thoughts: string | null; quote: string | null; ol_key: string | null; reading?: number | string }
 interface DbRecording { id: number; guitar: string; title: string; recorded_on: string | null; youtube: string | null; audio_path: string | null; notes: string | null }
 interface DbSong { id: number; title: string; artist: string; chords: string; bpm: number | string | null; beats: number | string | null; capo: number | string | null; ug_url: string | null; notes: string | null; sheet: string | null; practising: number | string; strum: string | null }
+interface DbGuitar { id: string; navn: string; merke: string | null; type: string | null; aar: number | null; farge: string; pickguard: string | null; gripebrett: string | null; beskrivelse: string | null }
 interface DbContent {
   error?: string
+  guitars?: DbGuitar[]
+  profile?: Partial<RoomProfile>
   trips: DbTrip[]
   books: DbBook[]
   recordings: DbRecording[]
@@ -111,6 +119,7 @@ interface BaseData extends Partial<Omit<SiteData, 'loaded' | 'error' | 'fromDb' 
 
 const state: SiteData = reactive({
   loaded: false,
+  profile: { username: 'niben', owner: true, mine: false, sections: Object.fromEntries(SECTION_IDS.map((k) => [k, true])) as Record<SectionId, boolean> },
   error: null,
   fromDb: false,
   version: 0,
@@ -201,6 +210,18 @@ async function load(): Promise<void> {
     if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
       const db = (await r.json()) as DbContent
       if (!db.error) {
+        const profile: RoomProfile = { ...state.profile, ...db.profile, sections: { ...state.profile.sections, ...(db.profile?.sections ?? {}) } }
+        state.profile = profile
+        // somebody else's room: none of my guitars, projects or texts – only what they made themselves
+        if (!profile.owner) {
+          merged.gitarer = []
+          merged.prosjekter = []
+          merged.site = { navn: profile.username }
+          merged.om = {}
+        }
+        for (const g of db.guitars ?? []) {
+          merged.gitarer = [...(merged.gitarer ?? []), { id: g.id, navn: g.navn, merke: g.merke ?? undefined, type: g.type ?? undefined, aar: g.aar ?? undefined, farge: g.farge, pickguard: g.pickguard ?? undefined, gripebrett: g.gripebrett ?? undefined, beskrivelse: g.beskrivelse ?? undefined, opptak: [] }]
+        }
         merged.reiser = db.trips.map(mapTrip)
         merged.boker = db.books.map(mapBook)
         for (const g of merged.gitarer ?? []) {
@@ -212,7 +233,7 @@ async function load(): Promise<void> {
           ug: x.ug_url, notat: x.notes, ark: x.sheet, ovrer: !!Number(x.practising), slagmonster: x.strum || null,
         }))
         // my own photo and text from the about page (uploaded, not in the repo)
-        if (db.about?.bilde) merged.om = { ...(merged.om ?? {}), bilde: db.about.bilde }
+        if (db.about) merged.om = { ...(merged.om ?? {}), ...db.about }
         setTexts(db.texts)
         state.fromDb = true
       }
@@ -223,12 +244,14 @@ async function load(): Promise<void> {
 
   const handWritten = merged.prosjekter ?? []
   merged.prosjekter = [] // filled from GitHub below
-  state.projectsLoading = true
+  const hasRepos = state.profile.owner || !!state.profile.github
+  state.projectsLoading = hasRepos
   Object.assign(state, merged)
   state.loaded = true
   state.version++
 
   // the GitHub repos arrive after the page is up – the server keeps them for an hour, but never hold the site back
+  if (!hasRepos) return // (the projects are the room's GitHub repos)
   fetch('api.php?action=github_repos')
     .then((r) => (r.ok ? (r.json() as Promise<{ repos?: Repo[] }>) : null))
     .then((g) => {

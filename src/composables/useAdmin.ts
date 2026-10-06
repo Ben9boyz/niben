@@ -1,7 +1,16 @@
-import { reactive } from 'vue'
+import { computed, reactive } from 'vue'
 import { reloadData } from './useData'
 
-export const admin = reactive({ checked: false, loggedIn: false })
+/** `loggedIn` = I (the owner) am logged in. `mine` = logged in AND the room on screen is my own – what the music and
+ *  every other "change this room" control hinges on (so a visitor in somebody else's room only sees, never controls). */
+export const admin = reactive({ checked: false, loggedIn: false, mine: false })
+export interface AccountUser { id: number; username: string; owner: boolean }
+/** Any logged-in account (me or a user), and whether the room on screen is theirs. */
+export const account = reactive({ user: null as AccountUser | null, mine: false })
+/** Logged in with some account. */
+export const signedIn = computed(() => admin.loggedIn || !!account.user)
+/** Allowed to change what is in this room: logged in AND it is my own room. */
+export const canManage = computed(() => account.mine)
 
 /** An error from api.php: the server's message, its `code` (e.g. 'device_missing') and the HTTP status. */
 export class ApiError extends Error {
@@ -49,7 +58,7 @@ export async function api<T extends object = Record<string, never>>(action: stri
   let json: ReplyBase = {}
   try { json = (await r.json()) as ReplyBase } catch { /* empty or not JSON */ }
   if (!r.ok || json.error) {
-    if (r.status === 401) admin.loggedIn = false
+    if (r.status === 401) { admin.loggedIn = false; admin.mine = false }
     const err = new ApiError(json.error || `Feil ${r.status}`)
     err.code = json.code
     err.status = r.status
@@ -63,11 +72,15 @@ export const errorMessage = (e: unknown): string => (e instanceof Error ? e.mess
 
 export async function checkLogin(): Promise<void> {
   try {
-    const r = await api<{ admin: boolean }>('me')
+    const r = await api<{ admin: boolean; user?: AccountUser | null; room?: { mine: boolean } }>('me')
     admin.loggedIn = !!r.admin
+    account.user = r.user ?? null
+    account.mine = !!r.room?.mine
+    admin.mine = account.mine
     if (r.admin) { try { localStorage.setItem('niben-me', '1') } catch { /* private mode */ } }
   } catch {
     admin.loggedIn = false
+    admin.mine = false
   }
   admin.checked = true
 }
@@ -75,14 +88,38 @@ export async function checkLogin(): Promise<void> {
 export async function login(password: string): Promise<void> {
   await api('login', { password })
   admin.loggedIn = true
+  admin.mine = true
   try { localStorage.setItem('niben-me', '1') } catch { /* private mode */ } // this browser is me: not counted as a visitor
+  await checkLogin()
   refreshSongs()
+}
+
+/** Username (or e-mail) + password. The room changes with the account, so the page starts over. */
+export async function userLogin(username: string, password: string): Promise<void> {
+  const r = await api<{ user: AccountUser }>('user_login', { username, password })
+  if (r.user.owner) { try { localStorage.setItem('niben-me', '1') } catch { /* private mode */ } }
+  location.reload()
+}
+
+/** Ask for an account – the owner has to approve it before it can log in. */
+export async function registerAccount(username: string, email: string, password: string, website = ''): Promise<void> {
+  await api('user_register', { username, email, password, website })
+}
+
+/** Mails a link for choosing a new password (the answer is the same whether the account exists or not). */
+export async function forgotPassword(who: string): Promise<void> {
+  await api('user_forgot', { who })
+}
+export async function resetPassword(token: string, password: string): Promise<void> {
+  await api('user_reset', { token, password })
 }
 
 export async function logout(): Promise<void> {
   try { await api('logout', {}) } catch { /* already out */ }
   admin.loggedIn = false
-  refreshSongs()
+  admin.mine = false
+  account.user = null
+  location.reload() // (back to my room)
 }
 
 // chord sheets are only sent to a logged-in admin, so reload the data when that changes

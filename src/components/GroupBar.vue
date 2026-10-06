@@ -14,7 +14,7 @@ import type { Group } from '../types'
 const props = defineProps<{ artist?: boolean; all?: boolean }>() // all: the "Alt" pot – albums + playlists, no Artist view // albums: the "Artist" view is offered (and no "Lister")
 const view = computed(() => (!props.artist && groups.view === 'artist' ? 'mapper' : groups.view))
 const draft = ref<Group[]>([])
-const open = computed(() => admin.loggedIn && groups.editing)
+const open = computed(() => admin.mine && groups.editing)
 watch(open, (on) => { if (on) draft.value = groups.list.map((g) => ({ ...g })) }, { immediate: true })
 
 const move = (i: number, d: number) => { const a = draft.value, j = i + d; const x = a[i], y = a[j]; if (!x || !y) return; a[i] = y; a[j] = x }
@@ -55,7 +55,7 @@ async function save() {
         <button v-if="artist" :class="{ on: view === 'artist' }" @click="setView('artist')">Artist</button>
       </span>
       <span class="tools"><SortButton :kind="all ? 'all' : artist ? 'album' : 'playlist'" />
-      <button v-if="admin.loggedIn && groups.on && groups.view !== 'artist'" class="ed" :class="{ on: groups.editing }" @click="groups.editing = !groups.editing"><Pencil :size="13" />{{ groups.editing ? 'Ferdig' : 'Rediger' }}</button></span>
+      <button v-if="admin.mine && groups.on && groups.view !== 'artist'" class="ed" :class="{ on: groups.editing }" @click="groups.editing = !groups.editing"><Pencil :size="13" />{{ groups.editing ? 'Ferdig' : 'Rediger' }}</button></span>
     </div>
     <div v-if="open && groups.on" class="editor">
       <p class="hint">Flytt ting med valgene på hver flis, eller dra dem til en annen gruppe. «gjettet» betyr at gruppen bare er et forslag – fra sjangeren til artistene, lyden (instrumentalitet og energi) eller navnet.</p>

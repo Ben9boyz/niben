@@ -197,7 +197,7 @@ function sp_more_handle(string $action, bool $post): bool {
     }
     case 'spotify_groups_save': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $d = sp_groups_load();
         $b = body();
         if (isset($b['groups']) && is_array($b['groups'])) {
@@ -246,7 +246,7 @@ function sp_more_handle(string $action, bool $post): bool {
     case 'spotify_group_image': {
         // my own picture on a folder (multipart: id, file) – resized like the other photos
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $gid = (string)($_POST['id'] ?? '');
         $d = sp_groups_load();
         $at = null;
@@ -280,7 +280,7 @@ function sp_more_handle(string $action, bool $post): bool {
         out($q ?? ['tracks' => []]);
     }
     case 'spotify_devices': {
-        require_admin();
+        require_room_owner();
         [$s, $j] = sp_api('GET', '/me/player/devices');
         if ($s !== 200) fail('Fikk ikke hentet enhetene.', 502);
         $out = array_map(fn($d) => ['id' => $d['id'], 'name' => $d['name'], 'type' => $d['type'], 'active' => !empty($d['is_active']),
@@ -290,7 +290,7 @@ function sp_more_handle(string $action, bool $post): bool {
     case 'spotify_transfer': {
         // move playback to one of my devices (keeps playing if it was)
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $dev = (string)(body()['device'] ?? '');
         if (!preg_match('~^[A-Za-z0-9]{20,64}$~', $dev)) fail('Ugyldig enhet.');
         [$s, $j] = sp_api('PUT', '/me/player', ['device_ids' => [$dev], 'play' => !empty(body()['play'])]);
@@ -300,7 +300,7 @@ function sp_more_handle(string $action, bool $post): bool {
     }
     case 'spotify_volume': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $v = max(0, min(100, (int)(body()['percent'] ?? 50)));
         [$s, $j] = sp_api('PUT', '/me/player/volume?volume_percent=' . $v);
         if ($s === 403) fail('Denne enheten lar seg ikke styre volumet på.', 403);
@@ -309,7 +309,7 @@ function sp_more_handle(string $action, bool $post): bool {
     }
     case 'spotify_repeat': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $state = (string)(body()['state'] ?? 'off');
         if (!in_array($state, ['off', 'context', 'track'], true)) fail('Ugyldig valg.');
         [$s, $j] = sp_api('PUT', '/me/player/repeat?state=' . $state);
@@ -320,13 +320,13 @@ function sp_more_handle(string $action, bool $post): bool {
     }
     case 'myqueue_get': {
         // my own queue (kept here, edited on the site; the page sends the first song to Spotify just before it is needed)
-        require_admin();
+        require_room_owner();
         $l = json_decode(kv_get('my_queue') ?: '[]', true);
         out(['items' => is_array($l) ? $l : []]);
     }
     case 'myqueue_set': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $in = (array)(body()['items'] ?? []);
         $keep = ['uri', 'name', 'artist', 'img', 'ms', 'album_uri', 'album', 'album_image', 'no', 'disc'];
         $out = [];
@@ -343,7 +343,7 @@ function sp_more_handle(string $action, bool $post): bool {
         // hand Spotify my next song – ONCE. Several pages (Mac, phone, a second tab) run the same logic; the first one wins,
         // the others are told "already sent" so the song doesn't end up in Spotify's queue twice.
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $uri = (string)(body()['uri'] ?? '');
         $after = (string)(body()['after'] ?? '');
         if (!$id($uri, 'track')) fail('Ugyldig låt.');
@@ -359,7 +359,7 @@ function sp_more_handle(string $action, bool $post): bool {
     case 'spotify_enqueue': {
         // put a song next in the queue (doesn't switch what's playing, so the lock doesn't apply)
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $uri = (string)(body()['uri'] ?? '');
         if (!$id($uri, 'track')) fail('Ugyldig låt.');
         [$s, $j] = sp_api('POST', '/me/player/queue?uri=' . rawurlencode($uri));
@@ -372,7 +372,7 @@ function sp_more_handle(string $action, bool $post): bool {
         // a whole album (or any list of songs) at the end of the queue, in order, in ONE request from the page.
         // One song at a time with a short pause between, and a second try when Spotify says "slow down" (429).
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         @set_time_limit(120);
         $uris = array_values(array_filter((array)(body()['uris'] ?? []), fn($u) => is_string($u) && $id($u, 'track')));
         $uris = array_slice($uris, 0, 100);
@@ -395,7 +395,7 @@ function sp_more_handle(string $action, bool $post): bool {
     case 'spotify_liked': {
         // is the song saved in my "Liked songs"? (GET ?uri=) – and save / remove it (POST).
         // Spotify has moved these to /me/library (by uri); the older /me/tracks (by id) is the fallback.
-        require_admin();
+        require_room_owner();
         $uri = (string)($post ? (body()['uri'] ?? '') : ($_GET['uri'] ?? ''));
         $tid = $id($uri, 'track');
         if (!$tid) fail('Ugyldig låt.');

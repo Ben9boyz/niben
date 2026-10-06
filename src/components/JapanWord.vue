@@ -4,7 +4,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ArrowUpRight, Plus, Check, X, Volume2, Infinity as Forever, EyeOff, Trash2, Quote } from 'lucide-vue-next'
 import { jpdbUrl, stateOf, STATE_LABEL, fetchWords, addWord, cardAction, type JpWord, type WordList } from '../composables/useJapanese'
 import { speak, canSpeak } from '../lib/speak'
-import { admin, errorMessage } from '../composables/useAdmin'
+import { admin, errorMessage, canManage } from '../composables/useAdmin'
 import type { Flash } from '../types'
 
 // One word in detail (from the reader or the word list): spelling, reading with pitch accent,
@@ -23,7 +23,7 @@ const deck = ref<string | number>('')
 const msg = ref<Flash | null>(null)
 const busy = ref(false)
 onMounted(async () => {
-  if (!admin.loggedIn) return
+  if (!canManage) return
   try {
     decks.value = (await fetchWords()).decks || []
     deck.value = decks.value[0]?.id ?? 'new'
@@ -77,7 +77,7 @@ async function add() {
     </ol>
     <div class="acts" lang="nb">
       <a :href="jpdbUrl(word)" target="_blank" rel="noopener" class="jl">jpdb <ArrowUpRight :size="13" /></a>
-      <template v-if="admin.loggedIn && st === 'none'">
+      <template v-if="canManage && st === 'none'">
         <select v-model="deck" aria-label="Kortstokk">
           <option v-for="d in decks" :key="d.id" :value="d.id">{{ d.name }}</option>
           <option value="new">Ny kortstokk «niben.no»</option>
@@ -86,7 +86,7 @@ async function add() {
       </template>
     </div>
     <!-- more from jpdb, for me -->
-    <div v-if="admin.loggedIn && st !== 'none'" class="more" lang="nb">
+    <div v-if="canManage && st !== 'none'" class="more" lang="nb">
       <button v-if="st !== 'known'" :disabled="busy" title="Kortet regnes som lært for godt" @click="act('never-forget', {}, 'Merket som «glemmer aldri».')"><Forever :size="13" />Glemmer aldri</button>
       <button v-if="st !== 'blacklisted'" :disabled="busy" title="jpdb hopper over dette ordet" @click="act('blacklist', {}, 'Ordet ignoreres nå.')"><EyeOff :size="13" />Ignorer</button>
       <button v-else :disabled="busy" @click="act('unmark', {}, 'Ikke ignorert lenger.')">Ikke ignorer</button>

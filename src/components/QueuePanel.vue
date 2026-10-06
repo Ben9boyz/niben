@@ -100,7 +100,7 @@ async function where() {
 // a new song: look again (a moment later, once Spotify has caught up)
 watch(() => spotify.now?.uri, () => { open.value = new Set(); clearTimeout(soon); soon = setTimeout(() => { void load(); void where() }, 700) }, { immediate: true })
 watch(() => spotify.queueV, () => { clearTimeout(soon); soon = setTimeout(load, 400) })
-watch(() => admin.loggedIn, (v) => { if (v) loadMyQueue() }, { immediate: true })
+watch(() => admin.mine, (v) => { if (v) loadMyQueue() }, { immediate: true })
 onMounted(() => { timer = setInterval(() => { if (!document.hidden && spotify.now?.playing && !editing.value) load() }, 15000) })
 onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
 </script>
@@ -114,7 +114,7 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
     </header>
     <p v-if="queueOver" class="drophint">Slipp for å legge sist i køen din</p>
     <template v-if="!shut">
-      <div v-if="admin.loggedIn && mineCount" class="bar">
+      <div v-if="admin.mine && mineCount" class="bar">
         <button class="edit" :class="{ on: editing }" :aria-pressed="editing" @click="editing = !editing"><Check v-if="editing" :size="13" /><Pencil v-else :size="13" />{{ editing ? 'Ferdig' : 'Rediger' }}</button>
         <button v-if="mineCount > 2" class="edit" title="Bland rekkefølgen i køen din" @click="shuffleMine"><Shuffle :size="13" />Bland</button>
         <button v-if="editing" class="lnk" @click="clearAll"><Trash2 :size="12" />Tøm</button>

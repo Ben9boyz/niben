@@ -15,7 +15,7 @@ const props = withDefaults(defineProps<{ show?: boolean }>(), { show: true })
 useSpotify()
 const open = ref(false)
 const now = computed(() => spotify.now)
-const visible = computed(() => props.show && shell.value !== 'player' && spotify.connected && (!!now.value?.name || admin.loggedIn))
+const visible = computed(() => props.show && shell.value !== 'player' && spotify.connected && (!!now.value?.name || admin.mine))
 const pct = computed(() => (now.value?.duration_ms ? (progressMs.value / now.value?.duration_ms) * 100 : 0))
 const locked = computed(() => lockLeft.value > 0)
 const toggle = () => { const n = spotify.now; if (!n) return; const was = n.playing; n.playing = !was; void control(was ? 'pause' : 'resume') }
@@ -43,8 +43,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <span>{{ now?.name ? now.artist : 'Trykk for å velge' }}</span>
         </button>
       </transition>
-      <span v-if="admin.loggedIn" class="lk"><LockControl tiny /></span>
-      <span v-if="admin.loggedIn && now?.name" class="ctl">
+      <span v-if="admin.mine" class="lk"><LockControl tiny /></span>
+      <span v-if="admin.mine && now?.name" class="ctl">
         <button :class="{ dim: locked }" aria-label="Forrige" @click="skip('previous')"><SkipBack :size="14" fill="currentColor" /></button>
         <button class="pp" :aria-label="now.playing ? 'Pause' : 'Spill'" @click="toggle"><Pause v-if="now.playing" :size="14" fill="currentColor" /><Play v-else :size="14" fill="currentColor" /></button>
         <button :class="{ dim: locked }" aria-label="Neste" @click="skip('next')"><SkipForward :size="14" fill="currentColor" /></button>

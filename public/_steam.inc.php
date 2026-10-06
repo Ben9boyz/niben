@@ -4,12 +4,20 @@
 // Uses http_req / sp_cached from _spotify.inc.php.
 
 function st_config(): ?array {
-    static $c = false;
-    if ($c === false) {
+    static $c = [];
+    $room = kv_scope();
+    if (!array_key_exists($room, $c)) {
         $f = __DIR__ . '/_steam.php';
-        $c = is_file($f) ? require $f : null;
+        $mine = is_file($f) ? require $f : null;
+        if ($room === 1) $c[$room] = $mine;
+        else {
+            // another user's room: their Steam ID (the profile must be public). Their own API key if they gave one, else mine – it only reads public data
+            $s = room_secrets();
+            $key = $s['steam_key'] ?? ($mine['api_key'] ?? null);
+            $c[$room] = !empty($s['steam_id']) && $key ? ['api_key' => $key, 'steamid' => $s['steam_id']] : null;
+        }
     }
-    return $c;
+    return $c[$room];
 }
 
 /** GET a Steam Web API method. Returns the decoded body or null. */

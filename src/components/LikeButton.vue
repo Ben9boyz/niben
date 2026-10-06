@@ -16,7 +16,7 @@ const save = () => toggleAlbumSaved({ ...album.value, artist: album.value.artist
 </script>
 
 <template>
-  <button v-if="admin.loggedIn && spotify.connected && now?.uri && isAlbum" class="heart" :class="{ liked: on }" :title="title" :aria-label="title" @click.stop="save">
+  <button v-if="admin.mine && spotify.connected && now?.uri && isAlbum" class="heart" :class="{ liked: on }" :title="title" :aria-label="title" @click.stop="save">
     <Bookmark :size="14" :fill="on ? 'currentColor' : 'none'" />
   </button>
 </template>

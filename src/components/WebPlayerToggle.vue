@@ -19,7 +19,7 @@ const label = computed(() => ({
 </script>
 
 <template>
-  <div v-if="admin.loggedIn && spotify.connected" class="wpt" :class="[web.status, { compact }]">
+  <div v-if="admin.mine && spotify.connected" class="wpt" :class="[web.status, { compact }]">
     <label v-if="!web.unavailable" class="switch" :title="`La niben.no være en Spotify-høyttaler – ${label}`">
       <input type="checkbox" :checked="web.enabled && web.status !== 'reconnect'" @change="setEnabled(inputOf($event).checked)" />
       <span class="track"><span class="knob"></span></span>

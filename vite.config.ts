@@ -23,9 +23,13 @@ function serviceWorker(): Plugin {
   }
 }
 
+// NIBEN_API=http://127.0.0.1:8099 npm run dev: use a real api.php (e.g. `php -S` with a test database) instead of the mock
+const realApi = process.env.NIBEN_API
+
 export default defineConfig({
   // CSS is bundled into the JS file: the web host's FTP server rejects our .css uploads
-  plugins: [vue(), cssInjectedByJs(), serviceWorker(), mockApi()],
+  plugins: [vue(), cssInjectedByJs(), serviceWorker(), ...(realApi ? [] : [mockApi()])],
+  server: realApi ? { proxy: { '/api.php': realApi, '/thumb.php': realApi, '/uploads': realApi } } : {},
   base: './',
   // ffmpeg.wasm spins up its own worker; pre-bundling breaks that
   optimizeDeps: { exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util'] },

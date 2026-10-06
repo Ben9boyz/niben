@@ -52,7 +52,7 @@ let seq = 0
 watch(() => props.q, (q) => {
   clearTimeout(timer)
   const t = q.trim()
-  if (t.length < 2 || !admin.loggedIn) { found.value = nothing(); state.value = 'idle'; return }
+  if (t.length < 2 || !admin.mine) { found.value = nothing(); state.value = 'idle'; return }
   state.value = 'loading'
   const mySeq = ++seq
   timer = setTimeout(async () => {
@@ -82,7 +82,7 @@ function openAlbum(item: Album) {
 const albumOf = (t: Track): Album => ({ uri: t.album_uri ?? '', name: t.album ?? '', artist: t.album_artist ?? '', image: t.album_image, image_large: t.album_image_large, url: t.album_url })
 
 async function playTrack(t: Track) {
-  if (!admin.loggedIn || busy.value) return
+  if (!admin.mine || busy.value) return
   if (spotify.now?.uri === t.uri) { // already on: pause / resume works even while locked
     const r = await control(spotify.now?.playing ? 'pause' : 'resume')
     msg.value = r.ok ? null : { error: r.error }
@@ -145,7 +145,7 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
         </button>
       </section>
 
-      <p v-if="needle.length >= 2 && !admin.loggedIn" class="hint" :style="{ order: 0 }">Logg inn for å søke i hele Spotify.</p>
+      <p v-if="needle.length >= 2 && !admin.mine" class="hint" :style="{ order: 0 }">Logg inn for å søke i hele Spotify.</p>
       <p v-else-if="state === 'loading'" class="hint" :style="{ order: 0 }">Søker …</p>
       <p v-else-if="state === 'error'" class="notice error" :style="{ order: 0 }">{{ error }}</p>
 
@@ -175,7 +175,7 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
       <section v-if="found.tracks.length" :style="{ order: ORDER.tracks }">
         <h4>Låter</h4>
         <div v-for="t in found.tracks" :key="t.uri" class="trk">
-          <div class="row wrap" :draggable="admin.loggedIn || undefined" @dragstart="startTrackDrag($event, t)" @dragend="endDrag" @contextmenu="showMenu($event, t.name, trackMenu(t, { onPlay: () => playTrack(t) }))" v-on="longPress((e) => showMenu(e, t.name, trackMenu(t, { onPlay: () => playTrack(t) })))">
+          <div class="row wrap" :draggable="admin.mine || undefined" @dragstart="startTrackDrag($event, t)" @dragend="endDrag" @contextmenu="showMenu($event, t.name, trackMenu(t, { onPlay: () => playTrack(t) }))" v-on="longPress((e) => showMenu(e, t.name, trackMenu(t, { onPlay: () => playTrack(t) })))">
             <div class="main songrow" :class="{ dim: locked && spotify.now?.uri !== t.uri }">
               <button class="plain" :disabled="!!busy" :title="locked ? `Låst ${fmtClock(lockLeft)}` : 'Spill låta i albumet'" :aria-label="`Spill ${t.name}`" @click="playTrack(t)">
                 <img v-if="t.album_image" crossorigin="anonymous" :src="t.album_image" alt="" class="art" />
@@ -184,11 +184,11 @@ const none = computed(() => needle.value.length >= 2 && state.value === 'idle' &
               <span class="t">
                 <button class="plain nm" :disabled="!!busy" @click="playTrack(t)"><b>{{ t.name }}</b></button>
                 <small>
-                  <a v-if="admin.loggedIn" class="lnk" href="#" title="Åpne artisten og albumene" @click.prevent="openArtistPage({ id: t.artist_id, name: firstArtist(t.artist) })">{{ t.artist }}</a><template v-else>{{ t.artist }}</template>
-                  · <a v-if="admin.loggedIn && t.album_uri" class="lnk" href="#" title="Åpne albumet" @click.prevent="mode === 'rom' ? openAlbum(albumOf(t)) : openAlbumPage(albumOfTrack(t))">{{ t.album }}</a><template v-else>{{ t.album }}</template>
+                  <a v-if="admin.mine" class="lnk" href="#" title="Åpne artisten og albumene" @click.prevent="openArtistPage({ id: t.artist_id, name: firstArtist(t.artist) })">{{ t.artist }}</a><template v-else>{{ t.artist }}</template>
+                  · <a v-if="admin.mine && t.album_uri" class="lnk" href="#" title="Åpne albumet" @click.prevent="mode === 'rom' ? openAlbum(albumOf(t)) : openAlbumPage(albumOfTrack(t))">{{ t.album }}</a><template v-else>{{ t.album }}</template>
                 </small>
               </span>
-              <span v-if="admin.loggedIn" class="ics">
+              <span v-if="admin.mine" class="ics">
                 <button class="ic" title="Spill etterpå – legg til sist i køen" aria-label="Legg til sist i køen" @click="enqueue(t)"><ListEnd :size="17" /></button>
                 <button class="ic" :class="{ on: menuFor === t.uri }" title="Legg til i en spilleliste" aria-label="Legg til i en spilleliste" @click="menuFor = menuFor === t.uri ? null : t.uri"><CirclePlus :size="19" /></button>
               </span>

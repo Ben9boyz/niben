@@ -11,7 +11,7 @@ function about_handle(string $action, bool $post): void {
     case 'about_photo': {
         // my photo on the about page (and the home page / the frame in the room) – stored like the trip photos
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_user();
         [$path] = save_photo($_FILES['file'] ?? []);
         $about = json_decode((string)kv_get('about'), true) ?: [];
         if (!empty($about['bilde'])) delete_upload($about['bilde']);
@@ -21,7 +21,7 @@ function about_handle(string $action, bool $post): void {
     }
     case 'about_save': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_user();
         $b = body();
         $clean = fn($v, int $max) => mb_substr(trim((string)($v ?? '')), 0, $max);
         $links = [];

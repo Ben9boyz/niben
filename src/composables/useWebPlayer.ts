@@ -70,7 +70,7 @@ function fail(msg: string): void {
 }
 
 export async function start({ force = false }: { force?: boolean } = {}): Promise<void> {
-  if (player || !admin.loggedIn || web.unavailable) return
+  if (player || !admin.mine || web.unavailable) return
   if (!leaseFree() && !force) { web.status = 'elsewhere'; return } // another tab is the player
   takeLease()
   chan?.postMessage({ type: 'take', tab: TAB })
@@ -168,7 +168,7 @@ export async function start({ force = false }: { force?: boolean } = {}): Promis
 
 // for play(): start the page's player if it's allowed but off, and wait for it (device id or null)
 playDevice.start = async () => {
-  if (web.unavailable || !admin.loggedIn) return null
+  if (web.unavailable || !admin.mine) return null
   if (!web.enabled) return null
   if (!player) await start({ force: true })
   return playDevice.waitReady ? playDevice.waitReady(8000) : null
@@ -220,7 +220,7 @@ window.addEventListener('pagehide', () => {
 })
 
 // start as soon as the admin is known to be logged in; drop the player on logout
-watch(() => admin.loggedIn, (on) => {
+watch(() => admin.mine, (on) => {
   if (on && web.enabled) void start()
   else if (!on) stop()
 }, { immediate: true })

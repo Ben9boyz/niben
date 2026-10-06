@@ -8,12 +8,16 @@ const MS_TYPES = ['recording', 'book', 'anime', 'song', 'trip', 'other'];
 /** A trip that has started (or is over) in the last 30 days is a milestone – checked whenever the list is read, so a trip entered in advance shows up on the day it begins. */
 function ms_trips(): void {
     try {
-        $rows = db()->query("SELECT id, country, place, title, date_from, date_to, year FROM trips WHERE date_from IS NOT NULL AND date_from <= CURDATE() AND date_from >= CURDATE() - INTERVAL 30 DAY")->fetchAll();
+        $q = db()->prepare("SELECT id, country, place, title, date_from, date_to, year FROM trips WHERE user_id = ? AND date_from IS NOT NULL AND date_from <= CURDATE() AND date_from >= CURDATE() - INTERVAL 30 DAY");
+        $q->execute([kv_scope()]);
+        $rows = $q->fetchAll();
         foreach ($rows as $r) ms_add('trip:' . $r['id'], 'trip', trim(($r['place'] ?: $r['country']) . ($r['place'] && $r['country'] ? ', ' . $r['country'] : '')), (string)$r['title'], null, strtotime($r['date_from'] . ' 12:00') ?: time());
     } catch (Throwable $e) {}
     // recordings: the date on the recording (Gitar → opptak) decides – one made in the last 30 days is "just released"
     try {
-        $rows = db()->query("SELECT id, guitar, title, recorded_on FROM recordings WHERE recorded_on IS NOT NULL AND recorded_on <= CURDATE() AND recorded_on >= CURDATE() - INTERVAL 30 DAY")->fetchAll();
+        $q = db()->prepare("SELECT id, guitar, title, recorded_on FROM recordings WHERE user_id = ? AND recorded_on IS NOT NULL AND recorded_on <= CURDATE() AND recorded_on >= CURDATE() - INTERVAL 30 DAY");
+        $q->execute([kv_scope()]);
+        $rows = $q->fetchAll();
         foreach ($rows as $r) ms_add('rec:' . $r['id'], 'recording', (string)$r['title'], 'Nytt gitaropptak', null, strtotime($r['recorded_on'] . ' 12:00') ?: time());
     } catch (Throwable $e) {}
 }
@@ -40,7 +44,7 @@ function ms_handle(string $action, bool $post): void {
         out(['items' => array_slice(ms_all(), 0, 12)]);
     case 'milestone_add': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_user();
         $b = json_decode((string)file_get_contents('php://input'), true) ?: [];
         $title = trim((string)($b['title'] ?? ''));
         if ($title === '') fail('Skriv hva du klarte.');
@@ -51,7 +55,7 @@ function ms_handle(string $action, bool $post): void {
     }
     case 'milestone_delete': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_user();
         $b = json_decode((string)file_get_contents('php://input'), true) ?: [];
         $k = (string)($b['key'] ?? '');
         kv_set('milestones', json_encode(array_values(array_filter(ms_all(), fn($m) => ($m['key'] ?? '') !== $k)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));

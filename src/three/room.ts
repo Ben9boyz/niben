@@ -1336,6 +1336,8 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
         if (station === 'lytte') goTo('lytte', { duration: 1.3 })
       }
     },
+    /** The tonearm's angle: 0 = needle on the record, 0.45 = resting. */
+    tonearmAngle: (): number => listening.tonearmAngle(),
     /** iPod screen rectangle in viewport CSS px (for the HTML overlay), or null when not held. */
     ipodScreenRect() {
       if (!listening.isHoldingIpod()) return null
@@ -1390,6 +1392,16 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     selectDecor,
     adjustDecor,
     /** The user's graphics choices ({ mode: 'auto' | 'custom', … }); null = automatic. */
+    /** Corners switched off in this room (a user can hide Japanese, Spotify …): they are not in the room at all. */
+    setSections(on: Record<string, boolean> | null): void {
+      for (const o of interactive) {
+        const st = String(o.userData.station)
+        let vis = !on || on[st] !== false
+        if (st === 'kode' && on && on.gaming !== false) vis = true // the desk also carries the gaming monitor
+        o.visible = vis
+      }
+      invalidate(0.5)
+    },
     setGraphics(g: GfxInput | null) { gfxIn = g; applyGfx(g) },
     /** What the picture is made of right now (for the settings window): quality class, resolution, frame rate … */
     get gfxInfo() { return { quality, level, pixelRatio: renderer.getPixelRatio(), fps: fpsVal, maxMsaa, maxTex, dpr: window.devicePixelRatio, gpu: spec.gpu, score: spec.score, auto: autoGfx(), software: spec.software } },

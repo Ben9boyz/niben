@@ -21,7 +21,7 @@ const showKey = ref(false)
 const albums = (list: Pick[]) => list.filter((p) => p.type !== 'track').map((p) => ({ ...p, sub: p.artist + (p.year ? ` · ${p.year}` : '') }))
 const pickAlbums = computed(() => albums(discover.picks))
 const pickTracks = computed(() => discover.picks.filter((p) => p.type === 'track'))
-const recs = computed(() => albums(discover.recs).map((p) => ({ ...p, onHide: admin.loggedIn ? () => hideRec(p.uri) : undefined })))
+const recs = computed(() => albums(discover.recs).map((p) => ({ ...p, onHide: admin.mine ? () => hideRec(p.uri) : undefined })))
 const noteOf = (it: { uri: string }) => discover.picks.find((p) => p.uri === it.uri)?.note || ''
 const whyOf = (it: { uri: string }) => discover.recs.find((p) => p.uri === it.uri)?.why || ''
 const open = (it: Pick) => openAlbumPage({ ...it, artist: it.artist ?? '', image_large: it.image_large || it.image })
@@ -32,7 +32,7 @@ async function add() {
 }
 async function playTrack(t: Pick) { const r = await play(t.uri); if (!r.ok) notify(r.error ?? '', true) }
 const trackMenu = (e: MenuPoint, t: Pick) => showMenu(e, t.name, [
-  admin.loggedIn && { label: 'Spill', run: () => playTrack(t) },
+  admin.mine && { label: 'Spill', run: () => playTrack(t) },
   t.album_uri ? { label: 'Gå til album', run: () => openAlbumPage({ uri: t.album_uri ?? '', name: t.album ?? '', artist: t.artist ?? '', image: t.image, image_large: t.image_large }) } : null,
   t.artist ? { label: 'Gå til artist', run: () => openArtistPage({ id: t.artist_id, name: String(t.artist).split(',')[0] ?? '' }) } : null,
   { label: 'Åpne i Spotify', run: () => { window.open(t.url ?? undefined, '_blank', 'noopener') } },
@@ -48,7 +48,7 @@ const when = computed(() => (discover.at ? new Date(discover.at * 1000).toLocale
       <p class="lead">{{ tx('discover.intro') }}</p>
 
       <!-- me: add a suggestion -->
-      <form v-if="admin.loggedIn" class="add glass-in" @submit.prevent="add">
+      <form v-if="admin.mine" class="add glass-in" @submit.prevent="add">
         <b class="label-caps"><Plus :size="13" aria-hidden="true" />{{ tx('discover.add') }}</b>
         <input v-model="url" type="text" placeholder="Lim inn en Spotify-lenke (album eller låt)" aria-label="Spotify-lenke" />
         <input v-model="note" type="text" maxlength="300" placeholder="Hvorfor? (valgfritt – f.eks. «Årets album 2025»)" aria-label="Notat" />
@@ -64,16 +64,16 @@ const when = computed(() => (discover.at ? new Date(discover.at * 1000).toLocale
           <div v-for="it in pickAlbums" :key="it.uri" class="pk">
             <CoverGrid :items="[it]" @pick="open" />
             <p v-if="noteOf(it)" class="nt">{{ noteOf(it) }}</p>
-            <button v-if="admin.loggedIn" class="del" title="Fjern" aria-label="Fjern" @click="delPick(it.uri)"><Trash2 :size="13" /></button>
+            <button v-if="admin.mine" class="del" title="Fjern" aria-label="Fjern" @click="delPick(it.uri)"><Trash2 :size="13" /></button>
           </div>
         </div>
         <ul v-if="pickTracks.length" class="tl">
           <li v-for="t in pickTracks" :key="t.uri" v-on="longPress((e) => trackMenu(e, t))" @contextmenu.prevent="trackMenu($event, t)">
             <img v-if="t.thumb || t.image" :src="t.thumb || t.image || undefined" alt="" crossorigin="anonymous" />
             <span class="x"><b>{{ t.name }}</b><small>{{ t.artist }}<template v-if="t.album"> · {{ t.album }}</template></small><em v-if="t.note">{{ t.note }}</em></span>
-            <button v-if="admin.loggedIn" class="ic" title="Spill" aria-label="Spill" @click="playTrack(t)"><Play :size="15" fill="currentColor" /></button>
+            <button v-if="admin.mine" class="ic" title="Spill" aria-label="Spill" @click="playTrack(t)"><Play :size="15" fill="currentColor" /></button>
             <a class="ic" :href="t.url || undefined" target="_blank" rel="noopener" title="Åpne i Spotify" aria-label="Åpne i Spotify"><ArrowUpRight :size="16" /></a>
-            <button v-if="admin.loggedIn" class="ic" title="Fjern" aria-label="Fjern" @click="delPick(t.uri)"><Trash2 :size="14" /></button>
+            <button v-if="admin.mine" class="ic" title="Fjern" aria-label="Fjern" @click="delPick(t.uri)"><Trash2 :size="14" /></button>
           </li>
         </ul>
       </section>
@@ -85,11 +85,11 @@ const when = computed(() => (discover.at ? new Date(discover.at * 1000).toLocale
         <p v-else-if="discover.loaded" class="muted">{{ tx('discover.none') }}</p>
         <p v-if="recs.length" class="why">Under hvert album i menyen (høyreklikk) kan du spille det, legge det i køen eller lagre det i biblioteket.</p>
 
-        <div v-if="admin.loggedIn" class="tools">
+        <div v-if="admin.mine" class="tools">
           <button class="btn" :disabled="discover.busy === 'refresh' || !discover.hasKey" @click="refreshRecs"><RefreshCw :size="14" aria-hidden="true" />{{ discover.busy === 'refresh' ? 'Leter … (kan ta et halvt minutt)' : 'Finn nye forslag' }}</button>
           <button class="btn" @click="showKey = !showKey"><KeyRound :size="14" aria-hidden="true" />{{ discover.hasKey ? 'Last.fm-nøkkel (satt)' : 'Legg inn Last.fm-nøkkel' }}</button>
         </div>
-        <form v-if="admin.loggedIn && showKey" class="key glass-in" @submit.prevent="saveKey(key).then(() => (key = ''))">
+        <form v-if="admin.mine && showKey" class="key glass-in" @submit.prevent="saveKey(key).then(() => (key = ''))">
           <p>Forslagene hentes fra Last.fm (artister som ligner på dem du har mest av). Lag en gratis nøkkel på <a href="https://www.last.fm/api/account/create" target="_blank" rel="noopener">last.fm/api/account/create</a> (navn og beskrivelse kan være hva som helst), og lim den inn her.</p>
           <input v-model="key" type="text" placeholder="API-nøkkel (32 tegn)" aria-label="Last.fm-nøkkel" autocomplete="off" />
           <div class="btns"><button class="btn primary" :disabled="discover.busy === 'key'">Lagre nøkkel</button><button v-if="discover.hasKey" type="button" class="btn" @click="saveKey('')">Fjern nøkkel</button></div>

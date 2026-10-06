@@ -18,19 +18,24 @@ SQL);
 }
 
 function songs_list(PDO $pdo): array {
-    $sql = 'SELECT id, title, artist, chords, bpm, beats, capo, ug_url, notes, sheet, practising, strum FROM songs ORDER BY title, id';
+    $sql = 'SELECT id, title, artist, chords, bpm, beats, capo, ug_url, notes, sheet, practising, strum FROM songs WHERE user_id = ? ORDER BY title, id';
+    $room = kv_scope();
     try {
-        $rows = $pdo->query($sql)->fetchAll();
+        $q = $pdo->prepare($sql);
+        $q->execute([$room]);
+        $rows = $q->fetchAll();
     } catch (PDOException $e) {
         try {
             songs_ensure(); // no table yet, or the newest columns are missing: make/extend it and ask again
-            $rows = $pdo->query($sql)->fetchAll();
+            $q = $pdo->prepare($sql);
+            $q->execute([$room]);
+            $rows = $q->fetchAll();
         } catch (PDOException $e2) {
             return [];
         }
     }
-    // the pasted chord sheet is for my own practice – only sent when I'm logged in
-    if (!is_admin()) foreach ($rows as &$r) $r['sheet'] = null;
+    // the pasted chord sheet is for the room's owner's own practice – only sent to them
+    if (!viewing_own_room()) foreach ($rows as &$r) $r['sheet'] = null;
     return $rows;
 }
 
@@ -39,7 +44,7 @@ function songs_handle(string $action, bool $post): void {
     case 'song_save': {
         // a song to practise: its chords (e.g. "G D Em C"), tempo, capo and a link to Ultimate Guitar
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        $uid = require_user();
         songs_ensure(); // (adds the newest columns, e.g. strum, to an older table)
         $b = body();
         $title = str_or_null($b['title'] ?? null, 200) ?? fail('Skriv en tittel.');
@@ -64,9 +69,11 @@ function songs_handle(string $action, bool $post): void {
         ];
         $id = int_or_null($b['id'] ?? null, 1, PHP_INT_MAX);
         if ($id) {
-            db()->prepare('UPDATE songs SET title=?, artist=?, chords=?, bpm=?, beats=?, capo=?, ug_url=?, notes=?, sheet=?, practising=?, strum=? WHERE id=?')->execute([...$vals, $id]);
+            $st = db()->prepare('UPDATE songs SET title=?, artist=?, chords=?, bpm=?, beats=?, capo=?, ug_url=?, notes=?, sheet=?, practising=?, strum=? WHERE id=? AND user_id=?');
+            $st->execute([...$vals, $id, $uid]);
+            if (!$st->rowCount()) { $own = db()->prepare('SELECT 1 FROM songs WHERE id=? AND user_id=?'); $own->execute([$id, $uid]); if (!$own->fetchColumn()) fail('Den sangen er ikke din.', 403); }
         } else {
-            db()->prepare('INSERT INTO songs (title, artist, chords, bpm, beats, capo, ug_url, notes, sheet, practising, strum) VALUES (?,?,?,?,?,?,?,?,?,?,?)')->execute($vals);
+            db()->prepare('INSERT INTO songs (title, artist, chords, bpm, beats, capo, ug_url, notes, sheet, practising, strum, user_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')->execute([...$vals, $uid]);
             $id = (int)db()->lastInsertId();
         }
         out(['ok' => true, 'id' => $id]);
@@ -74,9 +81,9 @@ function songs_handle(string $action, bool $post): void {
 
     case 'song_delete': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        $uid = require_user();
         $id = int_or_null(body()['id'] ?? null, 1, PHP_INT_MAX) ?? fail('Mangler id.');
-        db()->prepare('DELETE FROM songs WHERE id=?')->execute([$id]);
+        db()->prepare('DELETE FROM songs WHERE id=? AND user_id=?')->execute([$id, $uid]);
         out(['ok' => true]);
     }
 
