@@ -30,7 +30,7 @@ export type PresetName = 'low' | 'medium' | 'high' | 'ultra'
 export type GfxMode = 'auto' | 'custom'
 
 export const PRESETS: Record<PresetName, GfxValues> = {
-  low:    { res: 0.85, fps: 30, msaa: 2, shadows: 1024, soft: false, lamp: false, ao: 'off', shafts: false, bloom: 'off',  bloomMul: 1, vignette: true, reflections: 128, weather: true, ambient: false, exposure: 1 },
+  low:    { res: 0.85, fps: 30, msaa: 2, shadows: 0, soft: false, lamp: false, ao: 'off', shafts: false, bloom: 'off',  bloomMul: 1, vignette: true, reflections: 128, weather: true, ambient: false, exposure: 1 },
   medium: { res: 1.25, fps: 60, msaa: 2, shadows: 2048, soft: false, lamp: false, ao: 'off', shafts: false, bloom: 'half', bloomMul: 1, vignette: true, reflections: 128, weather: true, ambient: true, exposure: 1 },
   high:   { res: 2,    fps: 60, msaa: 4, shadows: 4096, soft: true,  lamp: false, ao: 'low', shafts: true,  bloom: 'half', bloomMul: 1, vignette: true, reflections: 256, weather: true, ambient: true, exposure: 1 },
   ultra:  { res: 3,    fps: 0,  msaa: 8, shadows: 8192, soft: true,  lamp: true,  ao: 'high', shafts: true, bloom: 'full', bloomMul: 1, vignette: true, reflections: 512, weather: true, ambient: true, exposure: 1 },

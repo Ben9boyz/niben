@@ -128,7 +128,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     // a score from 0 (very weak) to 10
     let score = 5
     if (strongGpu) score += 3
-    if (weakGpu) score -= 2
+    if (weakGpu) score = Math.min(score - 2, 3) // (a weak chip stays in the low class however many cores the CPU has)
     if (cores >= 8) score += 1
     else if (cores <= 4) score -= 1
     if (mem && mem <= 2) score -= 2
@@ -1175,6 +1175,8 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     const prev = eff
     eff = g && g.mode === 'custom' ? { ...autoGfx(), ...g } : autoGfx()
     eff.showFps = !!g?.showFps // the frame counter works in Auto too
+    // your own (or a preset's) choices decide how light the lighting is: no glow and little smoothing = the lean lighting (no area lights, no tiny point lights)
+    if (g && g.mode === 'custom') { const lean = eff.bloom === 'off' && eff.msaa <= 2; eff.areaLights = !lean; eff.smallLights = !lean }
     const n = eff
     // picture sharpness: smoothing of the edges (MSAA) – the render targets are rebuilt with the new sample count
     if (n.msaa !== prev.msaa) {
