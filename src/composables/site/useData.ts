@@ -22,6 +22,8 @@ export interface Guitar {
   tre?: Record<string, string>
   kreditt?: { tekst: string; url: string }
 }
+/** A figure on the shelf in the room: an own .glb with a name and a short description. */
+export interface Figure { id: string; file: string; name: string; desc: string }
 export interface TripPhoto { id: number; src: string; tekst: string | null; w: number | null; h: number | null }
 export interface Trip {
   id: number
@@ -90,6 +92,7 @@ export interface SiteData {
   projectsLoading: boolean
   site: { navn?: string; undertittel?: string; intro?: string }
   gitarer: Guitar[]
+  figurer: Figure[]
   boker: Book[]
   reiser: Trip[]
   prosjekter: Project[]
@@ -108,6 +111,7 @@ interface DbContent {
   error?: string
   guitars?: DbGuitar[]
   guitar_models?: Record<string, string>
+  figures?: Figure[]
   profile?: Partial<RoomProfile>
   trips: DbTrip[]
   books: DbBook[]
@@ -128,6 +132,7 @@ const state: SiteData = reactive({
   projectsLoading: false,
   site: {},
   gitarer: [],
+  figurer: [],
   boker: [],
   reiser: [],
   prosjekter: [],
@@ -231,6 +236,7 @@ async function load(): Promise<void> {
           g.modell = own
           if (!g.farger && !g.tre) g.egen = true // (the owner's built-in guitars keep their colour recipe)
         }
+        merged.figurer = db.figures ?? []
         merged.reiser = db.trips.map(mapTrip)
         merged.boker = db.books.map(mapBook)
         for (const g of merged.gitarer ?? []) {

@@ -1,12 +1,28 @@
 import * as THREE from 'three'
 import { meshAdder } from './helpers'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 // A wall shelf with collectible figures – Star Wars on the top board, anime on the lower one – small low-poly
 // versions built from simple shapes. A warm LED strip lights each board and a lightsaber glows softly.
 const mat = (color: THREE.ColorRepresentation, o: THREE.MeshStandardMaterialParameters = {}): THREE.MeshStandardMaterial => new THREE.MeshStandardMaterial({ color, roughness: 0.55, ...o })
 
-export function buildFigureShelf(): { group: THREE.Group; update: (t: number) => void } {
+export interface ShelfFigure { id: string; file: string; name: string }
+/** Twelve places on the two boards: six on the top one, six on the lower one. */
+export const FIGURE_SLOTS = 12
+const slotAt = (i: number): { x: number; y: number } => ({ x: -0.55 + (i % 6) * 0.22, y: i < 6 ? 0.46 : 0 })
+
+export function buildFigureShelf(): {
+  group: THREE.Group
+  update: (t: number) => void
+  /** The figures somebody has uploaded (they take the places on the shelf); the built-in ones go away when there are any. */
+  setFigures: (list: ShelfFigure[], load: (url: string) => Promise<GLTF>, onChange: () => void, keepBuiltin: boolean) => void
+  /** where a figure stands in the world (for the camera) */
+  figurePos: (index: number) => THREE.Vector3 | null
+  /** which of the own figures have their model on the shelf (for tests) */
+  shown: () => boolean[]
+  builtinShown: () => boolean
+} {
   const group = new THREE.Group()
   const wood = mat(0xc89b6d, { roughness: 0.5 })
   const white = mat(0xf3f4f6, { roughness: 0.45 })
@@ -21,6 +37,7 @@ export function buildFigureShelf(): { group: THREE.Group; update: (t: number) =>
     led.position.set(0, y - 0.018, 0.14)
     group.add(led)
   })
+  const shelfParts = group.children.slice() // (the boards, the brackets, the strips: they stay whatever stands on them)
   const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.05), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }))
   group.add(tag)
 
@@ -165,11 +182,54 @@ export function buildFigureShelf(): { group: THREE.Group; update: (t: number) =>
     }
   }
 
+  // everything that was put on the shelf above is the built-in set: one group, so it can be taken away as a whole
+  const builtin = new THREE.Group()
+  for (const c of group.children.slice()) if (!shelfParts.includes(c)) builtin.add(c)
+  group.add(builtin)
+
+  // ── the figures somebody has uploaded ──
+  const own = new THREE.Group()
+  group.add(own)
+  const slots: THREE.Group[] = []
+  function setFigures(list: ShelfFigure[], load: (url: string) => Promise<GLTF>, onChange: () => void, keepBuiltin: boolean): void {
+    builtin.visible = keepBuiltin && !list.length
+    for (const g of slots) own.remove(g)
+    slots.length = 0
+    list.slice(0, FIGURE_SLOTS).forEach((f, i) => {
+      const root = new THREE.Group()
+      const { x, y } = slotAt(i)
+      root.position.set(x, y + 0.015, 0.09)
+      root.userData = { kind: 'figure', index: i }
+      own.add(root)
+      slots.push(root)
+      load(f.file).then((gltf) => {
+        if (slots[i] !== root) return
+        const m = gltf.scene.clone(true)
+        // the same size on the shelf whatever the file: about 17 cm tall (and not wider than 18 cm), standing on the board
+        const b0 = new THREE.Box3().setFromObject(m)
+        const size = b0.getSize(new THREE.Vector3())
+        m.scale.multiplyScalar(Math.min(0.17 / Math.max(size.y, 1e-4), 0.18 / Math.max(size.x, size.z, 1e-4)))
+        m.updateMatrixWorld(true)
+        const b = new THREE.Box3().setFromObject(m)
+        const c = b.getCenter(new THREE.Vector3())
+        m.position.set(-c.x, -b.min.y, -c.z)
+        m.traverse((n) => { if (n instanceof THREE.Mesh) { n.castShadow = true; n.receiveShadow = true } })
+        root.add(m)
+        onChange()
+      }).catch(() => {})
+    })
+    onChange()
+  }
+  const figurePos = (i: number): THREE.Vector3 | null => {
+    const s = slots[i]
+    return s ? s.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.09, 0)) : null
+  }
+
   function update(t: number): void {
     // the blade hums softly
     const p = 0.9 + Math.sin(t * 6) * 0.05 + Math.sin(t * 17) * 0.03
     saberLight.intensity = 0.35 * p
     bladeGlow.material.opacity = 0.2 + 0.07 * p
   }
-  return { group, update }
+  return { group, update, setFigures, figurePos, shown: () => slots.map((s) => s.children.length > 0), builtinShown: () => builtin.visible }
 }

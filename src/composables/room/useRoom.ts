@@ -20,6 +20,7 @@ export const room = reactive({
   api: null as RoomApi | null,
   sel: {
     gitar: -1,
+    figur: -1, // the figure on the shelf that is open in the Figurer tab
     bok: -1,
     land: null as string | null,
     prosjekt: 0,
@@ -29,6 +30,7 @@ export const room = reactive({
   musicView: 'vinyl' as MusicView, // listening station: 'vinyl' | 'spiller' (record on, turntable view) | 'ipod' (the camera is at the iPod on its stand and its screen can be used)
   // what the iPod shows – shared with the panel so the two mirror each other
   ipod: { view: 'menu' as IpodView, playlist: null as Playlist | null, active: 0, q: '' }, // q: the search text, shared by the panel and the iPod screen
+  roam: false, // free roam: walking around in the room
   discover: false, // listening corner: the "Oppdag" view (picks + suggestions) is open instead of albums / playlists
   panelHidden: false,
   deckView: false, // listening corner: looking straight down at the turntable – the buttons and the needle can be pressed

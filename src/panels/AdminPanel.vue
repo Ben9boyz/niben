@@ -15,6 +15,7 @@ import AdminRoom from '../components/admin/AdminRoom.vue'
 import AdminNews from '../components/admin/AdminNews.vue'
 import AdminUsers from '../components/admin/AdminUsers.vue'
 import AdminGuitars from '../components/admin/AdminGuitars.vue'
+import AdminFigures from '../components/admin/AdminFigures.vue'
 import AdminGuestbook from '../components/admin/AdminGuestbook.vue'
 import AdminProfile from '../components/admin/AdminProfile.vue'
 import AdminMusic from '../components/admin/AdminMusic.vue'
@@ -33,7 +34,7 @@ const GROUPS = computed<GroupDef[]>(() => {
   if (isOwner.value) list.push({ id: 'oversikt', label: 'Oversikt', icon: LayoutDashboard, tabs: [TAB('oversikt', 'Oversikt', LayoutDashboard)] })
   list.push({
     id: 'innhold', label: 'Innhold', icon: Plane,
-    tabs: [TAB('reiser', 'Reiser', Plane), TAB('boker', 'Bøker', BookOpen), ...(isOwner.value ? [] : [TAB('gitarer', 'Gitarer', Guitar)]), TAB('opptak', 'Gitaropptak', Mic), TAB('sanger', 'Sanger', Music), ...(music ? [TAB('musikk', 'Musikk', Disc3)] : [])],
+    tabs: [TAB('reiser', 'Reiser', Plane), TAB('boker', 'Bøker', BookOpen), TAB('gitarer', 'Gitarer', Guitar), TAB('figurer', 'Figurer', Box), TAB('opptak', 'Gitaropptak', Mic), TAB('sanger', 'Sanger', Music), ...(music ? [TAB('musikk', 'Musikk', Disc3)] : [])],
   })
   list.push({ id: 'profil', label: 'Profil', icon: UserRound, tabs: [TAB('profil', 'Om meg', UserRound), TAB('tekster', 'Tekster', Type), TAB('gjestebok', 'Gjestebok', MessageCircle)] })
   list.push({ id: 'rommet', label: 'Rommet', icon: Box, tabs: [TAB('rommet', 'Hva vises', SlidersHorizontal), ...(isOwner.value ? [TAB('rom', '3D-modeller', Box)] : [])] })
@@ -159,6 +160,7 @@ const myRoom = () => { if (account.user) void setRoom(account.user.username) }
           <AdminTrips v-else-if="shownTab === 'reiser'" key="r" />
           <AdminBooks v-else-if="shownTab === 'boker'" key="b" />
           <AdminGuitars v-else-if="shownTab === 'gitarer'" key="g" />
+          <AdminFigures v-else-if="shownTab === 'figurer'" key="f" />
           <AdminSongs v-else-if="shownTab === 'sanger'" key="s" />
           <AdminRoom v-else-if="shownTab === 'rom'" key="m" />
           <AdminNews v-else-if="shownTab === 'nyhetsbrev'" key="n" />

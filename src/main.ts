@@ -18,6 +18,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/oppdag', redirect: () => { room.discover = true; return '/lytte' } }, // (old link: Oppdag is a view inside the listening corner now)
   { path: '/ovelse', name: 'ovelse', ...lazy(() => import('./panels/PracticePanel.vue'), () => import('./pages/PracticePage.vue'), 'Gitar-øving') },
   { path: '/gitar', name: 'gitar', ...lazy(() => import('./panels/GuitarPanel.vue'), () => import('./pages/GuitarPage.vue'), 'Gitarer') },
+  { path: '/figurer', name: 'figurer', ...lazy(() => import('./panels/FigurePanel.vue'), () => import('./pages/FigurePage.vue'), 'Figurer') },
   { path: '/boker', name: 'boker', ...lazy(() => import('./panels/BooksPanel.vue'), () => import('./pages/BooksPage.vue'), 'Bøker') },
   { path: '/reiser', name: 'reiser', ...lazy(() => import('./panels/TravelPanel.vue'), () => import('./pages/TravelPage.vue'), 'Reiser') },
   { path: '/kode', name: 'kode', ...lazy(() => import('./panels/CodePanel.vue'), () => import('./pages/CodePage.vue'), 'Prosjekter') },

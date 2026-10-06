@@ -34,7 +34,7 @@ useSpotify() // keeps records/iPod in the room up to date
 loadGroups() // the shelf order may follow my folders
 let api: ReturnType<typeof createRoom> | undefined
 
-const ROUTES: Record<string, string> = { hjem: '/', japansk: '/japansk', gaming: '/gaming', lytte: '/lytte', ovelse: '/ovelse', gitar: '/gitar', boker: '/boker', reiser: '/reiser', kode: '/kode', om: '/om' }
+const ROUTES: Record<string, string> = { hjem: '/', japansk: '/japansk', gaming: '/gaming', lytte: '/lytte', ovelse: '/ovelse', gitar: '/gitar', figurer: '/figurer', boker: '/boker', reiser: '/reiser', kode: '/kode', om: '/om' }
 
 function onPick(p: PickEvent) {
   if (p.kind === 'station') { const to = ROUTES[p.station]; if (to) router.push(to); return }
@@ -55,6 +55,7 @@ function onPick(p: PickEvent) {
     else control(spotify.now?.playing ? 'pause' : 'resume') // the start-stop knob, the tonearm, the record itself
     return
   }
+  if (p.kind === 'figure') { room.sel.figur = p.index ?? -1; router.push('/figurer'); return }
   if (p.kind === 'guitar') room.sel.gitar = p.index ?? -1
   else if (p.kind === 'book') room.sel.bok = room.sel.bok === p.index ? -1 : p.index ?? -1
   else if (p.kind === 'country') { room.sel.land = room.sel.land === p.name ? null : p.name ?? null; if (room.sel.land) room.panelHidden = false } // picking a country always brings the panel (the trip) forward
@@ -143,6 +144,10 @@ watch(() => [jp.anime, room.jpAnime, room.api], () => room.api?.setAnime(jp.anim
 watch(() => [room.api, route.name, decor.editing], () => room.api?.setCovered(route.name === 'admin' && !decor.editing), { immediate: true })
 // the room's accent colour (Admin → Profil) reaches what glows in the room too
 watch(() => [room.api, accentHex.value], () => room.api?.setAccent(accentHex.value), { immediate: true })
+// the figures on the shelf (Admin → Figurer); in the owner's room the built-in set stays until there are own ones
+watch(() => [room.api, JSON.stringify(data.figurer), data.profile.owner], () => room.api?.setFigures(data.figurer.map((f) => ({ id: f.id, file: f.file, name: f.name })), !!data.profile.owner), { immediate: true })
+// free roam: walking around in the room
+watch(() => [room.api, room.roam], () => room.api?.setRoam(room.roam), { immediate: true })
 watch(theme, (t) => api?.setTheme(t))
 watch(() => weather.value?.kind, () => api?.setWeather(weather.value))
 watch(calm, (v) => api?.setCalm(v))

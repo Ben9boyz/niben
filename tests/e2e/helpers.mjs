@@ -31,3 +31,19 @@ export async function openPage(browser, { mode = 'enkel', width = 1200, height =
   return page
 }
 export const cookie = async (page, name) => (await page.context().cookies()).find((c) => c.name === name)?.value
+
+/** The smallest real .glb there is: one triangle. (A test needs a model the loader will accept.) */
+export function tinyGlb() {
+  const pos = Buffer.alloc(36)
+  ;[0, 0, 0, 1, 0, 0, 0, 1, 0].forEach((v, i) => pos.writeFloatLE(v, i * 4))
+  const json = { asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0 }], meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }],
+    buffers: [{ byteLength: 36 }], bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: 36 }], accessors: [{ bufferView: 0, componentType: 5126, count: 3, type: 'VEC3', min: [0, 0, 0], max: [1, 1, 0] }] }
+  let j = Buffer.from(JSON.stringify(json))
+  j = Buffer.concat([j, Buffer.alloc((4 - (j.length % 4)) % 4, 0x20)])
+  const head = Buffer.alloc(12)
+  head.write('glTF', 0); head.writeUInt32LE(2, 4); head.writeUInt32LE(12 + 8 + j.length + 8 + pos.length, 8)
+  const ch = (len, type) => { const b = Buffer.alloc(8); b.writeUInt32LE(len, 0); b.write(type, 4, 'latin1'); return b }
+  const jc = ch(j.length, 'JSON'); jc.writeUInt32LE(j.length, 0); jc.writeUInt32LE(0x4e4f534a, 4)
+  const bc = ch(pos.length, 'BIN\0'); bc.writeUInt32LE(0x004e4942, 4)
+  return Buffer.concat([head, jc, j, bc, pos])
+}

@@ -42,6 +42,7 @@ interface Pose { pos: Vec3; target: Vec3 }
 const STATIONS: Record<string, Pose | null> = {
   hjem: { pos: [0.6, 7.4, 15.2], target: [0, 0.5, -0.3] },
   gitar: { pos: [-0.75, 1.35, GUITAR_Z], target: [-4, 1.2, GUITAR_Z] },
+  figurer: { pos: [0.4, 1.6, -1.75], target: [0.4, 1.5, -3.5] },
   boker: { pos: [-1.6, 1.5, -0.45], target: [-1.6, 1.45, -3.5] },
   kode: { pos: [2.0, 1.36, -1.25], target: [2.0, 1.08, -3.4] },
   reiser: null, // computed from globe position
@@ -62,7 +63,7 @@ const LYTTE_DECK: Pose = { pos: [3.47, 1.5, -0.28], target: [3.71, 0.88, -0.28] 
 const LYTTE_SHELF: Pose = { pos: [1.9, 0.95, 0.1], target: [3.6, 0.45, 0.1] }
 // (the iPod pose is worked out from the iPod itself and the shape of the screen: see listening.ipodView)
 
-export const STATION_LABELS: Record<string, string> = { gaming: 'Gaming', japansk: 'Japansk', lytte: 'Lytteplassen', ovelse: 'Øvingstimer', gitar: 'Gitarer', boker: 'Bokhylla', kode: 'Prosjekter', reiser: 'Reiser', om: 'Om meg' }
+export const STATION_LABELS: Record<string, string> = { gaming: 'Gaming', japansk: 'Japansk', lytte: 'Lytteplassen', ovelse: 'Øvingstimer', gitar: 'Gitarer', boker: 'Bokhylla', kode: 'Prosjekter', reiser: 'Reiser', om: 'Om meg', figurer: 'Figurer' }
 
 /** The look of the room by day and by night. */
 interface Theme {
@@ -546,6 +547,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   // a display shelf with Star Wars and anime figures on the back wall, between the bookshelf and the desk
   const figures = buildFigureShelf()
   figures.group.position.set(0.38, 1.28, -3.5)
+  tag(figures.group, 'figurer')
   scene.add(figures.group)
   interface MusicState { albums: Album[]; playlists: Playlist[]; now: NowPlaying | null; guests?: Album[]; playOn?: string }
   let music: MusicState = { albums: [], playlists: [], now: null }
@@ -1060,6 +1062,80 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   el.addEventListener('pointerup', onUp)
   el.addEventListener('pointerleave', onLeave)
 
+  // ── Free roam: walk around in the room ──
+  // WASD / arrows to walk (Shift to hurry), drag to look around; on a phone the joystick (RoamControls) walks and a drag looks.
+  // Eye height 1.6 m; the walls and the furniture on the floor stop you. The camera goes back to its station when you leave.
+  const roam = { on: false, x: 0.5, z: 2.7, yaw: 0, pitch: -0.05, mx: 0, mz: 0, keys: new Set<string>(), drag: null as { x: number; y: number; id: number } | null }
+  const ROOM_BOX = { x0: -3.7, x1: 3.7, z0: -3.25, z1: 3.3 }
+  const EYE = 1.6, RADIUS = 0.28
+  let roamBoxes: THREE.Box3[] = []
+  function buildRoamBoxes(): void {
+    roamBoxes = []
+    scene.updateMatrixWorld(true)
+    const take = (o: THREE.Object3D, depth: number): void => {
+      if (!o.visible) return
+      const b = new THREE.Box3().setFromObject(o)
+      if (b.isEmpty()) return
+      const size = b.getSize(new THREE.Vector3())
+      if (b.min.y > 1.0 || size.y < 0.3) return // (things up on the wall, and rugs and mats you can walk over)
+      if (size.x * size.z > 14) { if (depth < 3) o.children.forEach((c) => take(c, depth + 1)); return } // a whole corner: look at its parts
+      roamBoxes.push(b.expandByVector(new THREE.Vector3(RADIUS, 0, RADIUS)))
+    }
+    for (const o of interactive) if (o.userData.station !== 'om') o.children.forEach((c) => take(c, 1))
+  }
+  const blocked = (x: number, z: number): boolean => x < ROOM_BOX.x0 || x > ROOM_BOX.x1 || z < ROOM_BOX.z0 || z > ROOM_BOX.z1 || roamBoxes.some((b) => x > b.min.x && x < b.max.x && z > b.min.z && z < b.max.z)
+  function stepRoam(dt: number): boolean {
+    const k = roam.keys
+    let ix = roam.mx, iz = roam.mz
+    if (k.has('d') || k.has('arrowright')) ix += 1
+    if (k.has('a') || k.has('arrowleft')) ix -= 1
+    if (k.has('s') || k.has('arrowdown')) iz += 1
+    if (k.has('w') || k.has('arrowup')) iz -= 1
+    const len = Math.hypot(ix, iz)
+    let moved = false
+    if (len > 0.01) {
+      if (len > 1) { ix /= len; iz /= len }
+      const speed = (k.has('shift') ? 3.2 : 1.6) * dt
+      const fx = -Math.sin(roam.yaw), fz = -Math.cos(roam.yaw)
+      const rx = Math.cos(roam.yaw), rz = -Math.sin(roam.yaw)
+      const dx = (rx * ix - fx * iz) * speed, dz = (rz * ix - fz * iz) * speed
+      if (!blocked(roam.x + dx, roam.z)) roam.x += dx // (each way on its own: you slide along a wall)
+      if (!blocked(roam.x, roam.z + dz)) roam.z += dz
+      moved = true
+    }
+    camera.position.set(roam.x, EYE + Math.sin(simT * 7) * (moved ? 0.012 : 0), roam.z)
+    const cp = Math.cos(roam.pitch)
+    camera.lookAt(roam.x - Math.sin(roam.yaw) * cp, EYE + Math.sin(roam.pitch), roam.z - Math.cos(roam.yaw) * cp)
+    lookAt.set(roam.x - Math.sin(roam.yaw), EYE, roam.z - Math.cos(roam.yaw)) // (so the lerp back to a station starts from here)
+    return moved
+  }
+  const roamKeys = (down: boolean) => (e: KeyboardEvent): void => {
+    if (!roam.on || ['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement | null)?.tagName ?? '')) return
+    const key = e.key.toLowerCase()
+    if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift'].includes(key)) return
+    if (e.metaKey || e.ctrlKey || e.altKey) return
+    if (down) roam.keys.add(key); else roam.keys.delete(key)
+    if (key.startsWith('arrow')) e.preventDefault()
+    invalidate(0.5)
+  }
+  const onRoamKeyDown = roamKeys(true), onRoamKeyUp = roamKeys(false)
+  window.addEventListener('keydown', onRoamKeyDown)
+  window.addEventListener('keyup', onRoamKeyUp)
+  window.addEventListener('blur', () => roam.keys.clear())
+  const onRoamDown = (e: PointerEvent): void => { if (roam.on) roam.drag = { x: e.clientX, y: e.clientY, id: e.pointerId } }
+  const onRoamMove = (e: PointerEvent): void => {
+    const d = roam.drag
+    if (!roam.on || !d || d.id !== e.pointerId) return
+    roam.yaw -= (e.clientX - d.x) * 0.0042
+    roam.pitch = Math.max(-1.2, Math.min(1.2, roam.pitch - (e.clientY - d.y) * 0.0042))
+    d.x = e.clientX; d.y = e.clientY
+    invalidate(0.3)
+  }
+  const onRoamUp = (): void => { roam.drag = null }
+  el.addEventListener('pointerdown', onRoamDown)
+  window.addEventListener('pointermove', onRoamMove)
+  window.addEventListener('pointerup', onRoamUp)
+
   // ── Data ───────────────────────────────────────────────
   let currentData: RoomData = {}
   function setData(data: RoomData): void {
@@ -1389,6 +1465,8 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
 
     if (simT - cullAt > (flight ? 0.05 : 0.25)) { updateCull(); cullAt = simT }
 
+    if (roam.on) { if (stepRoam(dt) || roam.drag || roam.mx || roam.mz || roam.keys.size) active = true }
+
     // guitars
     guitars.forEach((g, i) => {
       const sel = i === selGuitar
@@ -1420,7 +1498,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
 
     if (shelf.group.visible && shelf.update(dt, t)) { shadowsDirty = true; active = true }
     // things that animate on their own only count where you can see them
-    const near = (...st: string[]): boolean => st.includes(station) || !!flight
+    const near = (...st: string[]): boolean => st.includes(station) || !!flight || roam.on
     if (near('kode', 'gaming') && desk.group.visible && desk.update(dt, t)) active = true
     if (globeTable.update(dt, t, !reduced && near('reiser'))) active = true
     if (timerState && near('ovelse', 'hjem') && practice.update(dt, t, timerState(), timerInterval)) active = true
@@ -1554,6 +1632,8 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     },
     /** My uploaded 3D models: [{ id, file, name, x, y, z, rot, scale, visible }]. */
     setDecor,
+    /** The figures on the shelf (their own models); `keepBuiltin`: the built-in set stays while there are none (the owner's room). */
+    setFigures(list: { id: string; file: string; name: string }[], keepBuiltin: boolean) { figures.setFigures(list, loadModel, () => { shadowsDirty = true; scheduleEnvCapture(900); invalidate(1) }, keepBuiltin) },
     setDecorEdit,
     selectDecor,
     adjustDecor,
@@ -1562,7 +1642,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     setSections(on: Record<string, boolean> | null): void {
       for (const o of interactive) {
         const st = String(o.userData.station)
-        let vis = !on || on[st] !== false
+        let vis = !on || on[st === 'figurer' ? 'gitar' : st] !== false // (the figure shelf belongs to the guitar corner)
         if (st === 'kode' && on && on.gaming !== false) vis = true // the desk also carries the gaming monitor
         o.userData.sec = vis
       }
@@ -1575,8 +1655,28 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     /** What the picture is made of right now (for the settings window): quality class, resolution, frame rate … */
     get gfxInfo() { return { calls: drawn.calls, triangles: drawn.triangles, lights: countLights(), quality, level, pixelRatio: renderer.getPixelRatio(), fps: fpsVal, maxMsaa, maxTex, dpr: window.devicePixelRatio, gpu: spec.gpu, score: spec.score, auto: autoGfx(), software: spec.software } },
     /** A full-screen panel covers the room (or not): nothing is drawn while it does. */
+    /** Free roam on / off: walk around in the room (the camera leaves its station; `goTo` brings it back). */
+    setRoam(on: boolean) {
+      if (on === roam.on) return
+      roam.on = on
+      roam.keys.clear(); roam.mx = roam.mz = 0; roam.drag = null
+      if (on) {
+        buildRoamBoxes()
+        flight = null
+        // start where the camera is, on the floor: out of anything it is standing in
+        roam.x = Math.max(ROOM_BOX.x0, Math.min(ROOM_BOX.x1, camera.position.x)); roam.z = Math.max(ROOM_BOX.z0, Math.min(ROOM_BOX.z1, camera.position.z))
+        if (blocked(roam.x, roam.z) || Math.abs(camera.position.x) > 4.2 || camera.position.z > 8) { roam.x = 0.5; roam.z = 2.7 }
+        const d = tmp.subVectors(lookAt, camera.position)
+        roam.yaw = Math.atan2(-d.x, -d.z); roam.pitch = -0.05
+        zoomTarget = 1
+        invalidate(1)
+      } else { goTo(station); invalidate(1) }
+    },
+    /** The joystick on a phone: x right / left, z back / forward, both −1 … 1. */
+    roamMove(x: number, z: number) { roam.mx = x; roam.mz = z; invalidate(0.4) },
+    roamLook(dx: number, dy: number) { roam.yaw -= dx * 0.0042; roam.pitch = Math.max(-1.2, Math.min(1.2, roam.pitch - dy * 0.0042)); invalidate(0.3) },
     setCovered(v: boolean) { covered = !!v; if (!covered) invalidate(1) },
-    get debug() { return { station, camPos: camPos.toArray(), cam: camera.position.toArray(), flight: !!flight, spinning: listening.isSpinning(), covered, warming, groupVisible: listening.group.visible } },
+    get debug() { return { station, camPos: camPos.toArray(), cam: camera.position.toArray(), flight: !!flight, spinning: listening.isSpinning(), covered, warming, groupVisible: listening.group.visible, figures: figures.shown(), builtinFigures: figures.builtinShown() } },
     // test helper: draw calls / triangles of one plain render (no post-processing)
     stats() {
       renderer.info.autoReset = false
@@ -1618,6 +1718,8 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       el.removeEventListener('pointerdown', onDown)
       el.removeEventListener('pointerup', onUp)
       el.removeEventListener('pointerleave', onLeave)
+      window.removeEventListener('keydown', onRoamKeyDown); window.removeEventListener('keyup', onRoamKeyUp)
+      el.removeEventListener('pointerdown', onRoamDown); window.removeEventListener('pointermove', onRoamMove); window.removeEventListener('pointerup', onRoamUp)
       renderer.dispose()
       el.remove()
     },

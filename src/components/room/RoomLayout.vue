@@ -17,6 +17,7 @@ import { shell } from '@/composables/ui/useShell'
 import GlobalMini from '@/components/music/GlobalMini.vue'
 import MusicSwitch from '@/components/music/MusicSwitch.vue'
 import ListenDock from '@/components/vinyl/ListenDock.vue'
+import RoamControls from './RoamControls.vue'
 import TourCard from '@/components/layout/TourCard.vue'
 import { admin } from '@/composables/site/useAdmin'
 import { shelfAlbums } from '@/composables/music/useGroups'
@@ -162,7 +163,7 @@ watch(() => route.name, () => (collapsed.value = false))
     :class="{ home: isHome, focus: isFocus, wide: isWide, expanded: isExpanded, big: isExpanded && route.name !== 'lytte', collapsed: collapsed && mobile && !isFocus, hidden }"
     :style="belowMini ? { top: '86px' } : undefined"
     :inert="hidden || undefined"
-    v-show="!decor.editing"
+    v-show="!decor.editing && !room.roam"
   >
     <!-- phones: the panel fills the screen like the flat version; this closes it so only the 3D room is left -->
     <button v-if="mobile && !isHome && !isFocus" class="close-sheet glass" aria-label="Lukk panelet – se rommet" title="Se rommet" @click="collapsed = true">
@@ -176,11 +177,12 @@ watch(() => route.name, () => (collapsed.value = false))
   </aside>
 
   <DecorEditor />
+  <RoamControls />
   <MusicSwitch v-if="isMusic && room.ready" @pick="collapsed = false" />
   <ListenDock v-if="listenPhone && room.ready && collapsed && !decor.editing" />
   <!-- phones, 3D listening corner: the way out (the menu is hidden here) -->
   <button v-if="listenPhone && room.ready && !decor.editing" class="lexit glass" aria-label="Ut av lyttehjørnet" @click="router.push('/')"><X :size="18" /></button>
-  <GlobalMini :show="miniOn" @panel="setHidden(false)" />
+  <GlobalMini :show="miniOn && !room.roam" @panel="setHidden(false)" />
   <TourCard v-if="room.ready" />
 
   <!-- phones, panel closed: one icon brings it back -->
@@ -190,7 +192,7 @@ watch(() => route.name, () => (collapsed.value = false))
 
   <!-- desktop: slide the panel away / bring it back -->
   <button
-    v-if="canHide && room.ready"
+    v-if="canHide && room.ready && !room.roam"
     class="hide-toggle glass"
     :class="{ out: hidden }"
     :style="[hidden ? null : { right: `${panelW + 20 - 16}px` }, toggleTop != null ? { top: `${toggleTop}px` } : undefined]"

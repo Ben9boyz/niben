@@ -3,6 +3,11 @@
 export interface TextItem { k: string; label: string; d: string; long?: boolean }
 export interface TextGroup { title: string; items: TextItem[] }
 export const TEXT_GROUPS: TextGroup[] = [
+  { title: 'Figurer', items: [
+    { k: 'figures.eyebrow', label: 'Lille tekst over tittelen', d: 'Hylla' },
+    { k: 'figures.title', label: 'Tittel', d: 'Figurer' },
+    { k: 'figures.hint', label: 'Hint', d: 'Trykk på en figur for å se den nærmere.' },
+  ] },
   { title: 'Hjem', items: [
     { k: 'home.eyebrow', label: 'Lille tekst over hilsenen', d: 'Velkommen inn' },
     { k: 'home.hello', label: 'Hilsen (før navnet)', d: 'Hei, jeg er' },

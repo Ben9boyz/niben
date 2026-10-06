@@ -60,6 +60,13 @@ function gm_adopt_builtin(): void {
     if ($done) kv_set('guitar_models_adopted', '1');
 }
 
+
+// ── Figures on the shelf in the room: a .glb each, with a name and a short description. The room's own (kv 'room_figures'). ──
+const FIG_KEY = 'room_figures';
+const FIG_MAX = 12;
+function fig_list(): array { $l = json_decode((string)kv_get(FIG_KEY), true); return is_array($l) ? $l : []; }
+function fig_store(array $l): void { kv_set(FIG_KEY, json_encode(array_values($l), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); }
+
 function decor_handle(string $action, bool $post): void {
     switch ($action) {
     case 'decor_get':
@@ -111,6 +118,49 @@ function decor_handle(string $action, bool $post): void {
         unset($map[$id]);
         gm_store($map);
         out(['ok' => true, 'models' => (object)$map]);
+    }
+
+    case 'decor_figure_upload': {
+        if (!$post) fail('Bruk POST.', 405);
+        require_room_owner();
+        $list = fig_list();
+        if (count($list) >= FIG_MAX) fail('Maks ' . FIG_MAX . ' figurer på hylla.');
+        $file = glb_store_upload($_FILES['file'] ?? []);
+        $name = mb_substr(trim((string)($_POST['name'] ?? '')) ?: pathinfo((string)($_FILES['file']['name'] ?? ''), PATHINFO_FILENAME), 0, 60);
+        $item = ['id' => bin2hex(random_bytes(5)), 'file' => $file, 'name' => $name ?: 'Figur', 'desc' => mb_substr(trim((string)($_POST['desc'] ?? '')), 0, 1500)];
+        $list[] = $item;
+        fig_store($list);
+        out(['ok' => true, 'figures' => $list]);
+    }
+
+    case 'decor_figure_save': {
+        // { items: [{ id, name, desc }] } in the order they should stand on the shelf
+        if (!$post) fail('Bruk POST.', 405);
+        require_room_owner();
+        $by = [];
+        foreach (fig_list() as $f) $by[$f['id']] = $f;
+        $out = [];
+        foreach ((array)(body()['items'] ?? []) as $n) {
+            if (!is_array($n) || !isset($n['id'], $by[(string)$n['id']])) continue;
+            $f = $by[(string)$n['id']];
+            if (isset($n['name'])) $f['name'] = mb_substr(trim((string)$n['name']), 0, 60) ?: $f['name'];
+            if (isset($n['desc'])) $f['desc'] = mb_substr(trim((string)$n['desc']), 0, 1500);
+            $out[] = $f;
+            unset($by[$f['id']]);
+        }
+        foreach ($by as $f) $out[] = $f; // (anything left out of the list stays, at the end)
+        fig_store($out);
+        out(['ok' => true, 'figures' => $out]);
+    }
+
+    case 'decor_figure_delete': {
+        if (!$post) fail('Bruk POST.', 405);
+        require_room_owner();
+        $id = (string)(body()['id'] ?? '');
+        $keep = [];
+        foreach (fig_list() as $f) { if ($f['id'] === $id) glb_remove($f['file']); else $keep[] = $f; }
+        fig_store($keep);
+        out(['ok' => true, 'figures' => $keep]);
     }
 
     case 'decor_save': {
