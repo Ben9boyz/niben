@@ -2,8 +2,8 @@
 import { errorMessage } from '@/composables/useAdmin'
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { Play, Volume2, RotateCcw, ArrowUpRight } from 'lucide-vue-next'
-import { fetchWords, stateOf } from '@/composables/useJapanese'
-import { kanjiFromWords, kanjiInfo, strokes, session, gradeKanji, srsStats, type KanjiEntry, type KanjiInfo, type KanjiGrade } from '@/composables/useKanji'
+import { fetchWords, stateOf } from '@/composables/japan/useJapanese'
+import { kanjiFromWords, kanjiInfo, strokes, session, gradeKanji, srsStats, type KanjiEntry, type KanjiInfo, type KanjiGrade } from '@/composables/japan/useKanji'
 import { speak, canSpeak } from '@/lib/speak'
 import { targetEl } from '@/lib/dom'
 

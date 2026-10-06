@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { pitchMorae } from '@/composables/useJapanese'
+import { pitchMorae } from '@/composables/japan/useJapanese'
 
 // A reading in kana with its pitch accent drawn over it (a line over the high morae, a tick where it drops).
 const props = withDefaults(defineProps<{ reading?: string | null; pitch?: string | null }>(), { reading: '', pitch: '' })

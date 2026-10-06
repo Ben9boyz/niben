@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Search, Plus, Pencil, Eraser, Trash2, Volume2 } from 'lucide-vue-next'
-import { fetchWords, stateOf, STATE_LABEL, deckAction, type JpWord, type WordList } from '@/composables/useJapanese'
+import { fetchWords, stateOf, STATE_LABEL, deckAction, type JpWord, type WordList } from '@/composables/japan/useJapanese'
 import { admin, errorMessage, canManage } from '@/composables/useAdmin'
 import { speak, canSpeak } from '@/lib/speak'
 import JapanWord from './JapanWord.vue'

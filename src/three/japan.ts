@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { meshAdder } from './helpers'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
-import type { JpAnime, JpWord } from '../composables/useJapanese'
+import type { JpAnime, JpWord } from '@/composables/japan/useJapanese'
 import { canvasTex, context2d } from './textures'
 
 // The Japanese corner: a tatami mat with a low round table (chabudai), two cushions, a paper lantern,

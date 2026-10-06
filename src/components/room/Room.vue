@@ -17,7 +17,7 @@ import { decor, loadDecor, changed as decorChanged } from '@/composables/useDeco
 import { weather } from '@/composables/useLive'
 import { calm } from '@/composables/useCalm'
 import { shelfAlbums, loadGroups } from '@/composables/music/useGroups'
-import { jp, loadJapanese } from '@/composables/useJapanese'
+import { jp, loadJapanese } from '@/composables/japan/useJapanese'
 import { steam, loadSteam } from '@/composables/useSteam'
 import { targetEl } from '@/lib/dom'
 import type { Track, QueueItem } from '@/types'

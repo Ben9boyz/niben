@@ -2,7 +2,7 @@
 import PitchReading from './PitchReading.vue'
 import { ref, computed, onMounted } from 'vue'
 import { ArrowUpRight, Plus, Check, X, Volume2, Infinity as Forever, EyeOff, Trash2, Quote } from 'lucide-vue-next'
-import { jpdbUrl, stateOf, STATE_LABEL, fetchWords, addWord, cardAction, type JpWord, type WordList } from '@/composables/useJapanese'
+import { jpdbUrl, stateOf, STATE_LABEL, fetchWords, addWord, cardAction, type JpWord, type WordList } from '@/composables/japan/useJapanese'
 import { speak, canSpeak } from '@/lib/speak'
 import { admin, errorMessage, canManage } from '@/composables/useAdmin'
 import type { Flash } from '@/types'

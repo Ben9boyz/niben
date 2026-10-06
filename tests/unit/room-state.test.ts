@@ -4,7 +4,7 @@ import { spotify, resetSpotify } from '@/composables/music/useSpotify'
 import { milestones, resetMilestones, setMilestones } from '../../src/composables/useMilestones'
 import { myQueue, resetQueue } from '@/composables/music/useQueue'
 import { discover, resetDiscover } from '@/composables/music/useDiscover'
-import { jp, resetJapanese } from '../../src/composables/useJapanese'
+import { jp, resetJapanese } from '@/composables/japan/useJapanese'
 import { steam, resetSteam } from '../../src/composables/useSteam'
 
 // Switching rooms does not reload the page, so every store that holds something of a room has to be emptied and read

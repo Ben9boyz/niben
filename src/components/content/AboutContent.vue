@@ -7,7 +7,7 @@ import { Guitar, Music, BookOpen, Plane, Languages, Gamepad2, Code2, ArrowUpRigh
 import { useData, type About, type AboutLink } from '@/composables/useData'
 import { useSpotify } from '@/composables/music/useSpotify'
 import { steam, loadSteam } from '@/composables/useSteam'
-import { jp, loadJapanese } from '@/composables/useJapanese'
+import { jp, loadJapanese } from '@/composables/japan/useJapanese'
 import { admin, checkLogin, api, shrinkImage, errorMessage, canManage, signedIn } from '@/composables/useAdmin'
 import { reloadData } from '@/composables/useData'
 import { thumb } from '@/lib/photos'

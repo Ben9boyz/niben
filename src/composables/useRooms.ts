@@ -5,7 +5,7 @@ import { spotify, resetSpotify, refreshLists, refreshNow } from '@/composables/m
 import { groups, resetGroups, loadGroups } from '@/composables/music/useGroups'
 import { discover, resetDiscover, loadDiscover } from '@/composables/music/useDiscover'
 import { milestones, resetMilestones, loadMilestones } from './useMilestones'
-import { jp, resetJapanese, loadJapanese } from './useJapanese'
+import { jp, resetJapanese, loadJapanese } from '@/composables/japan/useJapanese'
 import { steam, resetSteam, loadSteam } from './useSteam'
 import { decor, resetDecor, loadDecor } from './useDecor'
 import { live, resetLive, loadLive } from './useLive'

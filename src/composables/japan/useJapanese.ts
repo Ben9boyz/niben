@@ -1,6 +1,6 @@
 import { reactive } from 'vue'
-import { api } from './useAdmin'
-import { roomKey } from '../lib/room'
+import { api } from '@/composables/useAdmin'
+import { roomKey } from '@/lib/room'
 
 // Japanese corner (jpdb.io via the server): public statistics + word of the day, and for the admin
 // a review queue where each grade goes straight to jpdb.
