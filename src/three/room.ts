@@ -1329,10 +1329,11 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     composer.render()
     drawn.calls = renderer.info.render.calls; drawn.triangles = renderer.info.render.triangles
     lastRender = now
-    fpsFrames++
-    if (now - fpsAt > 500) { fpsVal = Math.round(fpsFrames * 1000 / (now - fpsAt)); fpsFrames = 0; fpsAt = now; if (fpsEl) fpsEl.textContent = `${fpsVal} fps · ${Math.round(renderer.getPixelRatio() * 100) / 100}× · ${drawn.calls} anrop · ${Math.round(drawn.triangles / 1000)}k tri · ${countLights()} lys · ${quality}` }
+    // the frame rate is read from frames while something moves (at rest the room draws only now and then, on purpose)
+    if (active) { const dt = now - lastActiveAt; if (dt < 250) fpsVal = Math.round(fpsVal ? fpsVal * 0.8 + (1000 / dt) * 0.2 : 1000 / dt); lastActiveAt = now }
+    if (now - fpsAt > 500) { fpsAt = now; if (fpsEl) fpsEl.textContent = `${fpsVal}${now - lastActiveAt > 1500 ? ' (hvile)' : ''} fps · ${Math.round(renderer.getPixelRatio() * 100) / 100}× · ${drawn.calls} anrop · ${Math.round(drawn.triangles / 1000)}k tri · ${countLights()} lys · ${quality}` }
   }
-  let lastFrameAt = 0, fpsFrames = 0, fpsAt = performance.now(), fpsVal = 0
+  let lastFrameAt = 0, lastActiveAt = 0, fpsAt = performance.now(), fpsVal = 0
   let fpsEl: HTMLDivElement | null = null
   let shadowsDirty = true
   let ambient = false
