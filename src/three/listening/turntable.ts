@@ -130,6 +130,11 @@ export function buildTurntable(kit: Kit) {
     for (const c of platter.children) if (c !== rec) c.visible = false
     for (const c of arm.children) c.visible = false
     const base = part('tt_static'), pl = part('tt_platter'), ar = part('tt_arm')
+    // the model has put the headshell + cartridge (Object_5 / Object_6) in the platter's group and the power LED (Object_4) too:
+    // they would turn round with the record. The headshell hangs on the tonearm, the LED stays on the base.
+    if (ar) for (const n of ['Object_5_platter', 'Object_6_platter']) { const o = g.scene.getObjectByName(n); if (o) ar.add(o) }
+    const ledMesh = g.scene.getObjectByName('Object_4_platter')
+    if (ledMesh && base) base.add(ledMesh)
     if (base) { mark(base); tt.add(base) }
     if (pl) { mark(pl); pl.traverse((m) => { if (m instanceof THREE.Mesh && m.material instanceof THREE.MeshStandardMaterial) { const own = m.material.clone(); own.color.multiplyScalar(0.4); m.material = own } }); pl.position.set(-TT_C.x, -0.111, -TT_C.z); platter.add(pl) } // (the platter under the spot light looked too pale: graphite)
     if (ar) { mark(ar); ar.position.set(-TT_ARM.x, -0.12, -TT_ARM.z); arm.add(ar) }

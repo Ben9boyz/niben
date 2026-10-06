@@ -11,7 +11,7 @@ export function buildIpod(kit: Kit) {
   const { group, add, dark } = kit
   // ── iPod classic ──
   // on the sideboard, in front of the leaning sleeve – next to the turntable, so the camera hardly has to move
-  const ipodHome = { pos: new THREE.Vector3(-0.02, TOP_Y, 0.36), rotY: 0.22 }
+  const ipodHome = { pos: new THREE.Vector3(0.65, TOP_Y, 0.35), rotY: 0.3 } // (beside the next sleeve, never in front of a cover)
   const ipod = new THREE.Group()
   ipod.position.copy(ipodHome.pos)
   ipod.rotation.y = ipodHome.rotY

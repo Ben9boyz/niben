@@ -1,5 +1,6 @@
 import * as THREE from 'three'
-import { TOP_Y } from './constants'
+import { TOP_Y, LEAN, LEAN_UP, LEAN_Z } from './constants'
+import { spineTex } from './textures'
 import type { StackEntry } from './constants'
 import type { Kit } from './kit'
 
@@ -9,10 +10,23 @@ export function buildStack(kit: Kit) {
   // ── The stack of records on the table: the albums coming up in the queue on top (next one first), the albums
   // I listened to last below them. Any height: the sleeves get thinner the more there are. ──
   const stackGroup = new THREE.Group()
-  stackGroup.position.set(0.42, TOP_Y, 0.27)
+  stackGroup.position.set(0.88, TOP_Y, 0.27) // on the long table top, to the right of the leaning sleeves and the iPod
   group.add(stackGroup)
   let stackItems: StackEntry[] = []
   const stackTex = new Map<string, THREE.Texture>()
+  // each sleeve shows a proper spine (name and artist on its colour) – the same drawing as the records on the shelf
+  const spineMats = new Map<string, THREE.MeshStandardMaterial>()
+  function spineMat(it: StackEntry, color: THREE.Color): THREE.MeshStandardMaterial {
+    const key = it.uri + '|' + color.getHexString()
+    let m = spineMats.get(key)
+    if (!m) {
+      const tex = spineTex({ uri: it.uri, name: it.name ?? '', artist: it.artist ?? '' } as Parameters<typeof spineTex>[0], '#' + color.getHexString())
+      tex.center.set(0.5, 0.5); tex.rotation = Math.PI / 2 // (lying flat: the text runs along the sleeve)
+      m = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.75 })
+      spineMats.set(key, m)
+    }
+    return m
+  }
   const hueOf = (str: string): number => { let h = 0; for (const c of str) h = (h * 31 + c.charCodeAt(0)) % 360; return h }
   function setStack(list: StackEntry[], onChange?: () => void): void {
     const key = list.map((x) => x.uri + (x.queued ? 'q' : '')).join('|')
@@ -42,7 +56,8 @@ export function buildStack(kit: Kit) {
           else loader.load(src, (tex) => { tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; stackTex.set(src, tex); apply(tex) }, undefined, () => {})
         } else top.color.setHSL(hue / 360, 0.4, 0.55)
       }
-      const m = new THREE.Mesh(new THREE.BoxGeometry(0.3, t * 0.92, 0.3), [edge, edge, top, edge, edge, edge])
+      const spine = spineMat(it, edge.color)
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.3, t * 0.92, 0.3), [edge, edge, top, edge, spine, edge])
       const j = ((hueOf(it.uri + i) % 100) / 100 - 0.5)
       m.position.set(j * 0.02, t * fromBottom + t / 2, ((hueOf(it.name || it.uri) % 100) / 100 - 0.5) * 0.02)
       m.rotation.y = j * 0.16
@@ -67,8 +82,8 @@ export function buildStack(kit: Kit) {
   const nextMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
   const nextEdge = new THREE.MeshStandardMaterial({ color: 0xe9e4d8, roughness: 0.8 })
   const nextMesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.008), [nextEdge, nextEdge, nextEdge, nextEdge, nextMat, nextEdge])
-  nextMesh.position.set(0.26, TOP_Y + 0.15 * Math.cos(0.26) + 0.002, 0.11)
-  nextMesh.rotation.x = -0.26
+  nextMesh.position.set(0.40, TOP_Y + LEAN_UP, LEAN_Z) // leans against the wall like the playing sleeve, to the right of it
+  nextMesh.rotation.x = -LEAN
   nextMesh.castShadow = nextMesh.receiveShadow = true
   nextMesh.userData = { kind: 'next' }
   nextMesh.visible = false
@@ -80,6 +95,10 @@ export function buildStack(kit: Kit) {
     nextUri = uri
     nextMesh.visible = !!a
     if (!a) { onChange?.(); return }
+    // its spine (the left edge, towards the turntable)
+    const sp = spineMat(a, new THREE.Color(0xe9e4d8))
+    sp.map && (sp.map.rotation = 0)
+    ;(nextMesh.material as THREE.Material[])[1] = sp
     const src = a.image_large || a.image
     if (src) loader.load(src, (tex) => { tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; nextMat.map?.dispose(); nextMat.map = tex; nextMat.needsUpdate = true; onChange?.() }, undefined, () => {})
     onChange?.()

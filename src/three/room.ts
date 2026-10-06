@@ -56,7 +56,7 @@ const STATIONS: Record<string, Pose | null> = {
 }
 // the listening corner while music plays: closer, from above at an angle – the turntable and the
 // sleeve beside it in focus, the record shelf still visible underneath
-const LYTTE_TOP: Pose = { pos: [2.55, 1.7, -0.2], target: [3.72, 0.75, -0.12] }
+const LYTTE_TOP: Pose = { pos: [2.1, 1.8, -0.14], target: [3.72, 0.75, -0.14] }
 // a playlist playing: looking at the iPod back on its stand on the sideboard by the turntable (its screen shows the song)
 // in front of the record shelf (under the turntable), to browse the spines
 // from straight above: the turntable's buttons and the tonearm can be pressed
