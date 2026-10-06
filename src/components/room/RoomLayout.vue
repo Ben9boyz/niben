@@ -107,7 +107,12 @@ function measure() {
   const r = el.getBoundingClientRect()
   if (isFocus.value || decor.editing) { room.api.setInsets({}); return }
   if (isHome.value) {
-    room.api.setInsets(mobile.value ? { bottom: (window.innerHeight - r.top) * 0.8 } : { left: r.right * 0.4 })
+    if (mobile.value) { room.api.setHomeFit(1); room.api.setInsets({ bottom: (window.innerHeight - r.top) * 0.8 }); return }
+    // PC: the room in the middle of what the panel leaves free, to the right, as large as fits (it may reach a little behind the glass)
+    const W = window.innerWidth, H = window.innerHeight
+    const L = r.right * 0.75
+    room.api.setHomeFit(Math.max(0.7, Math.min(1, (0.93 * H) / (0.9 * (W - L)))))
+    room.api.setInsets({ left: L })
     return
   }
   if (hidden.value) { room.api.setInsets({ left: mobile.value ? 0 : RAIL(), bottom: shell.value === 'player' ? 90 : 0 }); return }

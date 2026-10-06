@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, type Component } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, type Component } from 'vue'
+import { targetEl } from '@/lib/dom'
 import { useRoute, useRouter } from 'vue-router'
 import { useData } from '@/composables/site/useData'
-import { LayoutDashboard, Plane, BookOpen, Mic, Music, Type, Box, Mail, Eye, EyeOff, LogOut, Lock, Users, SlidersHorizontal, Guitar, DoorOpen, MessageCircle, UserRound, Plug, KeyRound, Disc3 } from 'lucide-vue-next'
+import { LayoutDashboard, Plane, BookOpen, Mic, Music, Type, Box, Mail, Eye, EyeOff, LogOut, Lock, Users, SlidersHorizontal, Guitar, DoorOpen, MessageCircle, X, UserRound, Plug, KeyRound, Disc3 } from 'lucide-vue-next'
 import { admin, account, signedIn, checkLogin, login, userLogin, registerAccount, forgotPassword, resetPassword, logout, errorMessage } from '@/composables/site/useAdmin'
 import { setRoom } from '@/composables/room/useRooms'
 import AdminTrips from '../components/admin/AdminTrips.vue'
@@ -93,6 +94,11 @@ async function submit() {
     busy.value = false
   }
 }
+// the way out: back to where you were in the room (the camera has not moved while the admin was open)
+function closeAdmin() { if (window.history.state?.back) router.back(); else void router.push('/') }
+const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(targetEl(e).tagName)) closeAdmin() }
+onMounted(() => window.addEventListener('keydown', onEsc))
+onBeforeUnmount(() => window.removeEventListener('keydown', onEsc))
 const myRoom = () => { if (account.user) void setRoom(account.user.username) }
 </script>
 
@@ -103,7 +109,10 @@ const myRoom = () => { if (account.user) void setRoom(account.user.username) }
         <div class="eyebrow">{{ account.user && !account.user.owner ? account.user.username : 'Admin' }}</div>
         <h2>{{ signedIn ? 'Styr rommet ditt' : mode === 'register' ? 'Opprett konto' : mode === 'forgot' ? 'Glemt passord' : mode === 'reset' ? 'Nytt passord' : 'Logg inn' }}</h2>
       </div>
-      <button v-if="signedIn" class="btn small out" @click="logout"><LogOut :size="14" />Logg ut</button>
+      <div class="head-btns">
+        <button v-if="signedIn" class="btn small out" @click="logout"><LogOut :size="14" />Logg ut</button>
+        <button class="close" aria-label="Lukk admin – tilbake til rommet" title="Lukk (Esc)" @click="closeAdmin"><X :size="18" aria-hidden="true" /></button>
+      </div>
     </header>
 
     <div v-if="!admin.checked" class="center muted">Sjekker innlogging …</div>
@@ -200,6 +209,9 @@ const myRoom = () => { if (account.user) void setRoom(account.user.username) }
 .hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 .away { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 24px 20px; }
 .away .btn { display: inline-flex; align-items: center; gap: 6px; }
+.head-btns { display: flex; align-items: center; gap: 8px; }
+.close { display: grid; place-items: center; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50%; background: var(--glass); color: var(--text-2); cursor: pointer; }
+.close:hover { color: var(--text); background: var(--accent-soft); }
 .out { display: inline-flex; align-items: center; gap: 6px; }
 .pw { display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid var(--glass-border); border-radius: 12px; background: var(--glass-strong); color: var(--text-3); }
 .pw:focus-within { border-color: var(--accent); }

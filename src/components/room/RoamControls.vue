@@ -50,7 +50,7 @@ function up(e: PointerEvent) { if (e.pointerId !== id) return; id = -1; knob.val
 </template>
 
 <style scoped>
-.roam-btn { position: fixed; z-index: 30; left: 76px; bottom: 16px; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; color: var(--text-2); cursor: pointer; }
+.roam-btn { position: fixed; z-index: 50; left: 18px; bottom: 176px; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; color: var(--text-2); cursor: pointer; }
 .roam-btn:hover { color: var(--accent); }
 .roam-hint { position: fixed; z-index: 40; left: 50%; bottom: 18px; transform: translateX(-50%); max-width: calc(100vw - 32px); padding: 9px 16px; border-radius: 999px; font-size: 0.82rem; color: var(--text-2); text-align: center; pointer-events: none; }
 .roam-hint b { color: var(--text); }

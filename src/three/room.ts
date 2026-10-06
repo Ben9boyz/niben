@@ -641,8 +641,10 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   const camPos = new THREE.Vector3().copy(camera.position)
   const camTarget = lookAt.clone()
 
+  let homeFit = 1 // distance of the overview camera relative to the standard (RoomLayout works it out from the panel)
   let lyttePose: LyttePose | null = null // null (sofa view) | 'top' (turntable) | 'shelf' (record shelf) | 'ipod' (iPod on its stand)
   function goTo(name: string, { instant = false, duration }: { instant?: boolean; duration?: number } = {}): void {
+    if (name === 'admin') return // the admin covers the room: the camera stays where it is (and the X in the admin goes back to it)
     invalidate(0.5)
     stationBoxes.clear(); tinies = null // (the models may have been loaded since)
     station = STATIONS[name] ? name : 'hjem'
@@ -663,6 +665,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       const s: Pose | null | undefined = station === 'lytte' && lyttePose ? { shelf: LYTTE_SHELF, top: LYTTE_TOP, deck: LYTTE_DECK }[lyttePose as 'shelf' | 'top' | 'deck'] : STATIONS[station]
       if (!s) return
       to = { pos: new THREE.Vector3(...s.pos), target: new THREE.Vector3(...s.target) }
+      if (station === 'hjem' && homeFit !== 1) to.pos.sub(to.target).multiplyScalar(homeFit).add(to.target) // (the overview: nearer or farther so the room fills the space the panel leaves)
     }
     if (instant || reduced) {
       camPos.copy(to.pos)
@@ -1660,6 +1663,8 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     },
     /** The room's accent colour (#rrggbb) for what glows and marks things in the room; null = the standard blue. */
     setAccent(hex: string | null) { setAccent3d(hex); invalidate(1) },
+    /** How far the overview camera stands (1 = standard, less = nearer) so the room fills the free part of the screen next to the panel. */
+    setHomeFit(k: number) { const v = Math.max(0.55, Math.min(1.3, k)); if (Math.abs(v - homeFit) < 0.02) return; homeFit = v; if (station === 'hjem') goTo('hjem', { duration: 0.7 }) },
     setGraphics(g: GfxInput | null) { gfxIn = g; applyGfx(g) },
     /** What the picture is made of right now (for the settings window): quality class, resolution, frame rate … */
     get gfxInfo() { return { calls: drawn.calls, triangles: drawn.triangles, lights: countLights(), quality, level, pixelRatio: renderer.getPixelRatio(), fps: fpsVal, maxMsaa, maxTex, dpr: window.devicePixelRatio, gpu: spec.gpu, score: spec.score, auto: autoGfx(), software: spec.software } },
