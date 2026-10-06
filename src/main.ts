@@ -26,6 +26,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/gaming', name: 'gaming', ...lazy(() => import('./panels/GamingPanel.vue'), () => import('./pages/GamingPage.vue'), 'Spill') },
   { path: '/japansk', name: 'japansk', ...lazy(() => import('./panels/JapanPanel.vue'), () => import('./pages/JapanPage.vue'), 'Japansk') },
   { path: '/aaret', name: 'aaret', ...lazy(() => import('./panels/YearPanel.vue'), () => import('./pages/YearPage.vue'), 'Året') },
+  { path: '/gangen', name: 'gangen', ...lazy(() => import('./panels/GangenPanel.vue'), () => import('./pages/GangenPage.vue'), 'Gangen') },
   { path: '/om', name: 'om', ...lazy(() => import('./panels/AboutPanel.vue'), () => import('./pages/AboutPage.vue'), 'Om meg') },
   { path: '/admin', name: 'admin', ...lazy(() => import('./panels/AdminPanel.vue'), () => import('./pages/AdminPage.vue'), 'Admin') },
   { path: '/na', redirect: '/' }, // "Nå" now lives on the home page

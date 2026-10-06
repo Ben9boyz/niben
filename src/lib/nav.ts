@@ -1,6 +1,7 @@
 import { computed, reactive } from 'vue'
 import { useData } from '@/composables/site/useData'
 import { routeAllowed } from './sections'
+import { rooms } from '@/composables/room/useRooms'
 
 // The main tabs and the sub-tabs inside them. Every sub-tab is still its own route (and its own
 // station in the 3D room); a group just decides which tab lights up in the menu and which pills show.
@@ -11,6 +12,7 @@ export const GROUPS: NavGroup[] = [
   { id: 'lare', label: 'Lære', routes: ['japansk', 'ovelse'], icon: 'M22 10 12 5 2 10l10 5 10-5zM6 12v5c3 3 9 3 12 0v-5' },
   { id: 'laget', label: 'Laget', routes: ['gitar', 'figurer', 'kode'], icon: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z' },
   { id: 'opplevd', label: 'Opplevd', routes: ['reiser', 'boker', 'gaming', 'aaret'], icon: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM16.2 7.8l-2.1 6.3-6.3 2.1 2.1-6.3z' },
+  { id: 'gangen', label: 'Gangen', routes: ['gangen'], icon: 'M6 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17M3 21h18M14.5 12.5h.01' },
   { id: 'om', label: 'Om meg', routes: ['om'], icon: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9a8 8 0 0 1 16 0' },
 ]
 
@@ -32,7 +34,7 @@ export const TAB_LABELS: Record<string, string> = { japansk: 'Japansk', ovelse: 
 
 const data = useData()
 /** The groups of the room being shown: pages of switched-off corners are left out, and groups with nothing left disappear. */
-export const navGroups = computed<NavGroup[]>(() => GROUPS.map((g) => ({ ...g, routes: g.routes.filter((r) => routeAllowed(r, data.profile)) })).filter((g) => g.routes.length > 0))
+export const navGroups = computed<NavGroup[]>(() => GROUPS.map((g) => ({ ...g, routes: g.routes.filter((r) => routeAllowed(r, data.profile)) })).filter((g) => g.routes.length > 0 && (g.id !== 'gangen' || rooms.list.length > 1))) // (the hall is only there when there is more than one room)
 const byRoute = new Map<string, NavGroup>(GROUPS.flatMap((g) => g.routes.map((r): [string, NavGroup] => [r, g])))
 export const groupOf = (routeName: unknown): NavGroup | null => navGroups.value.find((g) => g.routes.includes(String(routeName))) ?? byRoute.get(String(routeName)) ?? null
 

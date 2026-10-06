@@ -106,3 +106,17 @@ test('the admin is grouped, and a user sees only what is theirs', async () => {
   assert.ok(og.includes('Oversikt') && og.includes('Siden'), og.join(','))
   assert.deepEqual(o.errors, [])
 })
+
+test('the hall: one door per room, and a click on a door goes into that room', async () => {
+  const owner = await ownerClient()
+  const alice = await makeUser(owner)
+  await alice.client.post('texts_save', { texts: { 'home.name': 'Alicia', 'home.intro': 'Rommet til Alicia' } })
+
+  const page = await openPage(browser, { hash: '/gangen' })
+  await page.locator('.door[data-room]').first().waitFor()
+  assert.ok((await page.locator('.door[data-room]').count()) >= 2, 'a door for each room')
+  await page.locator('.door', { hasText: alice.name }).first().click()
+  await page.getByRole('heading', { level: 1, name: /Alicia/ }).waitFor()
+  assert.equal(await cookie(page, 'niben_r'), String(alice.id))
+  assert.deepEqual(page.errors, [])
+})

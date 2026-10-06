@@ -90,3 +90,9 @@ export async function setRoom(username: string): Promise<void> {
   queued = null
   if (next && next !== rooms.current) await setRoom(next)
 }
+
+/** A door in the hall: step into that room (the room flies in as usual) and stand in its overview. */
+export async function enterRoom(username: string): Promise<void> {
+  if (username !== rooms.current) await setRoom(username)
+  if (location.hash !== '#/') location.hash = '#/'
+}

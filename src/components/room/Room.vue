@@ -3,6 +3,7 @@ import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createRoom, type PickEvent } from '@/three/room'
 import { room, clearSelection } from '@/composables/room/useRoom'
+import { rooms, enterRoom } from '@/composables/room/useRooms'
 import { useData } from '@/composables/site/useData'
 import { useTheme } from '@/composables/ui/useTheme'
 import { timer, timerState, toggle as toggleTimer } from '@/composables/site/useTimer'
@@ -34,9 +35,10 @@ useSpotify() // keeps records/iPod in the room up to date
 loadGroups() // the shelf order may follow my folders
 let api: ReturnType<typeof createRoom> | undefined
 
-const ROUTES: Record<string, string> = { hjem: '/', japansk: '/japansk', gaming: '/gaming', lytte: '/lytte', ovelse: '/ovelse', gitar: '/gitar', figurer: '/figurer', boker: '/boker', reiser: '/reiser', kode: '/kode', om: '/om' }
+const ROUTES: Record<string, string> = { hjem: '/', japansk: '/japansk', gaming: '/gaming', lytte: '/lytte', ovelse: '/ovelse', gitar: '/gitar', figurer: '/figurer', boker: '/boker', reiser: '/reiser', kode: '/kode', om: '/om', gangen: '/gangen' }
 
 function onPick(p: PickEvent) {
+  if (p.kind === 'door') { if (p.name) void enterRoom(p.name); return } // a door in the hall: into that room
   if (p.kind === 'station') {
     const to = ROUTES[p.station]
     const then = p.then // a click while walking around: first there, then what the click meant (the iPod in your hand, the record out of the shelf …)
@@ -158,6 +160,7 @@ watch(() => [room.api, accentHex.value], () => room.api?.setAccent(accentHex.val
 watch(() => [room.api, JSON.stringify(data.figurer), data.profile.owner], () => room.api?.setFigures(data.figurer.map((f) => ({ id: f.id, file: f.file, name: f.name })), !!data.profile.owner), { immediate: true })
 // free roam: walking around in the room
 watch(() => [room.api, room.roam], () => { room.api?.setRoam(room.roam, room.roam ? room.roamBack : null); if (room.roam) room.roamBack = null }, { immediate: true })
+watch(() => [room.api, JSON.stringify(rooms.list.map((r) => [r.username, r.photo]))], () => room.api?.setDoors(rooms.list.map((r) => ({ username: r.username, label: r.owner ? 'Mitt rom' : r.username, photo: r.photo, owner: r.owner }))), { immediate: true })
 watch(theme, (t) => api?.setTheme(t))
 watch(() => weather.value?.kind, () => api?.setWeather(weather.value))
 watch(calm, (v) => api?.setCalm(v))

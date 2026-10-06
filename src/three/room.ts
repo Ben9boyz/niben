@@ -28,6 +28,7 @@ import { buildJapanCorner } from './japan'
 import { buildListeningCorner, type StackEntry } from './listening'
 import type { SteamScreenData } from './desk'
 import { buildFigureShelf } from './figures'
+import { buildHall, type Door } from './hall'
 import { woodFloor, wallTexture, skyTexture, canvasTex } from './textures'
 import { atlasName, norskNavn } from './countries'
 
@@ -48,6 +49,7 @@ const STATIONS: Record<string, Pose | null> = {
   kode: { pos: [2.0, 1.36, -1.25], target: [2.0, 1.08, -3.4] },
   reiser: null, // computed from globe position
   om: { pos: [1.45, 1.62, PORTRAIT.z], target: [4, 1.62, PORTRAIT.z] },
+  gangen: null, // computed from the doors (the hall is a corridor off to the side)
   ovelse: { pos: [-0.55, 1.55, 2.0], target: [-4, 1.4, 2.0] },
   lytte: { pos: [-0.35, 1.7, 0.95], target: [3.7, 0.55, 0.95] },
   japansk: { pos: [-0.9, 1.5, 4.85], target: [-1.2, 0.28, 2.8] },
@@ -64,7 +66,7 @@ const LYTTE_DECK: Pose = { pos: [3.47, 1.5, -0.28], target: [3.71, 0.88, -0.28] 
 const LYTTE_SHELF: Pose = { pos: [1.9, 0.95, 0.1], target: [3.6, 0.45, 0.1] }
 // (the iPod pose is worked out from the iPod itself and the shape of the screen: see listening.ipodView)
 
-export const STATION_LABELS: Record<string, string> = { gaming: 'Gaming', japansk: 'Japansk', lytte: 'Lytteplassen', ovelse: 'Øvingstimer', gitar: 'Gitarer', boker: 'Bokhylla', kode: 'Prosjekter', reiser: 'Reiser', om: 'Om meg', figurer: 'Figurer' }
+export const STATION_LABELS: Record<string, string> = { gaming: 'Gaming', japansk: 'Japansk', lytte: 'Lytteplassen', ovelse: 'Øvingstimer', gitar: 'Gitarer', boker: 'Bokhylla', kode: 'Prosjekter', reiser: 'Reiser', om: 'Om meg', figurer: 'Figurer', gangen: 'Gangen' }
 
 /** The look of the room by day and by night. */
 interface Theme {
@@ -442,6 +444,11 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   const interactive: THREE.Object3D[] = []
   const tag = <T extends THREE.Object3D>(obj: T, station: string): T => { obj.userData.station = station; interactive.push(obj); return obj }
 
+  // The hall: one door per room, off to the side of this one
+  const hall = buildHall(scene, tag, (url, done) => new THREE.TextureLoader().load(url, done))
+  hall.setOnChange(() => { stationBoxes.clear(); invalidate(1) })
+  hall.root.userData.sec = true
+
   // Guitars
   const guitarRoot = tag(new THREE.Group(), 'gitar')
   scene.add(guitarRoot)
@@ -649,7 +656,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     if (name === 'admin') return // the admin covers the room: the camera stays where it is (and the X in the admin goes back to it)
     invalidate(0.5)
     stationBoxes.clear(); tinies = null // (the models may have been loaded since)
-    station = STATIONS[name] ? name : 'hjem'
+    station = STATIONS[name] || name === 'gangen' ? name : 'hjem'
     zoomTarget = 1 // the zoom is for the globe only
     desk.setScreenMode(station === 'gaming' ? 'gaming' : 'code')
     let to: Pose3 | null = null
@@ -666,7 +673,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
         to = { pos: top.pos.lerp(near.pos, 0.55), target: top.target.lerp(near.target, 0.7) }
       }
     } else {
-      const s: Pose | null | undefined = station === 'lytte' && lyttePose ? { shelf: LYTTE_SHELF, top: LYTTE_TOP, deck: LYTTE_DECK }[lyttePose as 'shelf' | 'top' | 'deck'] : STATIONS[station]
+      const s: Pose | null | undefined = station === 'gangen' ? hall.pose() : station === 'lytte' && lyttePose ? { shelf: LYTTE_SHELF, top: LYTTE_TOP, deck: LYTTE_DECK }[lyttePose as 'shelf' | 'top' | 'deck'] : STATIONS[station]
       if (!s) return
       to = { pos: new THREE.Vector3(...s.pos), target: new THREE.Vector3(...s.target) }
       if (station === 'hjem' && homeFit !== 1) to.pos.sub(to.target).multiplyScalar(homeFit).add(to.target) // (the overview: nearer or farther so the room fills the space the panel leaves)
@@ -852,6 +859,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
         japan.setAnimeHover(hIndex)
         if (a) label = `${a.en || a.title} · ${String(a.known).replace('.', ',')} % kjent`
       }
+      else if (hi.kind === 'door') label = hall.nameOf(hIndex) ?? null
       else if (hi.kind === 'ipod') label = 'Spillelister'
       else if (hi.kind === 'stack') { const st = stack[hIndex]; label = st ? `${st.queued ? 'Neste i køen: ' : 'Hørt sist: '}${st.name}` : null }
       else if (hi.kind === 'turntable') label = 'Se ovenfra'
@@ -903,6 +911,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     if (info.station === 'ovelse') return { station: st, kind: 'clock' }
     if (info.kind === 'album') return { station: st, kind: 'album', uri: music.albums[gIndex]?.uri }
     if (info.kind === 'anime') return { station: st, kind: 'anime', index: info.index }
+    if (info.kind === 'door') return { station: st, kind: 'door', index: info.index, name: hall.userOf(gIndex) }
     if (info.kind === 'ipod') return { station: st, kind: 'ipod' }
     if (info.kind === 'turntable') return { station: st, kind: 'turntable' }
     if (info.kind?.startsWith('tt-')) return { station: st, kind: info.kind }
@@ -1604,6 +1613,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       return out
     },
     setData,
+    setDoors(list: Door[]) { hall.setDoors(list); if (station === 'gangen') goTo('gangen', { instant: true }) },
     setSelection,
     setTheme,
     setInsets,
