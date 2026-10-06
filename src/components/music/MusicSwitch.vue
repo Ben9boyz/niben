@@ -1,49 +1,58 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Sparkles, Library, ScanEye } from 'lucide-vue-next'
+import { computed, watch } from 'vue'
+import { Disc3, Library, Smartphone, ScanEye, BookOpen } from 'lucide-vue-next'
 import { toggleMode } from '@/composables/ui/useMode'
 import { room } from '@/composables/room/useRoom'
 import { spotify } from '@/composables/music/useSpotify'
-import SegSwitch from '@/components/ui/SegSwitch.vue'
+import { playOn } from '@/composables/music/usePlayOn'
 
-// The listening corner in the room: records (the shelf / turntable) or playlists (the iPod) – and, as a small icon
-// beside the switch, "Oppdag" (my picks and suggestions of albums I don't have).
-const DISC = 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zm0-6.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z'
-const IPOD = 'M8.5 2.5h7a2.5 2.5 0 0 1 2.5 2.5v14a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 6 19V5a2.5 2.5 0 0 1 2.5-2.5zM9 5h6v5.5H9zM12 18.6a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2z'
+// Where the camera stands in the listening corner. PC: Spiller nå (the table, from a little above and out – the view you
+// land in) · Hylle (the records) · iPod · 2D (the plain version), and "Ovenfra" (straight down on the turntable) as a small
+// toggle that is only there while a record plays. Phones: a button for the library (full-screen) and 2D; the camera
+// buttons are in the bar at the bottom (ListenDock).
 const emit = defineEmits(['pick'])
-const items = computed(() => [
-  { id: 'vinyl', label: 'Album', icon: DISC, count: spotify.albums.length || '' },
-  { id: 'ipod', label: 'Spillelister', icon: IPOD, count: spotify.playlists.length || '' },
-])
-const view = computed({
-  get: () => (room.discover ? '' : room.musicView.startsWith('ipod') ? 'ipod' : 'vinyl'),
-  set: (v) => {
-    emit('pick') // phones: the library sheet slides up
-    room.discover = false
-    if (v === 'ipod') { room.musicView = 'ipod'; room.sel.musikk = null } else room.musicView = 'vinyl'
-  },
-})
-// PC: look at the record shelf / at the turntable from above (the same views as the phone's bottom bar)
-function goShelf() {
+const atIpod = computed(() => room.musicView.startsWith('ipod'))
+const atNow = computed(() => !room.shelfView && !room.deckView && !atIpod.value)
+const recordPlays = computed(() => playOn.value === 'vinyl' && !!spotify.now?.playing && !!spotify.now?.context?.startsWith('spotify:album:'))
+watch(recordPlays, (v) => { if (!v && room.deckView) room.deckView = false })
+
+function goNow() {
   room.discover = false
-  if (room.shelfView) { room.shelfView = false; room.sel.musikk = null; return }
+  room.shelfView = false; room.deckView = false; room.sel.musikk = null
+  room.musicView = 'vinyl'
+}
+function goShelf() {
+  if (room.shelfView) { goNow(); return }
+  room.discover = false
   room.musicView = 'vinyl'; room.sel.musikk = null; room.deckView = false; room.shelfView = true
 }
-function goDeck() {
+function goIpod() {
+  if (atIpod.value) { goNow(); return }
   room.discover = false
+  room.deckView = false; room.shelfView = false; room.sel.musikk = null
+  room.musicView = 'ipod'
+}
+function goDeck() {
   if (room.deckView) { room.deckView = false; return }
+  room.discover = false
   room.musicView = 'vinyl'; room.sel.musikk = null; room.shelfView = false; room.deckView = true
 }
-function toggleDiscover() { room.discover = !room.discover; if (room.discover) { room.sel.musikk = null; emit('pick') } }
 </script>
 
 <template>
   <div class="msw">
-    <SegSwitch v-model="view" :items="items" label="Musikk" />
+    <!-- PC -->
+    <nav class="cam glass" role="group" aria-label="Se på …">
+      <button :class="{ on: atNow }" :aria-pressed="atNow" @click="goNow"><Disc3 :size="16" aria-hidden="true" /><span>Spiller nå</span></button>
+      <button :class="{ on: room.shelfView }" :aria-pressed="room.shelfView" aria-label="Se platehylla" @click="goShelf"><Library :size="16" aria-hidden="true" /><span>Hylle</span></button>
+      <button :class="{ on: atIpod }" :aria-pressed="atIpod" aria-label="Gå til iPoden" @click="goIpod"><Smartphone :size="16" aria-hidden="true" /><span>iPod</span></button>
+    </nav>
+    <transition name="deck">
+      <button v-if="recordPlays" class="deck glass" :class="{ on: room.deckView }" :aria-pressed="room.deckView" title="Se platespilleren ovenfra" aria-label="Se platespilleren ovenfra" @click="goDeck"><ScanEye :size="18" aria-hidden="true" /></button>
+    </transition>
     <button class="to2d glass" title="Bytt til hele 2D-versjonen" aria-label="Bytt til 2D-versjonen" @click="toggleMode">2D</button>
-    <button class="disc view glass" :class="{ on: room.shelfView }" title="Se platehylla" aria-label="Se platehylla" :aria-pressed="room.shelfView" @click="goShelf"><Library :size="18" aria-hidden="true" /></button>
-    <button class="disc view glass" :class="{ on: room.deckView }" title="Se platespilleren ovenfra" aria-label="Se platespilleren ovenfra" :aria-pressed="room.deckView" @click="goDeck"><ScanEye :size="18" aria-hidden="true" /></button>
-    <button class="disc glass" :class="{ on: room.discover }" title="Oppdag – album jeg anbefaler" aria-label="Oppdag" :aria-pressed="room.discover" @click="toggleDiscover"><Sparkles :size="18" aria-hidden="true" /></button>
+    <!-- phones -->
+    <button class="lib glass" aria-label="Åpne biblioteket" @click="emit('pick')"><BookOpen :size="18" aria-hidden="true" /></button>
   </div>
 </template>
 
@@ -51,20 +60,23 @@ function toggleDiscover() { room.discover = !room.discover; if (room.discover) {
 .msw { position: fixed; z-index: 35; top: 20px; left: calc(var(--rail) + 16px); display: flex; align-items: center; gap: 8px; animation: drop 0.6s var(--spring) both; pointer-events: none; }
 .msw > * { pointer-events: auto; }
 @keyframes drop { from { opacity: 0; transform: translateY(-14px) scale(0.95); } }
-.disc { display: grid; place-items: center; width: 46px; height: 46px; padding: 0; border: 0; border-radius: 50%; color: var(--text-2); cursor: pointer; transition: color 0.2s, transform 0.3s var(--spring); }
-.disc:hover { color: var(--accent); transform: scale(1.06); }
-.disc.on { color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
-/* (the shelf / turntable view buttons are for the PC: phones have the bottom bar) */
-@media (max-width: 900px) { .disc.view { display: none; } }
-/* phones in the 3D corner: just a tiny switch, icons only, in the corner – and "2D" to leave for the plain version */
-.to2d { display: none; }
+.cam { display: flex; gap: 2px; padding: 5px; border-radius: 999px; }
+.cam button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: 600 0.9rem var(--font); cursor: pointer; white-space: nowrap; transition: background 0.25s, color 0.25s; }
+.cam button:hover { color: var(--text); }
+.cam button.on { background: var(--glass-strong); color: var(--accent); box-shadow: inset 0 1px 0 var(--glass-hi); }
+.deck, .to2d { display: grid; place-items: center; height: 46px; min-width: 46px; padding: 0 14px; border: 0; border-radius: 999px; color: var(--text-2); font: 700 0.8rem var(--font); cursor: pointer; transition: color 0.2s, transform 0.3s var(--spring); }
+.deck:hover, .to2d:hover { color: var(--accent); transform: scale(1.05); }
+.deck { padding: 0; width: 46px; }
+.deck.on { color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.deck-enter-active, .deck-leave-active { transition: opacity 0.25s, transform 0.3s var(--spring); }
+.deck-enter-from, .deck-leave-to { opacity: 0; transform: scale(0.7); }
+.lib { display: none; }
+/* phones in the 3D corner: the library button and 2D in the corner – the camera buttons are in the bar at the bottom */
 @media (max-width: 900px) {
+  html.listen-phone .cam, html.listen-phone .deck { display: none; }
   html.listen-phone .msw { top: calc(8px + env(safe-area-inset-top)); left: 8px; gap: 6px; animation: none; }
-  html.listen-phone .msw :deep(.seg) { max-width: none; }
-  html.listen-phone .msw :deep(.seg button) { padding: 0 10px; min-width: 40px; height: 36px; }
-  html.listen-phone .msw :deep(.seg .lbl), html.listen-phone .msw :deep(.seg small) { display: none; }
-  html.listen-phone .to2d { display: grid; place-items: center; height: 36px; min-width: 36px; padding: 0 9px; border: 0; border-radius: 999px; color: var(--text-2); font: 700 0.72rem var(--font); cursor: pointer; touch-action: manipulation; }
+  html.listen-phone .lib { order: -1; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 999px; color: var(--text-2); cursor: pointer; touch-action: manipulation; }
+  html.listen-phone .to2d { height: 40px; min-width: 40px; padding: 0 10px; font-size: 0.74rem; touch-action: manipulation; }
 }
-/* phones: the switch sits in the top bar; Oppdag is the icon inside the library sheet instead */
-@media (max-width: 720px) { .msw { top: calc(10px + env(safe-area-inset-top)); left: 62px; } .disc { display: none; } .msw :deep(.seg) { max-width: calc(100vw - 62px - 112px); } .msw :deep(.seg small) { display: none; } }
+@media (max-width: 720px) { .msw { top: calc(10px + env(safe-area-inset-top)); left: 62px; } }
 </style>

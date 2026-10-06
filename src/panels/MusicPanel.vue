@@ -6,7 +6,7 @@ import { room } from '@/composables/room/useRoom'
 import { peek, peekClear } from '@/composables/music/useBrowse'
 import PeekView from '@/components/vinyl/PeekView.vue'
 import DiscoverContent from '@/components/content/DiscoverContent.vue'
-import { Sparkles } from 'lucide-vue-next'
+import MusicTabs from '@/components/music/MusicTabs.vue'
 import NowPlaying from '@/components/music/NowPlaying.vue'
 import QueuePanel from '@/components/music/QueuePanel.vue'
 import VinylPanel from '@/components/vinyl/VinylPanel.vue'
@@ -22,7 +22,7 @@ const showNow = computed(() => !(phone && mode.value === 'rom' && !spotify.now?.
 <template>
   <section class="panel glass music-panel">
     <div class="panel-body">
-      <button class="dsc-btn" :class="{ on: room.discover }" aria-label="Oppdag" title="Oppdag" @click="room.discover = !room.discover"><Sparkles :size="16" aria-hidden="true" /></button>
+      <MusicTabs v-if="mode === 'rom'" class="tabs-top" />
       <div v-if="showNow" class="np-sticky"><NowPlaying /></div>
       <QueuePanel v-if="spotify.now?.name" collapsible :flat="room.musicView.startsWith('ipod')" />
       <transition name="fade" mode="out-in">
@@ -36,9 +36,7 @@ const showNow = computed(() => !(phone && mode.value === 'rom' && !spotify.now?.
 </template>
 
 <style scoped>
-/* phones only (on the PC the icon sits by the Album / Spillelister switch) */
-.dsc-btn { display: none; }
-@media (max-width: 720px) { .dsc-btn { position: absolute; z-index: 6; top: 8px; right: 8px; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: var(--glass-strong); color: var(--text-2); cursor: pointer; } .dsc-btn.on { color: var(--accent); box-shadow: 0 0 0 2px var(--accent); } }
+.tabs-top { margin-top: 14px; }
 .music-panel .panel-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

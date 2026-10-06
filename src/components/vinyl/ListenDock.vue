@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
-import { Ellipsis, ChevronLeft, ChevronRight, Library, ScanEye, Smartphone, SkipBack, SkipForward, Play, Pause, RotateCw, X, Lock, Undo2 } from 'lucide-vue-next'
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { Ellipsis, ChevronLeft, ChevronRight, Disc3, Library, ScanEye, Smartphone, SkipBack, SkipForward, Play, Pause, RotateCw, X, Lock, Undo2 } from 'lucide-vue-next'
 import { room } from '@/composables/room/useRoom'
 import { shelfAlbums } from '@/composables/music/useGroups'
 import { spotify, lockLeft, play, control, findAlbum, fmtClock } from '@/composables/music/useSpotify'
 import { admin } from '@/composables/site/useAdmin'
+import { playOn } from '@/composables/music/usePlayOn'
 import { targetEl } from '@/lib/dom'
 import { showMenu } from '@/composables/ui/useContextMenu'
 import { itemMenu } from '@/lib/menus'
@@ -22,6 +23,9 @@ const shelfCount = computed(() => Math.min(shelfAlbums.value.length, 150))
 const atIpod = computed(() => room.musicView === 'ipod')
 const state = computed(() => (held.value ? 'held' : room.shelfView ? 'shelf' : atIpod.value ? 'ipod' : room.deckView ? 'deck' : 'base'))
 
+// "Ovenfra" is only there while a record plays on the turntable
+const recordPlays = computed(() => playOn.value === 'vinyl' && !!spotify.now?.playing && !!spotify.now?.context?.startsWith('spotify:album:'))
+watch(recordPlays, (v) => { if (!v && room.deckView) room.deckView = false })
 const locked = computed(() => lockLeft.value > 0)
 const isOn = computed(() => !!held.value && spotify.now?.context === held.value.uri && !!spotify.now?.name)
 const blocked = computed(() => !isOn.value && locked.value)
@@ -111,30 +115,32 @@ function more(e: MouseEvent) {
 
       <!-- in front of the shelf: browse -->
       <template v-else-if="state === 'shelf'">
-        <button class="b compact" aria-label="Opp til platespilleren" @click="toTurntable"><Undo2 :size="20" /><span>Opp</span></button>
+        <button class="b compact" aria-label="Spiller nå" @click="toTurntable"><Disc3 :size="20" /><span>Spiller nå</span></button>
         <div class="pk wide"><b>Hylla</b><small>Trykk på en plate</small></div>
+        <button class="b compact" aria-label="Ta iPoden" @click="toIpod"><Smartphone :size="20" /><span>iPod</span></button>
       </template>
 
       <!-- at the iPod (it is closed with the X on its screen) -->
       <template v-else-if="state === 'ipod'">
-        <button class="b" aria-label="Til platene" @click="toShelf"><Library :size="20" /><span>Hylla</span></button>
+        <button class="b" aria-label="Spiller nå" @click="toTurntable"><Disc3 :size="20" /><span>Spiller nå</span></button>
+        <button class="b" aria-label="Til platene" @click="toShelf"><Library :size="20" /><span>Hylle</span></button>
       </template>
 
       <!-- from above: the turntable's buttons -->
       <template v-else-if="state === 'deck'">
-        <button class="b" aria-label="Tilbake" @click="toTurntable"><Undo2 :size="20" /><span>Tilbake</span></button>
+        <button class="b" aria-label="Spiller nå" @click="toTurntable"><Disc3 :size="20" /><span>Spiller nå</span></button>
         <template v-if="admin.mine">
           <button class="b arrow" aria-label="Forrige låt" :disabled="busy" @click="ctl('previous')"><SkipBack :size="22" fill="currentColor" /></button>
           <button class="b go round" :aria-label="playing ? 'Pause' : 'Spill'" :disabled="busy" @click="toggle"><Pause v-if="playing" :size="24" fill="currentColor" /><Play v-else :size="24" fill="currentColor" /></button>
           <button class="b arrow" aria-label="Neste låt" :disabled="busy" @click="ctl('next')"><SkipForward :size="22" fill="currentColor" /></button>
         </template>
-        <button class="b" aria-label="Ned til hylla" @click="toShelf"><Library :size="20" /><span>Hylla</span></button>
+        <button class="b" aria-label="Ned til hylla" @click="toShelf"><Library :size="20" /><span>Hylle</span></button>
       </template>
 
-      <!-- at the turntable -->
+      <!-- Spiller nå: the table from a little above -->
       <template v-else>
-        <button class="b" aria-label="Ned til hylla" @click="toShelf"><Library :size="20" /><span>Hylla</span></button>
-        <button class="b" aria-label="Se platespilleren ovenfra" @click="toDeck"><ScanEye :size="20" /><span>Ovenfra</span></button>
+        <button class="b" aria-label="Ned til hylla" @click="toShelf"><Library :size="20" /><span>Hylle</span></button>
+        <button v-if="recordPlays" class="b" aria-label="Se platespilleren ovenfra" @click="toDeck"><ScanEye :size="20" /><span>Ovenfra</span></button>
         <button class="b" aria-label="Ta iPoden" @click="toIpod"><Smartphone :size="20" /><span>iPod</span></button>
       </template>
     </div>

@@ -180,7 +180,7 @@ watch(() => route.name, () => (collapsed.value = false))
   <ListenDock v-if="listenPhone && room.ready && collapsed && !decor.editing" />
   <!-- phones, 3D listening corner: the way out (the menu is hidden here) -->
   <button v-if="listenPhone && room.ready && !decor.editing" class="lexit glass" aria-label="Ut av lyttehjørnet" @click="router.push('/')"><X :size="18" /></button>
-  <GlobalMini :show="miniOn" />
+  <GlobalMini :show="miniOn" @panel="setHidden(false)" />
   <TourCard v-if="room.ready" />
 
   <!-- phones, panel closed: one icon brings it back -->
@@ -310,6 +310,9 @@ watch(() => route.name, () => (collapsed.value = false))
   .dock.big :deep(.panel-head p) { display: none; }
   .dock.big :deep(.panel-head h2) { font-size: 1.25rem; }
   .dock:not(.home):not(.focus) > :deep(.panel) { flex: 1 1 auto; min-height: 0; max-height: none; }
+  /* phones in the 3D listening corner: the library is a full-screen sheet (it used to glide over the room and look messy) */
+  html.listen-phone .dock { top: 0; left: 0; right: 0; bottom: 0; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); background: var(--bg); z-index: 60; }
+  html.listen-phone .dock > :deep(.panel) { border-radius: 0; border: 0; box-shadow: none; background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .dock.collapsed { transform: translateY(calc(100% + 120px)); opacity: 0; pointer-events: none; }
   .dock.collapsed > :deep(*) { pointer-events: none; }
   .close-sheet {
