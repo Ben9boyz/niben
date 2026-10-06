@@ -1307,9 +1307,12 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     if (!running) return
     raf = requestAnimationFrame(frame)
     if (document.hidden || covered || warming) return // nobody sees the room: nothing is drawn (the last picture stays)
-    if (eff.fps) { // frame-rate cap
+    // frame-rate cap. The weak class rests at 30 – but with a record turning (or the iPod playing) in front of you it goes
+    // for 60: that is what you look at, and it is what makes it look good (a cap you chose yourself is kept)
+    const cap = eff.fps && smooth && !(gfxIn?.mode === 'custom' && gfxIn.fps) ? 60 : eff.fps
+    if (cap) {
       const t0 = performance.now()
-      if (t0 - lastFrameAt < 1000 / eff.fps - 1.5) return
+      if (t0 - lastFrameAt < 1000 / cap - 1.5) return
       lastFrameAt = t0
     }
     clock.update()
@@ -1337,6 +1340,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   let fpsEl: HTMLDivElement | null = null
   let shadowsDirty = true
   let ambient = false
+  let smooth = false // something you are looking at plays: the record turns
   let warming = false // (compiling the shaders for the lights of a hidden corner – nothing is drawn meanwhile)
   const drawn = { calls: 0, triangles: 0 } // what the last frame cost (all passes)
   let covered = false // a full-screen panel (admin, the 2D view) hides the room
@@ -1420,6 +1424,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     figures.update(t)
     if (listening.group.visible && listening.update(dt, t, camera)) { shadowsDirty = true; active = true }
     if (japan.group.visible && japan.update(dt)) { shadowsDirty = true; active = true }
+    smooth = listening.isSpinning() && station === 'lytte'
     if (listening.isSpinning() && near('lytte', 'hjem')) active = true
     return active
   }
