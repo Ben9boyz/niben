@@ -10,7 +10,8 @@
     "typecheck": "vue-tsc --noEmit && tsc -p tsconfig.sw.json && tsc -p tsconfig.node.json && tsc -p desktop/tsconfig.json",
     "check:any": "! grep -rnE '(: |as |<|[|] )any\\b|any\\[\\]' src server vite.config.ts desktop/src --include=*.ts --include=*.vue",
     "check": "npm run typecheck && npm run check:any",
-    "zip": "bash scripts/make-upload-zip.sh"
+    "zip": "bash scripts/make-upload-zip.sh",
+    "test:unit": "vitest run"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
@@ -39,9 +40,12 @@
     "@types/topojson-client": "^3.1.5",
     "@vitejs/plugin-vue": "^6.0.9",
     "bcryptjs": "^3.0.3",
+    "jsdom": "^29.1.1",
+    "playwright": "^1.63.0",
     "typescript": "^6.0.3",
     "vite": "^8.3.2",
     "vite-plugin-css-injected-by-js": "^5.0.2",
+    "vitest": "^5.0.3",
     "vue-tsc": "^3.3.12"
   }
 }
