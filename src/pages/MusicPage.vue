@@ -80,6 +80,7 @@ function show(view: 'vinyl' | 'ipod') {
 
 <template>
   <div class="cpage music" :class="{ app: shell === 'player', phone }">
+    <p v-if="spotify.denied" class="denied" role="alert">Spotify slipper ikke denne kontoen inn ennå, så hylla er tom. Eieren av siden må legge til e-posten din i Spotify-dashboardet – prøv deretter «Koble til på nytt» under Admin → Tilkoblinger.</p>
     <!-- phones: like Spotify – the library or the search fills the screen; the player + the two tabs sit together at the bottom -->
     <div v-if="phone" class="mobile">
       <main class="m-main">
@@ -199,6 +200,7 @@ function show(view: 'vinyl' | 'ipod') {
 </template>
 
 <style scoped>
+.denied { margin: 0 0 10px; padding: 10px 14px; border-radius: 14px; background: color-mix(in srgb, #e0705f 18%, transparent); color: var(--text); font-size: 0.88rem; }
 .music { width: min(1680px, 100%); padding-top: 20px; }
 /* PC: the page is exactly one screen tall – nothing to scroll except inside the cards, so nothing jumps */
 @media (min-width: 821px) { .music { padding-bottom: 20px; } }

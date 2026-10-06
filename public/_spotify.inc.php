@@ -141,12 +141,19 @@ function sp_cached(string $key, int $ttl, callable $fetch, bool $shared = false)
     }
 }
 
+/** Spotify refuses an account the app's owner has not added under "User Management" (an app in development mode): the
+ *  login works, every question afterwards is a 403. Remembered, so the room can say so instead of showing an empty shelf. */
+function sp_denied(): bool { return (int)kv_get('sp_denied') > time() - 600; }
+
 function sp_albums(): ?array {
+    if (sp_denied()) return [];
     return sp_cached('cache_albums_v4', 1800, function () {
         $out = [];
         for ($offset = 0; $offset < 1000; $offset += 50) {
             [$s, $j] = sp_api('GET', '/me/albums?limit=50&offset=' . $offset);
+            if ($s === 403 && $offset === 0) { kv_set('sp_denied', (string)time()); return null; }
             if ($s !== 200) return $out ?: null;
+            if ($offset === 0 && kv_get('sp_denied') !== null) kv_del('sp_denied');
             foreach ($j['items'] ?? [] as $it) {
                 $a = $it['album'] ?? null;
                 if (!$a) continue;
@@ -417,12 +424,14 @@ function sp_handle(string $action, bool $post): void {
     case 'spotify_public': {
         $connected = (bool)kv_get('refresh_token');
         if (!$connected) out(['room' => kv_scope(), 'configured' => true, 'connected' => false]);
+        $__albums = sp_albums() ?? []; // (first: it finds out whether Spotify lets this account in)
         out([
             'room' => kv_scope(),
             'configured' => true,
             'connected' => true,
+            'denied' => sp_denied(),
             'now' => sp_now(),
-            'albums' => sp_albums() ?? [],
+            'albums' => $__albums,
             'playlists' => sp_playlists() ?? [],
             'lock_until' => sp_lock_until(),
             'lock_seconds' => sp_lock_seconds(),
@@ -434,7 +443,7 @@ function sp_handle(string $action, bool $post): void {
         // tiny response for frequent polling – the album/playlist lists are fetched rarely
         if (!kv_get('refresh_token')) out(['room' => kv_scope(), 'configured' => true, 'connected' => false]);
         $__now = sp_now();
-        out(['room' => kv_scope(), 'configured' => true, 'connected' => true, 'now' => $__now, 'recent' => sp_note_recent($__now), 'lock_until' => sp_lock_until(), 'lock_seconds' => sp_lock_seconds(), 'server_time' => time()]);
+        out(['room' => kv_scope(), 'denied' => sp_denied(), 'configured' => true, 'connected' => true, 'now' => $__now, 'recent' => sp_note_recent($__now), 'lock_until' => sp_lock_until(), 'lock_seconds' => sp_lock_seconds(), 'server_time' => time()]);
     }
 
     case 'spotify_tracks': {
@@ -498,7 +507,7 @@ function sp_handle(string $action, bool $post): void {
                 'code' => (string)$_GET['code'],
                 'redirect_uri' => sp_redirect_uri(),
             ]);
-            if ($ok) kv_del('cache_albums_v3', 'cache_playlists_v3', 'cache_now');
+            if ($ok) kv_del('cache_albums_v3', 'cache_albums_v4', 'cache_playlists_v3', 'cache_playlists_v4', 'cache_now', 'sp_denied');
         }
         header('Location: /#/lytte?spotify=' . ($ok ? 'ok' : 'feil'), true, 302);
         exit;
@@ -507,14 +516,14 @@ function sp_handle(string $action, bool $post): void {
     case 'spotify_disconnect': {
         if (!$post) fail('Bruk POST.', 405);
         require_room_owner();
-        kv_del('refresh_token', 'scopes', 'access_token', 'access_expires', 'cache_albums_v3', 'cache_playlists_v3', 'cache_now');
+        kv_del('refresh_token', 'scopes', 'access_token', 'access_expires', 'cache_albums_v3', 'cache_playlists_v3', 'cache_now', 'sp_denied');
         out(['connected' => false]);
     }
 
     case 'spotify_refresh': {
         if (!$post) fail('Bruk POST.', 405);
         require_room_owner();
-        kv_del('cache_albums_v3', 'cache_playlists_v3', 'cache_now');
+        kv_del('cache_albums_v3', 'cache_albums_v4', 'cache_playlists_v3', 'cache_playlists_v4', 'cache_now', 'sp_denied');
         out(['ok' => true]);
     }
 

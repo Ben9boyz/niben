@@ -219,7 +219,7 @@ function users_handle(string $action, bool $post): void {
         foreach ($dup->fetchAll() as $r) fail($r['username'] === $name ? 'Brukernavnet er tatt.' : 'Den e-postadressen har allerede en konto.');
         db()->prepare("INSERT INTO users (username, email, pass_hash, status, created) VALUES (?, ?, ?, 'pending', ?)")
             ->execute([$name, $email, password_hash($pw, PASSWORD_DEFAULT), time()]);
-        user_mail(owner_email(), 'Ny konto venter på godkjenning: ' . $name, "Hei!\n\n$name ($email) har bedt om en konto.\n\nGodkjenn eller avslå den under Admin → Brukere:\n" . site_url() . "/#/admin");
+        user_mail(owner_email(), 'Ny konto venter på godkjenning: ' . $name, "Hei!\n\n$name ($email) har bedt om en konto.\n\nGodkjenn eller avslå den under Admin → Brukere:\n" . site_url() . "/#/admin\n\nSkal $name bruke musikk, må du også legge til e-posten til Spotify-kontoen hennes i Spotify-dashboardet (User Management).");
         out(['ok' => true, 'pending' => true]);
     }
 
@@ -338,7 +338,7 @@ function users_handle(string $action, bool $post): void {
             'keys' => ['jpdb' => $cfgJp, 'steam_id' => $s['steam_id'] ?? ($uid === 1 ? 'fra oppsettet' : null), 'steam_key' => !empty($s['steam_key']),
                 'github_user' => $uid === 1 ? gh_user() : ($s['github_user'] ?? null), 'lastfm' => (string)kv_get('lastfm_key') !== '',
                 'spotify_app' => sp_site_config() ? 'site' : null],
-            'spotify' => ['connected' => (bool)kv_get('refresh_token'), 'redirect' => sp_redirect_uri()],
+            'spotify' => ['connected' => (bool)kv_get('refresh_token'), 'denied' => sp_denied(), 'redirect' => sp_redirect_uri()],
         ]);
     }
 

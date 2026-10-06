@@ -11,6 +11,7 @@ export const spotify = reactive({
   loaded: false,
   configured: false,
   connected: false,
+  denied: false, // Spotify answers 403: the account is not on the app's list of allowed users
   now: null as NowPlaying | null,
   albums: [] as Album[],
   guests: [] as Album[], // albums found by search that aren't on the shelf – they get a record in the room for a while
@@ -29,6 +30,7 @@ export const spotify = reactive({
 /** What the server answers on spotify_now / spotify_public. */
 interface PublicReply {
   room?: number
+  denied?: boolean
   configured?: boolean
   connected?: boolean
   now?: NowPlaying | null
@@ -119,6 +121,7 @@ function applyNow(j: PublicReply): void {
   if (j.room != null) roomSeen = String(j.room)
   spotify.configured = !!j.configured
   spotify.connected = !!j.connected
+  spotify.denied = !!j.denied
   if (j.server_time) spotify.offset = j.server_time - Date.now() / 1000
   if (j.recent && JSON.stringify(j.recent) !== JSON.stringify(spotify.recent)) spotify.recent = j.recent
   if ((j.lock_until || 0) !== spotify.lockUntil) spotify.lockUntil = j.lock_until || 0
