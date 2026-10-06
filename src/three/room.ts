@@ -128,12 +128,13 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     // a score from 0 (very weak) to 10
     let score = 5
     if (strongGpu) score += 3
-    if (weakGpu) score = Math.min(score - 2, 3) // (a weak chip stays in the low class however many cores the CPU has)
+    if (weakGpu) score -= 2
     if (cores >= 8) score += 1
     else if (cores <= 4) score -= 1
     if (mem && mem <= 2) score -= 2
     if (coarse && !strongGpu) score -= 1
     if (window.devicePixelRatio > 2.5 && !strongGpu) score -= 1 // lots of pixels, no muscle
+    if (weakGpu) score = Math.min(score, 3) // a weak chip stays in the low class however many cores the CPU has
     if (software) score = 0
     score = Math.max(0, Math.min(10, score))
     return { gpu, cores, mem, score, software }
