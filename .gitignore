@@ -32,3 +32,7 @@ niben-upload.zip
 dist/
 node_modules/
 test-results/
+
+# the owner's guitar models: they live in uploads/models on the server now (copied there by the site itself, see gm_adopt_builtin)
+public/pacifica.glb
+public/fs820.glb

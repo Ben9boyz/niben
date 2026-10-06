@@ -3,7 +3,8 @@ import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
-import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { makeGltfLoader } from '@/three/gltf'
 import type { Figure } from '@/composables/site/useData'
 
 // One figure on a little stage, turning slowly; drag to turn it yourself, scroll to come closer. Used by the figure tab
@@ -20,7 +21,7 @@ let raf = 0
 let ro: ResizeObserver | undefined
 let io: IntersectionObserver | undefined
 let visible = true
-const loader = new GLTFLoader()
+const loader = makeGltfLoader()
 const cache = new Map<string, Promise<GLTF>>()
 
 async function show(f: Figure | null) {

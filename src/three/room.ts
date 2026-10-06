@@ -1,4 +1,5 @@
 import { accent, onAccent, setAccent3d } from './accent'
+import { makeGltfLoader } from './gltf'
 import * as THREE from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
@@ -448,7 +449,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   let hoverGuitar = -1
   const hookMat = new THREE.MeshStandardMaterial({ color: 0xd7b56d, metalness: 1, roughness: 0.3 })
 
-  const gltfLoader = new GLTFLoader()
+  const gltfLoader = makeGltfLoader()
   const gltfCache = new Map<string, Promise<GLTF>>()
   const loadModel = (url: string): Promise<GLTF> => {
     let p = gltfCache.get(url)

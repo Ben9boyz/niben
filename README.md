@@ -63,6 +63,12 @@ Desktop apps: `cd desktop && npm install && npm run dist` (niben) / `npm run dis
 The database is read from `NIBEN_TEST_DB` (default `niben_test`), `NIBEN_TEST_DB_USER`, `NIBEN_TEST_DB_PASS`, `NIBEN_TEST_DB_HOST`.
 `npm run zip` builds `niben-upload.zip` for uploading (not kept in git).
 
+### The owner's guitar models
+
+`pacifica.glb` and `fs820.glb` are not in git any more. The first time the main room's content is loaded, the server copies them
+(if they are still next to the site) to `uploads/models/` and remembers it (`gm_adopt_builtin` in `public/_decor.inc.php`) – after that
+they are just like any uploaded model (Admin → Gitarer). Nothing is deleted. Compressed (Draco / Meshopt) models work: `src/three/gltf.ts`.
+
 ### 3D performance
 
 - Budget (checked by `tests/e2e/perf.test.mjs`): a corner you look at < 150 draw calls / 70 000 triangles, the overview < 550 / 200 000.
