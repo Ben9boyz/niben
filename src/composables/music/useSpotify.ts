@@ -33,6 +33,7 @@ interface PublicReply {
   room?: number
   lib?: string // a fingerprint of the library: when it changes, something was added / removed in Spotify
   denied?: boolean
+  spotify_status?: number | null // the status Spotify last answered no with (429 = too many requests), if just now
   configured?: boolean
   connected?: boolean
   now?: NowPlaying | null
@@ -165,9 +166,15 @@ export async function refreshLists(force = false): Promise<void> {
     if (j.connected) {
       const sig = JSON.stringify([j.albums?.map((a) => a.uri + a.thumb), j.playlists?.map((p) => p.uri + p.count + p.thumb)])
       if (sig !== listsSig) {
-        listsSig = sig
-        spotify.albums = j.albums ?? []
-        spotify.playlists = j.playlists ?? []
+        // Spotify answering "no" (too many requests …) gives empty lists: keep what is on the shelf rather than wiping it
+        const empty = !(j.albums?.length) && !(j.playlists?.length)
+        if (empty && (spotify.albums.length || spotify.playlists.length) && j.spotify_status) {
+          spotify.error = `Spotify svarer ${j.spotify_status} akkurat nå (for mange forespørsler?). Viser det som er lagret.`
+        } else {
+          listsSig = sig
+          spotify.albums = j.albums ?? []
+          spotify.playlists = j.playlists ?? []
+        }
       }
       listsAt = Date.now()
       try { localStorage.setItem(listsKey(), JSON.stringify({ at: listsAt, sig, room: roomSeen, lib: libSig, albums: spotify.albums, playlists: spotify.playlists })) } catch {}
@@ -177,7 +184,6 @@ export async function refreshLists(force = false): Promise<void> {
       try { localStorage.removeItem(listsKey()) } catch { /* private mode */ }
     }
     spotify.error = null
-    warmTracks()
   } catch (e) {
     spotify.error = errorMessage(e)
   } finally {
@@ -232,21 +238,6 @@ export function prefetchTracks(uri: string | null | undefined): void {
   clearTimeout(prefetchTimer)
   if (!uri || trackCache.has(uri)) return
   prefetchTimer = window.setTimeout(() => { void fetchTracks(uri) }, 60) // only if it rests there a moment
-}
-/** Once the lists are there and the page is quiet: fetch the songs of the first records and playlists, one by one,
- *  so that opening them is instant (they are remembered on this machine, so it only costs anything the first time). */
-let warmed = false
-function warmTracks(): void {
-  if (warmed || !spotify.connected) return
-  warmed = true
-  if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return
-  const uris = [...spotify.albums.slice(0, 8), ...spotify.playlists.slice(0, 4)].map((x) => x.uri) // (few: Spotify limits how often it may be asked)
-  let i = 0
-  const next = (): void => {
-    if (i >= uris.length || document.hidden) return
-    void fetchTracks(uris[i++]).then((t) => { if (!t.error) setTimeout(next, 1200) }) // (stops at the first error)
-  }
-  setTimeout(next, 3000)
 }
 const tempoCache = new Map<string, Promise<number>>()
 /** Tempo (BPM) of a song – 0 when nobody knows. Asked once per song, then remembered here (30 days; an unknown

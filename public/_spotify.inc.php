@@ -113,6 +113,7 @@ function sp_api(string $method, string $path, ?array $body = null): array {
         [$status, $res] = http_req($method, 'https://api.spotify.com/v1' . $path, $headers, $body !== null ? json_encode($body) : null);
         // "slow down" (429) on something I changed (like, add to a list …): wait a moment and try once more – reads are never held up
         if ($status === 429 && $method !== 'GET') { sleep(2); [$status, $res] = http_req($method, 'https://api.spotify.com/v1' . $path, $headers, $body !== null ? json_encode($body) : null); }
+        if ($status >= 400 && $status !== 401) kv_set('sp_last_err', $status . '|' . time()); // (the page can say why a list is empty)
         if ($status !== 401) return [$status, $res === '' ? null : json_decode($res, true)];
     }
     return [401, null];
@@ -156,6 +157,12 @@ function sp_cached(string $key, int $ttl, callable $fetch, bool $shared = false)
 
 /** Spotify refuses an account the app's owner has not added under "User Management" (an app in development mode): the
  *  login works, every question afterwards is a 403. Remembered, so the room can say so instead of showing an empty shelf. */
+/** The status Spotify last answered with when it said no (429 = too many requests …), if that was in the last two minutes. */
+function sp_recent_error(): ?int {
+    $v = (string)kv_get('sp_last_err');
+    if (!preg_match('~^(\d+)\|(\d+)$~', $v, $m)) return null;
+    return (int)$m[2] > time() - 120 ? (int)$m[1] : null;
+}
 function sp_denied(): bool { return (int)kv_get('sp_denied') > time() - 600; }
 
 /** A small fingerprint of the library (how many albums / playlists, and which is newest), from two tiny calls that are
@@ -180,12 +187,15 @@ function sp_sync_library(): void {
     $done = true;
     $stamp = sp_library_stamp();
     if ($stamp === '' || kv_get('lib_stamp') === $stamp) return;
-    kv_del('cache_albums_v4', 'cache_playlists_v3');
+    foreach (['cache_albums_v4', 'cache_playlists_v3'] as $k) { // stale, not gone: if Spotify then fails, the old list is still shown
+        $raw = kv_get($k);
+        if ($raw) { $c = json_decode($raw, true); if (is_array($c)) { $c['t'] = 0; kv_set($k, json_encode($c, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); } }
+    }
     kv_set('lib_stamp', $stamp);
 }
 
 function sp_albums(): ?array {
-    if (sp_denied()) return [];
+    if (sp_denied()) { $raw = kv_get('cache_albums_v4'); return $raw ? (json_decode($raw, true)['d'] ?? []) : []; }
     sp_sync_library();
     return sp_cached('cache_albums_v4', 1800, function () {
         $out = [];
@@ -481,6 +491,7 @@ function sp_handle(string $action, bool $post): void {
             'configured' => true,
             'connected' => true,
             'denied' => sp_denied(),
+            'spotify_status' => sp_recent_error(),
             'lib' => sp_library_stamp(),
             'now' => sp_now(),
             'albums' => $__albums,
