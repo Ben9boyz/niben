@@ -4,7 +4,7 @@ import { tx } from '../composables/useTexts'
 import { X } from 'lucide-vue-next'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useData, type Book } from '../composables/useData'
-import Stars from '../components/Stars.vue'
+import Stars from '@/components/ui/Stars.vue'
 
 const data = useData()
 const books = computed(() => data.boker || [])

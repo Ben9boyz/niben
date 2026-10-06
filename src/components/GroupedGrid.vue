@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { ChevronRight, ChevronLeft } from 'lucide-vue-next'
 import CoverGrid from './CoverGrid.vue'
-import FolderIcon from './FolderIcon.vue'
+import FolderIcon from '@/components/ui/FolderIcon.vue'
 import { User, Users } from 'lucide-vue-next'
 import { groups, sectionsOf, type Section, moveTo, groupOf, flatGroups, isCollapsed, toggleCollapsed, groupCover, topGroups, childrenOf, countIn, openFolder } from '../composables/useGroups'
 import { admin } from '../composables/useAdmin'

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import BrandLogo from './BrandLogo.vue'
+import BrandLogo from '@/components/ui/BrandLogo.vue'
 import LangSwitch from './LangSwitch.vue'
 import ThemeSwitch from './ThemeSwitch.vue'
 import AdminAvatar from './AdminAvatar.vue'

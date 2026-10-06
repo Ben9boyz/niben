@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { Layers, Pencil, Plus, ArrowUp, ArrowDown, X, Check } from 'lucide-vue-next'
-import FolderIcon from './FolderIcon.vue'
+import FolderIcon from '@/components/ui/FolderIcon.vue'
 import SortButton from './SortButton.vue'
 import { groups, setGrouping, setView, saveGroups, groupCover, itemsIn, coverOfUri, uploadGroupImage } from '../composables/useGroups'
 import { admin } from '../composables/useAdmin'

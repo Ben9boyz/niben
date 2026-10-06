@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import GuestBook from './GuestBook.vue'
-import MadeWith from './MadeWith.vue'
+import MadeWith from '@/components/ui/MadeWith.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Guitar, Music, BookOpen, Plane, Languages, Gamepad2, Code2, ArrowUpRight, Pencil, Plus, X, Check, Sparkles, ImageUp } from 'lucide-vue-next'

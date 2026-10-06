@@ -9,10 +9,10 @@ import { admin, checkLogin, canManage } from '../composables/useAdmin'
 import { room } from '../composables/useRoom'
 import JapanPractice from './JapanPractice.vue'
 import JapanReader from './JapanReader.vue'
-import SegSwitch from './SegSwitch.vue'
+import SegSwitch from '@/components/ui/SegSwitch.vue'
 import JapanWords from './JapanWords.vue'
 import KanjiPractice from './KanjiPractice.vue'
-import Fold from './Fold.vue'
+import Fold from '@/components/ui/Fold.vue'
 
 // The Japanese corner's content (3D panel and plain page): progress from jpdb, the word of the day,
 // and – for the admin – flashcard practice.

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { ChevronRight } from 'lucide-vue-next'
-import FolderIcon from './FolderIcon.vue'
+import FolderIcon from '@/components/ui/FolderIcon.vue'
 import { spotify } from '../composables/useSpotify'
 import { ref } from 'vue'
 import { groups, topGroups, childrenOf, countIn, groupCover, moveTo } from '../composables/useGroups'

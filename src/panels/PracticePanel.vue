@@ -5,7 +5,7 @@ import { room } from '../composables/useRoom'
 import ChordPractice from '../components/ChordPractice.vue'
 import GuitarTuner from '../components/GuitarTuner.vue'
 import Metronome from '../components/Metronome.vue'
-import SegSwitch from '../components/SegSwitch.vue'
+import SegSwitch from '@/components/ui/SegSwitch.vue'
 import { targetEl, inputOf } from '../lib/dom'
 
 // The practice corner: the interval timer, chords, a tuner (with half-step-down / up tunings) and a metronome.

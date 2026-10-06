@@ -4,7 +4,7 @@ import { tx } from '../composables/useTexts'
 import { computed } from 'vue'
 import { useData, type Book } from '../composables/useData'
 import { room } from '../composables/useRoom'
-import Stars from '../components/Stars.vue'
+import Stars from '@/components/ui/Stars.vue'
 
 const data = useData()
 const list = computed(() => data.boker || [])

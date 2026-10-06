@@ -5,7 +5,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, type Compon
 import { navGroups, groupOf, groupTarget } from '../lib/nav'
 import { useRoute, useRouter } from 'vue-router'
 import { admin, checkLogin } from '../composables/useAdmin'
-import BrandLogo from './BrandLogo.vue'
+import BrandLogo from '@/components/ui/BrandLogo.vue'
 import { Menu, X } from 'lucide-vue-next'
 import { targetEl } from '../lib/dom'
 
