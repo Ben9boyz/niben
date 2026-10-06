@@ -142,6 +142,8 @@ loadSteam()
 watch(() => [steam.profile, steam.library, room.api], () => room.api?.setSteam({ profile: steam.profile, library: steam.library }), { immediate: true })
 // …and the anime from the decks as DVDs stacked on the mat
 watch(() => [jp.anime, room.jpAnime, room.api], () => room.api?.setAnime(jp.anime, room.jpAnime), { immediate: true })
+// the admin panel covers the room: nothing is drawn behind it (unless I am placing my own models)
+watch(() => [room.api, route.name, decor.editing], () => room.api?.setCovered(route.name === 'admin' && !decor.editing), { immediate: true })
 watch(theme, (t) => api?.setTheme(t))
 watch(() => weather.value?.kind, () => api?.setWeather(weather.value))
 watch(calm, (v) => api?.setCalm(v))

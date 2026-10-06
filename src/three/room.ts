@@ -90,7 +90,7 @@ export interface RoomCallbacks {
 export interface RoomData { gitarer?: Guitar[]; boker?: Book[]; reiser?: Trip[]; prosjekter?: Project[]; om?: { bilde?: string | null }; site?: { navn?: string } }
 /** The graphics settings as the room is told them (see useGraphics). */
 export type GfxInput = Partial<Omit<GfxValues, 'res' | 'ao'>> & { mode?: GfxMode; res?: number | 'auto'; ao?: GfxValues['ao'] | 'auto'; showFps?: boolean }
-interface Eff extends Omit<GfxValues, 'res' | 'ao'> { res: number | 'auto'; ao: GfxValues['ao'] | 'auto'; showFps: boolean }
+interface Eff extends Omit<GfxValues, 'res' | 'ao'> { res: number | 'auto'; ao: GfxValues['ao'] | 'auto'; showFps: boolean; areaLights: boolean; smallLights: boolean }
 /** One of my uploaded 3D models in the room. */
 interface DecorObject { root: THREE.Group; item: DecorItem }
 /** What the pointer rests on, found by raycasting. */
@@ -167,12 +167,13 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   const maxTex = renderer.capabilities.maxTextureSize || 4096
   // what "Auto" means for this device (the user's own choices override any of these)
   const autoGfx = (): Eff => ({
-    res: 'auto', fps: 0,
+    res: 'auto', fps: quality === 'low' ? 30 : 0, // (a weak machine moves at 30 fps at most – it rests the rest of the time)
     msaa: quality === 'low' ? 2 : 4, // 8× MSAA on a half-float target costs a lot and shows little – still available in the settings
-    shadows: quality === 'ultra' ? 4096 : quality === 'low' ? 1024 : 2048,
-    soft: inApp, lamp: false, ao: fancy ? 'auto' : 'off', shafts: fancy, bloom: 'half', bloomMul: 1,
+    shadows: quality === 'ultra' ? 4096 : quality === 'low' ? 0 : 2048, // low: no shadow map at all – soft contact shadows on the floor instead
+    soft: inApp, lamp: false, ao: fancy ? 'auto' : 'off', shafts: fancy, bloom: quality === 'low' ? 'off' : 'half', bloomMul: 1,
     vignette: true, reflections: quality === 'ultra' ? 512 : quality === 'high' ? 256 : 128,
     weather: true, ambient: true, exposure: 1, showFps: false,
+    areaLights: quality !== 'low', smallLights: quality !== 'low', // area lights (window, LED strip) and the tiny point lights are the dearest to light with
   })
   let eff = autoGfx()
   let gfxIn: GfxInput | null = null // what the user chose in the settings (or null)
@@ -561,6 +562,35 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   scene.add(japan.group)
   let timerInterval = 10
 
+  // Soft contact shadows on the floor under each corner – what stands in for the shadow map on a weak machine
+  const contact = new THREE.Group()
+  contact.name = 'contactShadows'
+  {
+    const tex = canvasTex(128, 128, (x, w, h) => {
+      const g = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2)
+      g.addColorStop(0, 'rgba(0,0,0,0.55)'); g.addColorStop(0.55, 'rgba(0,0,0,0.3)'); g.addColorStop(1, 'rgba(0,0,0,0)')
+      x.fillStyle = g; x.fillRect(0, 0, w, h)
+    })
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, fog: false })
+    const b = new THREE.Box3(), size = new THREE.Vector3(), mid = new THREE.Vector3()
+    scene.updateMatrixWorld(true)
+    for (const o of interactive) {
+      if (o.userData.station === 'om') continue
+      b.setFromObject(o)
+      if (b.isEmpty() || b.min.y > 0.4) continue
+      b.getSize(size); b.getCenter(mid)
+      if (size.x * size.z > 40 || size.x * size.z < 0.05) continue
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat)
+      m.rotation.x = -Math.PI / 2
+      m.position.set(mid.x, 0.006, mid.z)
+      m.scale.set(size.x * 1.3 + 0.2, size.z * 1.3 + 0.2, 1)
+      m.renderOrder = -1
+      m.userData.noCull = true
+      contact.add(m)
+    }
+  }
+  scene.add(contact)
+
   function setPortrait(om: RoomData['om'], navn: string | undefined): void {
     const initial = (navn || 'n').trim()[0]?.toUpperCase() || 'N'
     photoMat.map?.dispose()
@@ -609,6 +639,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   let lyttePose: LyttePose | null = null // null (sofa view) | 'top' (turntable) | 'shelf' (record shelf) | 'ipod' (iPod on its stand)
   function goTo(name: string, { instant = false, duration }: { instant?: boolean; duration?: number } = {}): void {
     invalidate(0.5)
+    stationBoxes.clear(); tinies = null // (the models may have been loaded since)
     station = STATIONS[name] ? name : 'hjem'
     zoomTarget = 1 // the zoom is for the globe only
     desk.setScreenMode(station === 'gaming' ? 'gaming' : 'code')
@@ -626,6 +657,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       camPos.copy(to.pos)
       camTarget.copy(to.target)
       flight = null
+      updateCull(true, to)
       return
     }
     const dist = camPos.distanceTo(to.pos)
@@ -636,6 +668,81 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       dur: duration ?? THREE.MathUtils.clamp(0.9 + dist * 0.18, 1.1, 2.0),
       lift: Math.min(0.6, dist * 0.07),
     }
+  }
+
+  // ── Only what is in view is drawn ──────────────────────
+  // A corner far from where the camera looks (and from where it is flying) is switched off altogether: no draw calls, no
+  // shadow casting, no lights, no animation. It comes back before it enters the picture (a wider lens than the real one is
+  // tested, and both the camera now and where the flight ends) and goes a moment after it left, so nothing pops.
+  // Tiny things (a few pixels on the screen) are left out too – in the overview that is a good share of the room.
+  const cullFrustum = new THREE.Frustum()
+  const cullM = new THREE.Matrix4()
+  const wideNow = new THREE.PerspectiveCamera()
+  const wideEnd = new THREE.PerspectiveCamera()
+  const stationBoxes = new Map<THREE.Object3D, THREE.Box3>()
+  let cullOn = true
+  let cullAt = -1
+  const boxOf = (o: THREE.Object3D): THREE.Box3 => {
+    let b = stationBoxes.get(o)
+    if (!b) { b = new THREE.Box3().setFromObject(o).expandByScalar(0.6); stationBoxes.set(o, b) } // (0.6 m around: a shadow or a glow thrown into view)
+    return b
+  }
+  const sees = (cam: THREE.PerspectiveCamera, b: THREE.Box3): boolean => {
+    cam.updateMatrixWorld()
+    cullM.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse)
+    cullFrustum.setFromProjectionMatrix(cullM)
+    return cullFrustum.intersectsBox(b)
+  }
+  const wideLens = (cam: THREE.PerspectiveCamera): void => { cam.fov = camera.fov * 1.3; cam.aspect = camera.aspect; cam.near = camera.near; cam.far = camera.far; cam.clearViewOffset(); cam.updateProjectionMatrix() }
+  interface Tiny { m: THREE.Mesh; c: THREE.Vector3; r: number }
+  let tinies: Tiny[] | null = null
+  const collectTinies = (): Tiny[] => {
+    const out: Tiny[] = []
+    const c = new THREE.Vector3(), sc = new THREE.Vector3()
+    scene.updateMatrixWorld()
+    scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh) || o instanceof THREE.InstancedMesh || !o.visible || !o.geometry) return
+      if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere()
+      const bs = o.geometry.boundingSphere
+      if (!bs) return
+      o.matrixWorld.decompose(c, new THREE.Quaternion(), sc)
+      const r = bs.radius * Math.max(sc.x, sc.y, sc.z)
+      if (r > 0.03) return
+      for (let p: THREE.Object3D | null = o; p; p = p.parent) if (p.userData.kind !== undefined || p.userData.noCull) return // clickable / animated things stay
+      out.push({ m: o, c: bs.center.clone().applyMatrix4(o.matrixWorld), r })
+    })
+    return out
+  }
+  /** immediate: no waiting before something is switched off (a jump, or a test). */
+  function updateCull(immediate = false, end?: Pose3): void {
+    let changed = false
+    const t = simT
+    wideNow.position.copy(camera.position); wideNow.quaternion.copy(camera.quaternion); wideLens(wideNow)
+    const ahead = flight?.to ?? end
+    if (ahead) { wideEnd.position.copy(ahead.pos); wideEnd.lookAt(ahead.target); wideLens(wideEnd) }
+    for (const o of interactive) {
+      const sec = o.userData.sec !== false
+      let want = sec
+      if (sec && cullOn) {
+        const b = boxOf(o)
+        if (sees(wideNow, b) || (ahead && sees(wideEnd, b))) o.userData.out = undefined
+        else {
+          if (o.userData.out === undefined) o.userData.out = t
+          want = !(immediate || (!flight && t - (o.userData.out as number) > 0.6))
+        }
+      }
+      if (o.visible !== want) { o.visible = want; changed = true }
+    }
+    // little things far away: under ~2 px they cannot be seen anyway
+    if (!tinies) tinies = collectTinies()
+    const pxPerM = (host.clientHeight * renderer.getPixelRatio()) / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)))
+    for (const ti of tinies) {
+      const px = cullOn ? (ti.r * 2 * pxPerM) / Math.max(0.1, camera.position.distanceTo(ti.c)) : 99
+      const hid = ti.m.userData.tinyHid === true
+      if (!hid && px < 2) { if (ti.m.visible) { ti.m.visible = false; ti.m.userData.tinyHid = true; changed = true } }
+      else if (hid && px > 2.6) { ti.m.visible = true; ti.m.userData.tinyHid = false; changed = true }
+    }
+    if (changed) { shadowsDirty = true; invalidate(0.3) }
   }
 
   // ── Insets (UI panels) shift the view so the subject stays centred in the free area ──
@@ -982,7 +1089,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     const d = t.night ? 1 : DIM[weather.kind] ?? 1
     windowLight.intensity = t.window * d
     sun.intensity = t.sun * d
-    hemi.intensity = t.hemi * (t.night ? 1 : 0.7 + 0.3 * d)
+    hemi.intensity = t.hemi * (t.night ? 1 : 0.7 + 0.3 * d) * (eff.areaLights ? 1 : 1.2) // (the window's area light is off: a little more soft light instead)
     // golden hour: the sun is warmer early and late in the day (free – just a colour)
     if (!t.night) {
       const hr = new Date().getHours() + new Date().getMinutes() / 60
@@ -1004,7 +1111,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     wallMat.color.set(t.wall)
     floorMat.color.set(t.floor)
     sideMat.color.set(t.night ? 0x1a2232 : 0xdfe6ef)
-    hemi.intensity = t.hemi
+    hemi.intensity = t.hemi * (eff.areaLights ? 1 : 1.2)
     sun.intensity = t.sun
     sun.color.set(t.sunColor)
     fill.intensity = t.night ? 0.08 : 0.3
@@ -1085,6 +1192,12 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       scene.traverse((o) => { if (o instanceof THREE.Mesh || o instanceof THREE.Line || o instanceof THREE.Points) for (const m of Array.isArray(o.material) ? o.material : [o.material]) m.needsUpdate = true })
     }
     shadowsDirty = true
+    // lights: the area lights (window, LED strip) and the tiny point lights are the dearest per pixel – a weak machine goes without
+    scene.traverse((o) => {
+      if (o instanceof THREE.RectAreaLight) o.visible = n.areaLights
+      else if (o instanceof THREE.PointLight && o.distance <= 0.7) o.visible = n.smallLights
+    })
+    contact.visible = !shadowsOn // no shadow map: soft contact shadows under the furniture instead
     // ambient occlusion (loaded the first time it is switched on) and the light shafts
     if (n.ao !== 'off') {
       ensureAO()
@@ -1192,6 +1305,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   function frame(): void {
     if (!running) return
     raf = requestAnimationFrame(frame)
+    if (document.hidden || covered || warming) return // nobody sees the room: nothing is drawn (the last picture stays)
     if (eff.fps) { // frame-rate cap
       const t0 = performance.now()
       if (t0 - lastFrameAt < 1000 / eff.fps - 1.5) return
@@ -1204,21 +1318,27 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     // textures still show up. An idle room costs (almost) nothing.
     const now = performance.now()
     // little things move on their own (the cat breathes, dust drifts, steam rises …): a gentle ~20 frames a second while you can see them
-    if (!active && !shadowsDirty && !(ambient && now - lastRender > 48) && now - lastRender < 1000) return
+    if (!active && !shadowsDirty && !(ambient && now - lastRender > (quality === 'low' ? 100 : 48)) && now - lastRender < 1000) return
     if (active) measure(raw)
     shaftU.uTime.value = simT
     // shadows are redrawn when something moved (and, for late-loading textures, now and then)
     if (shadowsDirty || ++shadowTick % 240 === 0) renderer.shadowMap.needsUpdate = true
     shadowsDirty = false
+    renderer.info.reset() // (the counters add up over every pass of the frame: scene, glow, …)
     composer.render()
+    drawn.calls = renderer.info.render.calls; drawn.triangles = renderer.info.render.triangles
     lastRender = now
     fpsFrames++
-    if (now - fpsAt > 500) { fpsVal = Math.round(fpsFrames * 1000 / (now - fpsAt)); fpsFrames = 0; fpsAt = now; if (fpsEl) fpsEl.textContent = `${fpsVal} fps · ${Math.round(renderer.getPixelRatio() * 100) / 100}× · ${renderer.info.render.calls} anrop` }
+    if (now - fpsAt > 500) { fpsVal = Math.round(fpsFrames * 1000 / (now - fpsAt)); fpsFrames = 0; fpsAt = now; if (fpsEl) fpsEl.textContent = `${fpsVal} fps · ${Math.round(renderer.getPixelRatio() * 100) / 100}× · ${drawn.calls} anrop · ${Math.round(drawn.triangles / 1000)}k tri · ${countLights()} lys · ${quality}` }
   }
   let lastFrameAt = 0, fpsFrames = 0, fpsAt = performance.now(), fpsVal = 0
   let fpsEl: HTMLDivElement | null = null
   let shadowsDirty = true
   let ambient = false
+  let warming = false // (compiling the shaders for the lights of a hidden corner – nothing is drawn meanwhile)
+  const drawn = { calls: 0, triangles: 0 } // what the last frame cost (all passes)
+  let covered = false // a full-screen panel (admin, the 2D view) hides the room
+  const countLights = (): number => { let n = 0; scene.traverse((o) => { if ((o as THREE.Light).isLight && shown(o)) n++ }); return n }
 
   function step(dt: number): boolean {
     simT += dt
@@ -1260,6 +1380,8 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     if (Math.abs(inset.x) > 0.5 || Math.abs(inset.y) > 0.5) camera.setViewOffset(w, h, inset.x, inset.y, w, h)
     else camera.clearViewOffset()
 
+    if (simT - cullAt > (flight ? 0.05 : 0.25)) { updateCull(); cullAt = simT }
+
     // guitars
     guitars.forEach((g, i) => {
       const sel = i === selGuitar
@@ -1289,17 +1411,17 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       }
     })
 
-    if (shelf.update(dt, t)) { shadowsDirty = true; active = true }
+    if (shelf.group.visible && shelf.update(dt, t)) { shadowsDirty = true; active = true }
     // things that animate on their own only count where you can see them
     const near = (...st: string[]): boolean => st.includes(station) || !!flight
-    if (near('kode', 'gaming') && desk.update(dt, t)) active = true
+    if (near('kode', 'gaming') && desk.group.visible && desk.update(dt, t)) active = true
     if (globeTable.update(dt, t, !reduced && near('reiser'))) active = true
     if (timerState && near('ovelse', 'hjem') && practice.update(dt, t, timerState(), timerInterval)) active = true
     ambient = eff.ambient && !reduced && !document.hidden && near('lytte', 'hjem', 'kode', 'gaming')
     if (!reduced && eff.weather && near('lytte', 'hjem') && stepWeather(dt, t)) { active = true; ambient = true }
     figures.update(t)
-    if (listening.update(dt, t, camera)) { shadowsDirty = true; active = true }
-    if (japan.update(dt)) { shadowsDirty = true; active = true }
+    if (listening.group.visible && listening.update(dt, t, camera)) { shadowsDirty = true; active = true }
+    if (japan.group.visible && japan.update(dt)) { shadowsDirty = true; active = true }
     if (listening.isSpinning() && near('lytte', 'hjem')) active = true
     return active
   }
@@ -1317,6 +1439,16 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   // compile every shader up front (in the background, in parallel) instead of stuttering when something first shows;
   // the browser / app keeps its own on-disk cache of the compiled shaders for the next start
   try { void renderer.compileAsync(scene, camera).catch(() => {}) } catch { /* the first frames compile them instead */ }
+  // the corner with the most lights is switched off when you look elsewhere – that is another set of shaders: make them ready
+  // beforehand, in the background, so it does not stutter the first time
+  setTimeout(() => {
+    if (!running) return
+    const g = listening.group
+    warming = true
+    g.visible = false
+    const done = (): void => { g.visible = true; warming = false; updateCull(true); invalidate(1) }
+    try { void renderer.compileAsync(scene, camera).then(done, done) } catch { done() }
+  }, 5000)
   applyGfx(null) // start with what "Auto" means for this device (the settings are sent in right after)
 
   return {
@@ -1328,6 +1460,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     dumpScene() {
       const r3 = (n: number): number => Math.round(n * 1000) / 1000
       const out: [string, number, number, number, number, number, number, number, string][] = []
+      cullOn = false; updateCull(true) // (everything shows, as if nothing were left out)
       scene.updateMatrixWorld(true)
       const p = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3()
       scene.traverse((o) => {
@@ -1340,6 +1473,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
         for (let n: THREE.Object3D | null = o; n && n !== scene; n = n.parent) path.unshift(n.name || n.type)
         out.push([path.join('/'), r3(p.x), r3(p.y), r3(p.z), r3(sc.x), r3(sc.y), r3(sc.z), o.visible ? verts : -verts - 1, colour])
       })
+      cullOn = true; updateCull(true)
       return out
     },
     setData,
@@ -1423,23 +1557,43 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
         const st = String(o.userData.station)
         let vis = !on || on[st] !== false
         if (st === 'kode' && on && on.gaming !== false) vis = true // the desk also carries the gaming monitor
-        o.visible = vis
+        o.userData.sec = vis
       }
+      updateCull(true)
       invalidate(0.5)
     },
     setGraphics(g: GfxInput | null) { gfxIn = g; applyGfx(g) },
     /** What the picture is made of right now (for the settings window): quality class, resolution, frame rate … */
-    get gfxInfo() { return { quality, level, pixelRatio: renderer.getPixelRatio(), fps: fpsVal, maxMsaa, maxTex, dpr: window.devicePixelRatio, gpu: spec.gpu, score: spec.score, auto: autoGfx(), software: spec.software } },
+    get gfxInfo() { return { calls: drawn.calls, triangles: drawn.triangles, lights: countLights(), quality, level, pixelRatio: renderer.getPixelRatio(), fps: fpsVal, maxMsaa, maxTex, dpr: window.devicePixelRatio, gpu: spec.gpu, score: spec.score, auto: autoGfx(), software: spec.software } },
+    /** A full-screen panel covers the room (or not): nothing is drawn while it does. */
+    setCovered(v: boolean) { covered = !!v; if (!covered) invalidate(1) },
     get debug() { return { station, camPos: camPos.toArray(), cam: camera.position.toArray(), flight: !!flight } },
     // test helper: draw calls / triangles of one plain render (no post-processing)
     stats() {
       renderer.info.autoReset = false
       renderer.info.reset()
       renderer.render(scene, camera)
-      const r = { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, meshes: 0 }
+      const r = { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, meshes: 0, lights: countLights() }
       scene.traverse((o) => { if (o instanceof THREE.Mesh || o instanceof THREE.Line) r.meshes++ })
-      renderer.info.autoReset = true
+      renderer.info.autoReset = false
       return r
+    },
+    // test helper: what each top-level part of the scene costs on its own (draw calls / triangles of one plain render)
+    breakdown() {
+      cullOn = false; updateCull(true)
+      const kids = scene.children.map((c) => [c, c.visible] as const)
+      const out: { name: string; calls: number; triangles: number }[] = []
+      renderer.info.autoReset = false
+      for (const [c] of kids) {
+        for (const [o] of kids) o.visible = o === c
+        renderer.info.reset()
+        renderer.render(scene, camera)
+        if (renderer.info.render.calls) out.push({ name: c.name || c.type, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles })
+      }
+      renderer.info.autoReset = false
+      for (const [c, v] of kids) c.visible = v
+      cullOn = true; updateCull(true)
+      return out.sort((x, y) => y.calls - x.calls)
     },
     // test helper: advance the simulation without waiting for real frames
     /** What the device was judged to be, and the picture quality now (for debugging). */

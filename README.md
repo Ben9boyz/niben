@@ -63,6 +63,13 @@ Desktop apps: `cd desktop && npm install && npm run dist` (niben) / `npm run dis
 The database is read from `NIBEN_TEST_DB` (default `niben_test`), `NIBEN_TEST_DB_USER`, `NIBEN_TEST_DB_PASS`, `NIBEN_TEST_DB_HOST`.
 `npm run zip` builds `niben-upload.zip` for uploading (not kept in git).
 
+### 3D performance
+
+- Budget (checked by `tests/e2e/perf.test.mjs`): a corner you look at < 150 draw calls / 70 000 triangles, the overview < 550 / 200 000.
+- Never use `transmission` on a material: it makes three.js draw the whole scene twice.
+- `room.ts` leaves out what is not in view (`updateCull`: whole corners with a short delay, tiny things under ~2 px), their lights, shadows and animations go with them. `breakdown()` shows what each part of the scene costs.
+- The "low" class (weak GPU, many phones): no shadow map (contact shadows on the floor), no area lights, no bloom, 30 fps while moving. Nothing is drawn while the tab is hidden or the admin panel covers the room.
+
 ### Refactoring the 3D listening corner
 
 `src/three/listening.ts` ties the corner together (the shelf of records, what is held / playing, the per-frame update); the pieces

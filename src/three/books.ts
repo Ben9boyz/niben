@@ -98,7 +98,7 @@ export function buildBookshelf(): Bookshelf {
   const endMat = new THREE.MeshStandardMaterial({ color: 0x2b8cff, roughness: 0.35, metalness: 0.3 })
   const decoMats = [
     new THREE.MeshStandardMaterial({ color: 0xf2f4f7, roughness: 0.4 }),
-    new THREE.MeshPhysicalMaterial({ color: 0xbfe6ff, roughness: 0.05, transmission: 0.8, thickness: 0.05 }),
+    new THREE.MeshPhysicalMaterial({ color: 0xbfe6ff, roughness: 0.05, transparent: true, opacity: 0.5, clearcoat: 1 }), // (glass without `transmission`: that makes the whole scene be drawn twice),
   ]
   function bookend(x: number, y: number): void {
     const m = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.16, 0.12), endMat)

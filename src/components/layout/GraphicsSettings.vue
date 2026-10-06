@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { X, Gauge, RotateCcw } from 'lucide-vue-next'
 import { gfx, gfxUi, GROUPS, PRESET_LABELS, setPreset, setOptionLoose, setShowFps, type GfxKey, type GfxItem } from '@/composables/ui/useGraphics'
 import { room } from '@/composables/room/useRoom'
+import { admin } from '@/composables/site/useAdmin'
 import { inputOf, selectOf } from '@/lib/dom'
 
 // Innstillinger → Grafikk. "Auto" = the room picks what suits this device and keeps the frame rate up on its own.
@@ -52,6 +53,12 @@ const close = () => { gfxUi.open = false }
           <div v-if="info" class="live">
             <span><b>{{ info.fps || '–' }}</b> fps</span>
             <span><b>{{ Math.round(info.pixelRatio * 100) / 100 }}×</b> oppløsning</span>
+            <template v-if="admin.mine">
+              <span :title="'Tegnekall per bilde (alle trinn)'"><b>{{ info.calls }}</b> anrop</span>
+              <span><b>{{ Math.round(info.triangles / 1000) }}k</b> trekanter</span>
+              <span><b>{{ info.lights }}</b> lys</span>
+              <span><b>{{ classLabel[info.quality] || info.quality }}</b> nivå</span>
+            </template>
             <span v-if="info.gpu" class="gpu" :title="info.gpu">{{ info.gpu.replace(/^angle \((.*)\)$/, '$1').slice(0, 44) }}</span>
           </div>
 
