@@ -402,7 +402,7 @@ try {
         if ($room === 1) { try { gm_adopt_builtin(); } catch (Throwable $e) { /* no harm: the files next to the site still work */ } }
         $payload = json_encode([
             'trips' => $trips, 'books' => $books, 'recordings' => $recs, 'songs' => songs_list($pdo), 'guitars' => $gq->fetchAll(),
-            'guitar_models' => (object)gm_map(), 'figures' => fig_list(), 'about' => json_decode((string)kv_get('about'), true), 'questions' => q_list(), 'texts' => (object)(json_decode((string)kv_get('site_texts'), true) ?: []),
+            'guitar_models' => (object)gm_map(), 'figures' => fig_list(), 'about' => json_decode((string)kv_get('about'), true), 'questions' => q_list(), 'nav' => json_decode((string)kv_get('nav_tabs'), true), 'texts' => (object)(json_decode((string)kv_get('site_texts'), true) ?: []),
             'profile' => ['username' => $roomUser['username'] ?? 'niben', 'owner' => $room === 1, 'sections' => sections_of($roomUser), 'mine' => viewing_own_room(), 'github' => gh_user()],
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         // unchanged content: the browser keeps its copy (304, no body)

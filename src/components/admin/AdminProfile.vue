@@ -12,6 +12,8 @@ import type { Flash } from '../../types'
 
 // Everything about who the room belongs to, in one place: the title and intro on the front page, the photo, the
 // "about me" text and links, and the milestones shown under "Akkurat nå".
+// two admin tabs: who you are (`om`: title, about, answers, milestones) and how the room looks (`utseende`: colour, door and walls)
+withDefaults(defineProps<{ part?: 'om' | 'utseende' }>(), { part: 'om' })
 const msg = ref<Flash | null>(null)
 const busy = ref('')
 const flash = (ok: string) => { msg.value = { ok } }
@@ -158,7 +160,7 @@ onMounted(() => { void loadAbout(); void loadMilestones(true) })
     <p v-if="msg?.ok" class="notice ok">{{ msg.ok }}</p>
     <p v-if="msg?.error" class="notice error">{{ msg.error }}</p>
 
-    <section>
+    <section v-if="part === 'om'">
       <h3>Tittel og intro</h3>
       <p class="muted">Det første besøkende ser på forsiden av rommet. Står et felt tomt, brukes standardteksten.</p>
       <form class="f" @submit.prevent="saveTitle">
@@ -169,7 +171,7 @@ onMounted(() => { void loadAbout(); void loadMilestones(true) })
       </form>
     </section>
 
-    <section>
+    <section v-if="part === 'utseende'">
       <h3>Farge</h3>
       <p class="muted">Hovedfargen på siden din (den blå). Velg en annen, så skifter knapper, faner og markeringer farge for alle som besøker rommet ditt. Standard er blå.</p>
       <div class="sw" role="radiogroup" aria-label="Hovedfarge">
@@ -178,12 +180,12 @@ onMounted(() => { void loadAbout(); void loadMilestones(true) })
       </div>
     </section>
 
-    <section>
+    <section v-if="part === 'utseende'">
       <h3>Døra og veggene</h3>
       <p class="muted">Last opp hva du vil. Du velger selv hvilken del av bildet som brukes – rammen har nøyaktig formen til stedet bildet skal henge.</p>
       <div class="imgs">
         <div v-for="sl in IMAGE_SLOTS" :key="sl.id" class="img">
-          <div class="pv" :style="{ aspectRatio: String(sl.aspect) }">
+          <div class="pv" :style="{ aspectRatio: String(sl.aspect), width: sl.aspect < 1 ? `${Math.round(240 * sl.aspect)}px` : undefined }">
             <img v-if="about?.bilder?.[sl.id]" :src="about.bilder[sl.id]" alt="" />
             <span v-else class="none">Ingen bilde</span>
           </div>
@@ -198,7 +200,7 @@ onMounted(() => { void loadAbout(); void loadMilestones(true) })
       <ImageCropper v-if="crop" :file="crop.file" :aspect="crop.slot.aspect" :out-width="crop.slot.out" :title="crop.slot.label" @done="uploadCropped" @cancel="crop = null" />
     </section>
 
-    <section>
+    <section v-if="part === 'om'">
       <h3>Om meg</h3>
       <div class="who">
         <div class="ph">
@@ -224,7 +226,7 @@ onMounted(() => { void loadAbout(); void loadMilestones(true) })
       </form>
     </section>
 
-    <section v-if="isOwner">
+    <section v-if="isOwner && part === 'om'">
       <h3>Spørsmål til alle rommene</h3>
       <p class="muted">Bare du kan endre disse. De vises til alle, og hver person svarer på de de vil, under «Om meg». Opptil seks, korte.</p>
       <form class="f" @submit.prevent="saveQuestions">
@@ -237,7 +239,7 @@ onMounted(() => { void loadAbout(); void loadMilestones(true) })
       </form>
     </section>
 
-    <section>
+    <section v-if="part === 'om'">
       <h3><Trophy :size="16" /> Milepæler</h3>
       <p class="muted">Vises i 30 dager under «Akkurat nå» på forsiden. Nye opptak, bøker du er ferdig med og reiser kommer av seg selv – resten legger du inn her.</p>
       <form class="ms" @submit.prevent="addMs">

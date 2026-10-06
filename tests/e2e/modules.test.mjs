@@ -66,6 +66,21 @@ test('a module can have its own tab with its own symbol, or sit under one of the
   assert.deepEqual(page.errors, [])
 })
 
+test('a room makes its own tabs: a name and a symbol, the pages it wants under each, the rest hidden', async () => {
+  const owner = await ownerClient()
+  const m = (await owner.post('mod_add', { type: 'svomming', name: 'Svømmehallen' })).json.item
+  await owner.post('about_nav', { tabs: [{ id: 'trening', label: 'Trening', icon: '🏊', routes: [`h:${m.id}`, 'ovelse'] }, { id: 'lare', label: 'Språk', icon: '', routes: ['japansk'] }], hidden: ['gaming'] })
+  const page = await openPage(browser, { hash: `/h/${m.id}` })
+  await page.locator('.nav-wrap .item', { hasText: 'Trening' }).waitFor()
+  assert.equal(await page.locator('.nav-wrap .item', { hasText: 'Trening' }).locator('.emo').innerText(), '🏊')
+  await page.getByRole('tab', { name: /Svømmehallen/ }).waitFor() // (the module and Gitar-øving are the tab's two pages)
+  await page.getByRole('tab', { name: /Gitar-øving/ }).waitFor()
+  assert.ok(await page.locator('.nav-wrap .item', { hasText: 'Språk' }).count())
+  assert.equal(await page.locator('.nav-wrap .item', { hasText: /^Lære$/ }).count(), 0, 'renamed')
+  assert.deepEqual(page.errors, [])
+  await owner.post('about_nav', { reset: true })
+})
+
 test('in the 3D room a module stands as a piece of furniture and a click on its tab flies there', async () => {
   const { a } = await seed()
   const page = await openPage(browser, { mode: 'rom', width: 1200, height: 760, hash: `/h/${a.id}` })

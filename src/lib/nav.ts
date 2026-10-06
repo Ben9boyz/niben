@@ -33,14 +33,14 @@ export const ROUTE_ICONS: Record<string, string> = {
 }
 
 /** Names of the sub-tabs (only groups with more than one route show them). */
-export const TAB_LABELS: Record<string, string> = { japansk: 'Japansk', ovelse: 'Gitar-øving', gitar: 'Gitarer', figurer: 'Figurer', kode: 'Prosjekter', reiser: 'Reiser', boker: 'Bøker', gaming: 'Spill', aaret: 'Året', vurderinger: 'Vurderinger' }
+export const TAB_LABELS: Record<string, string> = { japansk: 'Japansk', ovelse: 'Gitar-øving', gitar: 'Gitarer', figurer: 'Figurer', kode: 'Prosjekter', reiser: 'Reiser', boker: 'Bøker', gaming: 'Spill', aaret: 'Året', vurderinger: 'Vurderinger', lytte: 'Lytteplassen', om: 'Om meg', hjem: 'Hjem', gangen: 'Gangen' }
 
 const data = useData()
 /** The groups of the room being shown: pages of switched-off corners are left out, and groups with nothing left disappear. */
 const BUILTIN = new Set(['lare', 'laget', 'opplevd'])
 /** The groups of the room being shown: pages of switched-off corners are left out, and groups with nothing left disappear. A hobby module sits
  *  under the tab its owner chose (Lære, Laget, Opplevd, Hobbyer – or a tab of its own: "Trening" with a swimmer for a symbol). */
-export const navGroups = computed<NavGroup[]>(() => {
+export const standardGroups = computed<NavGroup[]>(() => {
   const mods = placed.value
   const out: NavGroup[] = GROUPS.map((g) => ({ ...g, routes: g.id === 'hobby' ? [] : g.routes.filter((r) => routeAllowed(r, data.profile) && (r !== 'vurderinger' || mods.some((m) => m.kind.fields.some((f) => f.kind === 'rating')))) }))
   const custom = new Map<string, NavGroup>()
@@ -58,6 +58,26 @@ export const navGroups = computed<NavGroup[]>(() => {
   const at = out.findIndex((g) => g.id === 'gangen')
   out.splice(at < 0 ? out.length : at, 0, ...custom.values())
   return out.filter((g) => g.routes.length > 0 && (g.id !== 'gangen' || rooms.total > 1)) // (the hall is only there when there is more than one room)
+})
+const STAR = 'M12 2l2.4 6.9H22l-6 4.4 2.3 7L12 16l-6.3 4.3 2.3-7-6-4.4h7.6z'
+/** The menu of the room on screen: its own tabs if it has made them (Admin → Rommet → Faner), else the standard ones. Hjem comes first and
+ *  the hall last whatever; a page the tabs don't mention (a corner switched on later, a new hobby) goes where it would have stood, or under "Mer". */
+export const navGroups = computed<NavGroup[]>(() => {
+  const std = standardGroups.value
+  const nav = data.nav
+  if (!nav) return std
+  const home = std.find((g) => g.id === 'hjem'), hall = std.find((g) => g.id === 'gangen')
+  const home0 = new Map<string, string>() // page → the standard tab it belongs to
+  for (const g of std) if (g.id !== 'hjem' && g.id !== 'gangen') for (const r of g.routes) home0.set(r, g.id)
+  const used = new Set(nav.hidden)
+  const tabs: NavGroup[] = nav.tabs.map((t) => {
+    const routes = t.routes.filter((r) => home0.has(r) && !used.has(r))
+    routes.forEach((r) => used.add(r))
+    return { id: t.id, label: t.label, routes, icon: GROUPS.find((x) => x.id === t.id)?.icon ?? STAR, emoji: t.icon || undefined }
+  })
+  const more: NavGroup = { id: 'mer', label: 'Mer', routes: [], icon: STAR }
+  for (const [r, gid] of home0) if (!used.has(r)) (tabs.find((t) => t.id === gid) ?? more).routes.push(r)
+  return [home, ...tabs, more, hall].filter((g): g is NavGroup => !!g && g.routes.length > 0)
 })
 /** A hobby module's tab is called 'h:<id>' (the route itself is /h/<id>). */
 export const HOBBY = 'h:'

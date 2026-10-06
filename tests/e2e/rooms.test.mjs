@@ -103,7 +103,9 @@ test('the admin is grouped, and a user sees only what is theirs', async () => {
   await o.getByRole('button', { name: 'Logg inn' }).last().click()
   await o.locator('.tabs.groups button').first().waitFor()
   const og = (await o.locator('.tabs.groups button').allInnerTexts()).map((g) => g.trim())
-  assert.ok(og.includes('Oversikt') && og.includes('Siden'), og.join(','))
+  assert.ok(og.includes('Oversikt') && !og.includes('Siden'), og.join(',')) // (the site itself – users, newsletter – sits under Oversikt)
+  await o.locator('.tabs.groups button', { hasText: 'Oversikt' }).click()
+  assert.deepEqual((await o.locator('.tabs.sub button').allInnerTexts()).map((t) => t.trim()), ['Oversikt', 'Brukere', 'Nyhetsbrev'])
   assert.deepEqual(o.errors, [])
 })
 

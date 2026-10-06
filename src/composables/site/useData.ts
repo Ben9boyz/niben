@@ -81,6 +81,9 @@ export interface AboutLink { navn: string; url: string }
 export interface About { bilde?: string | null; bilder?: Record<string, string>; tagline?: string; tekst?: string; lenker?: AboutLink[]; svar?: Record<string, string> }
 /** A question every room can answer (set by the owner of the site) – "Om meg" shows the ones that were answered. */
 export interface Question { id: string; text: string }
+/** The room's own menu (Admin → Rommet → Faner): tabs with a name, a symbol and the pages under them; null = the standard menu. */
+export interface NavTab { id: string; label: string; icon: string; routes: string[] }
+export interface NavLayout { tabs: NavTab[]; hidden: string[] }
 /** Whose room this is and which corners of it are switched on. */
 export const SECTION_IDS = ['reiser', 'boker', 'gitar', 'ovelse', 'japansk', 'lytte', 'gaming', 'kode', 'om'] as const
 export type SectionId = (typeof SECTION_IDS)[number]
@@ -96,6 +99,7 @@ export interface SiteData {
   gitarer: Guitar[]
   figurer: Figure[]
   sporsmal: Question[]
+  nav: NavLayout | null
   boker: Book[]
   reiser: Trip[]
   prosjekter: Project[]
@@ -116,6 +120,7 @@ interface DbContent {
   guitar_models?: Record<string, string>
   figures?: Figure[]
   questions?: Question[]
+  nav?: NavLayout | null
   profile?: Partial<RoomProfile>
   trips: DbTrip[]
   books: DbBook[]
@@ -138,6 +143,7 @@ const state: SiteData = reactive({
   gitarer: [],
   figurer: [],
   sporsmal: [],
+  nav: null,
   boker: [],
   reiser: [],
   prosjekter: [],
@@ -258,6 +264,7 @@ function assemble(db: DbContent | null): void {
     }
     merged.figurer = db.figures ?? []
     merged.sporsmal = db.questions ?? []
+    merged.nav = db.nav && Array.isArray(db.nav.tabs) ? { tabs: db.nav.tabs, hidden: Array.isArray(db.nav.hidden) ? db.nav.hidden : [] } : null
     merged.reiser = db.trips.map(mapTrip)
     merged.boker = db.books.map(mapBook)
     for (const g of merged.gitarer ?? []) {

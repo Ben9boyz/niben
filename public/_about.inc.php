@@ -25,6 +25,31 @@ function about_handle(string $action, bool $post): void {
         $raw = kv_get('about');
         out(['about' => $raw ? json_decode($raw, true) : null, 'questions' => q_list()]);
     }
+    case 'about_nav': {
+        // the room's own menu: which tabs, called what, with which symbol, and which pages / hobbies sit under each.
+        // { tabs: [{ id, label, icon, routes: ['japansk', 'h:<module id>', …] }], hidden: [...] } – or { reset: true } for the standard one
+        if (!$post) fail('Bruk POST.', 405);
+        require_user();
+        $b = body();
+        if (!empty($b['reset'])) { kv_del('nav_tabs'); out(['ok' => true, 'nav' => null]); }
+        $route = fn($r) => is_string($r) && preg_match('~^(h:[a-f0-9]{10}|[a-z]{2,16})$~', $r) ? $r : null;
+        $seen = [];
+        $tabs = [];
+        foreach (array_slice((array)($b['tabs'] ?? []), 0, 12) as $t) {
+            if (!is_array($t)) continue;
+            $id = (string)($t['id'] ?? '');
+            if (!preg_match('~^[a-z0-9_-]{1,24}$~', $id) || isset($seen['t' . $id])) $id = 't' . bin2hex(random_bytes(3));
+            $seen['t' . $id] = true;
+            $routes = [];
+            foreach (array_slice((array)($t['routes'] ?? []), 0, 40) as $r) { $r = $route($r); if ($r && !isset($seen[$r])) { $routes[] = $r; $seen[$r] = true; } }
+            $tabs[] = ['id' => $id, 'label' => mb_substr(trim(strip_tags((string)($t['label'] ?? ''))), 0, 24) ?: 'Fane', 'icon' => mb_substr(trim(strip_tags((string)($t['icon'] ?? ''))), 0, 8), 'routes' => $routes];
+        }
+        $hidden = [];
+        foreach (array_slice((array)($b['hidden'] ?? []), 0, 80) as $r) { $r = $route($r); if ($r && !isset($seen[$r])) { $hidden[] = $r; $seen[$r] = true; } }
+        $nav = ['tabs' => $tabs, 'hidden' => $hidden];
+        kv_set('nav_tabs', json_encode($nav, JSON_UNESCAPED_UNICODE));
+        out(['ok' => true, 'nav' => $nav]);
+    }
     case 'about_questions': {
         // the owner of the site sets the questions every room can answer (at most 6, short)
         if (!$post) fail('Bruk POST.', 405);

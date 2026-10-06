@@ -6,9 +6,9 @@ import { reloadData, type SectionId } from '@/composables/site/useData'
 import type { Flash } from '../../types'
 import { strava, loadStrava, disconnectStrava } from '@/composables/site/useStrava'
 
-// One component, three admin tabs: `rommet` (which corners it shows), `tilkoblinger` (Spotify, Steam, jpdb … the
-// services it fetches from) and `konto` (e-mail, password, backup, deleting the account).
-const props = defineProps<{ part: 'rommet' | 'tilkoblinger' | 'konto' }>()
+// One component, two admin tabs: `tilkoblinger` (Spotify, Steam, jpdb … the services it fetches from) and `konto` (e-mail,
+// password, backup, deleting the account). Which corners the room shows is decided in Faner (AdminTabs).
+const props = defineProps<{ part: 'tilkoblinger' | 'konto' }>()
 // What this room shows, and the keys it needs: switch corners off (they disappear from the room and the menu), and add
 // your own API keys for the things that fetch from other services (jpdb for Japanese, Steam for the gaming corner).
 interface Settings {
@@ -20,17 +20,6 @@ interface Settings {
   spotify: { connected: boolean; denied: boolean; redirect: string }
 }
 interface PlaceHit { name: string; region: string; country: string; lat: number; lon: number }
-const SECTIONS: { id: SectionId; label: string; hint: string }[] = [
-  { id: 'reiser', label: 'Reiser', hint: 'Globusen og reisene dine' },
-  { id: 'boker', label: 'Bøker', hint: 'Bokhylla' },
-  { id: 'gitar', label: 'Gitarer', hint: 'Gitarene og opptakene dine' },
-  { id: 'ovelse', label: 'Gitar-øving', hint: 'Timer, akkorder, stemmer og metronom' },
-  { id: 'japansk', label: 'Japansk', hint: 'Krever en jpdb-nøkkel (under)' },
-  { id: 'gaming', label: 'Spill', hint: 'Steam-profilen din – krever Steam-ID' },
-  { id: 'lytte', label: 'Lytteplassen', hint: 'Platespilleren, hylla og musikken – krever at du kobler til Spotify (under)' },
-  { id: 'kode', label: 'Prosjekter', hint: 'Dine åpne GitHub-prosjekter – krever GitHub-navnet ditt (under)' },
-  { id: 'om', label: 'Om meg', hint: 'Teksten og bildet ditt' },
-]
 const s = ref<Settings | null>(null)
 const msg = ref<Flash | null>(null)
 const busy = ref(false)
@@ -68,7 +57,6 @@ async function post(body: Record<string, unknown>, ok: string) {
     await reloadData() // the room changes at once
   } catch (e) { msg.value = { error: errorMessage(e) } } finally { busy.value = false }
 }
-const toggle = (id: SectionId) => { if (s.value && !s.value.locked.includes(id)) void post({ sections: { [id]: !s.value.sections[id] } }, 'Lagret.') }
 async function saveJpdb() { await post({ jpdb_key: jpdbKey.value.trim() }, 'jpdb-nøkkelen er lagret.'); jpdbKey.value = '' }
 async function saveSteam() {
   const body: Record<string, unknown> = { steam_id: steamId.value.trim() }
@@ -144,13 +132,6 @@ async function changePw() {
     <p v-if="msg?.ok" class="notice ok">{{ msg.ok }}</p>
     <p v-if="msg?.error" class="notice error">{{ msg.error }}</p>
 
-    <section v-if="part === 'rommet'">
-      <h3>Hva vises i rommet ditt</h3>
-      <p class="muted">Skru av det du ikke vil ha. Det forsvinner fra rommet, fra menyen og fra adressene.</p>
-      <button v-for="x in SECTIONS" :key="x.id" class="row" :class="{ off: s.locked.includes(x.id) }" role="switch" :aria-checked="s.sections[x.id]" :disabled="busy || s.locked.includes(x.id)" @click="toggle(x.id)">
-        <span class="l"><b>{{ x.label }}</b><small>{{ x.hint }}</small></span><i class="tg" :class="{ on: s.sections[x.id] }" aria-hidden="true"></i>
-      </button>
-    </section>
 
     <section v-if="part === 'tilkoblinger'" class="svcs">
       <h3><Plug :size="16" /> Tilkoblinger</h3>

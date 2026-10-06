@@ -3,7 +3,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, type Component } from
 import { targetEl } from '@/lib/dom'
 import { useRoute, useRouter } from 'vue-router'
 import { useData } from '@/composables/site/useData'
-import { LayoutDashboard, Plane, BookOpen, Mic, Music, Type, Box, Mail, Eye, EyeOff, LogOut, Lock, Users, SlidersHorizontal, Guitar, DoorOpen, MessageCircle, X, UserRound, Plug, KeyRound, Disc3, Star } from 'lucide-vue-next'
+import { LayoutDashboard, Plane, BookOpen, Mic, Music, Type, Box, Mail, Eye, EyeOff, LogOut, Lock, Users, SlidersHorizontal, Guitar, DoorOpen, MessageCircle, X, UserRound, Plug, KeyRound, Disc3, Star, Palette } from 'lucide-vue-next'
 import { admin, account, signedIn, checkLogin, login, userLogin, registerAccount, forgotPassword, resetPassword, logout, errorMessage } from '@/composables/site/useAdmin'
 import { setRoom } from '@/composables/room/useRooms'
 import AdminTrips from '../components/admin/AdminTrips.vue'
@@ -22,31 +22,32 @@ import AdminGuestbook from '../components/admin/AdminGuestbook.vue'
 import AdminProfile from '../components/admin/AdminProfile.vue'
 import AdminMusic from '../components/admin/AdminMusic.vue'
 import AdminSettings from '../components/admin/AdminSettings.vue'
+import AdminTabs from '../components/admin/AdminTabs.vue'
 
 interface TabDef { id: string; label: string; icon: Component }
 interface GroupDef { id: string; label: string; icon: Component; tabs: TabDef[] }
 const TAB = (id: string, label: string, icon: Component): TabDef => ({ id, label, icon })
 // The admin is grouped by what you are doing: the stuff you make (Innhold), who you are (Profil), how the room looks
-// (Rommet), what it fetches from (Tilkoblinger), the site itself (me only) and your account (Konto).
+// (Rommet: its menu, hobbies, look and models), what it fetches from (Tilkoblinger) and your account (Konto); the site itself – visitors,
+// users, newsletter – is the owner's Oversikt.
 const data = useData()
 const isOwner = computed(() => admin.loggedIn || !!account.user?.owner)
 const GROUPS = computed<GroupDef[]>(() => {
   const music = data.profile.sections.lytte
   const list: GroupDef[] = []
-  if (isOwner.value) list.push({ id: 'oversikt', label: 'Oversikt', icon: LayoutDashboard, tabs: [TAB('oversikt', 'Oversikt', LayoutDashboard)] })
+  if (isOwner.value) list.push({ id: 'oversikt', label: 'Oversikt', icon: LayoutDashboard, tabs: [TAB('oversikt', 'Oversikt', LayoutDashboard), TAB('brukere', 'Brukere', Users), TAB('nyhetsbrev', 'Nyhetsbrev', Mail)] })
   list.push({
     id: 'innhold', label: 'Innhold', icon: Plane,
     tabs: [TAB('reiser', 'Reiser', Plane), TAB('boker', 'Bøker', BookOpen), TAB('gitarer', 'Gitarer', Guitar), TAB('figurer', 'Figurer', Box), TAB('opptak', 'Gitaropptak', Mic), TAB('sanger', 'Sanger', Music), ...(music ? [TAB('musikk', 'Musikk', Disc3)] : [])],
   })
   list.push({ id: 'profil', label: 'Profil', icon: UserRound, tabs: [TAB('profil', 'Om meg', UserRound), TAB('tekster', 'Tekster', Type), TAB('gjestebok', 'Gjestebok', MessageCircle)] })
-  list.push({ id: 'rommet', label: 'Rommet', icon: Box, tabs: [TAB('rommet', 'Hva vises', SlidersHorizontal), TAB('hobbyer', 'Hobbyer', Star), ...(isOwner.value ? [TAB('rom', '3D-modeller', Box)] : [])] })
+  list.push({ id: 'rommet', label: 'Rommet', icon: Box, tabs: [TAB('faner', 'Faner', SlidersHorizontal), TAB('hobbyer', 'Hobbyer', Star), TAB('utseende', 'Utseende', Palette), ...(isOwner.value ? [TAB('rom', 'Egne 3D-modeller', Box)] : [])] })
   list.push({ id: 'tilkoblinger', label: 'Tilkoblinger', icon: Plug, tabs: [TAB('tilkoblinger', 'Tilkoblinger', Plug)] })
-  if (isOwner.value) list.push({ id: 'side', label: 'Siden', icon: Users, tabs: [TAB('brukere', 'Brukere', Users), TAB('nyhetsbrev', 'Nyhetsbrev', Mail)] })
   list.push({ id: 'konto', label: 'Konto', icon: KeyRound, tabs: [TAB('konto', 'Konto', KeyRound)] })
   return list
 })
 const KEY = 'niben-admin-tab'
-const saved = (() => { try { const v = localStorage.getItem(KEY); return v === 'innstillinger' ? 'rommet' : v } catch { return null } })()
+const saved = (() => { try { const v = localStorage.getItem(KEY); return v === 'innstillinger' || v === 'rommet' ? 'faner' : v } catch { return null } })() // (old names of what is now Faner)
 const tab = ref(saved ?? 'reiser') // remembers where I was
 const group = computed(() => GROUPS.value.find((g) => g.tabs.some((t) => t.id === tab.value)) ?? GROUPS.value[0])
 const shownTab = computed(() => group.value?.tabs.find((t) => t.id === tab.value)?.id ?? group.value?.tabs[0]?.id ?? 'reiser')
@@ -177,9 +178,10 @@ const myRoom = () => { if (account.user) void setRoom(account.user.username) }
           <AdminNews v-else-if="shownTab === 'nyhetsbrev'" key="n" />
           <AdminTexts v-else-if="shownTab === 'tekster'" key="t" />
           <AdminGuestbook v-else-if="shownTab === 'gjestebok'" key="gb" />
-          <AdminProfile v-else-if="shownTab === 'profil'" key="p" />
+          <AdminProfile v-else-if="shownTab === 'profil'" key="p" part="om" />
+          <AdminProfile v-else-if="shownTab === 'utseende'" key="ut" part="utseende" />
+          <AdminTabs v-else-if="shownTab === 'faner'" key="fa" />
           <AdminMusic v-else-if="shownTab === 'musikk'" key="mu" />
-          <AdminSettings v-else-if="shownTab === 'rommet'" key="s1" part="rommet" />
           <AdminSettings v-else-if="shownTab === 'tilkoblinger'" key="s2" part="tilkoblinger" />
           <AdminSettings v-else-if="shownTab === 'konto'" key="s3" part="konto" />
           <AdminRecordings v-else key="o" />
@@ -231,7 +233,7 @@ const myRoom = () => { if (account.user) void setRoom(account.user.username) }
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
 }
-.tabs.groups { border-bottom: 0; padding-bottom: 4px; overflow-x: auto; }
+.tabs.groups { border-bottom: 0; padding-bottom: 4px; flex-wrap: wrap; } /* (all of them in view: a row that runs off the side hid Konto) */
 .tabs.sub { padding-top: 2px; }
 .tabs.sub button { padding: 6px 13px; font-size: 0.86rem; background: transparent; border: 1px solid transparent; }
 .tabs.sub button.on { border-color: var(--accent); background: transparent; }
@@ -244,6 +246,7 @@ const myRoom = () => { if (account.user) void setRoom(account.user.username) }
   .head { padding: 16px 18px 10px; }
   .body { padding: 14px 16px 18px; }
   .tabs { padding: 0 12px 8px; overflow-x: auto; }
+  .tabs.groups { flex-wrap: wrap; overflow: visible; }
   .tabs button { padding: 9px 12px; }
   .tabs button span { font-size: 0.86rem; }
 }

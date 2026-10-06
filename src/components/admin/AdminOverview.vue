@@ -89,7 +89,8 @@ const langName = (c: string) => byCode[c]?.en || c
 
       <!-- other services -->
       <section class="card">
-        <header><Gamepad2 :size="18" /><h3>Andre tjenester</h3></header>
+        <header><Gamepad2 :size="18" /><h3>Oppsett på serveren</h3></header>
+        <p class="help">Nøkler for hele siden, lagt inn med skriptene på maskinen din. Hvert rom kobler sine egne kontoer under Tilkoblinger.</p>
         <ul class="svc">
           <li><span>Steam (spill)</span><span class="pill" :class="st.steam ? 'ok' : 'off'">{{ st.steam ? 'På' : 'Av' }}</span><small v-if="!st.steam">Kjør <code>./steam-setup.sh</code> på maskinen din.</small></li>
           <li class="bfrow" v-if="st.steam"><span>Bestevenn på Steam</span><input v-model="bf" class="bfin" placeholder="Steam-ID eller lenke til profilen" aria-label="Bestevenn på Steam" @keydown.enter="saveBf" /><button class="btn small" :disabled="busy === 'bf'" @click="saveBf">Lagre</button></li>

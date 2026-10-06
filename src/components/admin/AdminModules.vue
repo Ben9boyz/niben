@@ -6,6 +6,7 @@ import { decor, loadDecor, changed, removeDecor } from '@/composables/room/useDe
 import { placed, addModule, modState, setModuleModel } from '@/composables/room/useModules'
 import { CATALOG, CATEGORIES } from '@/lib/modules/catalog'
 import { mode } from '@/composables/ui/useMode'
+import { room } from '@/composables/room/useRoom'
 
 // Hobbies: pick the ones you want from the list – each becomes a piece of furniture in the room, a page, and a tab in the menu.
 onMounted(loadDecor)
@@ -16,14 +17,13 @@ async function add(type: string) {
   busy.value = type
   const it = await addModule(type)
   busy.value = ''
+  // in the 3D room: a free place that is not inside the sofa or the desk (the server only knows where the other modules stand)
+  const spot = it && room.api ? room.api.freeSpot(it.id) : null
+  if (it && spot) { const d = decor.items.find((i) => i.id === it.id); if (d) { d.x = spot.x; d.z = spot.z; changed() } }
   if (it) void router.push({ name: 'modul', params: { id: it.id } })
 }
-// the symbol and the tab: whichever emoji you like, and under which tab of the menu the module sits (Hobbyer, Lære, Laget, Opplevd – or a tab of one's own)
+// the symbol: whichever emoji you like (which tab of the menu it sits under is decided in Rommet → Faner)
 const EMOJIS = ['🏊', '🏃', '🚴', '🏋️', '⛰️', '🎣', '🧘', '⚽', '🎾', '⛷️', '🎬', '📺', '🎵', '🎹', '🎸', '🎨', '📷', '🍳', '☕', '🍷', '🌱', '🪴', '🐾', '♟️', '🎲', '🕹️', '✍️', '📚', '🔧', '🧶', '✈️', '⭐']
-const PRESET_TABS = [{ v: '', l: 'Hobbyer' }, { v: 'lare', l: 'Lære' }, { v: 'laget', l: 'Laget' }, { v: 'opplevd', l: 'Opplevd' }]
-const isPreset = (g: string | undefined): boolean => PRESET_TABS.some((p) => p.v === (g ?? ''))
-const tabChoice = (g: string | undefined): string => (isPreset(g) ? g ?? '' : '*')
-function setTab(m: { item: { grp?: string } }, v: string): void { m.item.grp = v === '*' ? (isPreset(m.item.grp) ? 'Trening' : m.item.grp) : v; changed() }
 const openIcons = ref('')
 function pickModel(id: string, e: Event) { const i = e.target as HTMLInputElement; const f = i.files?.[0]; i.value = ''; if (f) void setModuleModel(id, f) }
 const askRemove = (id: string, name: string) => { if (confirm(`Slette «${name}» og alt som står i den?`)) void removeDecor(id) }
@@ -32,7 +32,7 @@ function edit() { decor.editing = true; if (mode.value !== 'rom') void router.pu
 
 <template>
   <div class="am">
-    <p class="intro">Velg hobbyene du vil ha. Hver blir et møbel i 3D-rommet, en side og en fane i menyen. Du kan ha flere av samme sort, og flytte dem rundt med «Rediger rommet».</p>
+    <p class="intro">Velg hobbyene du vil ha. Hver blir et møbel i 3D-rommet og en side i menyen. Du kan ha flere av samme sort, flytte dem rundt med «Rediger rommet», og bestemme hvilken fane de ligger under i <b>Faner</b>.</p>
     <p v-if="modState.error" class="notice error">{{ modState.error }}</p>
 
     <section v-if="placed.length">
@@ -48,10 +48,7 @@ function edit() { decor.editing = true; if (mode.value !== 'rom') void router.pu
             </div>
           </div>
           <input v-model="m.item.name" type="text" maxlength="50" :placeholder="m.kind.name" :aria-label="`Navn på ${m.kind.name}`" @change="changed()" />
-          <select :value="tabChoice(m.item.grp)" :aria-label="`Fane for ${m.name}`" @change="setTab(m, ($event.target as HTMLSelectElement).value)">
-            <option v-for="p in PRESET_TABS" :key="p.v" :value="p.v">{{ p.l }}</option><option value="*">Egen fane …</option>
-          </select>
-          <input v-if="tabChoice(m.item.grp) === '*'" v-model="m.item.grp" class="own" maxlength="30" placeholder="Navn på fanen" aria-label="Navn på egen fane" @change="changed()" />
+
           <label class="btn soft small mdl" :title="m.item.file ? 'Bytt din egen 3D-modell' : 'Bruk din egen 3D-modell (.glb) i stedet for den innebygde'"><Box :size="14" />{{ m.item.file ? 'Bytt modell' : 'Egen modell' }}<input type="file" accept=".glb,model/gltf-binary" hidden @change="pickModel(m.id, $event)" /></label>
           <button v-if="m.item.file" class="btn soft small" type="button" @click="setModuleModel(m.id, null)">Bruk innebygd</button>
           <router-link class="btn soft small" :to="{ name: 'modul', params: { id: m.id } }">Åpne</router-link>
@@ -86,8 +83,6 @@ h3 { margin: 0 0 8px; font-size: 0.95rem; }
 .pop { position: absolute; z-index: 20; top: 110%; left: 0; width: 248px; display: flex; flex-wrap: wrap; gap: 2px; padding: 8px; border-radius: 14px; background: var(--bg); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28); border: 1px solid var(--glass-border); }
 .pop button { all: unset; cursor: pointer; font-size: 1.35rem; padding: 4px; border-radius: 8px; } .pop button:hover { background: var(--glass-border); }
 .pop input { width: 100%; margin-top: 4px; padding: 6px 8px; border: 1px solid var(--glass-border); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
-.list select, .own { padding: 8px 10px; border: 1px solid var(--glass-border); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; }
-.own { width: 150px; }
 .ib { all: unset; cursor: pointer; padding: 6px; border-radius: 8px; } .ib:hover { background: var(--glass-border); } .danger { color: #e5484d; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .kind { all: unset; box-sizing: border-box; position: relative; display: flex; flex-direction: column; gap: 3px; padding: 12px; border-radius: 16px; border: 1px solid var(--glass-border); cursor: pointer; background: color-mix(in srgb, var(--mc) 8%, transparent); transition: transform 0.25s var(--spring, ease), border-color 0.2s; }

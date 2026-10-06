@@ -1206,6 +1206,36 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   const ROOM_BOX = { x0: -3.7, x1: 3.7, z0: -3.25, z1: 3.3 }
   const EYE = 1.6, EYE_LOW = 0.85, RADIUS = 0.28 // (C: crouch – the eyes go down to 85 cm, and you walk slower)
   let roamBoxes: THREE.Box3[] = []
+  /** The footprints of the furniture on the floor (`all`: also corners switched off for the moment because they are out of view). */
+  function floorBoxes(all: boolean, pad: number): THREE.Box3[] {
+    const out: THREE.Box3[] = []
+    scene.updateMatrixWorld(true)
+    const take = (o: THREE.Object3D, depth: number): void => {
+      if (!o.visible && !(all && o.userData.sec !== false)) return
+      const b = new THREE.Box3().setFromObject(o)
+      if (b.isEmpty()) return
+      const size = b.getSize(new THREE.Vector3())
+      if (b.min.y > 1.0 || size.y < 0.3) return // (things up on the wall, and rugs and mats you can walk over)
+      if (size.x * size.z > 14) { if (depth < 3) o.children.forEach((c) => take(c, depth + 1)); return } // a whole corner: look at its parts
+      out.push(b.expandByVector(new THREE.Vector3(pad, 0, pad)))
+    }
+    for (const o of interactive) if (o.userData.station !== 'om' && o.userData.station !== 'gangen') o.children.forEach((c) => take(c, 1))
+    return out
+  }
+  /** A free place on the floor for a new hobby module: not in the furniture, not on top of another module – the front of the room first. */
+  function freeSpot(skip?: string): { x: number; z: number } | null {
+    const boxes = floorBoxes(true, 0.45)
+    const others = [...decorObjs.values()].filter((o) => o.item.id !== skip).map((o) => o.item)
+    for (let z = 2.9; z >= -2.9; z -= 0.4) {
+      for (const dx of [0, 0.5, -0.5, 1, -1, 1.5, -1.5, 2, -2, 2.5, -2.5, 3, -3]) {
+        const x = dx
+        if (boxes.some((b) => x > b.min.x && x < b.max.x && z > b.min.z && z < b.max.z)) continue
+        if (others.some((o) => Math.hypot(o.x - x, o.z - z) < 1.0)) continue
+        return { x, z: Math.round(z * 100) / 100 }
+      }
+    }
+    return null
+  }
   function buildRoamBoxes(): void {
     roamBoxes = []
     scene.updateMatrixWorld(true)
@@ -1724,6 +1754,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     },
     setData,
     /** Which hobby module the camera looks at when the station is 'modul'. */
+    freeSpot,
     focusModule(id: string | null) { focusId = id; if (station === 'modul') goTo('modul') },
     setDoors(list: Door[]) { hall.setDoors(list); if (station === 'gangen') goTo('gangen', { instant: true }) },
     setSelection,
