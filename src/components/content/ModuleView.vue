@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { Plus, Trash2, Check, X, Search } from 'lucide-vue-next'
+import { Plus, Trash2, Check, X, Search, Upload } from 'lucide-vue-next'
 import { canManage } from '@/composables/site/useAdmin'
 import { moduleById, dataOf, loadModule, touch, modState, type Entry } from '@/composables/room/useModules'
 import { decor } from '@/composables/room/useDecor'
 import { api, errorMessage } from '@/composables/site/useAdmin'
 import type { Field } from '@/lib/modules/catalog'
+import LogInsights from './LogInsights.vue'
+import { parseGpx, routePath, paceText } from '@/lib/modules/gpx'
 
 // One hobby module, whatever the hobby: the kind says which fields an entry has and how the entries are shown
 // (cards, a log with numbers and a chart, or a checklist); this view does the rest.
@@ -73,6 +75,28 @@ const series = computed(() => {
 const stars = (n: unknown): string => '★'.repeat(Math.round(Number(n) || 0)) + '☆'.repeat(5 - Math.round(Number(n) || 0))
 const sub = (e: Entry): string => (mod.value?.kind.fields ?? []).slice(1).filter((f) => ['select', 'text', 'date'].includes(f.kind) && !['img', 'url', 'note'].includes(f.k) && e[f.k] !== undefined).map((f) => String(e[f.k])).join(' · ')
 
+// ── workouts: a GPX file fills in the entry, a weekly goal sits in the settings ──
+const gpxErr = ref('')
+async function importGpx(e: Event): Promise<void> {
+  const input = e.target as HTMLInputElement
+  const f = input.files?.[0]
+  input.value = ''
+  const d = draft.value
+  if (!f || !d) return
+  gpxErr.value = ''
+  const w = parseGpx(await f.text())
+  if (!w) { gpxErr.value = 'Fant ingen rute i filen. Er det en GPX med sporpunkter (trkpt)?'; return }
+  d.e.date = w.date
+  d.e.km = w.km
+  if (w.min) d.e.min = w.min
+  if (w.hm) d.e.hm = w.hm
+  if (w.name && !d.e.t) d.e.t = w.name
+  d.e.route = w.route
+}
+const goal = computed(() => Number(data.value?.settings.goal) || 0)
+function setGoal(v: string): void { const d = data.value; if (!d) return; d.settings = { ...d.settings, goal: v.replace(',', '.') }; touch(props.id) }
+const pace = (e: Entry): string => (mod.value?.kind.workout ? paceText(Number(e.km), Number(e.min), String(e.kat ?? '')) : '')
+
 // ── look up a title: poster, link and so on from a public service ──
 interface Hit { title: string; sub: string; img: string | null; url: string | null; genre: string | null; note: string }
 const hits = ref<Hit[]>([])
@@ -96,6 +120,7 @@ function useHit(h: Hit): void {
   if (h.img) d.e.img = h.img
   if (h.url) d.e.url = h.url
   if (h.note && !d.e.note) d.e.note = h.note
+  if (mod.value?.kind.lookup === 'sted' && h.sub) { const f = mod.value.kind.fields.find((x) => x.k === 'adresse' || x.k === 'sted'); if (f && !d.e[f.k]) d.e[f.k] = h.sub }
   const opts = katField.value?.options
   if (h.genre && opts) { const m = opts.find((o) => o.toLowerCase() === h.genre?.toLowerCase()); if (m) d.e.kat = m }
   hits.value = []
@@ -163,7 +188,13 @@ void decor
           <li v-for="(h, i) in hits" :key="i"><button type="button" @click="useHit(h)"><img v-if="h.img" :src="h.img" alt="" loading="lazy" /><span class="nm"><b>{{ h.title }}</b><small>{{ h.sub }}</small></span></button></li>
         </ul>
       </div>
-      <label v-for="f in mod.kind.fields" :key="f.k" class="field" :class="{ wide: f.kind === 'longtext' }">
+      <div v-if="mod.kind.workout" class="look">
+        <label class="btn soft small gpx"><Upload :size="14" />Importer GPX-fil<input type="file" accept=".gpx,application/gpx+xml,text/xml" hidden @change="importGpx" /></label>
+        <small class="muted">Fra klokka, Strava, Komoot og lignende: distanse, tid, høydemeter og ruten fylles inn.</small>
+        <p v-if="gpxErr" class="err">{{ gpxErr }}</p>
+        <svg v-if="typeof draft.e.route === 'string' && draft.e.route" class="route big" viewBox="-30 -30 1060 1060" aria-label="Ruten"><path :d="routePath(draft.e.route)" /></svg>
+      </div>
+      <label v-for="f in mod.kind.fields.filter((x) => x.kind !== 'hidden')" :key="f.k" class="field" :class="{ wide: f.kind === 'longtext' }">
         <span>{{ f.label }}<template v-if="f.unit"> ({{ f.unit }})</template></span>
         <textarea v-if="f.kind === 'longtext'" v-model="(draft.e[f.k] as string)" rows="3" maxlength="400"></textarea>
         <select v-else-if="f.kind === 'select'" v-model="draft.e[f.k]"><option value="">–</option><option v-for="o in f.options" :key="o" :value="o">{{ o }}</option></select>
@@ -187,10 +218,12 @@ void decor
 
     <!-- log: numbers and a chart -->
     <template v-if="mod.kind.layout === 'log'">
+      <LogInsights v-if="items.length && mod.kind.stat" :items="items.map(({ e }) => e)" :field="mod.kind.stat.field" :unit="mod.kind.stat.label.split(' ')[0] ?? ''" :goal="goal" :color="mod.kind.color" />
+      <label v-if="mine && mod.kind.workout" class="goalset">Ukemål ({{ mod.kind.stat?.label.split(' ')[0] }}) <input type="number" min="0" step="any" :value="goal || ''" placeholder="f.eks. 20" @change="setGoal(($event.target as HTMLInputElement).value)" /></label>
       <div v-if="items.length" class="stats"><span><b>{{ items.length }}</b>oppføringer</span><span v-if="stat"><b>{{ stat.value }}</b>{{ stat.label }}</span></div>
       <div v-if="series.length > 1" class="chart" aria-hidden="true"><i v-for="(p, i) in series" :key="i" :style="{ height: p.h + '%' }" :title="String(p.n)"></i></div>
       <ul class="log">
-        <li v-for="{ e, i } in shown" :key="i"><button :disabled="!mine" @click="draft = { at: i, e: { ...e } }"><time>{{ e.date ?? '' }}</time><b>{{ title(e) }}</b><span>{{ sub(e) }}</span><em v-if="mod.kind.stat && e[mod.kind.stat.field] !== undefined">{{ e[mod.kind.stat.field] }}</em></button></li>
+        <li v-for="{ e, i } in shown" :key="i"><button :disabled="!mine" @click="draft = { at: i, e: { ...e } }"><time>{{ e.date ?? '' }}</time><b>{{ title(e) }}</b><span>{{ sub(e) }}<template v-if="pace(e)"> · {{ pace(e) }}</template></span><svg v-if="typeof e.route === 'string' && e.route" class="route" viewBox="-30 -30 1060 1060" aria-hidden="true"><path :d="routePath(e.route)" /></svg><em v-if="mod.kind.stat && e[mod.kind.stat.field] !== undefined">{{ e[mod.kind.stat.field] }}</em></button></li>
       </ul>
     </template>
 
@@ -269,11 +302,15 @@ void decor
 .stats { display: flex; gap: 22px; } .stats span { display: flex; flex-direction: column; font-size: 0.78rem; color: var(--text-3); } .stats b { font-size: 1.7rem; color: var(--text); }
 .chart { display: flex; align-items: flex-end; gap: 3px; height: 70px; } .chart i { flex: 1; background: var(--mc); border-radius: 3px 3px 0 0; opacity: 0.85; min-width: 4px; }
 .log, .chk { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.log button { all: unset; box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 90px 1fr auto auto; gap: 10px; align-items: baseline; padding: 9px 4px; border-bottom: 1px solid var(--glass-border); cursor: pointer; }
+.log button { all: unset; box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 90px 1fr auto auto auto; gap: 10px; align-items: baseline; padding: 9px 4px; border-bottom: 1px solid var(--glass-border); cursor: pointer; }
 .log button:disabled { cursor: default; } .log time, .log span { color: var(--text-3); font-size: 0.82rem; } .log em { font-style: normal; font-weight: 800; color: var(--mc); }
 .prog { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-3); } .prog i { flex: 1; height: 8px; border-radius: 99px; background: color-mix(in srgb, var(--mc) 20%, transparent); overflow: hidden; } .prog u { display: block; height: 100%; background: var(--mc); transition: width 0.5s var(--spring, ease); }
 .chk li { display: flex; align-items: center; gap: 10px; padding: 8px 2px; border-bottom: 1px solid var(--glass-border); }
 .box { all: unset; width: 24px; height: 24px; border-radius: 8px; border: 2px solid var(--mc); display: grid; place-items: center; cursor: pointer; flex: none; } .ok .box { background: var(--mc); color: #fff; }
 .txt { all: unset; display: flex; flex-direction: column; flex: 1; cursor: pointer; } .ok .txt b { text-decoration: line-through; opacity: 0.55; } .txt small { color: var(--text-3); }
-@media (max-width: 560px) { .log button { grid-template-columns: 74px 1fr auto; } .log span { display: none; } }
+.route { width: 38px; height: 38px; fill: none; stroke: var(--mc); stroke-width: 56; stroke-linecap: round; stroke-linejoin: round; }
+.route.big { width: 120px; height: 120px; margin-top: 6px; }
+.gpx { cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.goalset { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-3); } .goalset input { width: 90px; padding: 6px 8px; border: 1px solid var(--glass-border); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+@media (max-width: 560px) { .log button { grid-template-columns: 74px 1fr auto auto; } .log span { display: none; } }
 </style>

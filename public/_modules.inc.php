@@ -37,7 +37,7 @@ function mod_clean_data($in): array {
             if (!preg_match('~^[a-z][a-z0-9_]{0,23}$~i', $k)) continue;
             if (is_bool($v)) $row[$k] = $v;
             elseif (is_numeric($v) && !is_string($v)) $row[$k] = $v + 0;
-            else { $s = mb_substr(trim((string)$v), 0, 400); if ($s !== '') $row[$k] = $s; }
+            else { $s = mb_substr(trim((string)$v), 0, $k === 'route' ? 700 : 400); if ($k === 'route' && !preg_match('~^\d{1,3},\d{1,3}( \d{1,3},\d{1,3})*$~', $s)) continue; if ($s !== '') $row[$k] = $s; }
         }
         if ($row) $items[] = $row;
     }
@@ -109,6 +109,16 @@ function mod_handle(string $action, bool $post): void {
             foreach (array_slice(($get('https://www.themealdb.com/api/json/v1/1/search.php?s=' . $enc)['meals'] ?? []), 0, 8) as $r) $res[] = ['title' => $r['strMeal'] ?? '', 'sub' => trim(($r['strCategory'] ?? '') . ' · ' . ($r['strArea'] ?? ''), ' ·'), 'img' => $r['strMealThumb'] ?? null, 'url' => $r['strSource'] ?: ($r['strYoutube'] ?? null), 'genre' => $r['strCategory'] ?? null, 'note' => mb_substr((string)($r['strInstructions'] ?? ''), 0, 390)];
         } elseif ($src === 'art') {
             foreach (array_slice($get('https://api.gbif.org/v1/species/suggest?limit=8&q=' . $enc), 0, 8) as $r) $res[] = ['title' => $r['canonicalName'] ?? $r['scientificName'] ?? '', 'sub' => trim(($r['family'] ?? '') . ' ' . ($r['rank'] ?? '')), 'img' => null, 'url' => isset($r['key']) ? 'https://www.gbif.org/species/' . $r['key'] : null, 'genre' => null, 'note' => ''];
+        } elseif ($src === 'sted') {
+            // places (restaurants, cafés, trails, campsites …) from OpenStreetMap – its rules ask for a name on the request and one question at a time
+            $h2 = ['User-Agent: niben.no (hobby pages)', 'Accept: application/json', 'Accept-Language: nb,en'];
+            [$st, $b] = http_req('GET', 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&addressdetails=0&q=' . $enc, $h2);
+            foreach (array_slice($st === 200 ? (json_decode($b, true) ?: []) : [], 0, 8) as $r) {
+                $parts = array_map('trim', explode(',', (string)($r['display_name'] ?? '')));
+                $name = (string)($r['name'] ?? '') ?: ($parts[0] ?? '');
+                $res[] = ['title' => $name, 'sub' => implode(', ', array_slice($parts, 1, 3)), 'img' => null, 'genre' => null, 'note' => '',
+                          'url' => isset($r['lat'], $r['lon']) ? 'https://www.openstreetmap.org/?mlat=' . $r['lat'] . '&mlon=' . $r['lon'] . '#map=17/' . $r['lat'] . '/' . $r['lon'] : null];
+            }
         } elseif ($src === 'land') {
             foreach (array_slice($get('https://restcountries.com/v3.1/name/' . $enc . '?fields=name,flags,translations,region'), 0, 8) as $r) $res[] = ['title' => $r['translations']['nob']['common'] ?? $r['name']['common'] ?? '', 'sub' => $r['region'] ?? '', 'img' => $r['flags']['png'] ?? null, 'url' => null, 'genre' => null, 'note' => ''];
         } else fail('Ukjent tjeneste.');

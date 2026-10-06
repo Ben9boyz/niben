@@ -21,11 +21,26 @@ test('hobby modules show as pages with their entries, categories and numbers, an
   const { a } = await seed()
   const page = await openPage(browser, { hash: `/h/${a.id}` })
   await page.getByRole('heading', { name: 'Kinokvelder' }).waitFor()
-  await page.getByText('Alien').waitFor()
+  await page.getByText('Alien').first().waitFor()
   await page.locator('.chips').getByRole('button', { name: /Skrekk/ }).click() // the category chip
   assert.equal(await page.getByText('Paddington').count(), 0)
   await page.getByRole('tab', { name: /Løpeturer/ }).first().click()
-  await page.getByText('12,5').waitFor() // km added up
+  await page.getByText('12,5').first().waitFor() // km added up
+  assert.deepEqual(page.errors, [])
+})
+
+test('everything with stars from all modules is gathered on one page, best first', async () => {
+  const owner = await ownerClient()
+  const f = (await owner.post('mod_add', { type: 'filmer', name: 'Film' })).json.item
+  const r = (await owner.post('mod_add', { type: 'restauranter', name: 'Spisesteder' })).json.item
+  await owner.post('mod_save', { id: f.id, data: { items: [{ t: 'Blade Runner', rating: 4 }, { t: 'Ikke sett ennå' }] } })
+  await owner.post('mod_save', { id: r.id, data: { items: [{ t: 'Pizzabakeren', rating: 5, kat: 'Pizza' }] } })
+  const page = await openPage(browser, { hash: '/vurderinger' })
+  await page.getByText('Pizzabakeren').waitFor()
+  await page.getByText('Blade Runner').waitFor()
+  assert.equal(await page.getByText('Ikke sett ennå').count(), 0, 'no stars, not in the list')
+  const names = await page.locator('.grid b').allInnerTexts()
+  assert.ok(names.indexOf('Pizzabakeren') < names.indexOf('Blade Runner'), 'five stars before four')
   assert.deepEqual(page.errors, [])
 })
 

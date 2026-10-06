@@ -1,13 +1,13 @@
 // The hobby modules a room can add. Every kind is data: a name, a symbol, a colour, the fields of one entry and how the entries
 // are shown. Adding a hobby = adding a line here (the server only keeps what the page sends, so nothing else needs to change).
-export type FieldKind = 'text' | 'longtext' | 'number' | 'date' | 'select' | 'rating' | 'url'
+export type FieldKind = 'text' | 'longtext' | 'number' | 'date' | 'select' | 'rating' | 'url' | 'hidden'
 export interface Field { k: string; label: string; kind: FieldKind; options?: string[]; unit?: string }
 /** How the entries look: a card grid, a dated log with numbers and a chart, or a checklist with progress. */
 export type Layout = 'cards' | 'log' | 'checklist'
 /** What stands in the room: the shape of the little piece of furniture. */
 export type Prop = 'crate' | 'table' | 'shelf' | 'easel' | 'stand' | 'plant' | 'chest'
 /** Public services (no key) that can look up what you type: film posters, series, podcasts, recipes, species, countries. */
-export type LookupSource = 'film' | 'serie' | 'podkast' | 'matrett' | 'art' | 'land'
+export type LookupSource = 'film' | 'serie' | 'podkast' | 'matrett' | 'art' | 'land' | 'sted'
 export const CATEGORIES = ['Se, lytt og spill', 'Mat og drikke', 'Skap og bygg', 'Natur og dyr', 'Kropp og friluft', 'Hode og ord', 'Planlegg']
 export interface ModuleKind {
   id: string; name: string; icon: string; color: string; blurb: string
@@ -16,6 +16,7 @@ export interface ModuleKind {
   layout: Layout; prop: Prop
   fields: Field[] // the first one is the title of the entry
   stat?: { field: string; label: string; op: 'sum' | 'avg' | 'max' } // log: the number that is added up
+  workout?: boolean // entries are workouts: pace, a weekly goal and a GPX import
   live?: 'chess' | 'apod' // an account on a public service whose numbers are shown on top
 }
 
@@ -31,6 +32,7 @@ const STATUS = ['Vil prøve', 'Holder på', 'Ferdig']
 
 export const CATALOG: ModuleKind[] = [
   // ── watched, played, made: cards ──
+  { id: 'restauranter', name: 'Restauranter', icon: '🍽️', color: '#d9480f', blurb: 'Steder du har spist, med vurdering og kart', cat: 'Mat og drikke', lookup: 'sted', layout: 'cards', prop: 'table', fields: [t('t', 'Sted'), pick('kat', 'Kjøkken', ['Norsk', 'Italiensk', 'Asiatisk', 'Pizza', 'Burger', 'Kafé og bakeri', 'Bar', 'Annet']), stars(), pick('pris', 'Pris', ['$', '$$', '$$$', '$$$$']), t('adresse', 'Adresse'), date('Besøkt'), note(), link(), img()] },
   { id: 'filmer', name: 'Filmer', icon: '🎬', color: '#e5484d', blurb: 'Filmer du har sett og vil se', cat: 'Se, lytt og spill', lookup: 'film', layout: 'cards', prop: 'stand', fields: [t('t', 'Tittel'), pick('kat', 'Sjanger', ['Drama', 'Komedie', 'Action', 'Skrekk', 'Sci-fi', 'Dokumentar', 'Animasjon', 'Annet']), pick('status', 'Status', ['Vil se', 'Sett']), stars(), date('Sett'), note(), img()] },
   { id: 'serier', name: 'Serier', icon: '📺', color: '#7c5cff', blurb: 'Hvor langt du er kommet', cat: 'Se, lytt og spill', lookup: 'serie', layout: 'cards', prop: 'stand', fields: [t('t', 'Tittel'), pick('kat', 'Sjanger', ['Drama', 'Komedie', 'Krim', 'Sci-fi', 'Dokumentar', 'Animasjon', 'Annet']), pick('status', 'Status', ['Vil se', 'Ser nå', 'Ferdig', 'Droppet']), t('episode', 'Sesong / episode'), stars(), note(), img()] },
   { id: 'brettspill', name: 'Brettspill', icon: '🎲', color: '#f5a524', blurb: 'Samlingen og hvem som vant', cat: 'Se, lytt og spill', layout: 'cards', prop: 'shelf', fields: [t('t', 'Spill'), pick('kat', 'Type', ['Strategi', 'Kortspill', 'Familie', 'Samarbeid', 'Selskapsspill', 'Annet']), num('spillere', 'Spillere'), num('min', 'Minutter', 'min'), stars(), note(), img()] },
@@ -56,13 +58,15 @@ export const CATALOG: ModuleKind[] = [
   { id: 'fugler', name: 'Fuglekikking', icon: '🐦', color: '#16a34a', blurb: 'Arter du har sett', cat: 'Natur og dyr', lookup: 'art', layout: 'cards', prop: 'stand', fields: [t('t', 'Art'), pick('kat', 'Gruppe', ['Spurvefugl', 'Rovfugl', 'Vannfugl', 'Vadefugl', 'Ugle', 'Annet']), date('Sett'), t('sted', 'Sted'), note(), img()] },
   { id: 'astronomi', name: 'Stjernekikking', icon: '🔭', color: '#4338ca', blurb: 'Hva du har sett på himmelen', cat: 'Natur og dyr', live: 'apod', layout: 'cards', prop: 'stand', fields: [t('t', 'Objekt'), pick('kat', 'Type', ['Planet', 'Måne', 'Stjerne', 'Galakse', 'Nebula', 'Satellitt', 'Annet']), date(), t('sted', 'Sted'), note(), img()] },
   // ── numbers over time: log ──
+  { id: 'trening', name: 'Trening', icon: '🏅', color: '#fc4c02', blurb: 'Økter, tempo, rekorder og ukemål – importer en GPX-fil og se ruten', cat: 'Kropp og friluft', layout: 'log', prop: 'stand', workout: true, stat: { field: 'km', label: 'km til sammen', op: 'sum' },
+    fields: [date(), pick('kat', 'Type', ['Løping', 'Sykling', 'Svømming', 'Gåtur', 'Fottur', 'Ski', 'Styrke', 'Yoga', 'Annet']), t('t', 'Tittel'), num('km', 'Distanse', 'km'), num('min', 'Tid', 'min'), num('hm', 'Høydemeter', 'm'), num('puls', 'Snittpuls', 'slag'), pick('foles', 'Følelse', ['Lett', 'Fin', 'Tung', 'Helt tom']), note(), { k: 'route', label: 'Rute', kind: 'hidden' }] },
   { id: 'lop', name: 'Løping', icon: '🏃', color: '#ef4444', blurb: 'Turer, tider og kilometer', cat: 'Kropp og friluft', layout: 'log', prop: 'stand', stat: { field: 'km', label: 'km til sammen', op: 'sum' }, fields: [date(), num('km', 'Distanse', 'km'), num('min', 'Tid', 'min'), note()] },
   { id: 'sykling', name: 'Sykling', icon: '🚴', color: '#f97316', blurb: 'Turer og høydemeter', cat: 'Kropp og friluft', layout: 'log', prop: 'stand', stat: { field: 'km', label: 'km til sammen', op: 'sum' }, fields: [date(), num('km', 'Distanse', 'km'), num('hm', 'Høydemeter', 'm'), note()] },
   { id: 'styrke', name: 'Styrketrening', icon: '🏋️', color: '#334155', blurb: 'Økter og rekorder', cat: 'Kropp og friluft', layout: 'log', prop: 'chest', stat: { field: 'kg', label: 'kg tyngste', op: 'max' }, fields: [date(), t('ovelse', 'Øvelse'), num('kg', 'Vekt', 'kg'), num('reps', 'Repetisjoner'), note()] },
   { id: 'svomming', name: 'Svømming', icon: '🏊', color: '#0284c7', blurb: 'Lengder og tid i vannet', cat: 'Kropp og friluft', layout: 'log', prop: 'stand', stat: { field: 'meter', label: 'meter til sammen', op: 'sum' }, fields: [date(), num('meter', 'Distanse', 'm'), num('min', 'Tid', 'min'), note()] },
-  { id: 'tur', name: 'Fjellturer', icon: '⛰️', color: '#65a30d', blurb: 'Topper du har stått på', cat: 'Kropp og friluft', layout: 'log', prop: 'stand', stat: { field: 'hm', label: 'høydemeter', op: 'sum' }, fields: [date(), t('t', 'Tur'), num('km', 'Distanse', 'km'), num('hm', 'Høydemeter', 'm'), note()] },
+  { id: 'tur', name: 'Fjellturer', icon: '⛰️', color: '#65a30d', blurb: 'Topper du har stått på', cat: 'Kropp og friluft', lookup: 'sted', layout: 'log', prop: 'stand', stat: { field: 'hm', label: 'høydemeter', op: 'sum' }, fields: [date(), t('t', 'Tur'), num('km', 'Distanse', 'km'), num('hm', 'Høydemeter', 'm'), note()] },
   { id: 'fiske', name: 'Fiske', icon: '🎣', color: '#0d9488', blurb: 'Fangster og steder', cat: 'Kropp og friluft', layout: 'log', prop: 'chest', stat: { field: 'kg', label: 'kg største', op: 'max' }, fields: [date(), t('art', 'Art'), num('kg', 'Vekt', 'kg'), t('sted', 'Sted'), note()] },
-  { id: 'camping', name: 'Camping', icon: '⛺', color: '#ca8a04', blurb: 'Netter ute', cat: 'Kropp og friluft', layout: 'log', prop: 'crate', stat: { field: 'netter', label: 'netter ute', op: 'sum' }, fields: [date(), t('sted', 'Sted'), num('netter', 'Netter'), note()] },
+  { id: 'camping', name: 'Camping', icon: '⛺', color: '#ca8a04', blurb: 'Netter ute', cat: 'Kropp og friluft', lookup: 'sted', layout: 'log', prop: 'crate', stat: { field: 'netter', label: 'netter ute', op: 'sum' }, fields: [date(), t('sted', 'Sted'), num('netter', 'Netter'), note()] },
   { id: 'sjakk', name: 'Sjakk', icon: '♟️', color: '#475569', blurb: 'Rating fra chess.com eller lichess, og partiene dine', cat: 'Hode og ord', layout: 'log', prop: 'table', live: 'chess', stat: { field: 'rating', label: 'høyeste rating', op: 'max' }, fields: [date(), t('motstander', 'Motstander'), pick('res', 'Resultat', ['Seier', 'Remis', 'Tap']), num('rating', 'Rating'), note()] },
   { id: 'skriving', name: 'Skriving', icon: '✍️', color: '#b45309', blurb: 'Ord skrevet, dag for dag', cat: 'Hode og ord', layout: 'log', prop: 'table', stat: { field: 'ord', label: 'ord til sammen', op: 'sum' }, fields: [date(), t('t', 'Prosjekt'), num('ord', 'Ord'), note()] },
   { id: 'sprak', name: 'Språklæring', icon: '🌍', color: '#0891b2', blurb: 'Minutter øvd per dag', cat: 'Hode og ord', layout: 'log', prop: 'stand', stat: { field: 'min', label: 'minutter til sammen', op: 'sum' }, fields: [date(), t('sprak', 'Språk'), num('min', 'Tid', 'min'), note()] },

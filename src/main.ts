@@ -28,6 +28,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/gaming', name: 'gaming', ...lazy(() => import('./panels/GamingPanel.vue'), () => import('./pages/GamingPage.vue'), 'Spill') },
   { path: '/japansk', name: 'japansk', ...lazy(() => import('./panels/JapanPanel.vue'), () => import('./pages/JapanPage.vue'), 'Japansk') },
   { path: '/aaret', name: 'aaret', ...lazy(() => import('./panels/YearPanel.vue'), () => import('./pages/YearPage.vue'), 'Året') },
+  { path: '/vurderinger', name: 'vurderinger', ...lazy(() => import('./panels/RatingsPanel.vue'), () => import('./pages/RatingsPage.vue'), 'Vurderinger') },
   { path: '/h/:id', name: 'modul', ...lazy(() => import('./panels/ModulePanel.vue'), () => import('./pages/ModulePage.vue'), 'Hobby') },
   { path: '/gangen', name: 'gangen', ...lazy(() => import('./panels/GangenPanel.vue'), () => import('./pages/GangenPage.vue'), 'Gangen') },
   { path: '/om', name: 'om', ...lazy(() => import('./panels/AboutPanel.vue'), () => import('./pages/AboutPage.vue'), 'Om meg') },
