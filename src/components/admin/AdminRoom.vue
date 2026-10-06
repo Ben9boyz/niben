@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { Upload, Trash2, Eye, EyeOff, Move, Box } from 'lucide-vue-next'
 import { decor, loadDecor, uploadDecor, removeDecor, changed, type DecorItem } from '@/composables/room/useDecor'
-import { mode } from '../../composables/useMode'
+import { mode } from '@/composables/ui/useMode'
 import { useRouter } from 'vue-router'
 import { inputOf } from '../../lib/dom'
 

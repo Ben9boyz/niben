@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { ChevronRight } from 'lucide-vue-next'
-import { ctx, closeMenu, type MenuEntry } from '@/composables/useContextMenu'
+import { ctx, closeMenu, type MenuEntry } from '@/composables/ui/useContextMenu'
 import { targetEl } from '@/lib/dom'
 
 const el = ref<HTMLElement | null>(null)

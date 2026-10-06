@@ -6,7 +6,7 @@ import { shelfAlbums } from '@/composables/music/useGroups'
 import { spotify, lockLeft, play, control, findAlbum, fmtClock } from '@/composables/music/useSpotify'
 import { admin } from '@/composables/site/useAdmin'
 import { targetEl } from '@/lib/dom'
-import { showMenu } from '@/composables/useContextMenu'
+import { showMenu } from '@/composables/ui/useContextMenu'
 import { itemMenu } from '@/lib/menus'
 
 // Phones, the 3D listening corner: ONE small bar at the bottom with exactly what you can do where you are – no

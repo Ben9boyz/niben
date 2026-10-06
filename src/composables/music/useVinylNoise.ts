@@ -1,7 +1,7 @@
 import { reactive, watch } from 'vue'
 import { spotify } from './useSpotify'
 import { web } from './useWebPlayer'
-import { mode } from '@/composables/useMode'
+import { mode } from '@/composables/ui/useMode'
 import { playOn } from './usePlayOn'
 import { room } from '@/composables/room/useRoom'
 import { newAudioContext } from '@/lib/audio'

@@ -1,5 +1,5 @@
 import { reactive, watch } from 'vue'
-import { DEFAULT_LANG, byCode, guessLang } from '../lib/languages'
+import { DEFAULT_LANG, byCode, guessLang } from '@/lib/languages'
 
 // Which language the site is shown in. English unless a visitor has chosen another; the choice is remembered.
 // The first time, the site only SUGGESTS the language that fits where the visitor is (see LangSuggest.vue).

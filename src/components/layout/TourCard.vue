@@ -5,7 +5,7 @@ import { room } from '@/composables/room/useRoom'
 import { admin } from '@/composables/site/useAdmin'
 import { decor } from '@/composables/room/useDecor'
 import { tx } from '@/composables/site/useTexts'
-import { tour, steps, current, tourDone, startTour, nextStep, endTour } from '@/composables/useTour'
+import { tour, steps, current, tourDone, startTour, nextStep, endTour } from '@/composables/ui/useTour'
 
 // A small, quiet card at the bottom: what's here, "Neste" and "Hopp over". Only the very first time somebody opens the 3D room
 // (it remembers, and never comes back). Not for me (when I'm logged in), not in the admin pages.

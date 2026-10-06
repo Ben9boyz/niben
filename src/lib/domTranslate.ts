@@ -1,5 +1,5 @@
 import { watch } from 'vue'
-import { i18n } from '../composables/useLang'
+import { i18n } from '@/composables/ui/useLang'
 import { SOURCE, byCode } from './languages'
 import { pget, pset } from './pcache'
 

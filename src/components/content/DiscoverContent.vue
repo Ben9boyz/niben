@@ -7,7 +7,7 @@ import { discover, loadDiscover, addPick, delPick, saveKey, refreshRecs, hideRec
 import { openAlbumPage, openArtistPage, peek } from '@/composables/music/useBrowse'
 import { play, notify } from '@/composables/music/useSpotify'
 import { itemMenu, playItem } from '@/lib/menus'
-import { showMenu, longPress, type MenuPoint } from '@/composables/useContextMenu'
+import { showMenu, longPress, type MenuPoint } from '@/composables/ui/useContextMenu'
 import CoverGrid from '@/components/music/CoverGrid.vue'
 import PeekView from '@/components/vinyl/PeekView.vue'
 

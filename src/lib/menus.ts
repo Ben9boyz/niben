@@ -2,7 +2,7 @@ import { Play, Pause, ListEnd, ListPlus, FolderInput, ExternalLink, Link, User, 
 import { deletePlaylist, spotify, play, control, lockLeft, fmtClock, lockNote, notify, enqueue, enqueueAlbum, addToPlaylist, isSaved, toggleAlbumSaved, isLiked, setLiked, addGuest } from '@/composables/music/useSpotify'
 import type { Album, Track } from '../types'
 import { admin } from '@/composables/site/useAdmin'
-import type { MenuEntry } from '../composables/useContextMenu'
+import type { MenuEntry } from '@/composables/ui/useContextMenu'
 import { askNewPlaylist } from '@/composables/music/usePlaylistDialog'
 import { groups, flatGroups, moveTo } from '@/composables/music/useGroups'
 import { openAlbumPage, openArtistPage, albumOfTrack, firstArtist } from '@/composables/music/useBrowse'

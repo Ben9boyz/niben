@@ -7,7 +7,7 @@ import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote, control, addT
 import { admin } from '@/composables/site/useAdmin'
 import { pickedFile, targetEl } from '@/lib/dom'
 import type { Album, Playlist, Track, TrackList, Flash } from '@/types'
-import { showMenu, longPress, type MenuPoint } from '@/composables/useContextMenu'
+import { showMenu, longPress, type MenuPoint } from '@/composables/ui/useContextMenu'
 import { trackMenu } from '@/lib/menus'
 import { openAlbumPage, openArtistPage, albumOfTrack, firstArtist } from '@/composables/music/useBrowse'
 

@@ -4,12 +4,12 @@ import LangSwitch from './LangSwitch.vue'
 import ThemeSwitch from './ThemeSwitch.vue'
 import AdminAvatar from './AdminAvatar.vue'
 import { Keyboard } from 'lucide-vue-next'
-import { shortcuts } from '@/composables/useShortcuts'
+import { shortcuts } from '@/composables/ui/useShortcuts'
 import { ref } from 'vue'
 import { Sun, Moon, LogIn, ArrowUpRight } from 'lucide-vue-next'
-import { useTheme } from '@/composables/useTheme'
+import { useTheme } from '@/composables/ui/useTheme'
 import { admin, signedIn, checkLogin, login, errorMessage } from '@/composables/site/useAdmin'
-import { leavePlayer } from '@/composables/useShell'
+import { leavePlayer } from '@/composables/ui/useShell'
 
 // Top bar of the music player: name, light / dark, and logging in (needed to play).
 const { theme, toggle } = useTheme()

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Sparkles, Library, ScanEye } from 'lucide-vue-next'
-import { toggleMode } from '@/composables/useMode'
+import { toggleMode } from '@/composables/ui/useMode'
 import { room } from '@/composables/room/useRoom'
 import { spotify } from '@/composables/music/useSpotify'
 import SegSwitch from '@/components/ui/SegSwitch.vue'
