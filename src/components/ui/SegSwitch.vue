@@ -45,7 +45,7 @@ const index = computed(() => Math.max(0, props.items.findIndex((x) => x.id === p
 .seg.floating { position: fixed; top: 20px; left: calc(var(--rail) + 16px); z-index: 35; animation: drop 0.6s var(--spring) both; }
 @media (max-width: 720px) { .seg.floating { top: calc(10px + env(safe-area-inset-top)); left: 62px; max-width: calc(100vw - 62px - 112px); } .seg.floating small { display: none; } .seg.floating > a, .seg.floating > button { padding: 9px 12px; } }
 @keyframes drop { from { opacity: 0; transform: translateY(-14px) scale(0.95); } }
-.mark { position: absolute; top: 5px; bottom: 5px; left: 5px; width: calc((100% - 10px) / var(--n)); border-radius: 999px; background: var(--glass-strong); box-shadow: inset 0 1px 0 var(--glass-hi), 0 4px 12px rgba(43, 140, 255, 0.18); transition: transform 0.5s var(--spring); }
+.mark { position: absolute; top: 5px; bottom: 5px; left: 5px; width: calc((100% - 10px) / var(--n)); border-radius: 999px; background: var(--glass-strong); box-shadow: inset 0 1px 0 var(--glass-hi), 0 4px 12px color-mix(in srgb, var(--accent) 18%, transparent); transition: transform 0.5s var(--spring); }
 .seg > a, .seg > button { position: relative; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 18px; border: 0; background: none; color: var(--text-2); font: 600 0.9rem var(--font); white-space: nowrap; text-decoration: none; cursor: pointer; transition: color 0.3s; }
 .seg > a:hover, .seg > button:hover { color: var(--text); }
 .seg > .on { color: var(--accent); }

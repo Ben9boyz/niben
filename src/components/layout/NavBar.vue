@@ -201,8 +201,8 @@ onBeforeUnmount(() => {
   background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.55));
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,1),
-    inset 0 -1px 2px rgba(43,140,255,.15),
-    0 4px 14px rgba(43,140,255,.22);
+    inset 0 -1px 2px color-mix(in srgb, var(--accent) 15%, transparent),
+    0 4px 14px color-mix(in srgb, var(--accent) 22%, transparent);
   opacity: 0;
   transition:
     transform 0.6s var(--spring),
@@ -211,8 +211,8 @@ onBeforeUnmount(() => {
     opacity 0.3s;
 }
 :root[data-theme="dark"] .drop {
-  background: linear-gradient(180deg, rgba(120,190,255,.28), rgba(92,182,255,.14));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 4px 18px rgba(92,182,255,.25);
+  background: linear-gradient(180deg, color-mix(in srgb, color-mix(in srgb, var(--accent) 80%, white) 28%, transparent), color-mix(in srgb, var(--accent) 14%, transparent));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 4px 18px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 .drop.ready { opacity: 1; }
 .drop.stretch { scale: 1.12 0.86; }

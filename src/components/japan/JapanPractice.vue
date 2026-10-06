@@ -204,7 +204,7 @@ onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); loadJapane
 .g.something { background: #e07b39; }
 .g.hard { background: #c9a227; }
 .g.okay { background: #3aa76d; }
-.g.easy { background: #2b8cff; }
+.g.easy { background: var(--accent); }
 
 .done { display: grid; justify-items: center; gap: 12px; padding: 26px 10px; text-align: center; }
 .done .big { font-family: "Hiragino Mincho ProN", "Noto Serif JP", serif; font-size: 2.2rem; font-weight: 700; }

@@ -1,3 +1,4 @@
+import { accent, onAccent, setAccent3d } from './accent'
 import * as THREE from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
@@ -912,6 +913,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   let decorSel: string | null = null
   let decorDrag: { id: string; ox: number; oz: number; moved: boolean } | null = null
   const selBox = new THREE.BoxHelper(new THREE.Object3D(), 0x2b8cff)
+  onAccent(() => (selBox.material as THREE.LineBasicMaterial).color.copy(accent))
   const selMat = selBox.material as THREE.LineBasicMaterial
   selMat.depthTest = false
   selMat.transparent = true
@@ -1567,6 +1569,8 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       updateCull(true)
       invalidate(0.5)
     },
+    /** The room's accent colour (#rrggbb) for what glows and marks things in the room; null = the standard blue. */
+    setAccent(hex: string | null) { setAccent3d(hex); invalidate(1) },
     setGraphics(g: GfxInput | null) { gfxIn = g; applyGfx(g) },
     /** What the picture is made of right now (for the settings window): quality class, resolution, frame rate … */
     get gfxInfo() { return { calls: drawn.calls, triangles: drawn.triangles, lights: countLights(), quality, level, pixelRatio: renderer.getPixelRatio(), fps: fpsVal, maxMsaa, maxTex, dpr: window.devicePixelRatio, gpu: spec.gpu, score: spec.score, auto: autoGfx(), software: spec.software } },

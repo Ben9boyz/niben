@@ -11,6 +11,7 @@ import { spotify, useSpotify, prefetchTracks, fetchTracks, fetchTempo, fetchQueu
 import { admin } from '@/composables/site/useAdmin'
 import { useVinylNoise } from '@/composables/music/useVinylNoise'
 import { gfxPayload } from '@/composables/ui/useGraphics'
+import { accentHex } from '@/composables/ui/useAccent'
 import { dailyAlbum } from '@/composables/music/useDaily'
 import { playOn, targetFor } from '@/composables/music/usePlayOn'
 import { decor, loadDecor, changed as decorChanged } from '@/composables/room/useDecor'
@@ -140,6 +141,8 @@ watch(() => [steam.profile, steam.library, room.api], () => room.api?.setSteam({
 watch(() => [jp.anime, room.jpAnime, room.api], () => room.api?.setAnime(jp.anime, room.jpAnime), { immediate: true })
 // the admin panel covers the room: nothing is drawn behind it (unless I am placing my own models)
 watch(() => [room.api, route.name, decor.editing], () => room.api?.setCovered(route.name === 'admin' && !decor.editing), { immediate: true })
+// the room's accent colour (Admin → Profil) reaches what glows in the room too
+watch(() => [room.api, accentHex.value], () => room.api?.setAccent(accentHex.value), { immediate: true })
 watch(theme, (t) => api?.setTheme(t))
 watch(() => weather.value?.kind, () => api?.setWeather(weather.value))
 watch(calm, (v) => api?.setCalm(v))

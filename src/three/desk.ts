@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { meshAdder } from './helpers'
+import { accentLight, onAccent } from './accent'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import type { Project } from '@/composables/site/useData'
 import type { SteamGame, SteamLibrary, SteamProfile } from '@/composables/site/useSteam'
@@ -220,6 +221,7 @@ export function buildDesk() {
   const dark = new THREE.MeshStandardMaterial({ color: 0x1b1e24, roughness: 0.45, metalness: 0.2 })
   const metal = new THREE.MeshStandardMaterial({ color: 0xc9d1db, roughness: 0.3, metalness: 0.9 })
   const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x5cb6ff).multiplyScalar(3.4), toneMapped: false })
+  onAccent(() => glow.color.copy(accentLight).multiplyScalar(3.4))
 
   const add = meshAdder(group)
 

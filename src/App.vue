@@ -17,11 +17,13 @@ import { useRoute } from 'vue-router'
 const RoomLayout = defineAsyncComponent(() => import('@/components/room/RoomLayout.vue'))
 import { useData } from '@/composables/site/useData'
 import { mode } from '@/composables/ui/useMode'
+import { useAccent } from '@/composables/ui/useAccent'
 import { shell } from '@/composables/ui/useShell'
 import PlayerTop from '@/components/layout/PlayerTop.vue'
 
 const data = useData()
 useMediaSession()
+useAccent() // the room's own accent colour (Admin → Profil)
 const route = useRoute()
 const toTop = () => window.scrollTo(0, 0)
 

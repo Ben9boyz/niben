@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { Check, ImageUp, Plus, X, Trash2, Trophy } from 'lucide-vue-next'
 import { api, errorMessage, shrinkImage, account } from '@/composables/site/useAdmin'
 import { reloadData, type About, type AboutLink } from '@/composables/site/useData'
 import { siteTexts, setTexts } from '@/composables/site/useTexts'
+import { ACCENTS, ACCENT_KEY, DEFAULT_ACCENT, accentHex, validAccent } from '@/composables/ui/useAccent'
 import { milestones, loadMilestones, setMilestones, type Milestone } from '@/composables/site/useMilestones'
 import { thumb } from '../../lib/photos'
 import type { Flash } from '../../types'
@@ -29,6 +30,18 @@ async function saveTitle() {
     flash('Tittel og intro er lagret.')
   } catch (e) { fail(e) } finally { busy.value = '' }
 }
+
+// ── accent colour (the blue of the page, in this room) ──
+const accentNow = computed(() => accentHex.value || DEFAULT_ACCENT)
+async function setAccent(hex: string | null) {
+  const v = validAccent(hex)
+  const texts: Record<string, string> = { ...siteTexts }
+  if (v) texts[ACCENT_KEY] = v; else delete texts[ACCENT_KEY]
+  setTexts(texts) // (the page changes colour at once)
+  busy.value = 'accent'
+  try { setTexts((await api<{ texts: Record<string, string> }>('texts_save', { texts })).texts); flash(v ? 'Fargen er lagret.' : 'Tilbake til standard blå.') } catch (e) { fail(e) } finally { busy.value = '' }
+}
+const pickCustom = (e: Event) => { void setAccent((e.target as HTMLInputElement).value) }
 
 // ── photo, about text, links ──
 const about = ref<About | null>(null)
@@ -100,6 +113,15 @@ onMounted(() => { void loadAbout(); void loadMilestones(true) })
     </section>
 
     <section>
+      <h3>Farge</h3>
+      <p class="muted">Hovedfargen på siden din (den blå). Velg en annen, så skifter knapper, faner og markeringer farge for alle som besøker rommet ditt. Standard er blå.</p>
+      <div class="sw" role="radiogroup" aria-label="Hovedfarge">
+        <button v-for="a in ACCENTS" :key="a.id" type="button" class="dot" role="radio" :aria-checked="accentNow === a.hex" :class="{ on: accentNow === a.hex }" :style="{ background: a.hex }" :title="a.label" :aria-label="a.label" :disabled="busy === 'accent'" @click="setAccent(a.hex)"></button>
+        <label class="dot custom" :class="{ on: !ACCENTS.some((a) => a.hex === accentNow) }" title="Egen farge"><input type="color" :value="accentNow" aria-label="Egen farge" @change="pickCustom" /><span>+</span></label>
+      </div>
+    </section>
+
+    <section>
       <h3>Om meg</h3>
       <div class="who">
         <div class="ph">
@@ -145,6 +167,11 @@ h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 1
 .f { display: grid; gap: 12px; max-width: 560px; }
 .f .btn { justify-self: start; display: inline-flex; align-items: center; gap: 6px; }
 textarea, input, select { width: 100%; box-sizing: border-box; }
+.sw { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.dot { width: 34px; height: 34px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 1px var(--glass-border); }
+.dot.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px currentColor; color: var(--text); }
+.dot.custom { position: relative; display: grid; place-items: center; background: conic-gradient(#e5484d, #f08a24, #2fb36d, #2b8cff, #8b5cf6, #e5559b, #e5484d); color: #fff; font-weight: 700; overflow: hidden; }
+.dot.custom input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
 .who { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
 .ph { width: 84px; height: 104px; border-radius: 16px; overflow: hidden; background: var(--accent-soft); display: grid; place-items: center; flex: none; }
 .ph img { width: 100%; height: 100%; object-fit: cover; }

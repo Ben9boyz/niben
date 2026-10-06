@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { meshAdder } from './helpers'
+import { accent, accentLight, onAccent } from './accent'
 import { formatTime, type TimerState } from '@/composables/site/useTimer'
 import { canvasTex, context2d } from './textures'
 
@@ -151,6 +152,7 @@ export function buildPracticeCorner() {
   hand.position.z = 0.034
   clock.add(hand)
   const handMat = new THREE.MeshStandardMaterial({ color: 0x2b8cff, roughness: 0.3, metalness: 0.2, emissive: 0x2b8cff, emissiveIntensity: 0.4 })
+  onAccent(() => { handMat.color.copy(accent); handMat.emissive.copy(accent) })
   const needle = new THREE.Mesh(new THREE.BoxGeometry(0.008, R * 0.92, 0.004), handMat)
   needle.position.y = R * 0.36
   hand.add(needle)
@@ -198,6 +200,7 @@ export function buildPracticeCorner() {
     add(new THREE.CylinderGeometry(0.014, 0.016, 0.02, 20), new THREE.MeshStandardMaterial({ color: 0xf2eee4, roughness: 0.4 }), -0.15 + i * 0.06, 0.38, 0.06, amp)
   }
   const led = new THREE.Mesh(new THREE.SphereGeometry(0.007, 12, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(0x5cb6ff).multiplyScalar(4), toneMapped: false }))
+  onAccent(() => (led.material as THREE.MeshBasicMaterial).color.copy(accentLight).multiplyScalar(4))
   led.position.set(0.18, 0.38, 0.06)
   amp.add(led)
   const badge = add(new THREE.BoxGeometry(0.08, 0.018, 0.004), steel, 0.13, 0.31, 0.112, amp)
@@ -238,7 +241,7 @@ export function buildPracticeCorner() {
       faceTex.needsUpdate = true
       changed = true
     }
-    handMat.emissive.set(st.go ? GO : 0x2b8cff)
+    handMat.emissive.set(st.go ? GO : accent)
     handMat.color.set(st.go ? GO : 0x2b8cff)
     return changed
   }

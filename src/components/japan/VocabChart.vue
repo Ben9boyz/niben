@@ -104,7 +104,7 @@ const hp = computed(() => (hover.value == null ? null : pts.value[hover.value]))
 
 <style scoped>
 .vc {
-  --c-known: #2b8cff; --c-learning: #d97e0a;
+  --c-known: var(--accent); --c-learning: #d97e0a;
   position: relative; display: grid; gap: 8px; padding: 14px; border-radius: 16px;
   border: 1px solid var(--glass-border); background: var(--glass-strong);
 }
