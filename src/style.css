@@ -491,6 +491,13 @@ html.player-shell .cpage { padding-top: 80px; padding-bottom: 40px; }
   .mtop b { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 @media (max-width: 720px) { .flat-tabs ~ .cpage { padding-top: 16px; } }
+/* the plain version, any width: with sub-tabs the tabs are the title – no big header, the content starts right under the bar,
+   and the bar stays at the top while the page scrolls */
+.flat-tabs ~ .cpage .cpage-head { display: none; }
+@media (min-width: 721px) {
+  .flat-tabs ~ .cpage { padding-top: 12px; }
+  html.has-mini:not(.player-shell) #app > main > .flat-tabs ~ .cpage { padding-top: 12px; }
+}
 
 /* ── shared bits (one look across the pages) ── */
 /* small capital label over a section ("NYLIG SPILT", "ANIME" …) */
