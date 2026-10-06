@@ -3,7 +3,6 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Shuffle, SkipBack, SkipForward, Play, Pause, Repeat, Repeat1, MonitorSpeaker, Smartphone, Speaker, Laptop, Volume2 } from 'lucide-vue-next'
 import WebPlayerToggle from './WebPlayerToggle.vue'
 import { playPref, setPlayPref } from '../composables/usePlayOn'
-import { vinyl, setVinyl, setVinylLevel } from '../composables/useVinylNoise'
 import { mode } from '../composables/useMode'
 import { targetEl, inputOf } from '../lib/dom'
 import type { Result } from '../types'
@@ -73,8 +72,6 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDoc))
         <button :class="{ on: playPref.v === 'ipod' }" @click="setPlayPref('ipod')">iPod</button>
         <button :class="{ on: playPref.v === 'vinyl' }" @click="setPlayPref('vinyl')">Plate</button>
       </div>
-      <label v-if="mode === 'rom'" class="vin" title="Svak vinylknitring over musikken i 3D-rommet"><input type="checkbox" :checked="vinyl.on" @change="setVinyl(inputOf($event).checked)" /><span class="sw"><i></i></span>Vinylknitring</label>
-      <label v-if="mode === 'rom' && vinyl.on" class="vol vlv" title="Hvor sterk vinylknitringen er"><span class="vt">Knitring</span><input type="range" min="0" max="100" :value="vinyl.level" aria-label="Styrke på vinylknitring" @input="setVinylLevel(+inputOf($event).value)" /></label>
       <p v-if="!devices" class="muted">Henter enheter …</p>
       <p v-else-if="!devices.length" class="muted">Ingen Spotify-enheter er åpne.</p>
       <button v-for="d in devices || []" :key="d.id" class="dv" :class="{ active: d.active }" :disabled="d.restricted" @click="pick(d)">
@@ -98,12 +95,6 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDoc))
 .play:hover { transform: scale(1.06); }
 .compact .play { width: 34px; height: 34px; }
 .pop { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 8px); display: grid; gap: 6px; padding: 12px; border-radius: 16px; background: var(--bg); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25); max-height: 340px; overflow-y: auto; }
-.vin { display: flex; align-items: center; gap: 10px; padding: 6px 10px; font-size: 0.78rem; color: var(--text-2); cursor: pointer; }
-.vin input { position: absolute; opacity: 0; pointer-events: none; }
-.vin .sw { position: relative; flex: none; width: 34px; height: 20px; border-radius: 999px; background: rgba(120, 130, 145, 0.35); transition: background 0.2s; }
-.vin .sw i { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform 0.2s; }
-.vin input:checked + .sw { background: #1db954; }
-.vin input:checked + .sw i { transform: translateX(14px); }
 .here { padding: 4px 10px 8px; border-bottom: 1px solid var(--glass-border); }
 .muted { margin: 0; color: var(--text-3); font-size: 0.82rem; }
 .q { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
@@ -123,5 +114,4 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDoc))
 .po .pt { margin-right: auto; font-size: 0.78rem; color: var(--text-2); }
 .po button { padding: 4px 10px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.74rem var(--font); cursor: pointer; }
 .po button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
-.vlv .vt { font-size: 0.74rem; font-weight: 600; white-space: nowrap; }
 </style>
