@@ -118,6 +118,9 @@ onBeforeUnmount(() => {
       <BrandLogo mark class="logo-mark" />
     </router-link>
 
+    <!-- me: the room you are in (and the way between rooms) sits at the top of the rail, above Hjem -->
+    <ProfileMenu v-if="!isPhone" />
+
     <nav class="nav glass" :class="{ open: navOpen }" ref="track">
       <span
         class="drop"
@@ -147,7 +150,6 @@ onBeforeUnmount(() => {
     <span class="spacer" aria-hidden="true"></span>
     <!-- me / settings: my photo (logged in) or a cog – opens the menu with view, theme, language … -->
     <SettingsMenu v-if="!isPhone" />
-    <ProfileMenu v-if="!isPhone" />
   </header>
   <!-- phones: the whole menu sits behind the logo (tap it); the settings cog is in the other corner -->
   <div v-if="isPhone" class="mbar" aria-hidden="true"></div>
@@ -293,10 +295,8 @@ button.item { border: 0; background: transparent; font-family: inherit; cursor: 
     animation-name: railIn;
   }
   @keyframes railIn { from { opacity: 0; transform: translateX(-30px) scale(0.94); } }
-  .brand { position: relative; left: auto; justify-content: center; height: 58px; padding: 0; border-radius: 22px; flex: none; }
-  .brand:hover { transform: scale(1.05) rotate(-3deg); }
-  .logo-full { display: none; }
-  .logo-mark { display: block; height: 32px; }
+  /* the profile picture takes the logo's place at the top of the rail (the way to Admin is in its menu) */
+  .brand { display: none; }
   .nav { flex-direction: column; padding: 6px; border-radius: 24px; gap: 2px; min-height: 0; overflow-y: auto; scrollbar-width: none; }
   .nav::-webkit-scrollbar { display: none; }
   .drop { top: 0; bottom: auto; border-radius: 17px; }
@@ -317,7 +317,6 @@ button.item { border: 0; background: transparent; font-family: inherit; cursor: 
 /* a bit lower screens: the labels stay, everything just sits a little tighter */
 @media (min-width: 721px) and (max-height: 860px) {
   .nav-wrap { top: 10px; bottom: 10px; gap: 6px; }
-  .brand { height: 50px; }
   .item { padding: 7px 0 5px; }
 }
 /* only really low screens (under 700 px) lose the labels – they show on hover instead */
@@ -370,8 +369,8 @@ button.item { border: 0; background: transparent; font-family: inherit; cursor: 
   html body .mlogo.mlogo::before, html body .mlogo.mlogo::after, html body .sm.sm::before, html body .sm.sm::after { display: none; }
 }
 /* the settings button (SettingsMenu): the last thing in the rail; on phones in the top-right corner */
-@media (min-width: 721px) { .nav-wrap .sm { align-self: center; flex: none; width: 50px; height: 50px; } }
-@media (min-width: 721px) and (max-height: 860px) { .nav-wrap .sm { width: 44px; height: 44px; } }
+@media (min-width: 721px) { .nav-wrap .sm { align-self: center; flex: none; width: 50px; height: 50px; } .nav-wrap .sm.profile { width: 58px; height: 58px; } }
+@media (min-width: 721px) and (max-height: 860px) { .nav-wrap .sm { width: 44px; height: 44px; } .nav-wrap .sm.profile { width: 50px; height: 50px; } }
 @media (max-width: 720px) {
   html body .sm.sm { position: fixed; top: calc(12px + env(safe-area-inset-top)); right: 12px; width: 42px; height: 42px; z-index: 41; }
   html.classic body .sm.sm { box-shadow: none; }

@@ -49,7 +49,7 @@ async function toggle() {
   await nextTick()
   const h = menuEl.value?.offsetHeight || 260, w = menuEl.value?.offsetWidth || 280
   const left = phone ? Math.max(8, Math.min(innerWidth - w - 10, r.right - w)) : Math.min(r.right + 10, innerWidth - w - 8)
-  const top = phone ? Math.min(r.bottom + 8, innerHeight - h - 24) : Math.min(r.bottom - h - 4, innerHeight - h - 24)
+  const top = phone ? Math.min(r.bottom + 8, innerHeight - h - 24) : Math.min(r.top, innerHeight - h - 24)
   pos.value = { left: `${left}px`, top: `${Math.max(8, top)}px` }
 }
 const close = () => { open.value = false }
