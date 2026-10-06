@@ -14,7 +14,9 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": false,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] }
   },
   "include": ["src/**/*.ts", "src/**/*.vue", "env.d.ts"],
   "exclude": ["src/sw"]
