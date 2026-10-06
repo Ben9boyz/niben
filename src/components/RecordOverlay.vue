@@ -65,7 +65,7 @@ watch(album, async (a) => {
 }, { immediate: true })
 async function playTrack(t: Track) {
   const a = album.value
-  if (!a || !admin.loggedIn || busy.value) return
+  if (!a || !admin.mine || busy.value) return
   if (isOn.value && spotify.now?.uri === t.uri) return onPlay() // already on: pause / resume
   if (locked.value) { toast.value = `Låst – hør ferdig (${fmtClock(lockLeft.value)})`; setTimeout(() => (toast.value = ''), 3000); return }
   busy.value = true
@@ -152,7 +152,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); clearTimeout(flipTimer); wind
           <li
             v-for="(t, i) in tracks?.tracks || []"
             :key="t.uri"
-            :class="{ current: spotify.now?.uri === t.uri, clickable: admin.loggedIn && (!locked || spotify.now?.uri === t.uri) }"
+            :class="{ current: spotify.now?.uri === t.uri, clickable: admin.mine && (!locked || spotify.now?.uri === t.uri) }"
             @click="playTrack(t)"
           >
             <span class="n">{{ t.n || i + 1 }}</span>
@@ -172,7 +172,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); clearTimeout(flipTimer); wind
     </button>
 
     <button
-      v-if="admin.loggedIn"
+      v-if="admin.mine"
       class="rplay"
       :class="{ locked: blocked }"
       :disabled="blocked || busy"

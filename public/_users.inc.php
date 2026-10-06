@@ -13,7 +13,7 @@
 const ROOM_SECTIONS = ['reiser', 'boker', 'gitar', 'ovelse', 'japansk', 'lytte', 'gaming', 'kode', 'om'];
 /** What a new user starts with. The listening corner (Spotify) and the projects belong to the owner's room for now. */
 const USER_DEFAULT_SECTIONS = ['reiser' => true, 'boker' => true, 'gitar' => true, 'ovelse' => true, 'japansk' => false, 'lytte' => false, 'gaming' => false, 'kode' => false, 'om' => true];
-const USER_LOCKED_OFF = ['lytte', 'kode'];
+const USER_LOCKED_OFF = []; // (every corner can be had now: each room brings its own Spotify, Steam, jpdb and GitHub)
 const RESERVED_NAMES = ['admin', 'niben', 'api', 'root', 'system', 'support', 'test', 'null', 'undefined'];
 
 // ── schema ────────────────────────────────────────────────
@@ -282,6 +282,28 @@ function users_handle(string $action, bool $post): void {
                 elseif (preg_match('~^\d{17}$~', $v)) $s['steam_id'] = $v;
                 else fail('Bruk den 17-sifrede Steam-ID-en, eller lenken til profilen din (…/profiles/7656…).');
             }
+            // Spotify: the room's own app (developer.spotify.com → Create app). Another app = another login, so drop the old one.
+            if (array_key_exists('spotify_id', $b) || array_key_exists('spotify_secret', $b)) {
+                $id = trim((string)($b['spotify_id'] ?? '')); $sec = trim((string)($b['spotify_secret'] ?? ''));
+                if ($id === '' && $sec === '') { unset($s['spotify_id'], $s['spotify_secret']); }
+                elseif (preg_match('~^[a-f0-9]{32}$~i', $id) && preg_match('~^[a-f0-9]{32}$~i', $sec)) { $s['spotify_id'] = $id; $s['spotify_secret'] = $sec; }
+                else fail('Client ID og Client secret er 32 tegn hver – kopier dem fra Spotify-appen din.');
+                kv_del('refresh_token', 'scopes', 'access_token', 'access_expires', 'cache_albums_v3', 'cache_albums_v4', 'cache_playlists_v3', 'cache_playlists_v4', 'cache_now');
+            }
+            if (array_key_exists('github_user', $b)) {
+                $v = trim((string)$b['github_user']);
+                if (preg_match('~github\.com/([A-Za-z0-9-]+)~', $v, $m)) $v = $m[1];
+                $v = ltrim($v, '@');
+                if ($v === '') unset($s['github_user']);
+                elseif (preg_match('~^[A-Za-z0-9-]{1,39}$~', $v)) $s['github_user'] = $v;
+                else fail('GitHub-navnet ser ikke riktig ut (bare bokstaver, tall og bindestrek).');
+            }
+            if (array_key_exists('lastfm_key', $b)) {
+                $v = trim((string)$b['lastfm_key']);
+                if ($v === '') kv_del('lastfm_key');
+                elseif (preg_match('~^[a-f0-9]{32}$~i', $v)) kv_set('lastfm_key', $v);
+                else fail('Last.fm-nøkkelen er 32 tegn (last.fm/api → «API key»).');
+            }
             room_secrets_save($s);
             $u = user_by_id($uid);
         }
@@ -290,7 +312,10 @@ function users_handle(string $action, bool $post): void {
         out([
             'user' => user_public($u), 'email' => $u['email'],
             'sections' => sections_of($u), 'locked' => $uid === 1 ? [] : USER_LOCKED_OFF,
-            'keys' => ['jpdb' => $cfgJp, 'steam_id' => $s['steam_id'] ?? ($uid === 1 ? 'fra oppsettet' : null), 'steam_key' => !empty($s['steam_key'])],
+            'keys' => ['jpdb' => $cfgJp, 'steam_id' => $s['steam_id'] ?? ($uid === 1 ? 'fra oppsettet' : null), 'steam_key' => !empty($s['steam_key']),
+                'github_user' => $uid === 1 ? gh_user() : ($s['github_user'] ?? null), 'lastfm' => (string)kv_get('lastfm_key') !== '',
+                'spotify_app' => !empty($s['spotify_id']) ? 'own' : (sp_site_config() ? 'site' : null)],
+            'spotify' => ['connected' => (bool)kv_get('refresh_token'), 'redirect' => sp_redirect_uri()],
         ]);
     }
 

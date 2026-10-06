@@ -20,7 +20,7 @@ const emit = defineEmits<{ pick: [id: string] }>()
 const uris = computed(() => (props.kind === 'playlist' ? spotify.playlists : props.kind === 'all' ? [...spotify.albums, ...spotify.playlists] : spotify.albums).map((x) => x.uri))
 // drop an album / playlist tile on a folder to move it there
 const over = ref<string | null>(null)
-const allow = (e: DragEvent, id: string) => { if (admin.loggedIn && drag.item) { e.preventDefault(); over.value = id } }
+const allow = (e: DragEvent, id: string) => { if (admin.mine && drag.item) { e.preventDefault(); over.value = id } }
 async function drop(e: DragEvent, id: string) {
   e.preventDefault()
   const uri = drag.item

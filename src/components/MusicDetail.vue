@@ -28,7 +28,7 @@ const msg = ref<Flash | null>(null)
 // my own playlists: tap the cover to change the picture (Spotify keeps it as the playlist's cover)
 const asAlbum = (): Album => ({ ...props.item, artist: props.item.artist ?? '' })
 const coverFile = ref<HTMLInputElement | null>(null)
-const canChangeCover = computed(() => admin.loggedIn && props.kind === 'playlist' && props.item.editable !== false && spotify.playlists.some((p) => p.uri === props.item.uri))
+const canChangeCover = computed(() => admin.mine && props.kind === 'playlist' && props.item.editable !== false && spotify.playlists.some((p) => p.uri === props.item.uri))
 const coverBusy = ref(false)
 async function changeCover(e: Event) {
   const f = pickedFile(e)
@@ -50,7 +50,7 @@ const hoverT = ref<Track | null>(null)
 // a song for my queue: album tracks don't say which album they're on, so add that
 const qt = (t: Track): Track => (t.album_uri || props.kind !== 'album' ? t : { ...t, album_uri: props.item.uri, album: props.item.name, album_image: props.item.image || props.item.thumb || '', img: props.item.thumb || props.item.image || '' })
 function onKey(e: KeyboardEvent) {
-  if (e.key.toLowerCase() !== 'q' || e.metaKey || e.ctrlKey || e.altKey || !hoverT.value || !admin.loggedIn) return
+  if (e.key.toLowerCase() !== 'q' || e.metaKey || e.ctrlKey || e.altKey || !hoverT.value || !admin.mine) return
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(targetEl(e).tagName)) return
   e.preventDefault()
   enqueue(qt(hoverT.value))
@@ -159,16 +159,16 @@ async function onPlay(track: Track | null = null) {
         </div>
       </div>
       <div class="actions">
-        <button v-if="admin.loggedIn" class="playbtn" :disabled="(locked && !isPlayingHere) || !!busy" :title="isPlayingHere ? (spotify.now?.playing ? 'Pause' : 'Spill videre') : locked ? `Låst ${fmtClock(lockLeft)}` : 'Spill av'" @click="onPlay()">
+        <button v-if="admin.mine" class="playbtn" :disabled="(locked && !isPlayingHere) || !!busy" :title="isPlayingHere ? (spotify.now?.playing ? 'Pause' : 'Spill videre') : locked ? `Låst ${fmtClock(lockLeft)}` : 'Spill av'" @click="onPlay()">
           <template v-if="busy === item.uri">…</template>
           <Pause v-else-if="isPlayingHere && spotify.now?.playing" :size="20" fill="currentColor" />
           <Lock v-else-if="locked && !isPlayingHere" :size="20" />
           <Play v-else :size="20" fill="currentColor" />
         </button>
-        <span v-if="admin.loggedIn && locked && !isPlayingHere" class="lockt">Låst {{ fmtClock(lockLeft) }}</span>
+        <span v-if="admin.mine && locked && !isPlayingHere" class="lockt">Låst {{ fmtClock(lockLeft) }}</span>
         <span v-if="isPlayingHere" class="now-tag">Spilles nå</span>
-        <button v-if="admin.loggedIn && kind === 'album'" class="hbtn" :class="{ on: isSaved(item.uri) }" :title="isSaved(item.uri) ? 'Fjern fra biblioteket' : 'Lagre i biblioteket'" :aria-label="isSaved(item.uri) ? 'Fjern fra biblioteket' : 'Lagre i biblioteket'" @click="toggleAlbumSaved(asAlbum())"><Bookmark :size="22" :fill="isSaved(item.uri) ? 'currentColor' : 'none'" /></button>
-        <button v-if="admin.loggedIn && kind === 'album'" class="qalbum" title="Legg hele albumet sist i køen" @click="enqueueAlbum(item.uri, item.name)"><ListEnd :size="16" />Legg i kø</button>
+        <button v-if="admin.mine && kind === 'album'" class="hbtn" :class="{ on: isSaved(item.uri) }" :title="isSaved(item.uri) ? 'Fjern fra biblioteket' : 'Lagre i biblioteket'" :aria-label="isSaved(item.uri) ? 'Fjern fra biblioteket' : 'Lagre i biblioteket'" @click="toggleAlbumSaved(asAlbum())"><Bookmark :size="22" :fill="isSaved(item.uri) ? 'currentColor' : 'none'" /></button>
+        <button v-if="admin.mine && kind === 'album'" class="qalbum" title="Legg hele albumet sist i køen" @click="enqueueAlbum(item.uri, item.name)"><ListEnd :size="16" />Legg i kø</button>
         <span class="spacer"></span>
         <a v-if="item.url" class="open" :href="item.url" target="_blank" rel="noopener">Åpne i Spotify <ArrowUpRight :size="15" /></a>
       </div>
@@ -183,13 +183,13 @@ async function onPlay(track: Track | null = null) {
       <template v-for="(t, i) in tracks?.tracks || []" :key="t.uri + i">
         <li v-if="kind === 'album' && multiDisc && t.disc && t.disc !== tracks?.tracks[i - 1]?.disc" class="disc">Plate {{ t.disc }}</li>
         <li
-          :class="{ current: spotify.now?.uri === t.uri, clickable: admin.loggedIn && (!locked || spotify.now?.uri === t.uri), withadd: admin.loggedIn }"
-          @click="admin.loggedIn && onPlay(t)"
+          :class="{ current: spotify.now?.uri === t.uri, clickable: admin.mine && (!locked || spotify.now?.uri === t.uri), withadd: admin.mine }"
+          @click="admin.mine && onPlay(t)"
           @contextmenu="rowMenu($event, t)"
           v-on="longPress((e) => rowMenu(e, t))"
           @mouseenter="hoverT = t"
           @mouseleave="hoverT = null"
-          :draggable="admin.loggedIn || undefined"
+          :draggable="admin.mine || undefined"
           @dragstart="startTrackDrag($event, qt(t))"
           @dragend="endDrag"
         >
@@ -201,8 +201,8 @@ async function onPlay(track: Track | null = null) {
             <small v-if="kind === 'playlist' || t.artist !== item.artist">
               <a class="lnk" href="#" @click.stop.prevent="openArtistPage({ id: t.artist_id, name: firstArtist(t.artist) })">{{ t.artist }}</a><template v-if="kind === 'playlist' && t.album_uri"> · <a class="lnk" href="#" title="Åpne albumet" @click.stop.prevent="openAlbumPage(albumOfTrack(t))">{{ t.album }}</a></template>
             </small></span>
-          <button v-if="admin.loggedIn" class="add" title="Spill etterpå – i køen (Q)" aria-label="Spill etterpå" @click.stop="enqueue(qt(t))"><ListEnd :size="15" /></button>
-          <button v-if="admin.loggedIn" class="add" :class="{ on: menuFor === t.uri }" title="Legg i en spilleliste" aria-label="Legg i en spilleliste" @click.stop="menuFor = menuFor === t.uri ? null : t.uri"><CirclePlus :size="18" /></button>
+          <button v-if="admin.mine" class="add" title="Spill etterpå – i køen (Q)" aria-label="Spill etterpå" @click.stop="enqueue(qt(t))"><ListEnd :size="15" /></button>
+          <button v-if="admin.mine" class="add" :class="{ on: menuFor === t.uri }" title="Legg i en spilleliste" aria-label="Legg i en spilleliste" @click.stop="menuFor = menuFor === t.uri ? null : t.uri"><CirclePlus :size="18" /></button>
           <span class="d">{{ busy === t.uri ? '…' : fmtClock((t.ms ?? 0) / 1000) }}</span>
         </li>
         <li v-if="menuFor === t.uri" class="plmenu">

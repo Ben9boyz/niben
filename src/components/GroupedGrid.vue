@@ -44,8 +44,8 @@ const artistSections = computed<Section<T>[]>(() => {
   if (one.length) out.push({ group: { id: 'artist:_en', name: 'Én plate hver' }, items: one, depth: 0, label: 'Én plate hver' })
   return out
 })
-const canDrag = computed(() => admin.loggedIn && grouped.value && !props.flat && viewMode.value !== 'artist') // drag & drop works whenever I'm logged in
-const movable = computed(() => admin.loggedIn && groups.editing) // edit mode: pickers (touch screens), badges, empty folders
+const canDrag = computed(() => admin.mine && grouped.value && !props.flat && viewMode.value !== 'artist') // drag & drop works whenever I'm logged in
+const movable = computed(() => admin.mine && groups.editing) // edit mode: pickers (touch screens), badges, empty folders
 const sections = computed(() => (viewMode.value === 'artist' ? artistSections.value : sectionsOf(props.items, movable.value)))
 const pickers = computed(() => flatGroups())
 
@@ -81,7 +81,7 @@ const allow = (e: DragEvent, id: string) => { if (canDrag.value && drag.item) { 
 </script>
 
 <template>
-  <CoverGrid v-if="plain" :items="items" :selected-uri="selectedUri" :playing-uri="playingUri" :cursor-uri="cursorUri" :draggable="admin.loggedIn" @dragstart="onDragStart" @dragend="endDrag" @pick="emit('pick', $event)" @hover="emit('hover', $event)" />
+  <CoverGrid v-if="plain" :items="items" :selected-uri="selectedUri" :playing-uri="playingUri" :cursor-uri="cursorUri" :draggable="admin.mine" @dragstart="onDragStart" @dragend="endDrag" @pick="emit('pick', $event)" @hover="emit('hover', $event)" />
   <div v-else-if="viewMode === 'mapper'" class="fb" @dragstart="onDragStart" @dragend="endDrag">
     <nav v-if="cur" class="crumbs" aria-label="Mappesti">
       <button @click="openFolder(null)"><ChevronLeft :size="14" aria-hidden="true" />Alle</button>

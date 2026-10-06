@@ -79,7 +79,7 @@ export interface About { bilde?: string | null; tagline?: string; tekst?: string
 /** Whose room this is and which corners of it are switched on. */
 export const SECTION_IDS = ['reiser', 'boker', 'gitar', 'ovelse', 'japansk', 'lytte', 'gaming', 'kode', 'om'] as const
 export type SectionId = (typeof SECTION_IDS)[number]
-export interface RoomProfile { username: string; owner: boolean; mine: boolean; sections: Record<SectionId, boolean> }
+export interface RoomProfile { username: string; owner: boolean; mine: boolean; github?: string; sections: Record<SectionId, boolean> }
 export interface SiteData {
   loaded: boolean
   profile: RoomProfile
@@ -244,13 +244,14 @@ async function load(): Promise<void> {
 
   const handWritten = merged.prosjekter ?? []
   merged.prosjekter = [] // filled from GitHub below
-  state.projectsLoading = state.profile.owner
+  const hasRepos = state.profile.owner || !!state.profile.github
+  state.projectsLoading = hasRepos
   Object.assign(state, merged)
   state.loaded = true
   state.version++
 
   // the GitHub repos arrive after the page is up – the server keeps them for an hour, but never hold the site back
-  if (!state.profile.owner) return // (the projects are my GitHub repos)
+  if (!hasRepos) return // (the projects are the room's GitHub repos)
   fetch('api.php?action=github_repos')
     .then((r) => (r.ok ? (r.json() as Promise<{ repos?: Repo[] }>) : null))
     .then((g) => {

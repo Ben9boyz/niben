@@ -30,7 +30,7 @@ const items = computed((): GridItem[] => {
 const cursorUri = computed(() => { const r = ipodRows.value[room.ipod.active]; return r?.kind === 'playlist' ? r.item.uri : null })
 
 // right-click in the empty space: a new playlist
-function emptyMenu(e: MouseEvent) { if (!admin.loggedIn || e.defaultPrevented || targetEl(e).closest('.cell, input, button, a')) return; showMenu(e, 'Spillelister', playlistsMenu()) }
+function emptyMenu(e: MouseEvent) { if (!admin.mine || e.defaultPrevented || targetEl(e).closest('.cell, input, button, a')) return; showMenu(e, 'Spillelister', playlistsMenu()) }
 function open(it: GridItem) {
   if (room.musicView === 'ipodDock') room.musicView = 'ipod' // lift the iPod up
   room.ipod.playlist = spotify.playlists.find((p) => p.uri === it.uri) ?? null
@@ -57,7 +57,7 @@ function back() {
       <div v-else class="browse" @contextmenu="emptyMenu">
         <div class="stick"><div class="head">
           <b>Spillelister</b>
-          <button v-if="admin.loggedIn" class="newpl" title="Lag en ny spilleliste (eller høyreklikk i tomrommet)" aria-label="Ny spilleliste" @click="promptNewPlaylist"><Plus :size="13" />Ny</button>
+          <button v-if="admin.mine" class="newpl" title="Lag en ny spilleliste (eller høyreklikk i tomrommet)" aria-label="Ny spilleliste" @click="promptNewPlaylist"><Plus :size="13" />Ny</button>
           <input v-if="search" v-model="q" type="search" class="search" placeholder="Søk …" aria-label="Søk i spillelistene" />
         </div>
         <GroupBar />

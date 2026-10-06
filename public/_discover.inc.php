@@ -132,7 +132,7 @@ function dc_handle(string $action, bool $post): void {
     }
     case 'discover_add': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $b = body();
         $p = dc_parse((string)($b['url'] ?? ''));
         if (!$p) fail('Det der ser ikke ut som en Spotify-lenke til et album eller en låt.');
@@ -158,7 +158,7 @@ function dc_handle(string $action, bool $post): void {
     }
     case 'discover_del': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $uri = (string)(body()['uri'] ?? '');
         $picks = json_decode((string)kv_get(DC_PICKS), true) ?: [];
         kv_set(DC_PICKS, json_encode(array_values(array_filter($picks, fn($q) => ($q['uri'] ?? '') !== $uri)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
@@ -167,7 +167,7 @@ function dc_handle(string $action, bool $post): void {
     case 'discover_hide': {
         // hide a suggestion (an album or song): it leaves the list and today's "Anbefalt i dag" gets another one
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $uri = (string)(body()['uri'] ?? '');
         if (!preg_match('~^spotify:(album|track):[A-Za-z0-9]{10,40}$~', $uri)) fail('Ugyldig uri.');
         $hid = dc_hidden();
@@ -188,7 +188,7 @@ function dc_handle(string $action, bool $post): void {
     }
     case 'discover_key': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $k = trim((string)(body()['key'] ?? ''));
         if ($k !== '' && !preg_match('~^[A-Za-z0-9]{20,64}$~', $k)) fail('Nøkkelen ser ikke riktig ut (32 tegn, bokstaver og tall).');
         if ($k === '') kv_del('lastfm_key'); else kv_set('lastfm_key', $k);
@@ -196,7 +196,7 @@ function dc_handle(string $action, bool $post): void {
     }
     case 'discover_refresh': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $r = dc_recs_build();
         if (isset($r['error'])) fail($r['error'], 400);
         kv_set(DC_RECS, json_encode($r, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));

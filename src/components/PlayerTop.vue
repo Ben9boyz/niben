@@ -8,7 +8,7 @@ import { shortcuts } from '../composables/useShortcuts'
 import { ref } from 'vue'
 import { Sun, Moon, LogIn, ArrowUpRight } from 'lucide-vue-next'
 import { useTheme } from '../composables/useTheme'
-import { admin, checkLogin, login, errorMessage } from '../composables/useAdmin'
+import { admin, signedIn, checkLogin, login, errorMessage } from '../composables/useAdmin'
 import { leavePlayer } from '../composables/useShell'
 
 // Top bar of the music player: name, light / dark, and logging in (needed to play).
@@ -45,7 +45,7 @@ function toSite() {
 
     <span class="spacer"></span>
 
-    <div v-if="!admin.loggedIn && admin.checked" class="login-wrap">
+    <div v-if="!signedIn && admin.checked" class="login-wrap">
       <button class="pill glass" @click="showLogin = !showLogin"><LogIn :size="15" />Logg inn</button>
       <form v-if="showLogin" class="login glass" @submit.prevent="doLogin">
         <b>Logg inn for å styre musikken</b>
@@ -54,7 +54,7 @@ function toSite() {
         <button class="btn primary small" :disabled="busy || !pw">{{ busy ? 'Logger inn …' : 'Logg inn' }}</button>
       </form>
     </div>
-    <span v-if="admin.loggedIn" class="icon glass avatar"><AdminAvatar /></span>
+    <span v-if="signedIn" class="icon glass avatar"><AdminAvatar /></span>
     <LangSwitch class="plang" />
     <button class="icon glass" title="Hurtigtaster (?)" aria-label="Hurtigtaster" @click="shortcuts.open = true"><Keyboard :size="17" /></button>
     <button v-if="!inApp" class="icon glass" title="Til niben.no" aria-label="Til niben.no" @click="toSite"><ArrowUpRight :size="17" /></button>

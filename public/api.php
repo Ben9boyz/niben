@@ -397,7 +397,7 @@ try {
         $payload = json_encode([
             'trips' => $trips, 'books' => $books, 'recordings' => $recs, 'songs' => songs_list($pdo), 'guitars' => $gq->fetchAll(),
             'about' => json_decode((string)kv_get('about'), true), 'texts' => (object)(json_decode((string)kv_get('site_texts'), true) ?: []),
-            'profile' => ['username' => $roomUser['username'] ?? 'niben', 'owner' => $room === 1, 'sections' => sections_of($roomUser), 'mine' => viewing_own_room()],
+            'profile' => ['username' => $roomUser['username'] ?? 'niben', 'owner' => $room === 1, 'sections' => sections_of($roomUser), 'mine' => viewing_own_room(), 'github' => gh_user()],
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         // unchanged content: the browser keeps its copy (304, no body)
         $etag = '"' . md5($payload) . '"';
@@ -435,6 +435,7 @@ try {
         }
         session_regenerate_id(true);
         $_SESSION['admin'] = true;
+        $_SESSION['uid'] = 1;
         $_SESSION['expires'] = time() + 60 * 60 * 8;
         vi_mark_me(); // I'm not a visitor
         out(['admin' => true]);

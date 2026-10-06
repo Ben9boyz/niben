@@ -1,8 +1,9 @@
 import { computed, reactive } from 'vue'
 import { reloadData } from './useData'
 
-/** `loggedIn` = I (the owner) am logged in – what the music / site-wide admin buttons hinge on. */
-export const admin = reactive({ checked: false, loggedIn: false })
+/** `loggedIn` = I (the owner) am logged in. `mine` = logged in AND the room on screen is my own – what the music and
+ *  every other "change this room" control hinges on (so a visitor in somebody else's room only sees, never controls). */
+export const admin = reactive({ checked: false, loggedIn: false, mine: false })
 export interface AccountUser { id: number; username: string; owner: boolean }
 /** Any logged-in account (me or a user), and whether the room on screen is theirs. */
 export const account = reactive({ user: null as AccountUser | null, mine: false })
@@ -57,7 +58,7 @@ export async function api<T extends object = Record<string, never>>(action: stri
   let json: ReplyBase = {}
   try { json = (await r.json()) as ReplyBase } catch { /* empty or not JSON */ }
   if (!r.ok || json.error) {
-    if (r.status === 401) admin.loggedIn = false
+    if (r.status === 401) { admin.loggedIn = false; admin.mine = false }
     const err = new ApiError(json.error || `Feil ${r.status}`)
     err.code = json.code
     err.status = r.status
@@ -75,9 +76,11 @@ export async function checkLogin(): Promise<void> {
     admin.loggedIn = !!r.admin
     account.user = r.user ?? null
     account.mine = !!r.room?.mine
+    admin.mine = account.mine
     if (r.admin) { try { localStorage.setItem('niben-me', '1') } catch { /* private mode */ } }
   } catch {
     admin.loggedIn = false
+    admin.mine = false
   }
   admin.checked = true
 }
@@ -85,6 +88,7 @@ export async function checkLogin(): Promise<void> {
 export async function login(password: string): Promise<void> {
   await api('login', { password })
   admin.loggedIn = true
+  admin.mine = true
   try { localStorage.setItem('niben-me', '1') } catch { /* private mode */ } // this browser is me: not counted as a visitor
   await checkLogin()
   refreshSongs()
@@ -105,6 +109,7 @@ export async function registerAccount(username: string, email: string, password:
 export async function logout(): Promise<void> {
   try { await api('logout', {}) } catch { /* already out */ }
   admin.loggedIn = false
+  admin.mine = false
   account.user = null
   location.reload() // (back to my room)
 }

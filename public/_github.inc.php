@@ -10,9 +10,15 @@
 
 const GH_USER = 'Ben9boyz';
 
-function gh_repos(): ?array {
+/** Whose repositories this room shows: mine (config / GH_USER) in the main room, otherwise the GitHub name saved in the room's settings. */
+function gh_user(): string {
     global $config;
-    $user = preg_replace('~[^A-Za-z0-9-]~', '', (string)($config['github_user'] ?? GH_USER));
+    $u = kv_scope() === 1 ? (string)($config['github_user'] ?? GH_USER) : (string)(room_secrets()['github_user'] ?? '');
+    return preg_replace('~[^A-Za-z0-9-]~', '', $u);
+}
+
+function gh_repos(): ?array {
+    $user = gh_user();
     if ($user === '') return null;
     return sp_cached('cache_github_' . $user, 3600, function () use ($user) {
         [$status, $res] = http_req('GET', 'https://api.github.com/users/' . $user . '/repos?per_page=100&sort=pushed&type=owner', [
@@ -43,8 +49,8 @@ function gh_repos(): ?array {
 
 /** Every file in one of my public repositories (path, size), for the code reader. Cached for an hour. */
 function gh_tree(string $repo): ?array {
-    global $config;
-    $user = preg_replace('~[^A-Za-z0-9-]~', '', (string)($config['github_user'] ?? GH_USER));
+    $user = gh_user();
+    if ($user === '') return null;
     return sp_cached('cache_ghtree_' . $user . '_' . $repo, 3600, function () use ($user, $repo) {
         $h = ['User-Agent: niben.no', 'Accept: application/vnd.github+json'];
         [$s, $res] = http_req('GET', "https://api.github.com/repos/$user/$repo", $h);

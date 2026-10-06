@@ -15,15 +15,15 @@ const toggle = () => control(now.value?.playing ? 'pause' : 'resume')
 
 <template>
   <transition name="fade">
-    <div v-if="now?.name || admin.loggedIn" class="mini glass" :class="{ playing: now?.playing }" role="button" tabindex="0" title="Åpne musikken" @click="emit('open')" @keydown.enter="emit('open')">
+    <div v-if="now?.name || admin.mine" class="mini glass" :class="{ playing: now?.playing }" role="button" tabindex="0" title="Åpne musikken" @click="emit('open')" @keydown.enter="emit('open')">
       <img crossorigin="anonymous" v-if="now?.image" :src="now.image" alt="" />
       <div class="txt">
         <b>{{ now?.name || 'Ingenting spilles' }}</b>
         <span>{{ now?.artist }}</span>
       </div>
       <!-- the lock lives here (not on the iPod / the held record) -->
-      <span v-if="admin.loggedIn" class="lk" @click.stop><LockControl tiny /></span>
-      <button v-if="admin.loggedIn && now?.name" class="pp" :aria-label="now.playing ? 'Pause' : 'Spill'" @click.stop="toggle">
+      <span v-if="admin.mine" class="lk" @click.stop><LockControl tiny /></span>
+      <button v-if="admin.mine && now?.name" class="pp" :aria-label="now.playing ? 'Pause' : 'Spill'" @click.stop="toggle">
         <Pause v-if="now.playing" :size="12" fill="currentColor" />
         <Play v-else :size="12" fill="currentColor" />
       </button>

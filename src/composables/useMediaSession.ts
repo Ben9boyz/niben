@@ -37,7 +37,7 @@ function silentWav(): string {
   return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }))
 }
 function syncAnchor(): void {
-  const want = admin.loggedIn && web.status === 'ready' && !!spotify.now?.playing
+  const want = admin.mine && web.status === 'ready' && !!spotify.now?.playing
   if (want) {
     if (!anchor) { anchor = new Audio(silentWav()); anchor.loop = true; anchor.setAttribute('playsinline', ''); anchor.volume = 1 }
     anchor.play().catch(() => {}) // (needs a tap first – the first tap on the page arms it)
@@ -45,23 +45,23 @@ function syncAnchor(): void {
 }
 
 export function useMediaSession(): void {
-  watch(() => [admin.loggedIn, web.status, spotify.now?.playing], syncAnchor, { immediate: true })
+  watch(() => [admin.mine, web.status, spotify.now?.playing], syncAnchor, { immediate: true })
   window.addEventListener('pointerdown', syncAnchor, { passive: true })
   if (ms) {
-    watch(() => [spotify.now?.uri, spotify.now?.name, spotify.now?.image_large, admin.loggedIn], () => {
+    watch(() => [spotify.now?.uri, spotify.now?.name, spotify.now?.image_large, admin.mine], () => {
       const n = spotify.now
-      if (!n?.name || !admin.loggedIn) { ms.metadata = null; return }
+      if (!n?.name || !admin.mine) { ms.metadata = null; return }
       const art = n.image_large || n.image
       ms.metadata = new MediaMetadata({ title: n.name, artist: n.artist || '', album: n.album || '', artwork: art ? [{ src: art, sizes: '640x640', type: 'image/jpeg' }] : [] })
     }, { immediate: true })
     watch(() => [spotify.now?.uri, spotify.now?.playing, spotify.now?.duration_ms], () => {
       const n = spotify.now
-      if (!n?.duration_ms || !admin.loggedIn) return
+      if (!n?.duration_ms || !admin.mine) return
       try { ms.setPositionState({ duration: n.duration_ms / 1000, playbackRate: 1, position: Math.min(n.duration_ms, n.progress_ms || 0) / 1000 }) } catch { /* not supported */ }
     }, { immediate: true })
     watch(() => spotify.now?.playing, (p) => { ms.playbackState = spotify.now?.name ? (p ? 'playing' : 'paused') : 'none' }, { immediate: true })
     const on = (a: MediaSessionAction, f: MediaSessionActionHandler | null): void => { try { ms.setActionHandler(a, f) } catch { /* not supported */ } }
-    watch(() => admin.loggedIn, (yes) => {
+    watch(() => admin.mine, (yes) => {
       on('play', yes ? () => toggle() : null)
       on('pause', yes ? () => toggle() : null)
       on('nexttrack', yes ? () => guarded('next') : null)
@@ -78,7 +78,7 @@ export function useMediaSession(): void {
     if (e.key === '?') { e.preventDefault(); shortcuts.open = !shortcuts.open; return }
     if (e.key === 'Escape' && shortcuts.open) { shortcuts.open = false; return }
     const now = spotify.now
-    if (!admin.loggedIn || !now?.name) return
+    if (!admin.mine || !now?.name) return
     const here = /#\/(lytte|musicplayer)/.test(location.hash) // where the music lives; other pages keep their own keys
     // everywhere: shift + space / shift + arrows
     if (e.shiftKey && e.code === 'Space') { e.preventDefault(); toggle(); return }

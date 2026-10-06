@@ -49,7 +49,7 @@ function onPick(p: PickEvent) {
   if (p.kind === 'turntable' || p.kind.startsWith('tt-')) {
     // the record player: first look at it from above; there the knobs and the tonearm are the buttons
     if (!room.deckView) { room.deckView = true; room.shelfView = false; room.sel.musikk = null; room.musicView = 'vinyl'; return }
-    if (!spotify.now?.name || !admin.loggedIn) return
+    if (!spotify.now?.name || !admin.mine) return
     if (p.kind === 'tt-prev') control('previous')
     else if (p.kind === 'tt-next') control('next')
     else control(spotify.now?.playing ? 'pause' : 'resume') // the start-stop knob, the tonearm, the record itself

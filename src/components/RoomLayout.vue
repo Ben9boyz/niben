@@ -55,7 +55,7 @@ const canHide = computed(() => !mobile.value && !isHome.value && !isFocus.value)
 const hidden = computed(() => canHide.value && room.panelHidden)
 // the little player in the top-right corner (GlobalMini): everywhere in the room except the listening corner while
 // its panel shows the full player. A side panel on the right then moves down below it.
-const miniOn = computed(() => !(mobile.value && isMusic.value) && (!!spotify.now?.name || admin.loggedIn) && shell.value !== 'player' && route.name !== 'admin' && (route.name !== 'lytte' || hidden.value) && (!mobile.value || collapsed.value))
+const miniOn = computed(() => !(mobile.value && isMusic.value) && (!!spotify.now?.name || admin.mine) && shell.value !== 'player' && route.name !== 'admin' && (route.name !== 'lytte' || hidden.value) && (!mobile.value || collapsed.value))
 // phones in the listening corner: no side menus – one tiny switch (Album / Spillelister) on top and ONE action bar at the bottom (ListenDock)
 const listenPhone = computed(() => mobile.value && isMusic.value)
 watch(listenPhone, (v) => document.documentElement.classList.toggle('listen-phone', v), { immediate: true })

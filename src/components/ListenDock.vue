@@ -79,14 +79,14 @@ onBeforeUnmount(() => { window.removeEventListener('touchstart', onTouchStart); 
 
 // ── playing ──
 async function playHeld() {
-  if (!held.value || busy.value || !admin.loggedIn) return
+  if (!held.value || busy.value || !admin.mine) return
   busy.value = true
   const r = isOn.value ? await control(playing.value ? 'pause' : 'resume') : await play(held.value.uri)
   busy.value = false
   if (!r.ok) say(r.error ?? '')
 }
 async function ctl(op: 'next' | 'previous' | 'pause' | 'resume') {
-  if (!admin.loggedIn || busy.value) return
+  if (!admin.mine || busy.value) return
   busy.value = true
   const r = await control(op)
   busy.value = false
@@ -113,7 +113,7 @@ function more(e: MouseEvent) {
         <button class="b arrow" aria-label="Forrige plate" @click="swap(-1)"><ChevronLeft :size="24" /></button>
         <button class="b" :aria-label="room.recordFlipped ? 'Forside' : 'Se låtene'" @click="flip"><RotateCw :size="20" /><span>{{ room.recordFlipped ? 'Forside' : 'Låter' }}</span></button>
         <button class="b arrow" aria-label="Neste plate" @click="swap(1)"><ChevronRight :size="24" /></button>
-        <button v-if="admin.loggedIn" class="b go" :disabled="busy || blocked" :aria-label="isOn && playing ? 'Pause' : 'Spill av'" @click="playHeld">
+        <button v-if="admin.mine" class="b go" :disabled="busy || blocked" :aria-label="isOn && playing ? 'Pause' : 'Spill av'" @click="playHeld">
           <Lock v-if="blocked" :size="20" /><Pause v-else-if="isOn && playing" :size="20" fill="currentColor" /><Play v-else :size="20" fill="currentColor" />
           <span>{{ blocked ? fmtClock(lockLeft) : isOn && playing ? 'Pause' : 'Spill' }}</span>
         </button>
@@ -137,7 +137,7 @@ function more(e: MouseEvent) {
       <!-- from above: the turntable's buttons -->
       <template v-else-if="state === 'deck'">
         <button class="b" aria-label="Tilbake" @click="toTurntable"><Undo2 :size="20" /><span>Tilbake</span></button>
-        <template v-if="admin.loggedIn">
+        <template v-if="admin.mine">
           <button class="b arrow" aria-label="Forrige låt" :disabled="busy" @click="ctl('previous')"><SkipBack :size="22" fill="currentColor" /></button>
           <button class="b go round" :aria-label="playing ? 'Pause' : 'Spill'" :disabled="busy" @click="toggle"><Pause v-if="playing" :size="24" fill="currentColor" /><Play v-else :size="24" fill="currentColor" /></button>
           <button class="b arrow" aria-label="Neste låt" :disabled="busy" @click="ctl('next')"><SkipForward :size="22" fill="currentColor" /></button>

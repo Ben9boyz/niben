@@ -9,7 +9,7 @@ withDefaults(defineProps<{ layout?: 'below' | 'sides' }>(), { layout: 'below' })
 const now = computed(() => spotify.now)
 const locked = computed(() => lockLeft.value > 0)
 const pct = computed(() => (now.value?.duration_ms ? (progressMs.value / now.value?.duration_ms) * 100 : 0))
-const canSeek = computed(() => admin.loggedIn && !!now.value?.duration_ms && !locked.value)
+const canSeek = computed(() => admin.mine && !!now.value?.duration_ms && !locked.value)
 
 async function seek(e: MouseEvent) {
   const dur = now.value?.duration_ms
@@ -23,7 +23,7 @@ async function seek(e: MouseEvent) {
 <template>
   <div v-if="now?.duration_ms" class="pb" :class="layout">
     <span class="t0">{{ fmtClock(progressMs / 1000) }}</span>
-    <div class="bar" :class="{ seekable: canSeek }" :title="admin.loggedIn && locked ? 'Låst – hør ferdig' : undefined" @click="seek"><i :style="{ width: `${pct}%` }"></i></div>
+    <div class="bar" :class="{ seekable: canSeek }" :title="admin.mine && locked ? 'Låst – hør ferdig' : undefined" @click="seek"><i :style="{ width: `${pct}%` }"></i></div>
     <span class="t1">{{ fmtClock(now.duration_ms / 1000) }}</span>
   </div>
 </template>

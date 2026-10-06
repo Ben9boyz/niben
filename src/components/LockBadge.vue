@@ -10,7 +10,7 @@ const locked = computed(() => lockLeft.value > 0)
 </script>
 
 <template>
-  <LockControl v-if="admin.loggedIn" />
+  <LockControl v-if="admin.mine" />
   <span v-else-if="locked" class="lockbtn" title="Ingen bytting – hør ferdig"><Lock :size="12" aria-hidden="true" />{{ fmtClock(lockLeft) }}</span>
 </template>
 

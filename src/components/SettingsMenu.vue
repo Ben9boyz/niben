@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, type Component } from 'vue'
 import { useRoute } from 'vue-router'
-import { Gauge, Settings, Globe, Sun, Moon, Radio, Check, Wind, Keyboard, Box, LayoutList, ShieldCheck, ChevronDown, Search } from 'lucide-vue-next'
+import { Gauge, Settings, Globe, Sun, Moon, Radio, Check, Wind, Keyboard, Box, LayoutList, ShieldCheck, ChevronDown, Search, LogIn, UserPlus } from 'lucide-vue-next'
 import { LANGS } from '../lib/languages'
 import { i18n, setLang } from '../composables/useLang'
 import { useTheme, type ThemeChoice } from '../composables/useTheme'
 import { calm, setCalm } from '../composables/useCalm'
 import { mode as viewMode, toggleMode } from '../composables/useMode'
 import { shortcuts } from '../composables/useShortcuts'
-import { signedIn } from '../composables/useAdmin'
+import { signedIn, login, userLogin, errorMessage } from '../composables/useAdmin'
 import { useData } from '../composables/useData'
 import { gfxUi } from '../composables/useGraphics'
 import { vinyl, setVinyl, setVinylLevel, setVinylMech, setVinylWow } from '../composables/useVinylNoise'
@@ -27,6 +27,20 @@ const root = ref<HTMLElement | null>(null)
 const menuEl = ref<HTMLElement | null>(null)
 const pos = ref<Record<string, string>>({})
 const touch = window.matchMedia('(hover: none)').matches
+// logging in lives here, under the cog: the owner's password alone, or username / e-mail + password for an account
+const loginOpen = ref(false)
+const lgUser = ref('')
+const lgPass = ref('')
+const lgErr = ref('')
+const lgBusy = ref(false)
+async function doLogin() {
+  lgErr.value = ''
+  lgBusy.value = true
+  try {
+    if (lgUser.value.trim()) await userLogin(lgUser.value, lgPass.value)
+    else { await login(lgPass.value); location.reload() }
+  } catch (e) { lgErr.value = errorMessage(e) } finally { lgBusy.value = false }
+}
 
 async function toggle() {
   open.value = !open.value
@@ -78,6 +92,16 @@ const setView = (v: string) => { if (viewMode.value !== v) toggleMode() }
     <transition name="fade">
       <div v-if="open" ref="menuEl" class="smenu glass" role="menu" translate="no" :style="pos" @click.stop>
         <router-link v-if="signedIn" to="/admin" class="row" role="menuitem" @click="close"><ShieldCheck :size="16" aria-hidden="true" /><span class="l"><b>Admin</b><small>Styr siden din</small></span></router-link>
+        <template v-else>
+          <button class="row" role="menuitem" :aria-expanded="loginOpen" @click="loginOpen = !loginOpen"><LogIn :size="16" aria-hidden="true" /><span class="l"><b>Logg inn</b><small>Styr rommet ditt</small></span><ChevronDown :size="14" class="chev" :class="{ up: loginOpen }" aria-hidden="true" /></button>
+          <form v-if="loginOpen" class="lgf" @submit.prevent="doLogin">
+            <input v-model="lgUser" placeholder="Brukernavn eller e-post (tomt = admin)" autocomplete="username" autocapitalize="none" spellcheck="false" />
+            <input v-model="lgPass" type="password" placeholder="Passord" autocomplete="current-password" required />
+            <p v-if="lgErr" class="lge" role="alert">{{ lgErr }}</p>
+            <button class="go" :disabled="lgBusy || !lgPass">{{ lgBusy ? 'Logger inn …' : 'Logg inn' }}</button>
+            <router-link to="/admin" class="reg" @click="close"><UserPlus :size="13" aria-hidden="true" />Ingen konto? Opprett en</router-link>
+          </form>
+        </template>
 
         <div class="grp">
           <span class="cap">Visning</span>
@@ -139,6 +163,15 @@ const setView = (v: string) => { if (viewMode.value !== v) toggleMode() }
 <style>
 .smenu.smenu { position: fixed; z-index: 90; width: 280px; max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain; padding: 8px; border-radius: 18px; background: var(--bg); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3); display: grid; gap: 4px; }
 .smenu .row { display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; padding: 7px 10px; border: 0; border-radius: 11px; background: transparent; color: var(--text); text-align: left; text-decoration: none; cursor: pointer; font-family: var(--font); }
+.smenu .chev { margin-left: auto; opacity: 0.6; transition: transform 0.2s; }
+.smenu .chev.up { transform: rotate(180deg); }
+.smenu .lgf { display: grid; gap: 7px; padding: 4px 10px 10px; }
+.smenu .lgf input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--glass-border); border-radius: 10px; background: var(--accent-soft); color: var(--text); font: inherit; font-size: 0.86rem; }
+.smenu .lgf .go { padding: 8px 10px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.smenu .lgf .go:disabled { opacity: 0.55; cursor: default; }
+.smenu .lgf .lge { margin: 0; color: #e0705f; font-size: 0.8rem; }
+.smenu .lgf .reg { display: inline-flex; align-items: center; gap: 5px; justify-self: start; color: var(--text-3); font-size: 0.78rem; text-decoration: none; }
+.smenu .lgf .reg:hover { color: var(--text); }
 .smenu .row:hover { background: var(--accent-soft); }
 .smenu .row:focus { outline: none; }
 .smenu .row:focus-visible, .smenu .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }

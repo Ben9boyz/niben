@@ -12,13 +12,22 @@
 const SP_LOCK_SECONDS = 600;
 const SP_SCOPES = 'user-library-read playlist-read-private playlist-read-collaborative user-read-currently-playing user-read-playback-state user-modify-playback-state streaming user-read-email user-read-private user-library-modify playlist-modify-private playlist-modify-public user-read-recently-played user-top-read ugc-image-upload';
 
-function sp_config(): ?array {
+/** The Spotify app this room connects through: its own (Client ID + secret saved in its settings, so it is not held to the
+ *  site app's 25-user limit) or else the site's (_spotify.php). */
+function sp_site_config(): ?array {
     static $c = false;
     if ($c === false) {
         $f = __DIR__ . '/_spotify.php';
         $c = is_file($f) ? require $f : null;
     }
     return $c;
+}
+function sp_own_config(): ?array {
+    $s = function_exists('room_secrets') ? room_secrets() : [];
+    return !empty($s['spotify_id']) && !empty($s['spotify_secret']) ? ['client_id' => $s['spotify_id'], 'client_secret' => $s['spotify_secret']] : null;
+}
+function sp_config(): ?array {
+    return sp_own_config() ?? sp_site_config();
 }
 
 function sp_redirect_uri(): string {
@@ -394,6 +403,7 @@ function sp_lock_seconds(): int { $v = kv_get('lock_seconds'); return $v === nul
 
 // ── actions ───────────────────────────────────────────────
 function sp_handle(string $action, bool $post): void {
+    if ($action === 'spotify_callback') kv_scope(session_uid() ?: 1); // (a plain redirect: no room cookie rules here)
     $c = sp_config();
     if (!$c) out(['connected' => false, 'configured' => false]);
     sp_schema();
@@ -428,7 +438,7 @@ function sp_handle(string $action, bool $post): void {
         if (!in_array($type, ['album', 'playlist'], true) || !preg_match('~^[A-Za-z0-9]{10,40}$~', $id)) fail('Ugyldig forespørsel.');
         // visitors: only what's in my library (any other id would cost a call to Spotify and a cache row);
         // the admin also opens albums/playlists found by search
-        if (!is_admin()) {
+        if (!viewing_own_room()) {
             $mine = array_column($type === 'album' ? (sp_albums() ?? []) : (sp_playlists() ?? []), 'id');
             $ctx = (string)(sp_now()['context'] ?? ''); // and whatever is playing right now
             if ($ctx !== '') $mine[] = substr($ctx, strrpos($ctx, ':') + 1);
@@ -441,13 +451,13 @@ function sp_handle(string $action, bool $post): void {
         $id = (string)($_GET['id'] ?? '');
         if (!preg_match('~^[A-Za-z0-9]{10,40}$~', $id)) fail('Ugyldig forespørsel.');
         // visitors: only the song that is playing right now (anything else would cost calls to Spotify / Deezer)
-        if (!is_admin() && (string)(sp_now()['uri'] ?? '') !== 'spotify:track:' . $id) out(['bpm' => 0]);
+        if (!viewing_own_room() && (string)(sp_now()['uri'] ?? '') !== 'spotify:track:' . $id) out(['bpm' => 0]);
         $t = sp_tempo($id);
         out(['bpm' => (float)($t['bpm'] ?? 0)]);
     }
 
     case 'spotify_artist': {
-        if (!is_admin()) fail('Logg inn for å åpne artister.', 401);
+        if (!viewing_own_room()) fail('Logg inn for å åpne artister.', 401);
         $r = sp_artist((string)($_GET['id'] ?? ''), trim((string)($_GET['name'] ?? '')));
         if (!$r) fail('Fant ikke artisten.', 404);
         out($r);
@@ -455,7 +465,7 @@ function sp_handle(string $action, bool $post): void {
 
     case 'spotify_login': {
         // reached by navigating the browser here, so no custom header – session + state protect it
-        if (!is_admin()) fail('Du må logge inn som admin først.', 401);
+        if (!viewing_own_room()) fail('Logg inn i ditt eget rom først.', 401);
         $state = bin2hex(random_bytes(16));
         $_SESSION['sp_state'] = $state;
         header('Content-Type: text/html; charset=utf-8');
@@ -471,7 +481,7 @@ function sp_handle(string $action, bool $post): void {
 
     case 'spotify_callback': {
         header('Content-Type: text/html; charset=utf-8');
-        $ok = is_admin()
+        $ok = session_uid() > 0
             && !empty($_GET['code'])
             && !empty($_SESSION['sp_state'])
             && hash_equals($_SESSION['sp_state'], (string)($_GET['state'] ?? ''));
@@ -490,14 +500,14 @@ function sp_handle(string $action, bool $post): void {
 
     case 'spotify_disconnect': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         kv_del('refresh_token', 'scopes', 'access_token', 'access_expires', 'cache_albums_v3', 'cache_playlists_v3', 'cache_now');
         out(['connected' => false]);
     }
 
     case 'spotify_refresh': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         kv_del('cache_albums_v3', 'cache_playlists_v3', 'cache_now');
         out(['ok' => true]);
     }
@@ -505,7 +515,7 @@ function sp_handle(string $action, bool $post): void {
     case 'spotify_lock': {
         // change the lock length for the next play. A running lock can't be changed or lifted.
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $lock = sp_lock_until();
         if ($lock > time()) {
             out(['error' => 'Låsen er på – den kan endres om ' . ceil(($lock - time()) / 60) . ' min.', 'lock_until' => $lock, 'lock_seconds' => sp_lock_seconds(), 'server_time' => time()], 423);
@@ -520,7 +530,7 @@ function sp_handle(string $action, bool $post): void {
         // pause / resume / seek / next / previous on whatever device is playing (admin).
         // Pausing always works; seeking and skipping are locked like switching.
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $op = (string)(body()['op'] ?? '');
         $lock = sp_lock_until();
         if (in_array($op, ['seek', 'next', 'previous'], true) && $lock > time()) out(['error' => 'Låst – hør ferdig', 'lock_until' => $lock, 'server_time' => time()], 423);
@@ -552,7 +562,7 @@ function sp_handle(string $action, bool $post): void {
     case 'spotify_token': {
         // short-lived access token for the in-browser player (Web Playback SDK) – admin only
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $tok = sp_access_token();
         if (!$tok) fail('Spotify er ikke koblet til.', 401);
         $scopes = explode(' ', (string)kv_get('scopes'));
@@ -565,7 +575,7 @@ function sp_handle(string $action, bool $post): void {
 
     case 'spotify_search': {
         // search all of Spotify for albums and tracks (admin only – it spends the app's request quota)
-        if (!is_admin()) fail('Logg inn for å søke i hele Spotify.', 401);
+        if (!viewing_own_room()) fail('Logg inn for å søke i hele Spotify.', 401);
         $q = trim((string)($_GET['q'] ?? ''));
         if (mb_strlen($q) < 2) out(['albums' => [], 'tracks' => [], 'playlists' => []]);
         [$s, $j] = sp_api('GET', '/search?type=album,track,playlist,artist&limit=10&q=' . rawurlencode(mb_substr($q, 0, 100)));
@@ -615,7 +625,7 @@ function sp_handle(string $action, bool $post): void {
     case 'spotify_save': {
         // put an album in the library (it then shows up on the record shelf)
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $uri = (string)(body()['uri'] ?? '');
         if (!preg_match('~^spotify:album:([A-Za-z0-9]{10,40})$~', $uri, $m)) fail('Ugyldig album.');
         if (!sp_has_scope('user-library-modify')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
@@ -632,7 +642,7 @@ function sp_handle(string $action, bool $post): void {
     case 'spotify_unsave': {
         // take an album out of the library again
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $uri = (string)(body()['uri'] ?? '');
         if (!preg_match('~^spotify:album:([A-Za-z0-9]{10,40})$~', $uri, $m)) fail('Ugyldig album.');
         if (!sp_has_scope('user-library-modify')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
@@ -647,7 +657,7 @@ function sp_handle(string $action, bool $post): void {
     case 'spotify_follow': {
         // save someone else's playlist to my library (it then shows up among my playlists / on the iPod)
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $pl = (string)(body()['playlist'] ?? '');
         if (!preg_match('~^spotify:playlist:([A-Za-z0-9]{10,40})$~', $pl, $m)) fail('Ugyldig spilleliste.');
         if (!sp_has_scope('playlist-modify-public') && !sp_has_scope('playlist-modify-private')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
@@ -662,7 +672,7 @@ function sp_handle(string $action, bool $post): void {
     case 'spotify_playlist_create': {
         // a new, empty playlist of my own (private)
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $name = mb_substr(trim((string)(body()['name'] ?? '')), 0, 100);
         if ($name === '') fail('Gi spillelisten et navn.');
         if (!sp_has_scope('playlist-modify-private') && !sp_has_scope('playlist-modify-public')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
@@ -682,7 +692,7 @@ function sp_handle(string $action, bool $post): void {
         // my own picture on one of my playlists (multipart: playlist, file). Spotify wants a square JPEG under 256 kB as base64, and a
         // login that includes "ugc-image-upload" – so the picture is cropped and squeezed here first.
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $pl = (string)($_POST['playlist'] ?? '');
         if (!preg_match('~^spotify:playlist:([A-Za-z0-9]{10,40})$~', $pl, $m)) fail('Ugyldig spilleliste.');
         if (!sp_has_scope('ugc-image-upload')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
@@ -713,7 +723,7 @@ function sp_handle(string $action, bool $post): void {
     case 'spotify_playlist_delete': {
         // "delete" a playlist = stop following it (Spotify never really deletes them – it only takes it out of my library)
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $pl = (string)(body()['playlist'] ?? '');
         if (!preg_match('~^spotify:playlist:([A-Za-z0-9]{10,40})$~', $pl, $m)) fail('Ugyldig spilleliste.');
         if (!sp_has_scope('playlist-modify-public') && !sp_has_scope('playlist-modify-private')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
@@ -731,7 +741,7 @@ function sp_handle(string $action, bool $post): void {
     case 'spotify_playlist_add': {
         // add a song to one of my playlists
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $pl = (string)(body()['playlist'] ?? '');
         $track = (string)(body()['uri'] ?? '');
         if (!preg_match('~^spotify:playlist:([A-Za-z0-9]{10,40})$~', $pl, $m)) fail('Ugyldig spilleliste.');
@@ -752,7 +762,7 @@ function sp_handle(string $action, bool $post): void {
 
     case 'spotify_play': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $lock = sp_lock_until();
         if ($lock > time()) {
             out(['error' => 'Låst – du kan bytte om ' . ceil(($lock - time()) / 60) . ' min.', 'lock_until' => $lock, 'server_time' => time()], 423);

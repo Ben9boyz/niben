@@ -21,7 +21,7 @@ async function copy(text: string, done: string): Promise<void> {
 export interface MenuItem { uri: string; name: string; sub?: string | null; image?: string | null; artist_id?: string | null; onHide?: () => void }
 
 export async function playItem(it: { uri: string; name: string }): Promise<void> {
-  if (!admin.loggedIn) return
+  if (!admin.mine) return
   const here = spotify.now?.context === it.uri
   if (here) { const r = await control(spotify.now?.playing ? 'pause' : 'resume'); if (!r.ok) say({ error: true, text: r.error ?? 'Noe gikk galt.' }); return }
   if (lockLeft.value > 0) return say({ error: true, text: `Låst – hør ferdig (${fmtClock(lockLeft.value)} igjen)` })
@@ -33,7 +33,7 @@ export async function playItem(it: { uri: string; name: string }): Promise<void>
 export const promptNewPlaylist = askNewPlaylist
 /** Right-click in the empty space of the playlists: make a new one. */
 export function playlistsMenu(): MenuEntry[] {
-  return admin.loggedIn ? [{ label: 'Ny spilleliste …', icon: ListPlus, run: promptNewPlaylist }] : []
+  return admin.mine ? [{ label: 'Ny spilleliste …', icon: ListPlus, run: promptNewPlaylist }] : []
 }
 
 /** Menu for an album or playlist tile. `it`: { uri, name, sub?, image? }; `open` opens it. */
@@ -42,7 +42,7 @@ export function itemMenu(it: MenuItem, open: () => void): MenuEntry[] {
   const here = spotify.now?.context === it.uri
   const own = isAlbum ? spotify.albums.some((a) => a.uri === it.uri) : spotify.playlists.some((p) => p.uri === it.uri)
   const items: MenuEntry[] = []
-  if (admin.loggedIn) {
+  if (admin.mine) {
     items.push({ label: here && spotify.now?.playing ? 'Pause' : 'Spill', icon: here && spotify.now?.playing ? Pause : Play, run: () => playItem(it) })
     items.push({ label: 'Legg i køen', icon: ListEnd, run: () => enqueueAlbum(it.uri, it.name) })
     if (it.onHide) items.push({ label: 'Skjul dette forslaget', icon: EyeOff, run: it.onHide })
@@ -50,15 +50,15 @@ export function itemMenu(it: MenuItem, open: () => void): MenuEntry[] {
   items.push({ label: isAlbum ? 'Åpne albumet' : 'Åpne spillelisten', icon: FolderOpen, run: open })
   if (isAlbum && it.sub) items.push({ label: 'Gå til artist', icon: User, run: () => openArtistPage({ id: it.artist_id, name: firstArtist(it.sub) }) })
   // like an album = save it in the library (right-click, no heart on the tile)
-  if (admin.loggedIn && isAlbum) {
+  if (admin.mine && isAlbum) {
     const saved = isSaved(it.uri)
     items.push({ label: saved ? 'Fjern fra biblioteket' : 'Lagre i biblioteket', icon: saved ? HeartOff : Heart, run: () => toggleAlbumSaved({ uri: it.uri, name: it.name, artist: it.sub ?? '', image: it.image, image_large: it.image, thumb: it.image }) })
   }
-  if (admin.loggedIn && !isAlbum && own) {
+  if (admin.mine && !isAlbum && own) {
     items.push({ sep: true })
     items.push({ label: 'Slett spillelisten', icon: Trash2, run: () => { if (window.confirm(`Slette «${it.name}»? Den tas ut av biblioteket ditt på Spotify.`)) deletePlaylist(it.uri, it.name) } })
   }
-  if (admin.loggedIn && own && groups.on && groups.loaded) {
+  if (admin.mine && own && groups.on && groups.loaded) {
     items.push({ sep: true })
     items.push({ label: 'Flytt til mappe', icon: FolderInput, sub: flatGroups().map((g) => ({ label: `${g.depth ? '↳ ' : ''}${g.name}`, run: async () => { const r = await moveTo(it.uri, g.id); if (!r.ok) say({ error: true, text: r.error ?? 'Noe gikk galt.' }) } })) })
   }
@@ -72,7 +72,7 @@ export function itemMenu(it: MenuItem, open: () => void): MenuEntry[] {
 export function trackMenu(t: Track, { onPlay, albumUri, playlists = true }: { onPlay?: () => void; albumUri?: string; playlists?: boolean } = {}): MenuEntry[] {
   const items: MenuEntry[] = []
   const album = t.album_uri ? albumOfTrack(t) : null
-  if (admin.loggedIn) {
+  if (admin.mine) {
     items.push({ label: spotify.now?.uri === t.uri && spotify.now?.playing ? 'Pause' : 'Spill', icon: spotify.now?.uri === t.uri && spotify.now?.playing ? Pause : Play, run: onPlay })
     items.push({ label: 'Spill etterpå (legg i køen)', icon: ListEnd, run: () => enqueue(t) })
     if (playlists) {

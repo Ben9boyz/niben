@@ -130,7 +130,7 @@ const inDays = (t: Trip) => {
         <img v-if="dailyRec.thumb || dailyRec.image" :src="dailyRec.thumb || dailyRec.image || undefined" alt="" class="art" crossorigin="anonymous" />
         <span class="txt"><small class="lbl">Anbefalt i dag</small><b>{{ dailyRec.name }}</b><small>{{ dailyRec.artist }}<template v-if="dailyRec.why"> · {{ dailyRec.why }}</template></small></span>
       </button>
-      <button v-if="admin.loggedIn" class="hide" title="Skjul dette forslaget" aria-label="Skjul dette forslaget" @click="hideRec(dailyRec.uri).then(() => loadDaily(true))">✕</button>
+      <button v-if="admin.mine" class="hide" title="Skjul dette forslaget" aria-label="Skjul dette forslaget" @click="hideRec(dailyRec.uri).then(() => loadDaily(true))">✕</button>
       </div>
     </section>
 

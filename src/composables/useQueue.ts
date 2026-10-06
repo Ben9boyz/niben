@@ -31,7 +31,7 @@ let sending = false
 const slim = (t: Partial<Track> & { uri: string }): QueueItem => ({ uri: t.uri, name: t.name || '', artist: t.artist || '', img: t.img || t.album_image || '', ms: t.ms || 0, album_uri: t.album_uri || null, album: t.album || '', album_image: t.album_image || t.img || '', no: t.no ?? t.n ?? null, disc: t.disc ?? null })
 
 export async function loadMyQueue(): Promise<void> {
-  if (!CUSTOM_QUEUE || !admin.loggedIn) return
+  if (!CUSTOM_QUEUE || !admin.mine) return
   try {
     const j = await api<{ items?: QueueItem[] }>('myqueue_get')
     // what I'm editing right now wins over a slow answer
@@ -139,7 +139,7 @@ async function sendNext(): Promise<void> {
 
 function drive(): void {
   const n = spotify.now
-  if (!admin.loggedIn || !n?.uri) return
+  if (!admin.mine || !n?.uri) return
   const s = myQueue.sent
   if (s) {
     // it has started playing → it leaves my list
@@ -159,7 +159,7 @@ function drive(): void {
 
 /** Start watching (once): called when I'm logged in and the page runs. */
 export function startQueueDriver(): void {
-  if (!CUSTOM_QUEUE || started || !admin.loggedIn) return
+  if (!CUSTOM_QUEUE || started || !admin.mine) return
   started = true
   void loadMyQueue()
   watch(() => spotify.tick, drive)
@@ -172,4 +172,4 @@ export function startQueueDriver(): void {
   window.addEventListener('pagehide', () => { if (spotify.now?.playing && myQueue.items.length) void sendNext() })
 }
 
-watch(() => admin.loggedIn, (v) => { if (v) startQueueDriver(); else { myQueue.items = []; myQueue.sent = null } }, { immediate: false })
+watch(() => admin.mine, (v) => { if (v) startQueueDriver(); else { myQueue.items = []; myQueue.sent = null } }, { immediate: false })

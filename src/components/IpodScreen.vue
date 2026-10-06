@@ -42,7 +42,7 @@ const rows = computed<Row[]>(() => {
   }
   if (view.value === 'playlist') {
     const r: Row[] = []
-    if (admin.loggedIn) {
+    if (admin.mine) {
       const here = now.value?.context === playlist.value?.uri
       r.push({ kind: 'playall', label: here ? (now.value?.playing ? 'Pause' : 'Spill videre') : locked.value ? `Låst ${fmtClock(lockLeft.value)}` : 'Spill av lista' })
     }
@@ -71,7 +71,7 @@ async function open(row: Row | undefined) {
     return
   }
   if (row.kind === 'playall' || row.kind === 'track') {
-    if (!admin.loggedIn) return
+    if (!admin.mine) return
     // what's already playing can be paused / resumed even while locked
     const pl = playlist.value
     if (!pl) return
@@ -88,7 +88,7 @@ async function open(row: Row | undefined) {
 
 // the click wheel: shuffle (top), previous / next track, play / pause (bottom)
 async function wheel(op: 'shuffle' | 'toggle' | 'previous' | 'next') {
-  if (!admin.loggedIn) { toast.value = 'Logg inn for å styre musikken'; setTimeout(() => (toast.value = ''), 2200); return }
+  if (!admin.mine) { toast.value = 'Logg inn for å styre musikken'; setTimeout(() => (toast.value = ''), 2200); return }
   const r = op === 'shuffle'
     ? await setShuffle(!spotify.now?.shuffle)
     : await control(op === 'toggle' ? (spotify.now?.playing ? 'pause' : 'resume') : op)
@@ -162,7 +162,7 @@ onBeforeUnmount(() => {
         v-for="(r, i) in rows"
         :key="r.kind + itemUri(r) + i"
         class="row"
-        :class="{ on: i === active, dim: (r.kind === 'playall' && locked && now?.context !== playlist?.uri) || (r.kind === 'track' && (!admin.loggedIn || (locked && now?.uri !== r.item.uri))) }"
+        :class="{ on: i === active, dim: (r.kind === 'playall' && locked && now?.context !== playlist?.uri) || (r.kind === 'track' && (!admin.mine || (locked && now?.uri !== r.item.uri))) }"
         @click="active = i; open(r)"
         @mouseenter="active = i"
       >
