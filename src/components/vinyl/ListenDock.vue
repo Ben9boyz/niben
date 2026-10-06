@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
-import { Ellipsis, ChevronLeft, ChevronRight, ArrowUpFromLine, Library, ScanEye, Smartphone, SkipBack, SkipForward, Play, Pause, RotateCw, X, Lock, Undo2 } from 'lucide-vue-next'
+import { Ellipsis, ChevronLeft, ChevronRight, Library, ScanEye, Smartphone, SkipBack, SkipForward, Play, Pause, RotateCw, X, Lock, Undo2 } from 'lucide-vue-next'
 import { room } from '@/composables/room/useRoom'
 import { shelfAlbums } from '@/composables/music/useGroups'
 import { spotify, lockLeft, play, control, findAlbum, fmtClock } from '@/composables/music/useSpotify'
@@ -19,7 +19,6 @@ const say = (t: string) => { toast.value = t; setTimeout(() => (toast.value = ''
 
 const held = computed(() => (room.sel.musikk?.kind === 'album' ? findAlbum(room.sel.musikk.uri) : null))
 const shelfCount = computed(() => Math.min(shelfAlbums.value.length, 150))
-const peeked = computed(() => (room.shelfView && !room.sel.musikk ? shelfAlbums.value[room.peekIndex] : null))
 const atIpod = computed(() => room.musicView === 'ipod')
 const state = computed(() => (held.value ? 'held' : room.shelfView ? 'shelf' : atIpod.value ? 'ipod' : room.deckView ? 'deck' : 'base'))
 
@@ -35,13 +34,6 @@ const toDeck = () => { room.shelfView = false; room.sel.musikk = null; room.musi
 const toIpod = () => { room.deckView = false; room.shelfView = false; room.sel.musikk = null; room.musicView = 'ipod' }
 const putBack = () => { room.sel.musikk = null; room.shelfView = false; room.recordFlipped = false } // (phones: back up to the turntable)
 const flip = () => { room.recordFlipped = !room.recordFlipped }
-function browse(d: number) {
-  const n = shelfCount.value
-  if (n) room.peekIndex = (room.peekIndex + d + n) % n
-}
-function takeOut() {
-  if (peeked.value) room.sel.musikk = { kind: 'album', uri: peeked.value.uri, t: Date.now() }
-}
 // a record in hand: ‹ › puts it back and takes its neighbour – flicking through the shelf with every record on the "screen"
 // (cover, name, play, turn over), the way "Ta ut" shows it
 function swap(d: number) {
@@ -59,7 +51,7 @@ function swap(d: number) {
 let sx = 0, sy = 0, sOn = false
 function onTouchStart(e: TouchEvent) {
   const p = e.touches[0]
-  sOn = !!p && e.touches.length === 1 && !targetEl(e).closest('.ld, .dock, .rback, .msw, .tour') && (state.value === 'held' || state.value === 'shelf')
+  sOn = !!p && e.touches.length === 1 && !targetEl(e).closest('.ld, .dock, .rback, .msw, .tour') && state.value === 'held'
   if (sOn && p) { sx = p.clientX; sy = p.clientY }
 }
 function onTouchEnd(e: TouchEvent) {
@@ -70,8 +62,7 @@ function onTouchEnd(e: TouchEvent) {
   const dx = t.clientX - sx, dy = t.clientY - sy
   if (Math.abs(dx) < 56 || Math.abs(dy) > Math.abs(dx) * 0.6) return
   const d = dx < 0 ? 1 : -1
-  if (state.value === 'held') swap(d)
-  else browse(d)
+  swap(d)
 }
 onMounted(() => { window.addEventListener('touchstart', onTouchStart, { passive: true }); window.addEventListener('touchend', onTouchEnd, { passive: true }) })
 onBeforeUnmount(() => { window.removeEventListener('touchstart', onTouchStart); window.removeEventListener('touchend', onTouchEnd) })
@@ -121,10 +112,7 @@ function more(e: MouseEvent) {
       <!-- in front of the shelf: browse -->
       <template v-else-if="state === 'shelf'">
         <button class="b compact" aria-label="Opp til platespilleren" @click="toTurntable"><Undo2 :size="20" /><span>Opp</span></button>
-        <button class="b arrow" aria-label="Forrige album" @click="browse(-1)"><ChevronLeft :size="26" /></button>
-        <div class="pk"><b>{{ peeked?.name || 'Hylla' }}</b><small v-if="peeked">{{ room.peekIndex + 1 }}/{{ shelfCount }}</small></div>
-        <button class="b arrow" aria-label="Neste album" @click="browse(1)"><ChevronRight :size="26" /></button>
-        <button class="b go compact" :disabled="!peeked" aria-label="Ta ut platen" @click="takeOut"><ArrowUpFromLine :size="20" /><span>Ta ut</span></button>
+        <div class="pk wide"><b>Hylla</b><small>Trykk på en plate</small></div>
       </template>
 
       <!-- at the iPod (it is closed with the X on its screen) -->
@@ -167,6 +155,7 @@ function more(e: MouseEvent) {
 .b.go:disabled { background: var(--glass-border); color: var(--text-3); }
 .b.round { width: 52px; height: 52px; padding: 0; }
 .pk { display: grid; justify-items: center; min-width: 0; width: clamp(64px, 22vw, 110px); padding: 0 2px; text-align: center; line-height: 1.15; }
+.pk.wide { width: auto; padding: 0 12px; }
 .pk b { max-width: 100%; font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pk small { font-size: 0.66rem; color: var(--text-3); }
 .more { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 0; border-radius: 999px; color: var(--text); font: 600 0.8rem/1 inherit; cursor: pointer; }

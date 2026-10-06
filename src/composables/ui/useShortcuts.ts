@@ -20,8 +20,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ['/', 'Søk i musikken'],
   ] },
   { title: 'Plateplata i 3D-rommet', keys: [
-    ['← / →', 'Bla i plate-hylla'],
-    ['Enter  eller  ↑', 'Ta ut platen'],
+    ['← / →', 'Legg platen tilbake og ta naboen'],
     ['P  eller  Enter', 'Sett på platen du holder (fra første låt)'],
     ['F', 'Snu platen – se låtene'],
     ['Esc', 'Snu tilbake / legg platen tilbake / forlat hylla'],

@@ -35,7 +35,6 @@ let api: ReturnType<typeof createRoom> | undefined
 
 const ROUTES: Record<string, string> = { hjem: '/', japansk: '/japansk', gaming: '/gaming', lytte: '/lytte', ovelse: '/ovelse', gitar: '/gitar', boker: '/boker', reiser: '/reiser', kode: '/kode', om: '/om' }
 
-let nextPeek: number | null = null // the record clicked on the way down to the shelf (pulled out first)
 function onPick(p: PickEvent) {
   if (p.kind === 'station') { const to = ROUTES[p.station]; if (to) router.push(to); return }
   if (p.kind === 'stackrecord') {
@@ -61,17 +60,14 @@ function onPick(p: PickEvent) {
   else if (p.kind === 'clock') toggleTimer()
   else if (p.kind === 'album') {
     room.musicView = 'vinyl'
-    const take = () => { room.sel.musikk = { kind: 'album', uri: p.uri ?? '', t: Date.now() } }
+    const take = () => { room.sel.musikk = { kind: 'album', uri: p.uri ?? '', t: Date.now() }; const k = shelfAlbums.value.findIndex((a) => a.uri === p.uri); if (k >= 0) room.peekIndex = k }
     // the record in your hands: turn it over (track list on the back)
     if (room.sel.musikk?.uri === p.uri) { room.recordFlipped = !room.recordFlipped; return }
     // the record that's playing (by the turntable): pick it up
     if (!room.shelfView && p.uri === spotify.now?.context) { take(); return }
-    const i = shelfAlbums.value.findIndex((a) => a.uri === p.uri)
-    // from the turntable view, a click on a record takes you down to the shelf with that record pulled out
-    if (!room.shelfView) { nextPeek = i >= 0 ? i : null; room.sel.musikk = null; room.shelfView = true; return }
-    // at the shelf: click a record to pull it out, click the pulled-out one to take it
-    if (room.sel.musikk || i === room.peekIndex) take()
-    else if (i >= 0) room.peekIndex = i
+    // a click on a record takes it all the way out at once and holds it up (from the turntable view: down to the shelf first)
+    if (!room.shelfView) { room.sel.musikk = null; room.shelfView = true }
+    take()
   } else if (p.kind === 'shelf') {
     // the sideboard itself: go down to the shelf and browse
     if (!room.shelfView) { room.musicView = 'vinyl'; room.sel.musikk = null; room.shelfView = true }
@@ -204,8 +200,7 @@ watch(() => [room.shelfQ, spotify.albums, route.name], () => {
 // sideboard itself
 watch(() => room.shelfView, (on) => {
   const n = Math.min(shelfAlbums.value.length, 150)
-  if (on && n) room.peekIndex = nextPeek ?? Math.floor(Math.random() * n)
-  nextPeek = null
+  if (on && n && !room.sel.musikk) room.peekIndex = Math.floor(Math.random() * n) // (phones take this one out at once; a record already in hand stays)
 })
 // fetch the track list as soon as a record is pulled out or taken, so it's there when you turn it over
 watch(() => [room.shelfView && shelfAlbums.value[room.peekIndex]?.uri, room.sel.musikk?.uri], (uris) => {
@@ -220,7 +215,6 @@ watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room
     pose: !here ? null : room.musicView.startsWith('ipod') ? 'ipod' : room.shelfView ? 'shelf' : room.deckView ? 'deck' : 'top',
     deck: here && room.deckView && !room.shelfView && !room.musicView.startsWith('ipod'),
     flip: room.recordFlipped,
-    peek: here && room.shelfView && !room.sel.musikk && room.musicView === 'vinyl' ? shelfAlbums.value[room.peekIndex]?.uri || null : null,
   })
 })
 // started from this page: the side panel slides away and the camera settles on what's playing –

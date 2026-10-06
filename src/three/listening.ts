@@ -359,7 +359,6 @@ export function buildListeningCorner() {
   let dailyUri: string | null = null // the record of the day: always sticks out a little from the shelf
   let selectedUri: string | null = null
   let playingUri: string | null = null
-  let peekUri: string | null = null // browsing the shelf: this record is pulled out, cover to the front
   let playing = false
   let press = 0 // 0..1: the iPod dips a hair when a wheel button is pressed
   let flipSel = false // the held-up record shows its back (the track list)
@@ -507,14 +506,14 @@ export function buildListeningCorner() {
     group.getWorldQuaternion(groupQ).invert()
 
     // records that should be off the shelf get a loose mesh; the rest stay instanced
-    for (const uri of [selectedUri, playingUri, peekUri]) {
+    for (const uri of [selectedUri, playingUri]) {
       if (!uri) continue
       const r = recordFor(uri)
       if (r && !loose.has(uri)) loose.set(uri, makeLoose(r))
       else { const l = loose.get(uri); if (l) l.returning = false }
     }
     for (const [uri, l] of loose) {
-      if (uri !== selectedUri && uri !== playingUri && uri !== peekUri) l.returning = true
+      if (uri !== selectedUri && uri !== playingUri) l.returning = true
     }
 
     // hover: slide the record out a little
@@ -532,7 +531,6 @@ export function buildListeningCorner() {
       const sel = uri === selectedUri && !l.returning
       const isPlaying = uri === playingUri && !sel && !l.returning
       const slot = r.guest ? null : stackSlot(uri)
-      const peek = uri === peekUri && uri !== playingUri && !slot && !sel && !l.returning // the album that's playing already lies on the table: browsing past it must not pull it back to the shelf
       let scale = 1
       if (sel) {
         // hold still in front of the camera, cover (local +x) facing it – or flipped over to its back
@@ -545,10 +543,6 @@ export function buildListeningCorner() {
         basis.makeBasis(ax, ay, az)
         targetQ.setFromRotationMatrix(basis).premultiply(groupQ)
         scale = 1.05
-      } else if (peek) {
-        // pulled out in front of its slot and turned so the cover faces the room
-        targetPos.set(r.home.x, r.home.y + 0.06, FRONT_Z + 0.1)
-        targetQ.setFromEuler(targetRot.set(0, -Math.PI / 2, 0))
       } else if (isPlaying) {
         // "now playing" display: standing next to the turntable, leaning back against the wall,
         // cover facing the room and turned a little towards the listening spot
@@ -563,7 +557,7 @@ export function buildListeningCorner() {
         targetQ.identity()
       }
       // the vinyl slides out of the sleeve a little (held / browsed / playing) and back in
-      const wantOut = sel ? 0.056 : peek ? 0.05 : isPlaying ? 0.042 : 0
+      const wantOut = sel ? 0.056 : isPlaying ? 0.042 : 0
       if (Math.abs(wantOut - l.disc.position.y) > 0.0004) { l.disc.position.y += (wantOut - l.disc.position.y) * Math.min(1, dt * 5); moving = true }
       // the record that is on the turntable is not in its sleeve any more
       l.disc.visible = !(uri === recUri && (recOn || (recFlight && recFlight.wait <= 0)))
@@ -650,7 +644,6 @@ export function buildListeningCorner() {
     setState,
     setHover(uri: string | null) { hoverUri = uri },
     setSelected(uri: string | null) { selectedUri = uri },
-    setPeek(uri: string | null) { peekUri = uri },
     setFilter(list: string[] | null | undefined) { filterSet = list?.length ? new Set(list) : null },
     setDeck(v: boolean) { turntable.setDeck(!!v) },
     setFlip(v: boolean) { flipSel = v },

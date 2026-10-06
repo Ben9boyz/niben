@@ -91,8 +91,6 @@ await shoot('5-deck-view')
 await page.evaluate(() => window.__room.setMusicView({ pose: 'ipod' }))
 await shoot('6-ipod')
 
-await page.evaluate((u) => window.__room.setMusicView({ peek: u }), album(6))
-await shoot('8-peek')
 
 await page.evaluate(() => window.__room.setMusicView({}))
 await page.evaluate(() => window.__room.setStack([{ uri: 'spotify:album:ALB1', name: 'Album 1', artist: 'X', queued: true }, { uri: 'spotify:album:ALB2', name: 'Album 2', artist: 'X' }]))

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { Play, Pause, Lock, RotateCw, X, ChevronLeft, ChevronRight, ArrowUpFromLine } from 'lucide-vue-next'
+import { Play, Pause, Lock, RotateCw, X, ChevronLeft } from 'lucide-vue-next'
 import { room } from '@/composables/room/useRoom'
 import { shelfAlbums } from '@/composables/music/useGroups'
 import { spotify, lockLeft, fmtClock, play, lockNote, control, fetchTracks, findAlbum } from '@/composables/music/useSpotify'
@@ -78,27 +78,29 @@ const flip = () => (room.recordFlipped = !room.recordFlipped)
 const putBack = () => { room.sel.musikk = null }
 function toTurntable() { room.sel.musikk = null; room.shelfView = false }
 
-// ── browsing the shelf: one record pulled out at a time, ← / → to move along, Enter to take it ──
+// ── a record in hand: ← / → (and the wheel) put it back and take its neighbour on the shelf ──
 const shelfCount = computed(() => Math.min(shelfAlbums.value.length, 150))
-const peeked = computed(() => (room.shelfView && !room.sel.musikk ? shelfAlbums.value[room.peekIndex] : null))
-function browse(d: number) {
+function swap(d: number) {
   const n = shelfCount.value
-  if (n) room.peekIndex = (room.peekIndex + d + n) % n
-}
-function takeOut() {
-  if (peeked.value) room.sel.musikk = { kind: 'album', uri: peeked.value.uri, t: Date.now() }
+  const cur = album.value
+  if (!n || !cur) return
+  const i = shelfAlbums.value.findIndex((a) => a.uri === cur.uri)
+  const j = ((i < 0 ? room.peekIndex : i) + d + n) % n
+  room.peekIndex = j
+  room.recordFlipped = false
+  const next = shelfAlbums.value[j]
+  if (next) room.sel.musikk = { kind: 'album', uri: next.uri, t: Date.now() }
 }
 
 // Esc: turn back → put the record back → leave the shelf
 function onKey(e: KeyboardEvent) {
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(targetEl(e).tagName)) return
-  if (peeked.value) {
-    if (e.key === 'ArrowLeft') { browse(-1); e.preventDefault(); return }
-    if (e.key === 'ArrowRight') { browse(1); e.preventDefault(); return }
-    if (e.key === 'Enter' || e.key === 'ArrowUp') { takeOut(); e.preventDefault(); return }
+  if (room.shelfView && room.sel.musikk) {
+    if (e.key === 'ArrowLeft') { swap(-1); e.preventDefault(); return }
+    if (e.key === 'ArrowRight') { swap(1); e.preventDefault(); return }
   }
   // the record in my hand: P or Enter puts it on and starts it from the first song
-  if (room.sel.musikk && !peeked.value && (e.key === 'Enter' || e.key.toLowerCase() === 'p') && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); onPlay(); return }
+  if (room.sel.musikk && (e.key === 'Enter' || e.key.toLowerCase() === 'p') && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); onPlay(); return }
   if (e.key !== 'Escape') return
   if (room.recordFlipped) room.recordFlipped = false
   else if (room.sel.musikk) putBack()
@@ -124,17 +126,7 @@ function onWheel(e: WheelEvent) {
   const d = acc > 0 ? 1 : -1
   acc = 0
   wheelAt = now
-  const n = shelfCount.value
-  if (!n) return
-  if (peeked.value) browse(d)
-  else if (album.value) { // a record in my hand: put it back and take the neighbour
-    const cur = album.value.uri
-    const i = shelfAlbums.value.findIndex((a) => a.uri === cur)
-    const j = ((i < 0 ? room.peekIndex : i) + d + n) % n
-    room.peekIndex = j
-    const next = shelfAlbums.value[j]
-    if (next) room.sel.musikk = { kind: 'album', uri: next.uri, t: Date.now() }
-  }
+  swap(d) // a record in my hand: put it back and take the neighbour
 }
 
 onMounted(() => { raf = requestAnimationFrame(frame); window.addEventListener('keydown', onKey); window.addEventListener('wheel', onWheel, { passive: false }) })
@@ -197,12 +189,6 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); clearTimeout(flipTimer); wind
   <!-- in front of the shelf: browse one record at a time, or go back up to the turntable -->
   <div v-if="room.shelfView" class="shelfbar">
     <button class="toturn glass" @click="toTurntable"><ChevronLeft :size="16" />Til platespilleren</button>
-    <div v-if="peeked" class="browser glass">
-      <button class="arrow" aria-label="Forrige album (←)" title="Forrige (←)" @click="browse(-1)"><ChevronLeft :size="22" /></button>
-      <div class="pk"><b>{{ peeked.name }}</b><small>{{ peeked.artist }}<template v-if="peeked.year"> · {{ peeked.year }}</template> · {{ room.peekIndex + 1 }}/{{ shelfCount }}</small></div>
-      <button class="arrow" aria-label="Neste album (→)" title="Neste (→)" @click="browse(1)"><ChevronRight :size="22" /></button>
-      <button class="take" title="Ta ut (Enter)" @click="takeOut"><ArrowUpFromLine :size="16" />Ta ut</button>
-    </div>
   </div>
 </template>
 
@@ -284,13 +270,5 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); clearTimeout(flipTimer); wind
 .shelfbar { position: fixed; z-index: 24; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 32px); }
 .toturn { display: flex; align-items: center; gap: 4px; padding: 10px 16px; border: 0; border-radius: 999px; color: var(--text); font: 600 0.85rem var(--font); cursor: pointer; white-space: nowrap; }
 .toturn:hover { color: var(--accent); }
-.browser { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 999px; min-width: 0; }
-.arrow { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--accent-soft); color: var(--accent); cursor: pointer; }
-.arrow:hover { background: var(--accent); color: #fff; }
-.pk { display: flex; flex-direction: column; align-items: center; min-width: 160px; max-width: 300px; padding: 0 6px; text-align: center; }
-.pk b { font-size: 0.9rem; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pk small { font-size: 0.72rem; color: var(--text-3); white-space: nowrap; }
-.take { display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; font: 700 0.85rem var(--font); cursor: pointer; }
-.take:hover { filter: brightness(1.08); }
 .rtoast { position: fixed; z-index: 26; transform: translate(-50%, -100%); padding: 8px 14px; border-radius: 999px; font-size: 0.82rem; font-weight: 600; white-space: nowrap; }
 </style>

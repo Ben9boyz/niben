@@ -1478,10 +1478,9 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     setInsets,
     strum(i: number) { if (guitars[i]) { guitars[i].strum = 1; invalidate(1) } },
     setTimerInterval(v: number) { timerInterval = v },
-    setMusicView({ selected = null, pose = null, flip = false, peek = null, deck = false }: { selected?: string | null; pose?: LyttePose | null; flip?: boolean; peek?: string | null; deck?: boolean } = {}) {
+    setMusicView({ selected = null, pose = null, flip = false, deck = false }: { selected?: string | null; pose?: LyttePose | null; flip?: boolean; deck?: boolean } = {}) {
       invalidate(1)
       listening.setSelected(selected)
-      listening.setPeek(peek)
       listening.setFlip(flip)
       listening.setDeck(deck)
       // where the camera looks in the listening corner
