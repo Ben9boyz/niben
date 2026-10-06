@@ -117,10 +117,10 @@ function measure() {
     room.api.setInsets({ left: L })
     return
   }
-  if (hidden.value) { room.api.setInsets({ left: mobile.value ? 0 : RAIL(), bottom: shell.value === 'player' ? 90 : 0 }); return }
+  if (hidden.value) { room.api.setInsets({ left: mobile.value ? 0 : RAIL(), bottom: 0 }); return }
   if (mobile.value && collapsed.value) { room.api.setInsets({ bottom: 90, top: isMusic.value ? 58 + safeTop() : 0 }); return }
   if (mobile.value) room.api.setInsets({ bottom: Math.min(window.innerHeight - r.top, window.innerHeight * 0.5) })
-  else room.api.setInsets({ left: RAIL(), right: hidden.value ? 0 : window.innerWidth - r.left, bottom: shell.value === 'player' ? 90 : 0 })
+  else room.api.setInsets({ left: RAIL(), right: hidden.value ? 0 : window.innerWidth - r.left, bottom: 0 })
 }
 const mq = window.matchMedia('(max-width: 900px)')
 const onMq = (e: MediaQueryListEvent) => { mobile.value = e.matches; nextTick(measure) }

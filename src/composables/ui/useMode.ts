@@ -18,16 +18,27 @@ function initial(): Mode {
 }
 export const mode = ref<Mode>(initial())
 
-// the music player app has no 3D room: it is always the plain version
+// The music player on its own (#/musicplayer, the "niben musikk" app) has its own choice – plain by default; in 3D it
+// shows just the listening corner. The site's choice is kept for when you leave the player.
+const PKEY = 'niben-mode-player'
+function storedPlayer(): Mode {
+  try { return localStorage.getItem(PKEY) === 'rom' ? 'rom' : 'enkel' } catch { return 'enkel' }
+}
+let siteMode: Mode = mode.value
+if (shell.value === 'player') mode.value = storedPlayer()
+watch(shell, (s, was) => {
+  if (s === 'player') { siteMode = mode.value; mode.value = storedPlayer() } else if (was === 'player') mode.value = siteMode
+})
+
 function apply(): void {
-  document.documentElement.classList.toggle('classic', mode.value === 'enkel' || shell.value === 'player')
+  document.documentElement.classList.toggle('classic', mode.value === 'enkel')
 }
 apply()
-watch([mode, shell], apply)
+watch(mode, apply)
 
 function flip(): void {
   mode.value = mode.value === 'rom' ? 'enkel' : 'rom'
-  try { localStorage.setItem(KEY, mode.value) } catch { /* private mode */ }
+  try { localStorage.setItem(shell.value === 'player' ? PKEY : KEY, mode.value) } catch { /* private mode */ }
 }
 
 /** Switch between the 3D room and the plain version. The page "walks" in or out of the room: the old view

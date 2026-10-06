@@ -31,7 +31,7 @@ const toTop = () => window.scrollTo(0, 0)
 </script>
 
 <template>
-  <RoomLayout v-if="mode === 'rom' && shell !== 'player'" />
+  <RoomLayout v-if="mode === 'rom'" />
 
   <template v-else>
     <div class="backdrop" aria-hidden="true">
@@ -58,7 +58,7 @@ const toTop = () => window.scrollTo(0, 0)
   <SlowSuggest />
   <ContextMenu />
   <NewPlaylistDialog />
-  <GlobalMini v-if="mode !== 'rom' || shell === 'player'" :show="route.name !== 'lytte' && route.name !== 'admin'" />
+  <GlobalMini v-if="mode !== 'rom'" :show="route.name !== 'lytte' && route.name !== 'admin'" />
   <NavBar v-if="shell !== 'player'" />
   <template v-else>
     <PlayerTop />

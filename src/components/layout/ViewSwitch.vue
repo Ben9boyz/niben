@@ -2,7 +2,6 @@
 import { onMounted, onBeforeUnmount } from 'vue'
 import { Box, LayoutList } from 'lucide-vue-next'
 import { mode, toggleMode } from '@/composables/ui/useMode'
-import { shell } from '@/composables/ui/useShell'
 import { room } from '@/composables/room/useRoom'
 import { targetEl } from '@/lib/dom'
 
@@ -11,7 +10,7 @@ import { targetEl } from '@/lib/dom'
 const onKey = (e: KeyboardEvent) => {
   if (e.key.toLowerCase() !== 'v' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.repeat) return
   const t = targetEl(e)
-  if (t.closest('input, textarea, select, [contenteditable="true"]') || room.roam || shell.value === 'player') return
+  if (t.closest('input, textarea, select, [contenteditable="true"]') || room.roam) return
   toggleMode()
 }
 onMounted(() => window.addEventListener('keydown', onKey))
@@ -20,7 +19,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 <template>
   <button
-    v-if="shell !== 'player'"
     class="sm vs glass"
     :title="mode === 'rom' ? 'Bytt til 2D-versjonen (V)' : 'Bytt til 3D-rommet (V)'"
     :aria-label="mode === 'rom' ? 'Bytt til 2D-versjonen' : 'Bytt til 3D-rommet'"

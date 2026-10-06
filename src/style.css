@@ -553,3 +553,6 @@ html[data-vt='in'] ::view-transition-new(root) { animation-name: vtRoomIn; }
 @keyframes vtPageIn { from { opacity: 0; transform: scale(0.97); } }
 @keyframes vtPageAway { to { opacity: 0; transform: scale(0.97); } }
 @keyframes vtRoomIn { from { opacity: 0; transform: scale(1.18); filter: blur(10px); } }
+
+/* the music player on its own, in 3D: the camera buttons start to the right of its little row of controls */
+html.player-shell .msw { left: 252px !important; }

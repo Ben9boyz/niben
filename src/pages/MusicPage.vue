@@ -282,14 +282,14 @@ function show(view: 'vinyl' | 'ipod') {
 </style>
 
 <style>
-@media (min-width: 821px) { html.player-shell .music.cpage { padding-top: 84px; padding-bottom: 20px; } }
+@media (min-width: 821px) { html.player-shell .music.cpage { padding-top: 20px; padding-bottom: 20px; } }
 /* the header of the grid (name + group buttons) sticks to the top of the card; tiles vanish under it */
 @media (min-width: 821px) {
   .main-card .stick { position: sticky; top: -16px; z-index: 4; margin: -16px -16px 0; padding: 10px 16px 10px; background: linear-gradient(var(--glass), var(--glass)), var(--bg); }
-  html.player-shell .music .main-col { top: 84px; height: calc(100dvh - 104px); }
+  html.player-shell .music .main-col { top: 20px; height: calc(100dvh - 40px); }
 }
 /* player mode has a fixed top bar: the sticky columns stop below it */
-@media (min-width: 821px) { html.player-shell .music .lib-col, html.player-shell .music .now-col { top: 84px; } html.player-shell .music .lib-card, html.player-shell .music .now-card { max-height: calc(100dvh - 104px); } }
+@media (min-width: 821px) { html.player-shell .music .now-col { top: 20px; } html.player-shell .music .lib-col { top: 84px; margin-top: 64px; } html.player-shell .music .now-card { max-height: calc(100dvh - 40px); } html.player-shell .music .lib-card { max-height: calc(100dvh - 104px); } }
 /* phones: with the menu slid away, the mini player drops down to where the menu was */
 /* the player view has no menu at the bottom: the mini player sits at the very bottom */
 @media (max-width: 820px) { html.player-shell .music .m-mini { bottom: calc(14px + env(safe-area-inset-bottom)) !important; } }
