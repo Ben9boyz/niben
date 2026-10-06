@@ -1,4 +1,4 @@
-import { room } from './composables/useRoom'
+import { room } from '@/composables/room/useRoom'
 import { createApp, defineAsyncComponent, type AsyncComponentLoader, type Component } from 'vue'
 import { createRouter, createWebHashHistory, type RouteMeta, type RouteRecordRaw } from 'vue-router'
 import App from './App.vue'

@@ -3,7 +3,7 @@ import { spotify } from './useSpotify'
 import { web } from './useWebPlayer'
 import { mode } from '@/composables/useMode'
 import { playOn } from './usePlayOn'
-import { room } from '@/composables/useRoom'
+import { room } from '@/composables/room/useRoom'
 import { newAudioContext } from '@/lib/audio'
 
 // A record player on top of the music, all made with the Web Audio API (no sound files). Spotify's own stream can't be

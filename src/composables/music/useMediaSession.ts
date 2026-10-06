@@ -1,6 +1,6 @@
 import { watch } from 'vue'
 import { spotify, control, lockLeft, notify, setShuffle, cycleRepeat, isLiked, setLiked, toggleAlbumSaved, findAlbum } from './useSpotify'
-import { room } from '@/composables/useRoom'
+import { room } from '@/composables/room/useRoom'
 import { shortcuts } from '@/composables/useShortcuts'
 import { admin } from '@/composables/useAdmin'
 import { web } from './useWebPlayer'

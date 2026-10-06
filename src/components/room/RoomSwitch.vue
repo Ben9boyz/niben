@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { DoorOpen, Check } from 'lucide-vue-next'
-import { rooms, loadRooms, setRoom } from '@/composables/useRooms'
+import { rooms, loadRooms, setRoom } from '@/composables/room/useRooms'
 import { thumb } from '@/lib/photos'
 import { targetEl } from '@/lib/dom'
 

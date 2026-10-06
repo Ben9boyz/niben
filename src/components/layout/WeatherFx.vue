@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import { weather } from '@/composables/useLive'
+import { weather } from '@/composables/room/useLive'
 import { calm } from '@/composables/useCalm'
 
 // The weather at home over the plain version: rain, snow or fog drifting over the background (never over the text –

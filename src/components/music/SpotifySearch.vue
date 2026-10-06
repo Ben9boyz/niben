@@ -2,7 +2,7 @@
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { Play, Lock, Plus, Check, Music, CirclePlus, ListEnd } from 'lucide-vue-next'
 import { spotify, lockLeft, type SearchResults, fmtClock, play, lockNote, searchSpotify, saveAlbum, addToPlaylist, addGuest, control, followPlaylist, enqueue } from '@/composables/music/useSpotify'
-import { room } from '@/composables/useRoom'
+import { room } from '@/composables/room/useRoom'
 import { mode } from '@/composables/useMode'
 import { admin, errorMessage } from '@/composables/useAdmin'
 import type { Album, Playlist, Track } from '@/types'

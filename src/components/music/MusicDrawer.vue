@@ -2,7 +2,7 @@
 import { onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { Disc3, ListMusic, X, ArrowUpRight } from 'lucide-vue-next'
-import { room } from '@/composables/useRoom'
+import { room } from '@/composables/room/useRoom'
 import { spotify } from '@/composables/music/useSpotify'
 import NowPlaying from './NowPlaying.vue'
 import QueuePanel from './QueuePanel.vue'

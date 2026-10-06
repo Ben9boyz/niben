@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Play, Pause, Lock, RotateCw, X, ChevronLeft, ChevronRight, ArrowUpFromLine } from 'lucide-vue-next'
-import { room } from '@/composables/useRoom'
+import { room } from '@/composables/room/useRoom'
 import { shelfAlbums } from '@/composables/music/useGroups'
 import { spotify, lockLeft, fmtClock, play, lockNote, control, fetchTracks, findAlbum } from '@/composables/music/useSpotify'
 import { admin } from '@/composables/useAdmin'

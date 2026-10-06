@@ -1,5 +1,5 @@
 import { ref, computed, watch } from 'vue'
-import { live, liveDay, watchLive } from './useLive'
+import { live, liveDay, watchLive } from '@/composables/room/useLive'
 
 // light / dark: 'live' follows day and night where I live (when a place is set in Admin), 'light' and 'dark' are
 // fixed. The choice is remembered. Without a place, 'live' isn't offered and it follows the device as before.

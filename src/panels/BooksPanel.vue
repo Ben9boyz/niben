@@ -3,7 +3,7 @@ import { hideImg } from '../lib/dom'
 import { tx } from '../composables/useTexts'
 import { computed } from 'vue'
 import { useData, type Book } from '../composables/useData'
-import { room } from '../composables/useRoom'
+import { room } from '@/composables/room/useRoom'
 import Stars from '@/components/ui/Stars.vue'
 
 const data = useData()

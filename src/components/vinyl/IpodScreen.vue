@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ChevronLeft, ChevronRight, Play, Lock, Shuffle, Folder, X } from 'lucide-vue-next'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { room } from '@/composables/useRoom'
+import { room } from '@/composables/room/useRoom'
 import { ipodRows, ipodFolderName, type IpodRow } from '@/composables/music/useIpodList'
 import { groups, openFolder } from '@/composables/music/useGroups'
 import { spotify, useSpotify, lockLeft, progressMs, fmtClock, play, fetchTracks, lockNote, control, setShuffle } from '@/composables/music/useSpotify'

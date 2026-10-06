@@ -5,7 +5,7 @@ import NewsletterSignup from '@/components/content/NewsletterSignup.vue'
 import { Guitar, Music2, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { useData } from '../composables/useData'
-import { room } from '../composables/useRoom'
+import { room } from '@/composables/room/useRoom'
 
 const data = useData()
 const list = computed(() => data.gitarer || [])

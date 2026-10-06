@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import { room } from '@/composables/useRoom'
+import { room } from '@/composables/room/useRoom'
 
 // Draws a glowing line from the selected country on the 3D globe to the info panel.
 const props = withDefaults(defineProps<{ active?: boolean }>(), { active: false })

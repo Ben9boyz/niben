@@ -1,6 +1,6 @@
 import { reactive } from 'vue'
-import type { Playlist } from '../types'
-import type { createRoom } from '../three/room'
+import type { Playlist } from '@/types'
+import type { createRoom } from '@/three/room'
 
 type RoomApi = ReturnType<typeof createRoom>
 

@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { sorted } from '@/composables/music/useSort'
 import { spotify, prefetchTracks } from '@/composables/music/useSpotify'
-import { room } from '@/composables/useRoom'
+import { room } from '@/composables/room/useRoom'
 import GroupedGrid from './GroupedGrid.vue'
 import GroupBar from './GroupBar.vue'
 import { loadGroups } from '@/composables/music/useGroups'

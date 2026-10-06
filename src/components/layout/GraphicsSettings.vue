@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { X, Gauge, RotateCcw } from 'lucide-vue-next'
 import { gfx, gfxUi, GROUPS, PRESET_LABELS, setPreset, setOptionLoose, setShowFps, type GfxKey, type GfxItem } from '@/composables/useGraphics'
-import { room } from '@/composables/useRoom'
+import { room } from '@/composables/room/useRoom'
 import { inputOf, selectOf } from '@/lib/dom'
 
 // Innstillinger → Grafikk. "Auto" = the room picks what suits this device and keeps the frame rate up on its own.

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { room } from '@/composables/useRoom'
+import { room } from '@/composables/room/useRoom'
 import { admin } from '@/composables/useAdmin'
-import { decor } from '@/composables/useDecor'
+import { decor } from '@/composables/room/useDecor'
 import { tx } from '@/composables/useTexts'
 import { tour, steps, current, tourDone, startTour, nextStep, endTour } from '@/composables/useTour'
 

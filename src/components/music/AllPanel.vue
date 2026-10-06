@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { spotify } from '@/composables/music/useSpotify'
 import { sort, sorted } from '@/composables/music/useSort'
-import { room } from '@/composables/useRoom'
+import { room } from '@/composables/room/useRoom'
 import GroupedGrid from './GroupedGrid.vue'
 import GroupBar from './GroupBar.vue'
 import { admin } from '@/composables/useAdmin'

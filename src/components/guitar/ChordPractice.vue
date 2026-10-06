@@ -8,7 +8,7 @@ import ChordSheet from './ChordSheet.vue'
 import { CHORDS, GROUPS, PAIRS, parseProgression, findChord } from '@/lib/chords'
 import { targetEl } from '@/lib/dom'
 import { useData, type Song } from '@/composables/useData'
-import { room, type ChordMode } from '@/composables/useRoom'
+import { room, type ChordMode } from '@/composables/room/useRoom'
 
 // Chord practice in the practice corner: one-minute changes, a progression with a metronome,
 // my songs (with links to Ultimate Guitar) and a chord library.

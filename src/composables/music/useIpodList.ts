@@ -2,7 +2,7 @@ import { computed } from 'vue'
 import type { Group, Playlist } from '@/types'
 import { spotify } from './useSpotify'
 import { sorted } from './useSort'
-import { room } from '@/composables/useRoom'
+import { room } from '@/composables/room/useRoom'
 import { groups, topGroups, childrenOf, countIn, groupCover } from './useGroups'
 
 // The iPod's list of playlists – and the panel next to it, which mirrors it. With grouping on it follows my folders:

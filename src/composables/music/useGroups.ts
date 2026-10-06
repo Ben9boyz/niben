@@ -2,7 +2,7 @@ import { reactive, watch, computed } from 'vue'
 import type { Album, Group, Playlist, Result } from '@/types'
 import { api, errorMessage } from '@/composables/useAdmin'
 import { spotify } from './useSpotify'
-import { room } from '@/composables/useRoom'
+import { room } from '@/composables/room/useRoom'
 import { pget, pset } from '@/lib/pcache'
 import { roomKey } from '@/lib/room'
 

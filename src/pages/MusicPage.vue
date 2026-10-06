@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { Disc3, ListMusic, Library, Search, X, Sparkles } from 'lucide-vue-next'
-import { room } from '../composables/useRoom'
+import { room } from '@/composables/room/useRoom'
 import { spotify, useSpotify } from '@/composables/music/useSpotify'
 import { shell } from '../composables/useShell'
 import NowPlaying from '@/components/music/NowPlaying.vue'
