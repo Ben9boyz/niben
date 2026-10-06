@@ -4,6 +4,20 @@
 //   { "device": true (play works), "albums": 3, "playlists": 0, "deny": false, "tracks": { "BIGBIGBIGBIG": 199 }, "page": 20 }
 function http_req(string $method, string $url, array $headers = [], ?string $body = null): array {
     $dir = getenv('NIBEN_TEST_DIR') ?: __DIR__;
+    if (str_starts_with($url, 'https://www.strava.com/')) { // a fake Strava: a token refresh and two activities (one with a route)
+        @file_put_contents("$dir/spotify-calls.log", $method . ' ' . $url . "\n", FILE_APPEND);
+        if (str_contains($url, '/oauth/token')) return [200, json_encode(['access_token' => 'new', 'refresh_token' => 'srt2', 'expires_at' => time() + 3600])];
+        if (str_contains($url, '/oauth/deauthorize')) return [200, '{}'];
+        if (str_contains($url, '/athlete/activities')) {
+            if (!in_array('Authorization: Bearer new', $headers, true)) return [401, '{}'];
+            if (!str_contains($url, 'page=1')) return [200, '[]'];
+            return [200, json_encode([
+                ['id' => 111, 'name' => 'Morgenløp', 'sport_type' => 'Run', 'start_date_local' => '2026-09-01T07:00:00Z', 'distance' => 5230.5, 'moving_time' => 1560, 'total_elevation_gain' => 42.3, 'average_heartrate' => 151.2, 'map' => ['summary_polyline' => '_p~iF~ps|U_ulLnnqC_mqNvxq`@']],
+                ['id' => 222, 'name' => 'Til jobb', 'sport_type' => 'Ride', 'start_date_local' => '2026-09-02T08:00:00Z', 'distance' => 12000, 'moving_time' => 1800, 'map' => ['summary_polyline' => '']],
+            ])];
+        }
+        return [404, '{}'];
+    }
     if (strpos($url, 'api.spotify.com') === false) return [0, ''];
     @file_put_contents("$dir/spotify-calls.log", $method . ' ' . preg_replace('~^https://api\.spotify\.com/v1~', '', $url) . "\n", FILE_APPEND);
     $m = json_decode((string)@file_get_contents("$dir/spotify-mock.json"), true) ?: [];

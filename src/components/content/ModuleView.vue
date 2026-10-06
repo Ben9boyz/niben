@@ -7,6 +7,9 @@ import { decor } from '@/composables/room/useDecor'
 import { api, errorMessage } from '@/composables/site/useAdmin'
 import type { Field } from '@/lib/modules/catalog'
 import LogInsights from './LogInsights.vue'
+import ModuleExtras from './ModuleExtras.vue'
+import { strava, loadStrava, syncStrava } from '@/composables/site/useStrava'
+import type { ModData } from '@/composables/room/useModules'
 import { safeUrl } from '@/lib/modules/safe'
 import { parseGpx, routePath, paceText } from '@/lib/modules/gpx'
 
@@ -15,9 +18,10 @@ import { parseGpx, routePath, paceText } from '@/lib/modules/gpx'
 const props = defineProps<{ id: string; compact?: boolean }>()
 const draft = ref<{ at: number; e: Entry } | null>(null) // at = -1: a new one
 const kat = ref('')
+const status = ref('') // (the status board's filter)
 const mod = computed(() => moduleById(props.id))
 const data = computed(() => dataOf(props.id))
-watch(() => props.id, (id) => { void loadModule(id); draft.value = null; kat.value = ''; peek.value = null })
+watch(() => props.id, (id) => { void loadModule(id); draft.value = null; kat.value = ''; status.value = ''; peek.value = null })
 void loadModule(props.id)
 const mine = computed(() => canManage.value)
 
@@ -25,7 +29,7 @@ const mine = computed(() => canManage.value)
 const katField = computed(() => mod.value?.kind.fields.find((f) => f.k === 'kat'))
 const items = computed(() => (data.value?.items ?? []).map((e, i) => ({ e, i })))
 const shown = computed(() => {
-  const l = kat.value ? items.value.filter(({ e }) => e.kat === kat.value) : items.value
+  const l = items.value.filter(({ e }) => (!kat.value || e.kat === kat.value) && (!status.value || e.status === status.value))
   return mod.value?.kind.layout === 'log' ? [...l].sort((a, b) => String(b.e.date ?? '').localeCompare(String(a.e.date ?? ''))) : [...l].reverse()
 })
 const usedKats = computed(() => katField.value?.options?.filter((o) => items.value.some(({ e }) => e.kat === o)) ?? [])
@@ -59,6 +63,7 @@ function del(): void {
   draft.value = null
   touch(props.id)
 }
+function water(i: number): void { const dd = data.value; const e = dd?.items[i]; if (!dd || !e) return; e.date = new Date().toISOString().slice(0, 10); touch(props.id) }
 function toggle(i: number): void { const dd = data.value; const e = dd?.items[i]; if (!dd || !e) return; e.done = !e.done; touch(props.id) }
 
 // ── checklist progress / log numbers ──
@@ -102,6 +107,20 @@ async function importGpx(e: Event): Promise<void> {
 const goal = computed(() => Number(data.value?.settings.goal) || 0)
 function setGoal(v: string): void { const d = data.value; if (!d) return; d.settings = { ...d.settings, goal: v.replace(',', '.') }; touch(props.id) }
 const pace = (e: Entry): string => (mod.value?.kind.workout ? paceText(Number(e.km), Number(e.min), String(e.kat ?? '')) : '')
+
+// ── Strava: the owner's workouts come in by themselves (on opening, at most every half hour) or with the button ──
+async function fromStrava(): Promise<void> {
+  const d = await syncStrava<ModData>(props.id)
+  const dd = data.value
+  if (d && dd) { dd.items = d.items; dd.settings = d.settings && !Array.isArray(d.settings) ? d.settings : {} }
+}
+watch(() => [mod.value?.kind.workout, mine.value, data.value ? 1 : 0], async () => {
+  if (!mod.value?.kind.workout || !mine.value || !data.value) return
+  await loadStrava()
+  const at = Number(data.value.settings.strava_at) || 0
+  if (strava.connected && Date.now() / 1000 - at > 1800) void fromStrava()
+}, { immediate: true })
+const stravaAt = computed(() => { const t = Number(data.value?.settings.strava_at); return t ? new Date(t * 1000).toLocaleString('nb-NO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '' })
 
 // ── look up a title: poster, link and so on from a public service ──
 interface Hit { title: string; sub: string; img: string | null; url: string | null; genre: string | null; note: string }
@@ -183,6 +202,15 @@ void decor
       <div><b>Dagens stjernebilde (NASA)</b><span>{{ live.title }}</span><small>{{ live.text }}</small></div>
     </section>
 
+    <section v-if="mod.kind.workout && mine && strava.configured" class="strava">
+      <template v-if="strava.connected">
+        <button class="btn soft small" :disabled="strava.busy" @click="fromStrava">{{ strava.busy ? 'Henter …' : 'Hent fra Strava' }}</button>
+        <small>{{ strava.athlete ? strava.athlete + ' · ' : '' }}{{ stravaAt ? 'sist hentet ' + stravaAt : 'ikke hentet ennå' }}</small>
+      </template>
+      <template v-else><a class="btn primary small" href="api.php?action=strava_login">Koble til Strava</a><small>Øktene dine kommer inn av seg selv, med rute.</small></template>
+      <small v-if="strava.note" class="ok">{{ strava.note }}</small><small v-if="strava.error" class="err">{{ strava.error }}</small>
+    </section>
+
     <div v-if="modState.error" class="err">{{ modState.error }}</div>
 
     <!-- the form for one entry -->
@@ -227,6 +255,8 @@ void decor
         <a v-if="safeUrl(peek.url)" :href="safeUrl(peek.url) ?? undefined" target="_blank" rel="noopener noreferrer">Åpne lenken</a>
       </div>
     </article>
+
+    <ModuleExtras v-if="data && items.length" :kind="mod.kind" :items="items" :mine="mine" :status="status" @status="status = $event" @open="openEntry" @water="water" />
 
     <!-- category chips: one per genre / type that is in use -->
     <div v-if="usedKats.length" class="chips" role="group" aria-label="Kategori">
@@ -338,5 +368,7 @@ void decor
 .peek dt { color: var(--text-3); } .peek dd { margin: 0; } .peek dd.long { grid-column: 1 / -1; white-space: pre-wrap; }
 .peek a { color: var(--accent); font-size: 0.88rem; }
 .peek .x { all: unset; position: absolute; top: 10px; right: 10px; cursor: pointer; padding: 4px; border-radius: 8px; } .peek .x:hover { background: var(--glass-border); }
+.strava { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, #fc4c02 9%, transparent); }
+.strava small { color: var(--text-3); } .strava .ok { color: #2fa84f; }
 @media (max-width: 560px) { .log button { grid-template-columns: 74px 1fr auto auto; } .log span { display: none; } }
 </style>

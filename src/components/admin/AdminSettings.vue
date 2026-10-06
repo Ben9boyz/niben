@@ -4,6 +4,7 @@ import { Check, KeyRound, ExternalLink, Music2, MapPin, Plug, Download, Mail, Tr
 import { api, errorMessage, account } from '@/composables/site/useAdmin'
 import { reloadData, type SectionId } from '@/composables/site/useData'
 import type { Flash } from '../../types'
+import { strava, loadStrava, disconnectStrava } from '@/composables/site/useStrava'
 
 // One component, three admin tabs: `rommet` (which corners it shows), `tilkoblinger` (Spotify, Steam, jpdb … the
 // services it fetches from) and `konto` (e-mail, password, backup, deleting the account).
@@ -56,7 +57,7 @@ async function load() {
     api<{ place: { name: string } | null }>('home_get').then((r) => { place.value = r.place }).catch(() => {})
   } catch (e) { msg.value = { error: errorMessage(e) } }
 }
-onMounted(load)
+onMounted(() => { void load(); void loadStrava(true) })
 
 async function post(body: Record<string, unknown>, ok: string) {
   busy.value = true
@@ -169,6 +170,15 @@ async function changePw() {
         </div>
       </details>
 
+      <details v-if="strava.configured" class="svc">
+        <summary><Plug :size="18" /><span class="t"><b>Strava</b><small>Trening: øktene dine med rute, av seg selv</small></span><span class="pill" :class="strava.connected ? 'ok' : 'off'">{{ strava.connected ? strava.athlete || 'Koblet til' : 'Ikke koblet' }}</span></summary>
+        <div class="body">
+          <p class="muted">Legg til modulen «Trening» under Rommet → Hobbyer. Nye økter hentes når du åpner den (og med knappen der).</p>
+          <p class="status"><a class="btn primary small" href="api.php?action=strava_login"><Plug :size="14" />{{ strava.connected ? 'Koble til på nytt' : 'Koble til Strava' }}</a><button v-if="strava.connected" class="btn soft small" @click="disconnectStrava">Koble fra</button></p>
+          <p v-if="strava.error" class="notice error">{{ strava.error }}</p>
+        </div>
+      </details>
+
       <details class="svc">
         <summary><KeyRound :size="18" /><span class="t"><b>jpdb</b><small>Japansk: ord, repetisjon og anime</small></span><span class="pill" :class="s.keys.jpdb ? 'ok' : 'off'">{{ s.keys.jpdb ? 'Nøkkel lagret' : 'Ikke satt' }}</span></summary>
         <form class="body keys" @submit.prevent="saveJpdb">
@@ -227,7 +237,7 @@ async function changePw() {
           <li><b>Restauranter, turer og camping</b> – steder fra OpenStreetMap</li>
           <li><b>Sjakk</b> – rating fra chess.com og lichess</li>
           <li><b>Stjernekikking</b> – NASAs dagsbilde</li>
-          <li><b>Trening</b> – GPX-filer fra klokka eller Strava (leses i nettleseren)</li>
+          <li><b>Trening</b> – GPX-filer fra klokka (leses i nettleseren){{ strava.configured ? '' : ' · Strava kan kobles til når eieren av siden har satt det opp (strava-setup.sh)' }}</li>
         </ul>
       </details>
     </section>

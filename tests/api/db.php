@@ -19,6 +19,15 @@ if ($cmd === 'reset') {
     $pdo->exec('CREATE TABLE IF NOT EXISTS spotify_state (k VARCHAR(40) NOT NULL, v MEDIUMTEXT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (k)) ENGINE=InnoDB');
     $st = $pdo->prepare('REPLACE INTO spotify_state (k, v) VALUES (?, ?)');
     foreach (['refresh_token' => 'rt', 'access_token' => 'at', 'access_expires' => '9999999999', 'scopes' => 'user-library-read'] as $k => $v) $st->execute([$key($uid, $k), $v]);
+} elseif ($cmd === 'strava') {
+    // strava <uid> – that room is connected to the fake Strava (an expired token, so the refresh is exercised too)
+    $uid = (int)$argv[2];
+    $config = $c;
+    $sk = hash('sha256', 'niben-keys|' . ($config['db_pass'] ?? '') . '|' . ($config['admin_hash'] ?? ''), true);
+    $iv = random_bytes(12);
+    $ct = openssl_encrypt(json_encode(['access_token' => 'old', 'refresh_token' => 'srt', 'expires_at' => 1, 'athlete' => 'Test Løper']), 'aes-256-gcm', $sk, OPENSSL_RAW_DATA, $iv, $tag);
+    $pdo->exec('CREATE TABLE IF NOT EXISTS spotify_state (k VARCHAR(40) NOT NULL, v MEDIUMTEXT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (k)) ENGINE=InnoDB');
+    $pdo->prepare('REPLACE INTO spotify_state (k, v) VALUES (?, ?)')->execute([$key($uid, 'strava_tokens'), base64_encode($iv . $tag . $ct)]);
 } elseif ($cmd === 'kv') {
     $st = $pdo->prepare('SELECT v FROM spotify_state WHERE k = ?');
     $st->execute([$key((int)$argv[2], $argv[3])]);

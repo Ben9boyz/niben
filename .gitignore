@@ -1,6 +1,7 @@
 # ── secrets – never commit (created by setup.sh / spotify-setup.sh) ──
 public/_config.php
 public/_spotify.php
+public/_strava.php
 public/_jpdb.php
 public/_steam.php
 .deploy.local

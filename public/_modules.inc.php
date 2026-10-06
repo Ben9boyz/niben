@@ -60,7 +60,7 @@ function mod_clean_data($in): array {
         if ($row) $items[] = $row;
     }
     $settings = [];
-    foreach (array_slice((array)($in['settings'] ?? []), 0, 8, true) as $k => $v) {
+    foreach (array_slice((array)($in['settings'] ?? []), 0, 12, true) as $k => $v) {
         if (preg_match('~^[a-z][a-z0-9_]{0,23}$~i', (string)$k)) $settings[(string)$k] = mb_substr(trim((string)$v), 0, 120);
     }
     return ['items' => $items, 'settings' => (object)$settings];

@@ -14,6 +14,7 @@ import { resetDaily, loadDaily } from '@/composables/music/useDaily'
 import { peekClear } from '@/composables/music/useBrowse'
 import { room, clearSelection } from './useRoom'
 import { resetModules } from './useModules'
+import { resetStrava } from '@/composables/site/useStrava'
 
 // The rooms to choose between: mine first, then every approved user's. Which one is shown is kept in a cookie by the
 // server (room_set), so every request – content, Japanese, Steam … – is about that room. Switching does NOT reload the
@@ -58,7 +59,7 @@ let queued: string | null = null // a room asked for while one is still on its w
 /** Forget the room we leave and fetch what the new one needs – only the parts that were in use. */
 async function swapRoomState(to: string): Promise<void> {
   const used = { groups: groups.loaded, discover: discover.loaded, milestones: milestones.loaded, jp: jp.loaded, steam: steam.loaded, decor: decor.loaded, live: live.loaded, queue: myQueue.loaded, lists: spotify.loaded }
-  resetSpotify(); resetGroups(); resetDiscover(); resetMilestones(); resetJapanese(); resetSteam(); resetDecor(); resetModules(); resetLive(); resetQueue(); resetDaily(); peekClear()
+  resetSpotify(); resetGroups(); resetDiscover(); resetMilestones(); resetJapanese(); resetSteam(); resetDecor(); resetModules(); resetStrava(); resetLive(); resetQueue(); resetDaily(); peekClear()
   clearSelection(); room.shelfQ = ''; room.peekIndex = 0 // (no record held up from the other room)
   // only what the room itself needs to show waits (who is logged in, the content – at once if I have seen the room before);
   // everything else fills in by itself when it arrives
