@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { tx } from '../composables/useTexts'
-import YearContent from '../components/YearContent.vue'
+import YearContent from '@/components/content/YearContent.vue'
 </script>
 
 <template>

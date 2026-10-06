@@ -5,8 +5,8 @@ import { computed } from 'vue'
 import { useData, type Trip } from '../composables/useData'
 import { room } from '../composables/useRoom'
 import { atlasName, norskNavn } from '../three/countries'
-import CountryPicker from '../components/CountryPicker.vue'
-import TripCards from '../components/TripCards.vue'
+import CountryPicker from '@/components/content/CountryPicker.vue'
+import TripCards from '@/components/content/TripCards.vue'
 
 const data = useData()
 const byCountry = computed(() => {

@@ -2,7 +2,7 @@
 import { tx } from '../composables/useTexts'
 import { ref } from 'vue'
 import { ArrowUpRight, BookOpenText } from 'lucide-vue-next'
-import RepoBrowser from '../components/RepoBrowser.vue'
+import RepoBrowser from '@/components/content/RepoBrowser.vue'
 import { useData, type Project } from '../composables/useData'
 const data = useData()
 // a project on my GitHub can be read right here (RepoBrowser)

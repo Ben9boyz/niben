@@ -4,7 +4,7 @@ import { geoEqualEarth, geoPath } from 'd3-geo'
 import { feature } from 'topojson-client'
 import worldTopo from 'world-atlas/countries-110m.json'
 import type { GeometryCollection, Topology } from 'topojson-specification'
-import { norskNavn } from '../three/countries'
+import { norskNavn } from '@/three/countries'
 
 const props = withDefaults(defineProps<{ visited?: Set<string>; selected?: string | null }>(), { visited: () => new Set<string>(), selected: null })
 const emit = defineEmits<{ select: [name: string | null] }>()

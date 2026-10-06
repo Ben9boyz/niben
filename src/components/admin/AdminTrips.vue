@@ -4,7 +4,7 @@ import { ref, reactive, computed } from 'vue'
 import { useData, reloadData, type Trip } from '../../composables/useData'
 import { api, shrinkImage, errorMessage } from '../../composables/useAdmin'
 import { norskNavn } from '../../three/countries'
-import CountryPicker from '../CountryPicker.vue'
+import CountryPicker from '@/components/content/CountryPicker.vue'
 import { inputOf } from '../../lib/dom'
 
 const data = useData()

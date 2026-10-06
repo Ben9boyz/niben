@@ -14,7 +14,7 @@ import SegSwitch from '@/components/ui/SegSwitch.vue'
 import FolderTree from '../components/FolderTree.vue'
 import ArtistTree from '../components/ArtistTree.vue'
 import AllPanel from '../components/AllPanel.vue'
-const DiscoverContent = defineAsyncComponent(() => import('../components/DiscoverContent.vue'))
+const DiscoverContent = defineAsyncComponent(() => import('@/components/content/DiscoverContent.vue'))
 import QueuePanel from '../components/QueuePanel.vue'
 import { loadGroups, groups, select } from '../composables/useGroups'
 import { peek, peekBack, peekClear } from '../composables/useBrowse'

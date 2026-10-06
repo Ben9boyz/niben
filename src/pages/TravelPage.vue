@@ -4,9 +4,9 @@ import { Plane, X } from 'lucide-vue-next'
 import { ref, computed } from 'vue'
 import { useData, type Trip } from '../composables/useData'
 import { atlasName, norskNavn } from '../three/countries'
-import FlatMap from '../components/FlatMap.vue'
-import CountryPicker from '../components/CountryPicker.vue'
-import TripCards from '../components/TripCards.vue'
+import FlatMap from '@/components/content/FlatMap.vue'
+import CountryPicker from '@/components/content/CountryPicker.vue'
+import TripCards from '@/components/content/TripCards.vue'
 
 const data = useData()
 const selected = ref<string | null>(null)

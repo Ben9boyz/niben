@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Plus, RefreshCw, Trash2, ArrowUpRight, Play, KeyRound, Sparkles } from 'lucide-vue-next'
-import { tx } from '../composables/useTexts'
-import { admin } from '../composables/useAdmin'
-import { discover, loadDiscover, addPick, delPick, saveKey, refreshRecs, hideRec, type Pick } from '../composables/useDiscover'
-import { openAlbumPage, openArtistPage, peek } from '../composables/useBrowse'
-import { play, notify } from '../composables/useSpotify'
-import { itemMenu, playItem } from '../lib/menus'
-import { showMenu, longPress, type MenuPoint } from '../composables/useContextMenu'
-import CoverGrid from './CoverGrid.vue'
-import PeekView from './PeekView.vue'
+import { tx } from '@/composables/useTexts'
+import { admin } from '@/composables/useAdmin'
+import { discover, loadDiscover, addPick, delPick, saveKey, refreshRecs, hideRec, type Pick } from '@/composables/useDiscover'
+import { openAlbumPage, openArtistPage, peek } from '@/composables/useBrowse'
+import { play, notify } from '@/composables/useSpotify'
+import { itemMenu, playItem } from '@/lib/menus'
+import { showMenu, longPress, type MenuPoint } from '@/composables/useContextMenu'
+import CoverGrid from '@/components/CoverGrid.vue'
+import PeekView from '@/components/PeekView.vue'
 
 // Oppdag: what I recommend (pasted Spotify links with a note) and good albums I don't have yet. Tap an album to look
 // inside it, right-click for play / queue / "Lagre i biblioteket".

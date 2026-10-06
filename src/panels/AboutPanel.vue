@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { tx } from '../composables/useTexts'
-import AboutContent from '../components/AboutContent.vue'
+import AboutContent from '@/components/content/AboutContent.vue'
 </script>
 
 <template>

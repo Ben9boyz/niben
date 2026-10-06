@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { errorMessage } from '../composables/useAdmin'
+import { errorMessage } from '@/composables/useAdmin'
 import { ref } from 'vue'
 import { Mail, Rss, Check } from 'lucide-vue-next'
-import { tx } from '../composables/useTexts'
+import { tx } from '@/composables/useTexts'
 
 // "Nye opptak på e-post": the address is only used for that; a confirmation link comes first, and every mail has a
 // one-click way out. Bots are caught by the hidden "website" field.

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { errorMessage } from '../composables/useAdmin'
-import { targetEl } from '../lib/dom'
+import { errorMessage } from '@/composables/useAdmin'
+import { targetEl } from '@/lib/dom'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { X, Folder, FolderOpen, FileText, FileCode2, Image as ImageIcon, ArrowUpRight, Search, PanelLeft } from 'lucide-vue-next'
 import { marked } from 'marked'

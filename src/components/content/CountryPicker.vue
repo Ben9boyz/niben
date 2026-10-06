@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import { allCountries, searchCountries, norskNavn, type Country } from '../three/countries'
+import { allCountries, searchCountries, norskNavn, type Country } from '@/three/countries'
 
 const props = withDefaults(defineProps<{
   modelValue?: string | null // atlas (English) name

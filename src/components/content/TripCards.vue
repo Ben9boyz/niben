@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Images } from 'lucide-vue-next'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { thumb } from '../lib/photos'
+import { thumb } from '@/lib/photos'
 import PhotoViewer from './PhotoViewer.vue'
-import type { Trip } from '../composables/useData'
+import type { Trip } from '@/composables/useData'
 
 withDefaults(defineProps<{ trips?: Trip[] }>(), { trips: () => [] })
 
