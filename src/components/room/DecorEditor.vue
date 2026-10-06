@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RotateCcw, RotateCw, Minus, Plus, ArrowUp, ArrowDown, Eye, EyeOff, Trash2, Check, Upload, Move } from 'lucide-vue-next'
+import { kindOf } from '@/lib/modules/catalog'
 import { decor, uploadDecor, removeDecor, changed } from '@/composables/room/useDecor'
 import { room } from '@/composables/room/useRoom'
 import { admin } from '@/composables/site/useAdmin'
@@ -32,7 +33,7 @@ function done() { decor.editing = false }
       </div>
       <p v-if="decor.error" class="err">{{ decor.error }}</p>
       <div v-if="decor.items.length" class="chips pills">
-        <button v-for="i in decor.items" :key="i.id" :class="{ on: i.id === decor.selected, off: i.visible === false }" @click="pick(i.id)">{{ i.name || 'Modell' }}</button>
+        <button v-for="i in decor.items" :key="i.id" :class="{ on: i.id === decor.selected, off: i.visible === false }" @click="pick(i.id)">{{ i.name || kindOf(i.mod)?.name || 'Modell' }}</button>
       </div>
       <p v-else class="hint">Ingen modeller ennå. Legg til en .glb-fil, så dukker den opp midt i rommet.</p>
       <div v-if="sel" class="tools">

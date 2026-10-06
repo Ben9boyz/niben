@@ -6,6 +6,7 @@ import { registerServiceWorker } from '@/composables/ui/usePwa'
 import { shell, enterPlayer } from '@/composables/ui/useShell'
 import { rememberTab } from './lib/nav'
 import { routeAllowed } from './lib/sections'
+import { routeKey } from './lib/nav'
 import { useData } from '@/composables/site/useData'
 import { watch } from 'vue'
 import { startDomTranslate } from './lib/domTranslate'
@@ -26,6 +27,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/gaming', name: 'gaming', ...lazy(() => import('./panels/GamingPanel.vue'), () => import('./pages/GamingPage.vue'), 'Spill') },
   { path: '/japansk', name: 'japansk', ...lazy(() => import('./panels/JapanPanel.vue'), () => import('./pages/JapanPage.vue'), 'Japansk') },
   { path: '/aaret', name: 'aaret', ...lazy(() => import('./panels/YearPanel.vue'), () => import('./pages/YearPage.vue'), 'Året') },
+  { path: '/h/:id', name: 'modul', ...lazy(() => import('./panels/ModulePanel.vue'), () => import('./pages/ModulePage.vue'), 'Hobby') },
   { path: '/gangen', name: 'gangen', ...lazy(() => import('./panels/GangenPanel.vue'), () => import('./pages/GangenPage.vue'), 'Gangen') },
   { path: '/om', name: 'om', ...lazy(() => import('./panels/AboutPanel.vue'), () => import('./pages/AboutPage.vue'), 'Om meg') },
   { path: '/admin', name: 'admin', ...lazy(() => import('./panels/AdminPanel.vue'), () => import('./pages/AdminPage.vue'), 'Admin') },
@@ -45,7 +47,7 @@ router.beforeEach((to) => {
   if (shell.value === 'player' && to.name !== 'lytte' && to.name !== 'admin' && to.path !== '/musicplayer') return '/lytte'
 })
 router.afterEach((to) => {
-  rememberTab(to.name)
+  rememberTab(routeKey(to))
   document.title = shell.value === 'player' ? 'niben musikk' : to.name === 'hjem' ? 'niben' : `${to.meta.title} · niben`
 })
 

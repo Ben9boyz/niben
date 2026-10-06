@@ -5,6 +5,7 @@ import { api, errorMessage } from '@/composables/site/useAdmin'
 export interface DecorItem {
   id: string
   file: string
+  mod?: string // a hobby module (its kind) instead of a model: see lib/modules/catalog.ts
   name: string
   x: number
   y: number
@@ -58,7 +59,7 @@ export async function uploadDecor(file: File, name?: string): Promise<DecorItem 
 }
 export async function removeDecor(id: string): Promise<void> {
   decor.busy = 'del'
-  try { await api('decor_delete', { id }); decor.items = decor.items.filter((i) => i.id !== id); if (decor.selected === id) decor.selected = null } catch (e) { decor.error = errorMessage(e) } finally { decor.busy = '' }
+  try { await api(decor.items.find((i) => i.id === id)?.mod ? 'mod_remove' : 'decor_delete', { id }); decor.items = decor.items.filter((i) => i.id !== id); if (decor.selected === id) decor.selected = null } catch (e) { decor.error = errorMessage(e) } finally { decor.busy = '' }
 }
 
 /** Another room: its own models. */

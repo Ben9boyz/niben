@@ -3,7 +3,7 @@ import SettingsMenu from './SettingsMenu.vue'
 import ViewSwitch from './ViewSwitch.vue'
 import ProfileMenu from './ProfileMenu.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, type Component, type ComponentPublicInstance } from 'vue'
-import { navGroups, groupOf, groupTarget, TAB_LABELS, ROUTE_ICONS } from '@/lib/nav'
+import { navGroups, groupOf, groupTarget, tabLabel, tabTarget, ROUTE_ICONS } from '@/lib/nav'
 import { useRoute, useRouter } from 'vue-router'
 import { admin, checkLogin } from '@/composables/site/useAdmin'
 import BrandLogo from '@/components/ui/BrandLogo.vue'
@@ -88,7 +88,7 @@ const fly = ref<{ name: string; top: number; left: number; items: FlyItem[] } | 
 const LYTTE_VIEWS: FlyItem[] = [{ id: 'now', label: 'Spiller nå', icon: Disc3, view: 'now' }, { id: 'shelf', label: 'Hylle', icon: Library, view: 'shelf' }, { id: 'ipod', label: 'iPod', icon: Smartphone, view: 'ipod' }]
 function flyItems(name: string, routes: string[]): FlyItem[] {
   if (name === 'lytte') return mode.value === 'rom' ? LYTTE_VIEWS : []
-  return routes.length > 1 ? routes.map((r) => ({ id: r, label: TAB_LABELS[r] ?? r, icon: ROUTE_ICONS[r] })) : []
+  return routes.length > 1 ? routes.map((r) => ({ id: r, label: tabLabel(r), icon: ROUTE_ICONS[r] })) : []
 }
 const flyEl = ref<HTMLElement | null>(null)
 let flyTimer: ReturnType<typeof setTimeout> | undefined
@@ -110,7 +110,7 @@ function lookAtCorner(v: NonNullable<FlyItem['view']>) {
 async function pickFly(it: FlyItem) {
   const root = flyEl.value
   const isView = !!it.view
-  const go = async () => { await router.push(isView ? { name: 'lytte' } : { name: it.id }).catch(() => undefined); if (it.view) { await nextTick(); lookAtCorner(it.view) } }
+  const go = async () => { await router.push(isView ? { name: 'lytte' } : tabTarget(it.id)).catch(() => undefined); if (it.view) { await nextTick(); lookAtCorner(it.view) } }
   if (!root) { void go(); return }
   const pills = [...root.querySelectorAll<HTMLElement>('button.fp')]
   const from = pills.map((p) => p.getBoundingClientRect())

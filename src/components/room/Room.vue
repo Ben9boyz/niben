@@ -38,6 +38,7 @@ let api: ReturnType<typeof createRoom> | undefined
 const ROUTES: Record<string, string> = { hjem: '/', japansk: '/japansk', gaming: '/gaming', lytte: '/lytte', ovelse: '/ovelse', gitar: '/gitar', figurer: '/figurer', boker: '/boker', reiser: '/reiser', kode: '/kode', om: '/om', gangen: '/gangen' }
 
 function onPick(p: PickEvent) {
+  if (p.kind === 'module') { if (p.name) { room.roam = false; void router.push({ name: 'modul', params: { id: p.name } }) } return } // a hobby module: its corner
   if (p.kind === 'door') { if (p.name) void enterRoom(p.name); return } // a door in the hall: into that room
   if (p.kind === 'station') {
     const to = ROUTES[p.station]
@@ -132,6 +133,7 @@ onMounted(() => {
   api.setNext(nextAlbum.value)
   if (spotify.now?.uri) fetchTempo(spotify.now?.uri).then((b) => { if (api && spotify.now?.uri) api.setTempo(b) })
   if (data.loaded) api.setData(data)
+  if (route.name === 'modul') api.focusModule(String(route.params.id))
   api.goTo(String(route.name || 'hjem'), { duration: 2.6 })
 })
 
@@ -279,10 +281,13 @@ watch(() => room.sel.musikk?.uri, (uri) => {
   room.recordFlipped = false
   if (uri && room.musicView === 'spiller') room.musicView = 'vinyl'
 })
-watch(() => route.name, (n) => {
+watch(() => [route.name, route.params.id], ([n]) => {
   clearSelection()
+  if (n === 'modul') api?.focusModule(String(route.params.id))
   api?.goTo(String(n || 'hjem'))
 })
+// the modules are loaded a little after the room: a page opened by its address then flies in once its place is known
+watch(() => decor.items.length, () => { if (route.name === 'modul') { api?.focusModule(String(route.params.id)); api?.goTo('modul') } })
 watch(() => ({ ...room.sel }), (s) => api?.setSelection(s), { deep: true })
 
 // the room's name tag belongs to the 3D view: drop it as soon as the pointer is over the panel or

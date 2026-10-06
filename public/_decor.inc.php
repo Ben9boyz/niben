@@ -164,9 +164,9 @@ function decor_handle(string $action, bool $post): void {
     }
 
     case 'decor_save': {
-        // new positions / sizes / names / visibility: { items: [{ id, x, y, z, rot, scale, visible, name }] }
+        // new positions / sizes / names / visibility: { items: [{ id, x, y, z, rot, scale, visible, name }] } – each room moves its own
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $in = [];
         foreach ((array)(body()['items'] ?? []) as $it) if (is_array($it) && isset($it['id'])) $in[(string)$it['id']] = $it;
         $list = decor_list();
@@ -188,11 +188,11 @@ function decor_handle(string $action, bool $post): void {
 
     case 'decor_delete': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $id = (string)(body()['id'] ?? '');
         $keep = [];
         foreach (decor_list() as $d) {
-            if ($d['id'] === $id) { $p = __DIR__ . '/' . $d['file']; if (str_starts_with($d['file'], 'uploads/models/') && is_file($p)) @unlink($p); }
+            if ($d['id'] === $id) { $p = __DIR__ . '/' . ($d['file'] ?? ''); if (str_starts_with((string)($d['file'] ?? ''), 'uploads/models/') && is_file($p)) @unlink($p); }
             else $keep[] = $d;
         }
         decor_store($keep);

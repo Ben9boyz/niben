@@ -29,6 +29,8 @@ import { buildListeningCorner, type StackEntry } from './listening'
 import type { SteamScreenData } from './desk'
 import { buildFigureShelf } from './figures'
 import { buildHall, type Door } from './hall'
+import { buildModuleProp, type PropHandle } from './moduleProp'
+import { kindOf } from '@/lib/modules/catalog'
 import { woodFloor, wallTexture, skyTexture, canvasTex } from './textures'
 import { atlasName, norskNavn } from './countries'
 
@@ -97,7 +99,7 @@ export interface RoomData { gitarer?: Guitar[]; boker?: Book[]; reiser?: Trip[];
 export type GfxInput = Partial<Omit<GfxValues, 'res' | 'ao'>> & { mode?: GfxMode; res?: number | 'auto'; ao?: GfxValues['ao'] | 'auto'; showFps?: boolean }
 interface Eff extends Omit<GfxValues, 'res' | 'ao'> { res: number | 'auto'; ao: GfxValues['ao'] | 'auto'; showFps: boolean; areaLights: boolean; smallLights: boolean }
 /** One of my uploaded 3D models in the room. */
-interface DecorObject { root: THREE.Group; item: DecorItem }
+interface DecorObject { root: THREE.Group; item: DecorItem; prop?: PropHandle; sig?: string }
 /** What the pointer rests on, found by raycasting. */
 interface HitInfo { object: THREE.Object3D; kind?: string; index?: number; station?: string; country?: string }
 interface Flight { from: Pose3; to: Pose3; t: number; dur: number; lift: number }
@@ -694,7 +696,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     if (name === 'admin') return // the admin covers the room: the camera stays where it is (and the X in the admin goes back to it)
     invalidate(0.5)
     stationBoxes.clear(); tinies = null // (the models may have been loaded since)
-    station = STATIONS[name] || name === 'gangen' ? name : 'hjem'
+    station = STATIONS[name] || name === 'gangen' || (name === 'modul' && !!modulePose()) ? name : 'hjem'
     zoomTarget = 1 // the zoom is for the globe only
     desk.setScreenMode(station === 'gaming' ? 'gaming' : 'code')
     let to: Pose3 | null = null
@@ -711,7 +713,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
         to = { pos: top.pos.lerp(near.pos, 0.55), target: top.target.lerp(near.target, 0.7) }
       }
     } else {
-      const s: Pose | null | undefined = station === 'gangen' ? hall.pose() : station === 'lytte' && lyttePose ? { shelf: LYTTE_SHELF, top: LYTTE_TOP, deck: LYTTE_DECK }[lyttePose as 'shelf' | 'top' | 'deck'] : STATIONS[station]
+      const s: Pose | null | undefined = station === 'gangen' ? hall.pose() : station === 'modul' ? modulePose() : station === 'lytte' && lyttePose ? { shelf: LYTTE_SHELF, top: LYTTE_TOP, deck: LYTTE_DECK }[lyttePose as 'shelf' | 'top' | 'deck'] : STATIONS[station]
       if (!s) return
       to = { pos: new THREE.Vector3(...s.pos), target: new THREE.Vector3(...s.target) }
       if (station === 'hjem' && homeFit !== 1) to.pos.sub(to.target).multiplyScalar(homeFit).add(to.target) // (the overview: nearer or farther so the room fills the space the panel leaves)
@@ -878,6 +880,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       return
     }
     hoverInfo = hitInfo()
+    const modHit = moduleAt()
     let label: string | null | undefined = null
     hoverGuitar = -1
     shelf.setHover(-1)
@@ -908,8 +911,9 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       else if (hi.kind === 'shelf' && lyttePose !== 'shelf') label = 'Bla i platehylla'
       else if (hi.station === 'reiser' && hi.country) { globeTable.setHover(hi.country); label = norskNavn(hi.country) }
     }
-    renderer.domElement.style.cursor = hi ? 'pointer' : 'default'
-    onHover?.(label && hi ? { label, x: e.clientX, y: e.clientY, station: hi.station, country: hi.country, uri: hi.kind === 'album' ? music.albums[hi.index ?? -1]?.uri ?? null : null } : null)
+    if (modHit) { label = modHit.title }
+    renderer.domElement.style.cursor = hi || modHit ? 'pointer' : 'default'
+    onHover?.(label && (hi || modHit) ? { label, x: e.clientX, y: e.clientY, station: hi?.station, country: hi?.country, uri: hi && hi.kind === 'album' ? music.albums[hi.index ?? -1]?.uri ?? null : null } : null)
   }
   function onDown(e: PointerEvent): void {
     invalidate(0.6)
@@ -932,6 +936,8 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     downAt = null
     if (moved > 8) return
     setNdc(e)
+    const mod = moduleAt()
+    if (mod) { onPick?.({ station: 'modul', kind: 'module', name: mod.id }); return } // a hobby module: its own corner
     const info = hitInfo()
     if (!info) { onPick?.({ station, kind: 'empty' }); return }
     // walking around: a click flies to that station and then does what the click meant (picks the iPod up, takes the record out …)
@@ -1013,6 +1019,40 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     onDecorSelect?.(decorSel)
     invalidate(0.5)
   }
+  const modSig = (it: DecorItem): string => `${it.mod}|${it.name}`
+  function buildMod(o: DecorObject): void {
+    o.prop?.root.removeFromParent()
+    o.prop?.dispose()
+    const kind = kindOf(o.item.mod)
+    if (!kind) return
+    o.sig = modSig(o.item)
+    o.prop = buildModuleProp(kind, o.item.name || kind.name)
+    o.root.userData.modTitle = o.item.name || kind.name
+    o.root.add(o.prop.root)
+    shadowsDirty = true
+    refreshSel()
+    invalidate(1)
+  }
+  /** The hobby module under the pointer (not while the room is being edited – then a click picks it up). */
+  function moduleAt(): { id: string; title: string } | null {
+    ray.setFromCamera(ndc, camera)
+    const roots = decorGroup.children.filter((c) => c.visible && c.userData.modTitle)
+    for (const h of ray.intersectObjects(roots, true)) {
+      if (h.object instanceof THREE.Sprite && !h.object.visible) continue
+      let n: THREE.Object3D | null = h.object
+      while (n && !n.userData.decorId) n = n.parent
+      if (n) return { id: n.userData.decorId as string, title: n.userData.modTitle as string }
+    }
+    return null
+  }
+  /** Where the camera stands to look at a module: in front of it, a little above. */
+  let focusId: string | null = null
+  const modulePose = (): Pose | null => {
+    const o = focusId ? decorObjs.get(focusId) : undefined
+    if (!o) return null
+    const { x, z } = o.item
+    return { pos: [x * 0.6, 1.45, z + 1.9], target: [x, 0.5, z] }
+  }
   function setDecor(list: DecorItem[]): void {
     const ids = new Set(list.map((i) => i.id))
     for (const [id, o] of decorObjs) {
@@ -1023,12 +1063,17 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     }
     for (const it of list) {
       const existing = decorObjs.get(it.id)
-      if (existing) { if (decorDrag?.id !== it.id) { existing.item = { ...it }; placeDecor(existing) } continue }
+      if (existing) {
+        if (decorDrag?.id !== it.id) { existing.item = { ...it }; placeDecor(existing) }
+        if (it.mod && existing.sig !== modSig(it)) buildMod(existing) // (renamed)
+        continue
+      }
       const o: DecorObject = { root: new THREE.Group(), item: { ...it } }
       o.root.userData.decorId = it.id
       decorObjs.set(it.id, o)
       decorGroup.add(o.root)
       placeDecor(o)
+      if (it.mod) { buildMod(o); continue } // a hobby module: a piece of furniture, not a model file
       loadModel(it.file).then((g) => {
         if (decorObjs.get(it.id) !== o) return
         const m = g.scene.clone(true)
@@ -1653,6 +1698,8 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       return out
     },
     setData,
+    /** Which hobby module the camera looks at when the station is 'modul'. */
+    focusModule(id: string | null) { focusId = id; if (station === 'modul') goTo('modul') },
     setDoors(list: Door[]) { hall.setDoors(list); if (station === 'gangen') goTo('gangen', { instant: true }) },
     setSelection,
     setTheme,

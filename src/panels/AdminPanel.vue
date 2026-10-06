@@ -3,7 +3,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, type Component } from
 import { targetEl } from '@/lib/dom'
 import { useRoute, useRouter } from 'vue-router'
 import { useData } from '@/composables/site/useData'
-import { LayoutDashboard, Plane, BookOpen, Mic, Music, Type, Box, Mail, Eye, EyeOff, LogOut, Lock, Users, SlidersHorizontal, Guitar, DoorOpen, MessageCircle, X, UserRound, Plug, KeyRound, Disc3 } from 'lucide-vue-next'
+import { LayoutDashboard, Plane, BookOpen, Mic, Music, Type, Box, Mail, Eye, EyeOff, LogOut, Lock, Users, SlidersHorizontal, Guitar, DoorOpen, MessageCircle, X, UserRound, Plug, KeyRound, Disc3, Star } from 'lucide-vue-next'
 import { admin, account, signedIn, checkLogin, login, userLogin, registerAccount, forgotPassword, resetPassword, logout, errorMessage } from '@/composables/site/useAdmin'
 import { setRoom } from '@/composables/room/useRooms'
 import AdminTrips from '../components/admin/AdminTrips.vue'
@@ -13,6 +13,7 @@ import AdminSongs from '../components/admin/AdminSongs.vue'
 import AdminOverview from '../components/admin/AdminOverview.vue'
 import AdminTexts from '../components/admin/AdminTexts.vue'
 import AdminRoom from '../components/admin/AdminRoom.vue'
+import AdminModules from '../components/admin/AdminModules.vue'
 import AdminNews from '../components/admin/AdminNews.vue'
 import AdminUsers from '../components/admin/AdminUsers.vue'
 import AdminGuitars from '../components/admin/AdminGuitars.vue'
@@ -38,7 +39,7 @@ const GROUPS = computed<GroupDef[]>(() => {
     tabs: [TAB('reiser', 'Reiser', Plane), TAB('boker', 'Bøker', BookOpen), TAB('gitarer', 'Gitarer', Guitar), TAB('figurer', 'Figurer', Box), TAB('opptak', 'Gitaropptak', Mic), TAB('sanger', 'Sanger', Music), ...(music ? [TAB('musikk', 'Musikk', Disc3)] : [])],
   })
   list.push({ id: 'profil', label: 'Profil', icon: UserRound, tabs: [TAB('profil', 'Om meg', UserRound), TAB('tekster', 'Tekster', Type), TAB('gjestebok', 'Gjestebok', MessageCircle)] })
-  list.push({ id: 'rommet', label: 'Rommet', icon: Box, tabs: [TAB('rommet', 'Hva vises', SlidersHorizontal), ...(isOwner.value ? [TAB('rom', '3D-modeller', Box)] : [])] })
+  list.push({ id: 'rommet', label: 'Rommet', icon: Box, tabs: [TAB('rommet', 'Hva vises', SlidersHorizontal), TAB('hobbyer', 'Hobbyer', Star), ...(isOwner.value ? [TAB('rom', '3D-modeller', Box)] : [])] })
   list.push({ id: 'tilkoblinger', label: 'Tilkoblinger', icon: Plug, tabs: [TAB('tilkoblinger', 'Tilkoblinger', Plug)] })
   if (isOwner.value) list.push({ id: 'side', label: 'Siden', icon: Users, tabs: [TAB('brukere', 'Brukere', Users), TAB('nyhetsbrev', 'Nyhetsbrev', Mail)] })
   list.push({ id: 'konto', label: 'Konto', icon: KeyRound, tabs: [TAB('konto', 'Konto', KeyRound)] })
@@ -171,6 +172,7 @@ const myRoom = () => { if (account.user) void setRoom(account.user.username) }
           <AdminGuitars v-else-if="shownTab === 'gitarer'" key="g" />
           <AdminFigures v-else-if="shownTab === 'figurer'" key="f" />
           <AdminSongs v-else-if="shownTab === 'sanger'" key="s" />
+          <AdminModules v-else-if="shownTab === 'hobbyer'" key="hb" />
           <AdminRoom v-else-if="shownTab === 'rom'" key="m" />
           <AdminNews v-else-if="shownTab === 'nyhetsbrev'" key="n" />
           <AdminTexts v-else-if="shownTab === 'tekster'" key="t" />

@@ -2,6 +2,7 @@ import { computed, reactive } from 'vue'
 import { useData } from '@/composables/site/useData'
 import { routeAllowed } from './sections'
 import { rooms } from '@/composables/room/useRooms'
+import { placed } from '@/composables/room/useModules'
 
 // The main tabs and the sub-tabs inside them. Every sub-tab is still its own route (and its own
 // station in the 3D room); a group just decides which tab lights up in the menu and which pills show.
@@ -12,6 +13,7 @@ export const GROUPS: NavGroup[] = [
   { id: 'lare', label: 'Lære', routes: ['japansk', 'ovelse'], icon: 'M22 10 12 5 2 10l10 5 10-5zM6 12v5c3 3 9 3 12 0v-5' },
   { id: 'laget', label: 'Laget', routes: ['gitar', 'figurer', 'kode'], icon: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z' },
   { id: 'opplevd', label: 'Opplevd', routes: ['reiser', 'boker', 'gaming', 'aaret'], icon: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM16.2 7.8l-2.1 6.3-6.3 2.1 2.1-6.3z' },
+  { id: 'hobby', label: 'Hobbyer', routes: [], icon: 'M12 2l2.4 6.9H22l-6 4.4 2.3 7L12 16l-6.3 4.3 2.3-7-6-4.4h7.6z' }, // (its tabs are the room's hobby modules: 'h:<id>')
   { id: 'gangen', label: 'Gangen', routes: ['gangen'], icon: 'M6 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17M3 21h18M14.5 12.5h.01' },
   { id: 'om', label: 'Om meg', routes: ['om'], icon: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9a8 8 0 0 1 16 0' },
 ]
@@ -34,11 +36,21 @@ export const TAB_LABELS: Record<string, string> = { japansk: 'Japansk', ovelse: 
 
 const data = useData()
 /** The groups of the room being shown: pages of switched-off corners are left out, and groups with nothing left disappear. */
-export const navGroups = computed<NavGroup[]>(() => GROUPS.map((g) => ({ ...g, routes: g.routes.filter((r) => routeAllowed(r, data.profile)) })).filter((g) => g.routes.length > 0 && (g.id !== 'gangen' || rooms.list.length > 1))) // (the hall is only there when there is more than one room)
+export const navGroups = computed<NavGroup[]>(() => GROUPS.map((g) => ({ ...g, routes: g.id === 'hobby' ? placed.value.map((m) => HOBBY + m.id) : g.routes.filter((r) => routeAllowed(r, data.profile)) })).filter((g) => g.routes.length > 0 && (g.id !== 'gangen' || rooms.list.length > 1))) // (the hall is only there when there is more than one room)
+/** A hobby module's tab is called 'h:<id>' (the route itself is /h/<id>). */
+export const HOBBY = 'h:'
+/** The name a page has in the menu: the route's name, or 'h:<id>' for a hobby module. */
+export const routeKey = (r: { name?: unknown; params?: Record<string, unknown> }): string => (r.name === 'modul' ? HOBBY + String(r.params?.id ?? '') : String(r.name))
+export const tabLabel = (r: string): string => {
+  if (!r.startsWith(HOBBY)) return TAB_LABELS[r] ?? r
+  const m = placed.value.find((x) => x.id === r.slice(HOBBY.length))
+  return m ? `${m.kind.icon} ${m.name}` : 'Modul'
+}
+export const tabTarget = (r: string): { name: string; params?: { id: string } } => (r.startsWith(HOBBY) ? { name: 'modul', params: { id: r.slice(HOBBY.length) } } : { name: r })
 const byRoute = new Map<string, NavGroup>(GROUPS.flatMap((g) => g.routes.map((r): [string, NavGroup] => [r, g])))
-export const groupOf = (routeName: unknown): NavGroup | null => navGroups.value.find((g) => g.routes.includes(String(routeName))) ?? byRoute.get(String(routeName)) ?? null
+export const groupOf = (routeName: unknown): NavGroup | null => (String(routeName).startsWith(HOBBY) || routeName === 'modul' ? navGroups.value.find((g) => g.id === 'hobby') ?? GROUPS.find((g) => g.id === 'hobby') ?? null : navGroups.value.find((g) => g.routes.includes(String(routeName))) ?? byRoute.get(String(routeName)) ?? null)
 
 // the tab you were last on inside each group – the menu takes you back there
 const last = reactive(new Map<string, string>()) // reactive: the menu links update when it changes
-export const rememberTab = (routeName: unknown): void => { const g = byRoute.get(String(routeName)); if (g) last.set(g.id, String(routeName)) }
-export const groupTarget = (g: NavGroup): { name: string } => { const l = last.get(g.id); return { name: l && g.routes.includes(l) ? l : g.routes[0] ?? 'hjem' } }
+export const rememberTab = (routeName: unknown): void => { const k = String(routeName); const g = k.startsWith(HOBBY) ? GROUPS.find((x) => x.id === 'hobby') : byRoute.get(k); if (g) last.set(g.id, k) }
+export const groupTarget = (g: NavGroup): { name: string; params?: { id: string } } => { const l = last.get(g.id); return tabTarget(l && g.routes.includes(l) ? l : g.routes[0] ?? 'hjem') }
