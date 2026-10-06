@@ -258,7 +258,7 @@ function sp_more_handle(string $action, bool $post): bool {
     }
     case 'spotify_queue': {
         // what's coming up (anyone may look – cached for 10 seconds)
-        $q = sp_cached('cache_queue4', 10, function () {
+        $q = sp_cached('cache_queue4', 4, function () {
             [$s, $j] = sp_api('GET', '/me/player/queue');
             if ($s !== 200) return ['tracks' => []];
             $out = [];
@@ -292,7 +292,7 @@ function sp_more_handle(string $action, bool $post): bool {
         if (!preg_match('~^[A-Za-z0-9]{20,64}$~', $dev)) fail('Ugyldig enhet.');
         [$s, $j] = sp_api('PUT', '/me/player', ['device_ids' => [$dev], 'play' => !empty(body()['play'])]);
         if ($s >= 300) fail('Spotify kunne ikke flytte avspillingen (' . $s . ').', 502);
-        kv_del('cache_now');
+        kv_del('cache_now', 'cache_queue4');
         out(['ok' => true]);
     }
     case 'spotify_volume': {
@@ -312,7 +312,7 @@ function sp_more_handle(string $action, bool $post): bool {
         [$s, $j] = sp_api('PUT', '/me/player/repeat?state=' . $state);
         if ($s === 404) out(['error' => 'Ingen Spotify-enhet spiller nå.', 'code' => 'no_device'], 409);
         if ($s >= 300) fail('Spotify svarte med feil (' . $s . ').', 502);
-        kv_del('cache_now');
+        kv_del('cache_now', 'cache_queue4');
         out(['ok' => true]);
     }
     case 'myqueue_get': {

@@ -398,6 +398,7 @@ export async function play(uri: string, track: string | null = null, opts: { fro
     if (r.server_time) spotify.offset = r.server_time - Date.now() / 1000
     if (r.device_name) notify(`Spiller på «${r.device_name}» – fant ikke spilleren på siden.`)
     setTimeout(refreshNow, 1500) // give Spotify a moment before asking what's playing
+    setTimeout(() => { spotify.queueV++ }, 2200) // and what is up next (the queue changed with the new album)
     return { ok: true, device: r.device_name ?? null }
   } catch (e) {
     await refreshNow()

@@ -609,7 +609,7 @@ function sp_handle(string $action, bool $post): void {
         if ($s === 404 && $op === 'pause') out(['ok' => true]); // nothing playing – already paused
         if ($s === 404) out(['error' => 'Ingen Spotify-enhet spiller nå.', 'code' => 'no_device'], 409);
         if ($s >= 300) fail('Spotify svarte med feil (' . $s . ').', 502);
-        kv_del('cache_now');
+        kv_del('cache_now', 'cache_queue4');
         out(['ok' => true]);
     }
 
@@ -896,7 +896,7 @@ function sp_handle(string $action, bool $post): void {
         kv_set('lock_until', (string)$until);
         kv_set('lock_started', (string)time());
         kv_set('lock_album', $isAlbum ? $uri : ''); // an album: the lock goes off when it has been heard to the end
-        kv_del('cache_now');
+        kv_del('cache_now', 'cache_queue4');
         out(['ok' => true, 'lock_until' => $until, 'server_time' => time(), 'device_name' => $usedName]);
     }
     }
