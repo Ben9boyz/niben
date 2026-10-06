@@ -141,7 +141,7 @@ const setView = (v: string) => { if (viewMode.value !== v) toggleMode() }
             <label class="vrow"><span>Styrke</span><input type="range" min="0" max="100" :value="vinyl.level" aria-label="Styrke på knitringen" @input="setVinylLevel(+inputOf($event).value)" /></label>
             <label class="vrow"><span>Svai</span><input type="range" min="0" max="100" :value="vinyl.wow" aria-label="Svai (små turtallssvingninger)" @input="setVinylWow(+inputOf($event).value)" /></label>
             <button class="row" role="menuitemcheckbox" :aria-checked="vinyl.mech" @click="setVinylMech(!vinyl.mech)">
-              <span class="l"><b>Mekaniske lyder</b><small>Nåla som lander og løftes, og skrap når låta byttes</small></span><i class="tg" :class="{ on: vinyl.mech }" aria-hidden="true"></i>
+              <span class="l"><b>Mekaniske lyder</b><small>Nåla som lander og løftes (mellom to låter høres bare knitringen)</small></span><i class="tg" :class="{ on: vinyl.mech }" aria-hidden="true"></i>
             </button>
           </template>
         </div>

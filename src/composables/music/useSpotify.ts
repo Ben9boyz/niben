@@ -4,6 +4,7 @@ import { api, ApiError, errorMessage } from '@/composables/site/useAdmin'
 import { pget, pset, pdel } from '@/lib/pcache'
 import { CUSTOM_QUEUE, addSongs, addCollection, startQueueDriver, releaseSent, myQueue } from './useQueue'
 import { roomKey } from '@/lib/room'
+import { cancelGap } from './useTrackGap'
 
 // Shared Spotify state: what's saved, what's playing, and the 10-minute switch lock.
 export const spotify = reactive({
@@ -309,6 +310,7 @@ export function notify(text: string, error = false): void {
 /** Pause / resume / seek / next / previous (admin). Goes straight to the browser player when it's
  *  the one playing. Pausing always works; seeking and skipping are locked like switching. */
 export async function control(op: string, ms = 0): Promise<Result> {
+  cancelGap() // (a button press wins over the pause between two songs)
   if (['seek', 'next', 'previous'].includes(op) && lockLeft.value > 0) return { ok: false, error: 'Låst – hør ferdig' }
   try {
     if (playDevice.control && (await playDevice.control(op, ms))) return { ok: true }
@@ -338,6 +340,7 @@ interface PlayReply { lock_until: number; server_time?: number; device_name?: st
 export async function play(uri: string, track: string | null = null, opts: { from?: string } = {}): Promise<PlayResult> { // opts.from: 'search' = picked from the search results (the iPod plays those)
   if (starting) return { ok: false, error: 'Starter allerede …' }
   starting = true
+  cancelGap() // (a new album wins over the pause between two songs)
   // must run inside the click, before any await, or the browser keeps the player muted
   if (playDevice.id) playDevice.activate?.()
   const body: Record<string, unknown> = { uri }

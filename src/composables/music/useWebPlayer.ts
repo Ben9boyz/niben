@@ -2,6 +2,7 @@ import { reactive, watch } from 'vue'
 import { api, admin, errorMessage } from '@/composables/site/useAdmin'
 import { playDevice, setLocalNow } from './useSpotify'
 import { loadSpotifySdk } from '@/lib/spotifySdk'
+import { trackGap, trackGapFor } from './useTrackGap'
 
 // niben.no as a Spotify speaker (Spotify Web Playback SDK). Admin only: the browser shows up as a
 // device called "niben.no" in Spotify, and "Spill av" plays straight here. Needs Spotify Premium.
@@ -44,6 +45,7 @@ chan?.addEventListener('message', (e: MessageEvent<TakeMessage | undefined>) => 
 })
 
 let player: SpotifyPlayer | null = null
+let gapper: ReturnType<typeof trackGapFor> | null = null // makes the pause between two songs (useTrackGap)
 let retryTimer = 0
 // ── the watchdog ──
 // Now and then the SDK connects but Spotify never says "ready" (most often when nothing has played for a while), and the
@@ -140,7 +142,9 @@ export async function start({ force = false }: { force?: boolean } = {}): Promis
   p.addListener('authentication_error', () => { fatal = true; fail('Spotify godtok ikke innloggingen – koble til på nytt.') })
   p.addListener('account_error', () => { fatal = true; fail('Avspilling i nettleseren krever Spotify Premium.') })
   p.addListener('playback_error', ({ message }) => { web.error = message })
+  gapper = trackGapFor(p, () => web.volume)
   p.addListener('player_state_changed', (st) => {
+    gapper?.onState(st)
     activeHere = !!st
     web.paused = !st || st.paused
     // the player knows at once what's playing – show it straight away instead of waiting for the server
@@ -148,7 +152,7 @@ export async function start({ force = false }: { force?: boolean } = {}): Promis
     if (!st || !t) return
     const imgs = [...t.album.images].sort((a, b) => (b.width ?? 0) - (a.width ?? 0))
     setLocalNow({
-      playing: !st.paused,
+      playing: !st.paused || trackGap.active, // (in the gap between two songs the record keeps going)
       shuffle: !!st.shuffle,
       progress_ms: st.position,
       duration_ms: st.duration,
@@ -167,6 +171,7 @@ export async function start({ force = false }: { force?: boolean } = {}): Promis
   // pause / resume / seek go straight to the player when the music is playing here
   playDevice.control = async (op, ms) => {
     if (!player || !activeHere) return false
+    gapper?.cancel() // (pressing something wins over the pause between songs)
     if (op === 'pause') await player.pause()
     else if (op === 'resume') await player.resume()
     else if (op === 'seek') await player.seek(Math.round(ms))
@@ -211,6 +216,8 @@ playDevice.start = async () => {
 }
 
 export function stop(): void {
+  gapper?.stop()
+  gapper = null
   clearTimeout(watchdog)
   clearInterval(leaseTimer)
   freeLease()

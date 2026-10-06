@@ -5,11 +5,13 @@ import { mode } from '@/composables/ui/useMode'
 import { playOn } from './usePlayOn'
 import { room } from '@/composables/room/useRoom'
 import { newAudioContext } from '@/lib/audio'
+import { trackGap, setGapWanted } from './useTrackGap'
 
 // A record player on top of the music, all made with the Web Audio API (no sound files). Spotify's own stream can't be
 // touched (DRM), so this is a second layer that is played alongside it, only while a song plays HERE and I'm in the 3D room:
 //  · surface noise: hiss + crackle, with a slow speed wobble (wow & flutter) so the loop never sounds digital
-//  · the mechanics: the needle dropping, the needle lifting (friction), a scratch + stop when the song changes
+//  · the mechanics: the needle dropping and the needle lifting (friction) – and nothing between two songs: on a real record
+//    the next track just follows (with the short pause made by useTrackGap, in which only this noise is heard)
 //  · a fake sidechain: the noise sits ~18 % lower under the music, and swells for a second when it stops
 //  · timed to the 3D tonearm: the needle sound comes when the arm actually touches the record
 const KEY = 'niben-vinyl'
@@ -50,9 +52,7 @@ let flutterLfo: OscillatorNode | null = null
 let driftTimer = 0 // (kept for the page lifetime)
 let timer = 0
 let active = false // the crackle layer is "on" (a record is playing)
-let muteUntil = 0 // the crackle is held back until this time (after a scratch)
 let fadeTimer = 0
-let lastUri: string | undefined
 
 function noiseBuffer(audio: AudioContext, seconds: number, fn: (i: number, len: number) => number): AudioBuffer {
   const len = Math.max(1, Math.floor(audio.sampleRate * seconds))
@@ -65,8 +65,10 @@ const white = (): number => Math.random() * 2 - 1
 
 // ── the level: what the crackle should sit at right now ──
 const levelNow = (ducked: boolean): number => (vinyl.level / 100) * (ducked ? DUCK : 1)
+/** Under the music the crackle sits lower; in the pause between two songs it is all there is, so it is not ducked. */
+const under = (): boolean => !!spotify.now?.playing && !trackGap.active
 function applyLevel(tc: number): void {
-  if (ctx && master && active) master.gain.setTargetAtTime(levelNow(!!spotify.now?.playing), ctx.currentTime, tc)
+  if (ctx && master && active) master.gain.setTargetAtTime(levelNow(under()), ctx.currentTime, tc)
 }
 /** Wow (slow, ~0.5 Hz) and flutter (fast, 4–6 Hz) as a small pitch wobble, in cents, scaled by the setting. */
 function applyWow(): void {
@@ -96,11 +98,9 @@ function pop(loud: boolean): void {
 function schedule(): void {
   // on average ~2 crackles a second, a pop every ~12 seconds
   timer = window.setTimeout(() => {
-    if (performance.now() >= muteUntil) {
-      pop(false)
-      if (Math.random() < 0.45) setTimeout(() => pop(false), 20 + Math.random() * 90)
-      if (Math.random() < 0.08) pop(true)
-    }
+    pop(false)
+    if (Math.random() < 0.45) setTimeout(() => pop(false), 20 + Math.random() * 90)
+    if (Math.random() < 0.08) pop(true)
     schedule()
   }, 150 + Math.random() * 900)
 }
@@ -139,15 +139,6 @@ function needleLift(): void {
   burst(t, 0.32, { type: 'bandpass', from: 3400, to: 1300, q: 0.7, gain: 0.22, curve: 1.2 })
   burst(t + 0.3, 0.09, { type: 'lowpass', from: 200, q: 0.5, gain: 0.35, curve: 3 })
 }
-/** A skip: the needle is dragged across the grooves – a fast falling scrape that ends in a thud. */
-function scratch(): void {
-  if (!ctx || !vinyl.mech) return
-  const t = ctx.currentTime + 0.005
-  burst(t, 0.22, { type: 'bandpass', from: 5200, to: 500, q: 1.4, gain: 0.55, curve: 0.8 })
-  burst(t + 0.02, 0.18, { type: 'highpass', from: 2600, q: 0.7, gain: 0.18, curve: 1 })
-  burst(t + 0.2, 0.1, { type: 'lowpass', from: 180, q: 0.5, gain: 0.5, curve: 3 })
-}
-
 /** Runs `fn` when the 3D tonearm has really reached the record (down) / left it (up); a fallback timer without the 3D room. */
 function onArm(down: boolean, fn: () => void, fallbackMs: number): void {
   const api = mode.value === 'rom' ? room.api : null
@@ -223,38 +214,23 @@ function end(): void {
     clearTimeout(timer); timer = 0
   }, 1000)
 }
-/** The song changed while the record keeps going: scrape, a short silence, then the needle lands again. */
-function skip(): void {
-  if (!ctx || !master) return
-  scratch()
-  const audio = ctx
-  const gap = 0.22 + Math.random() * 0.08 // 220–300 ms without crackle
-  muteUntil = performance.now() + gap * 1000
-  master.gain.cancelScheduledValues(audio.currentTime)
-  master.gain.setTargetAtTime(0, audio.currentTime, 0.015)
-  master.gain.setTargetAtTime(levelNow(true), audio.currentTime + gap, 0.25)
-  setTimeout(() => needleDrop(), gap * 1000)
-}
-
 // only while a record plays on the turntable – not for playlists / songs that belong to the iPod
-function shouldPlay(): boolean { return vinyl.on && mode.value === 'rom' && web.status === 'ready' && !!spotify.now?.playing && playOn.value === 'vinyl' }
+function shouldPlay(): boolean { return vinyl.on && mode.value === 'rom' && web.status === 'ready' && (!!spotify.now?.playing || trackGap.active) && playOn.value === 'vinyl' }
 let armed = false
 function sync(): void {
   const want = shouldPlay()
-  const uri = spotify.now?.uri
   if (want && !active) {
     // the browser only lets sound start after a tap / click – wait for the first one
-    if (ctx?.state === 'running' || armed) { lastUri = uri; begin() }
+    if (ctx?.state === 'running' || armed) begin()
   } else if (!want && active) end()
-  else if (want && active) {
-    if (uri !== lastUri) { lastUri = uri; skip() } // a new song (skip, or the next one in line)
-    else applyLevel(0.4) // (the level setting, or ducking changes)
-  }
+  else if (want && active) applyLevel(0.4) // (the level setting, or ducking changes) – a new song changes nothing here
 }
 /** Call once: starts / stops the record player layer as the music does. */
 export function useVinylNoise(): void {
   const arm = (): void => { armed = true; sync() }
   window.addEventListener('pointerdown', arm, { once: true, passive: true })
   window.addEventListener('keydown', arm, { once: true })
-  watch(() => [vinyl.on, vinyl.mech, mode.value, web.status, spotify.now?.playing, spotify.now?.uri, playOn.value], sync, { immediate: true })
+  // the gap between songs is only made while the record layer is on (otherwise a silent hole would be just that)
+  setGapWanted(() => vinyl.on && mode.value === 'rom' && playOn.value === 'vinyl')
+  watch(() => [vinyl.on, vinyl.mech, mode.value, web.status, spotify.now?.playing, trackGap.active, playOn.value], sync, { immediate: true })
 }

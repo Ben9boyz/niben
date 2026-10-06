@@ -15,7 +15,7 @@ interface SpotifyPlayerState {
   position: number
   duration: number
   context: { uri: string | null }
-  track_window: { current_track: SpotifyTrackInfo | null }
+  track_window: { current_track: SpotifyTrackInfo | null; next_tracks?: SpotifyTrackInfo[] }
 }
 interface SpotifyPlayer {
   connect(): Promise<boolean>
@@ -29,6 +29,7 @@ interface SpotifyPlayer {
   nextTrack(): Promise<void>
   previousTrack(): Promise<void>
   setVolume(v: number): Promise<void>
+  getCurrentState(): Promise<SpotifyPlayerState | null>
   activateElement(): Promise<void>
 }
 interface Window {
