@@ -20,7 +20,7 @@ const stars = (n: number): string => '★'.repeat(n) + '☆'.repeat(5 - n)
 
 <template>
   <div class="rv">
-    <header><h2>Vurderinger</h2><p>Alt du har gitt stjerner, fra alle hobbyene på ett sted.<template v-if="avg"> {{ shown.length }} stk, snitt {{ avg }}.</template></p></header>
+    <header><h2>Vurderinger</h2><p>Alt du har gitt stjerner, fra alle hobbyene på ett sted.<template v-if="avg">&nbsp;{{ shown.length }} stk, snitt {{ avg }}.</template></p></header>
     <div v-if="withRows.length > 1" class="chips" role="group" aria-label="Fra hobby">
       <button :class="{ on: !only }" @click="only = ''">Alle</button>
       <button v-for="m in withRows" :key="m.id" :class="{ on: only === m.id }" @click="only = m.id">{{ m.icon }} {{ m.name }}</button>

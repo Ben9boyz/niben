@@ -69,12 +69,48 @@ const sum = computed(() => {
   const left = props.items.filter(({ e }) => !e.done && Number(e.pris) > 0)
   return left.length ? { n: left.length, kr: left.reduce((s, { e }) => s + Number(e.pris), 0) } : null
 })
+// the three best (a podium: gold in the middle)
+const podium = computed(() => {
+  if (!ratingField.value) return null
+  const best = [...props.items].filter(({ e }) => Number(e.rating) >= 4).sort((a, b) => Number(b.e.rating) - Number(a.e.rating) || String(b.e.date ?? '').localeCompare(String(a.e.date ?? ''))).slice(0, 3)
+  return best.length === 3 ? [best[1]!, best[0]!, best[2]!] : null
+})
+
+// this year, month by month (for anything with a date that is not a log – a log has its own calendar)
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'mai', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'des']
+const year = computed(() => {
+  if (props.kind.layout === 'log' || !props.kind.fields.some((f) => f.kind === 'date')) return null
+  const y = String(new Date().getFullYear())
+  const dated = props.items.filter(({ e }) => String(e.date ?? '').startsWith(y))
+  if (dated.length < 2) return null
+  const per = MONTHS.map((m, k) => ({ m, n: dated.filter(({ e }) => Number(String(e.date).slice(5, 7)) === k + 1).length }))
+  return { y, total: dated.length, per, max: Math.max(...per.map((p) => p.n)) }
+})
+
+// recipes: a week of dinners from the ones you like (favourites first)
+const DAYS = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag', 'Søndag']
+const menu = ref<{ d: string; e: Entry; i: number }[] | null>(null)
+const canMenu = computed(() => props.kind.id === 'oppskrifter' && props.items.filter(({ e }) => e.status === 'Favoritt' || e.status === 'Laget').length >= 3)
+function makeMenu(): void {
+  const fav = props.items.filter(({ e }) => e.status === 'Favoritt'), made = props.items.filter(({ e }) => e.status === 'Laget')
+  const pool = [...fav, ...fav, ...made] // (favourites twice as likely)
+  const out: { d: string; e: Entry; i: number }[] = []
+  const used = new Set<number>()
+  for (const d of DAYS) {
+    const free = pool.filter((x) => !used.has(x.i))
+    const p = (free.length ? free : pool)[Math.floor(Math.random() * (free.length || pool.length))]
+    if (!p) break
+    used.add(p.i)
+    out.push({ d, e: p.e, i: p.i })
+  }
+  menu.value = out
+}
 const kr = (n: number): string => new Intl.NumberFormat('nb-NO').format(Math.round(n)) + ' kr'
 const title = (e: Entry): string => String(e.t ?? '–')
 </script>
 
 <template>
-  <div v-if="board || (waiting.length && want) || stars || results || thirsty.length || sum" class="ex">
+  <div v-if="board || (waiting.length && want) || stars || results || thirsty.length || sum || podium || year || canMenu" class="ex">
     <div v-if="board" class="board" role="group" aria-label="Status">
       <button v-for="(r, k) in board" :key="r.o" :class="{ on: status === r.o }" :style="{ '--tone': TONES[k] }" @click="emit('status', status === r.o ? '' : r.o)"><b>{{ r.n }}</b>{{ r.o }}</button>
     </div>
@@ -98,6 +134,20 @@ const title = (e: Entry): string => String(e.t ?? '–')
     <div v-if="thirsty.length" class="thirst">
       <Droplets :size="16" /><span>Trenger vann nå: </span>
       <template v-for="t in thirsty" :key="t.i"><button v-if="mine" class="water" :title="`Vannet ${title(t.e)} i dag`" @click="emit('water', t.i)">{{ title(t.e) }} ✓</button><b v-else>{{ title(t.e) }}</b></template>
+    </div>
+
+    <div v-if="podium" class="podium" aria-label="Topp tre">
+      <button v-for="(p, k) in podium" :key="p.i" :class="'p' + k" @click="emit('open', p.i, p.e)"><span class="medal">{{ ['🥈', '🥇', '🥉'][k] }}</span><b>{{ title(p.e) }}</b><i></i></button>
+    </div>
+
+    <div v-if="year" class="year">
+      <small>{{ year.total }} i {{ year.y }}</small>
+      <div class="months"><span v-for="p in year.per" :key="p.m" :title="`${p.m}: ${p.n}`"><i :style="{ height: (p.n / Math.max(1, year.max)) * 100 + '%' }"></i><small>{{ p.m[0] }}</small></span></div>
+    </div>
+
+    <div v-if="canMenu" class="menu">
+      <button class="btn soft small" @click="makeMenu">🍽️ {{ menu ? 'Ny ukesmeny' : 'Foreslå ukesmeny' }}</button>
+      <ol v-if="menu"><li v-for="m in menu" :key="m.d"><small>{{ m.d }}</small><button @click="emit('open', m.i, m.e)">{{ title(m.e) }}</button></li></ol>
     </div>
 
     <div v-if="sum" class="sum"><b>{{ kr(sum.kr) }}</b> for {{ sum.n }} ønsker som gjenstår</div>
@@ -124,5 +174,17 @@ const title = (e: Entry): string => String(e.t ?? '–')
 .thirst { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, #2b9fd8 12%, transparent); color: #2b7fb0; font-size: 0.88rem; }
 .water { all: unset; cursor: pointer; padding: 3px 10px; border-radius: 999px; background: #2b9fd8; color: #fff; font-weight: 700; font-size: 0.8rem; }
 .sum { font-size: 0.9rem; color: var(--text-3); } .sum b { color: var(--text); font-size: 1.1rem; }
+.podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; align-items: end; gap: 8px; max-width: 420px; }
+.podium button { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; font-size: 0.82rem; }
+.podium b { overflow-wrap: anywhere; } .podium .medal { font-size: 1.6rem; }
+.podium i { display: block; width: 100%; border-radius: 10px 10px 0 0; background: color-mix(in srgb, var(--mc) 30%, transparent); }
+.podium .p0 i { height: 46px; } .podium .p1 i { height: 70px; background: var(--mc); } .podium .p2 i { height: 30px; }
+.year small { color: var(--text-3); font-size: 0.78rem; }
+.months { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; height: 64px; margin-top: 4px; }
+.months span { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 2px; }
+.months i { display: block; width: 100%; min-height: 2px; border-radius: 3px 3px 0 0; background: var(--mc); }
+.menu ol { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
+.menu li { display: flex; flex-direction: column; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--glass-border); }
+.menu li small { color: var(--text-3); font-size: 0.72rem; } .menu li button { all: unset; cursor: pointer; font-weight: 700; overflow-wrap: anywhere; }
 @media (prefers-reduced-motion: reduce) { .won { animation: none; } }
 </style>

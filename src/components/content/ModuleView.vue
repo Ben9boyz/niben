@@ -68,14 +68,6 @@ function toggle(i: number): void { const dd = data.value; const e = dd?.items[i]
 
 // ── checklist progress / log numbers ──
 const done = computed(() => items.value.filter(({ e }) => e.done).length)
-const stat = computed(() => {
-  const s = mod.value?.kind.stat
-  if (!s) return null
-  const v = items.value.map(({ e }) => Number(e[s.field])).filter((n) => Number.isFinite(n))
-  if (!v.length) return { value: '–', label: s.label }
-  const r = s.op === 'sum' ? v.reduce((a, b) => a + b, 0) : s.op === 'max' ? Math.max(...v) : v.reduce((a, b) => a + b, 0) / v.length
-  return { value: String(Math.round(r * 10) / 10).replace('.', ','), label: s.label }
-})
 const series = computed(() => {
   const s = mod.value?.kind.stat
   if (!s) return []
@@ -83,6 +75,7 @@ const series = computed(() => {
   const max = Math.max(...v, 1)
   return v.map((n) => ({ n, h: Math.max(6, Math.round((n / max) * 100)) }))
 })
+const shortDate = (d: unknown): string => { const t = Date.parse(String(d ?? '') + 'T12:00:00'); if (!Number.isFinite(t)) return String(d ?? ''); const x = new Date(t); return x.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', ...(x.getFullYear() !== new Date().getFullYear() ? { year: '2-digit' } : {}) }) }
 const stars = (n: unknown): string => '★'.repeat(Math.round(Number(n) || 0)) + '☆'.repeat(5 - Math.round(Number(n) || 0))
 const sub = (e: Entry): string => (mod.value?.kind.fields ?? []).slice(1).filter((f) => ['select', 'text', 'date'].includes(f.kind) && !['img', 'url', 'note'].includes(f.k) && e[f.k] !== undefined).map((f) => String(e[f.k])).join(' · ')
 
@@ -270,10 +263,10 @@ void decor
     <template v-if="mod.kind.layout === 'log'">
       <LogInsights v-if="items.length && mod.kind.stat" :items="items.map(({ e }) => e)" :field="mod.kind.stat.field" :unit="mod.kind.stat.label.split(' ')[0] ?? ''" :goal="goal" :color="mod.kind.color" />
       <label v-if="mine && mod.kind.workout" class="goalset">Ukemål ({{ mod.kind.stat?.label.split(' ')[0] }}) <input type="number" min="0" step="any" :value="goal || ''" placeholder="f.eks. 20" @change="setGoal(($event.target as HTMLInputElement).value)" /></label>
-      <div v-if="items.length" class="stats"><span><b>{{ items.length }}</b>oppføringer</span><span v-if="stat"><b>{{ stat.value }}</b>{{ stat.label }}</span></div>
+      <div v-if="items.length" class="stats"><span><b>{{ items.length }}</b>oppføringer</span></div>
       <div v-if="series.length > 1" class="chart" aria-hidden="true"><i v-for="(p, i) in series" :key="i" :style="{ height: p.h + '%' }" :title="String(p.n)"></i></div>
       <ul class="log">
-        <li v-for="{ e, i } in shown" :key="i"><button @click="openEntry(i, e)"><time>{{ e.date ?? '' }}</time><b>{{ title(e) }}</b><span>{{ sub(e) }}<template v-if="pace(e)"> · {{ pace(e) }}</template></span><svg v-if="typeof e.route === 'string' && e.route" class="route" viewBox="-30 -30 1060 1060" aria-hidden="true"><path :d="routePath(e.route)" /></svg><em v-if="mod.kind.stat && e[mod.kind.stat.field] !== undefined">{{ e[mod.kind.stat.field] }}</em></button></li>
+        <li v-for="{ e, i } in shown" :key="i"><button @click="openEntry(i, e)"><time :datetime="String(e.date ?? '')">{{ shortDate(e.date) }}</time><b>{{ title(e) }}</b><span>{{ sub(e) }}<template v-if="pace(e)"> · {{ pace(e) }}</template></span><svg v-if="typeof e.route === 'string' && e.route" class="route" viewBox="-30 -30 1060 1060" aria-hidden="true"><path :d="routePath(e.route)" /></svg><em v-if="mod.kind.stat && e[mod.kind.stat.field] !== undefined">{{ e[mod.kind.stat.field] }}</em></button></li>
       </ul>
     </template>
 

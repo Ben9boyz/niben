@@ -15,5 +15,5 @@ const items = computed(() => {
 </script>
 
 <template>
-  <SegSwitch v-if="items" :items="items" :model-value="routeKey(route)" :small="items.length > 5" :floating="floating" label="Underfaner" />
+  <SegSwitch v-if="items" :items="items" :model-value="routeKey(route)" :small="items.length > 3" :floating="floating" label="Underfaner" />
 </template>

@@ -480,7 +480,7 @@ html.player-shell .cpage { padding-top: 80px; padding-bottom: 40px; }
   html.classic .mtop {
     position: fixed; z-index: 39; top: 0; left: 0; right: 0;
     display: flex; align-items: center; gap: 10px;
-    height: calc(60px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 112px 0 66px;
+    height: calc(60px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 112px 0 134px; /* (left: the menu button and the 3D switch) */
     background: color-mix(in srgb, var(--bg) 72%, transparent);
     -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%);
     border-bottom: 1px solid transparent; transition: border-color 0.2s, box-shadow 0.2s;

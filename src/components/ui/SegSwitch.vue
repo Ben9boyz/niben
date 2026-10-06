@@ -50,6 +50,7 @@ const index = computed(() => Math.max(0, props.items.findIndex((x) => x.id === p
 .seg > a:hover, .seg > button:hover { color: var(--text); }
 .seg > .on { color: var(--accent); }
 .seg small { opacity: 0.55; font-weight: 600; }
+.seg > a, .seg > button { min-width: 0; } .lbl { overflow: hidden; text-overflow: ellipsis; max-width: 100%; } /* (many tabs on a narrow screen: a long name is cut, the row never runs off the edge) */
 .seg.small > a, .seg.small > button { padding: 7px 10px; font-size: 0.82rem; gap: 6px; }
 @media (max-width: 720px) {
   .seg.floating { top: 70px; left: 50%; translate: -50% 0; }
