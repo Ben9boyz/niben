@@ -65,8 +65,8 @@ const shoot = async (name) => {
 const album = (n) => `spotify:album:ALB${n}`
 // the stores of the page itself (the same module instances the page uses)
 const withStores = (fn, arg) => page.evaluate(async ([src, a]) => {
-  const spotify = (await import('/src/composables/useSpotify.ts')).spotify
-  const room = (await import('/src/composables/useRoom.ts')).room
+  const spotify = (await import('/src/composables/music/useSpotify.ts')).spotify
+  const room = (await import('/src/composables/room/useRoom.ts')).room
   return new Function('spotify', 'room', 'arg', `return (${src})(spotify, room, arg)`)(spotify, room, a)
 }, [fn.toString(), arg])
 

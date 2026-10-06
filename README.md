@@ -75,3 +75,15 @@ NIBEN_GOLDEN_OUT=/tmp/before ./tests/e2e/run-golden.sh      # before
 NIBEN_GOLDEN_OUT=/tmp/after  ./tests/e2e/run-golden.sh      # after
 node tests/e2e/golden.mjs diff /tmp/before /tmp/after       # exit 1 on a difference (position tolerance 3 cm)
 ```
+
+## Where things are (src/)
+
+| folder | what |
+|---|---|
+| `pages/`, `panels/` | one page (the plain site) and one panel (the 3D room's side panel) per route |
+| `components/` | `music/` player, library, queue · `vinyl/` the record / iPod overlays of the listening corner · `guitar/` tuner, chords, recordings · `japan/` words, practice · `content/` trips, books, about, guestbook, year · `room/` the 3D room's shell, room switcher, model editor · `layout/` navigation, menus, settings · `ui/` small shared bits · `admin/` the admin tabs |
+| `composables/` | `music/` Spotify, queue, folders, web player · `site/` data, admin, texts, milestones, Steam, timer · `room/` which room, models, weather · `japan/` · `ui/` theme, mode, language, shortcuts … |
+| `three/` | the 3D scene (`listening/` = the listening corner's parts) |
+| `lib/` | plain helpers (no Vue state) |
+
+Imports use `@/` for anything in `src/` (`import { spotify } from '@/composables/music/useSpotify'`); `./` only for a neighbour in the same folder.
