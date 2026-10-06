@@ -12,7 +12,7 @@ test('free roam: walk with the keys at eye height, the walls stop you, Esc takes
   await page.waitForFunction(() => !!window.__room, null, { timeout: 60000 })
   await page.waitForTimeout(3000)
   const cam = () => page.evaluate(() => window.__room.debug.cam)
-  const go = page.getByRole('button', { name: 'Gå rundt i rommet' })
+  const go = page.getByRole('button', { name: /Gå rundt/ }).first()
   await go.waitFor({ timeout: 60000 }) // (it is there once the room has drawn its first picture)
   await go.click({ force: true })
   await page.waitForTimeout(500)

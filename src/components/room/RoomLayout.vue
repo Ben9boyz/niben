@@ -250,6 +250,7 @@ watch(() => route.name, () => (collapsed.value = false))
 .hide-toggle.out { right: 16px; width: 44px; justify-content: center; padding: 0; }
 .dock.away { opacity: 0; transform: translateX(40px); pointer-events: none; transition: opacity 0.35s, transform 0.45s var(--ease); }
 .dock.away > :deep(*) { pointer-events: none; }
+.dock.home > :deep(.hero) { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; scrollbar-width: none; } /* the card goes all the way down; what does not fit scrolls inside it */
 .dock.home {
   top: 20px;
   right: auto;
@@ -369,6 +370,7 @@ watch(() => route.name, () => (collapsed.value = false))
     width: auto;
   }
 }
+@media (max-width: 720px) { .dock.home { top: calc(66px + env(safe-area-inset-top)); } } /* (under the bar on top) */
 
 .loader {
   position: fixed;

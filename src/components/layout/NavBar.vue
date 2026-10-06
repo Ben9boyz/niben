@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import SettingsMenu from './SettingsMenu.vue'
-import RoomSwitch from '@/components/room/RoomSwitch.vue'
+import ProfileMenu from './ProfileMenu.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, type ComponentPublicInstance } from 'vue'
 import { navGroups, groupOf, groupTarget } from '@/lib/nav'
 import { useRoute, useRouter } from 'vue-router'
 import { admin, checkLogin } from '@/composables/site/useAdmin'
 import BrandLogo from '@/components/ui/BrandLogo.vue'
-import { Menu, X } from 'lucide-vue-next'
+import { Menu, X, Footprints } from 'lucide-vue-next'
+import { room } from '@/composables/room/useRoom'
 import { targetEl } from '@/lib/dom'
 import { mode, toggleMode } from '@/composables/ui/useMode'
 
@@ -135,19 +136,25 @@ onBeforeUnmount(() => {
         <span class="label">{{ l.label }}</span>
         <span class="tip">{{ l.label }}</span>
       </router-link>
+      <!-- walk around in the 3D room (free roam) -->
+      <button v-if="mode === 'rom' && room.ready && route.name !== 'admin'" type="button" class="item roam" @click="room.roam = true; closeNav()">
+        <Footprints :size="20" aria-hidden="true" />
+        <span class="label">Gå rundt</span>
+        <span class="tip">Gå rundt i rommet</span>
+      </button>
     </nav>
 
     <span class="spacer" aria-hidden="true"></span>
     <!-- me / settings: my photo (logged in) or a cog – opens the menu with view, theme, language … -->
-    <RoomSwitch v-if="!isPhone" />
     <SettingsMenu v-if="!isPhone" />
+    <ProfileMenu v-if="!isPhone" />
   </header>
   <!-- phones: the whole menu sits behind the logo (tap it); the settings cog is in the other corner -->
   <div v-if="isPhone" class="mbar" aria-hidden="true"></div>
   <button v-if="isPhone" class="mlogo glass" :aria-expanded="navOpen" aria-label="Meny" @click="navOpen = !navOpen" @dblclick.prevent="toAdmin" @pointerdown="pressStart" @pointerup="pressEnd" @pointerleave="pressEnd"><X v-if="navOpen" :size="24" aria-hidden="true" /><Menu v-else :size="24" aria-hidden="true" /></button>
   <!-- phones, 3D: the way to the plain (2D) version, right in the bar -->
   <button v-if="isPhone && mode === 'rom'" class="m2d" aria-label="Bytt til 2D-versjonen" title="Bytt til 2D-versjonen" @click="toggleMode">2D</button>
-  <RoomSwitch v-if="isPhone" />
+  <ProfileMenu v-if="isPhone" />
   <SettingsMenu v-if="isPhone" />
 </template>
 
@@ -235,6 +242,7 @@ onBeforeUnmount(() => {
   transition: color 0.3s;
 }
 .item:hover { color: var(--text); }
+button.item { border: 0; background: transparent; font-family: inherit; cursor: pointer; }
 .item.active { color: var(--accent); }
 .item svg { transition: transform 0.5s var(--spring); }
 .item:hover svg { transform: translateY(-1px) rotate(-6deg) scale(1.1); }

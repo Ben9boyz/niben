@@ -17,14 +17,14 @@ test('switching rooms does not reload the page, and the new room shows its own t
   await page.evaluate(() => { window.__same_page = true })
   assert.match(await page.locator('h1').innerText(), /Benjamin/)
 
-  await page.getByRole('button', { name: 'Bytt rom' }).click()
+  await page.getByRole('button', { name: /Rom og konto/ }).click()
   await page.locator('.smenu .row', { hasText: alice.name }).click()
   await page.getByRole('heading', { level: 1, name: /Alicia/ }).waitFor()
   assert.equal(await page.evaluate(() => window.__same_page), true, 'the page was not reloaded')
   assert.equal(await cookie(page, 'niben_r'), String(alice.id))
   assert.doesNotMatch(await page.locator('main, .dock').first().innerText(), /Benjamin/)
 
-  await page.getByRole('button', { name: 'Bytt rom' }).click()
+  await page.getByRole('button', { name: /Rom og konto/ }).click()
   await page.locator('.smenu .row').first().click()
   await page.getByRole('heading', { level: 1, name: /Benjamin/ }).waitFor()
   assert.equal(await page.evaluate(() => window.__same_page), true)
@@ -45,7 +45,7 @@ test('the library of one room does not show in another (the saved copy in the br
   const saved = await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('niben-spotify-lists')))
   assert.deepEqual(saved, ['niben-spotify-lists-v2:r1'], 'saved under the main room')
 
-  await page.getByRole('button', { name: 'Bytt rom' }).click()
+  await page.getByRole('button', { name: /Rom og konto/ }).click()
   await page.locator('.smenu .row', { hasText: alice.name }).click()
   await page.waitForFunction((id) => document.cookie.includes(`niben_r=${id}`), String(alice.id))
   await page.waitForTimeout(1500)
@@ -56,13 +56,12 @@ test('the library of one room does not show in another (the saved copy in the br
 })
 const APP_URL = () => process.env.NIBEN_APP
 
-test('logging in from the cog: a wrong password says so, the right one logs in', async () => {
+test('logging in from the profile button: a wrong password says so, the right one logs in', async () => {
   const owner = await ownerClient()
   const u = await makeUser(owner)
   clearLimits()
   const page = await openPage(browser)
-  const cog = page.getByRole('button', { name: 'Innstillinger' }).first()
-  await cog.click()
+  await page.getByRole('button', { name: /Rom og konto/ }).first().click()
   await page.getByRole('menuitem', { name: /Logg inn/ }).click()
   await page.getByPlaceholder(/Brukernavn/).fill(u.name)
   await page.getByPlaceholder('Passord').fill('wrong-password')
@@ -73,7 +72,7 @@ test('logging in from the cog: a wrong password says so, the right one logs in',
   await page.getByPlaceholder('Passord').fill(u.password)
   await page.getByRole('button', { name: 'Logg inn' }).last().click()
   await page.waitForFunction(() => document.cookie.includes('niben_r='))
-  await page.getByRole('button', { name: /Meg og innstillinger/ }).first().click()
+  await page.getByRole('button', { name: /Rom og konto/ }).first().click()
   await page.getByRole('menuitem', { name: /Admin/ }).waitFor()
   assert.deepEqual(page.errors, [])
 })

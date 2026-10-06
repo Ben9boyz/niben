@@ -740,7 +740,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     for (const o of interactive) {
       const sec = o.userData.sec !== false
       let want = sec
-      if (sec && cullOn) {
+      if (sec && cullOn && !roam.on) { // (walking around: you can turn faster than the culling can follow, so everything stays – nothing pops in)
         const b = boxOf(o)
         if (sees(wideNow, b) || (ahead && sees(wideEnd, b))) o.userData.out = undefined
         else {
@@ -754,7 +754,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     if (!tinies) tinies = collectTinies()
     const pxPerM = (host.clientHeight * renderer.getPixelRatio()) / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)))
     for (const ti of tinies) {
-      const px = cullOn ? (ti.r * 2 * pxPerM) / Math.max(0.1, camera.position.distanceTo(ti.c)) : 99
+      const px = cullOn && !roam.on ? (ti.r * 2 * pxPerM) / Math.max(0.1, camera.position.distanceTo(ti.c)) : 99
       const hid = ti.m.userData.tinyHid === true
       if (!hid && px < 2) { if (ti.m.visible) { ti.m.visible = false; ti.m.userData.tinyHid = true; changed = true } }
       else if (hid && px > 2.6) { ti.m.visible = true; ti.m.userData.tinyHid = false; changed = true }
@@ -1123,6 +1123,9 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     const cp = Math.cos(roam.pitch)
     camera.lookAt(roam.x - Math.sin(roam.yaw) * cp, EYE + Math.sin(roam.pitch), roam.z - Math.cos(roam.yaw) * cp)
     lookAt.set(roam.x - Math.sin(roam.yaw), EYE, roam.z - Math.cos(roam.yaw)) // (so the lerp back to a station starts from here)
+    // …and any flight to a station starts from where you stand now (not from where the camera was before you began walking)
+    camTarget.copy(lookAt)
+    camPos.copy(camTarget).addScaledVector(tmp2.subVectors(camera.position, camTarget), 1 / distK)
     return moved
   }
   const roamKeys = (down: boolean) => (e: KeyboardEvent): void => {
@@ -1682,6 +1685,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       roam.on = on
       roam.keys.clear(); roam.mx = roam.mz = 0; roam.drag = null
       if (on) {
+        updateCull(true) // (everything shows while walking – and then the furniture is there to be collided with)
         buildRoamBoxes()
         flight = null
         // start where the camera is, on the floor: out of anything it is standing in

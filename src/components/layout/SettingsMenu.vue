@@ -1,25 +1,21 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, type Component } from 'vue'
 import { useRoute } from 'vue-router'
-import { Gauge, Settings, Globe, Sun, Moon, Radio, Check, Wind, Keyboard, Box, LayoutList, ShieldCheck, ChevronDown, Search, LogIn, UserPlus } from 'lucide-vue-next'
+import { Gauge, Settings, Globe, Sun, Moon, Radio, Check, Wind, Keyboard, Box, LayoutList, ChevronDown, Search } from 'lucide-vue-next'
 import { LANGS } from '@/lib/languages'
 import { i18n, setLang } from '@/composables/ui/useLang'
 import { useTheme, type ThemeChoice } from '@/composables/ui/useTheme'
 import { calm, setCalm } from '@/composables/ui/useCalm'
 import { mode as viewMode, toggleMode } from '@/composables/ui/useMode'
 import { shortcuts } from '@/composables/ui/useShortcuts'
-import { signedIn, login, userLogin, errorMessage } from '@/composables/site/useAdmin'
-import { useData } from '@/composables/site/useData'
 import { gfxUi } from '@/composables/ui/useGraphics'
 import { vinyl, setVinyl, setVinylLevel, setVinylMech, setVinylWow } from '@/composables/music/useVinylNoise'
 import { targetEl, inputOf } from '@/lib/dom'
 
-// One button for everything about how the site looks: my photo (with the green dot) when I'm logged in, a cog for
-// everybody else. It opens a small menu: admin (me only), 3D room / plain version, theme, calm mode, language, shortcuts.
+// The settings cog: 3D room / plain version, theme, calm mode, language, the vinyl noise, graphics, shortcuts.
+// (Who I am – rooms, admin, logging in – is in the profile menu, ProfileMenu.vue.)
 const { mode, setMode, live } = useTheme()
-const data = useData()
 const route = useRoute()
-const photo = computed(() => data.om?.bilde || null)
 const open = ref(false)
 const langOpen = ref(false)
 const q = ref('')
@@ -27,21 +23,6 @@ const root = ref<HTMLElement | null>(null)
 const menuEl = ref<HTMLElement | null>(null)
 const pos = ref<Record<string, string>>({})
 const touch = window.matchMedia('(hover: none)').matches
-// logging in lives here, under the cog: the owner's password alone, or username / e-mail + password for an account
-const loginOpen = ref(false)
-const lgUser = ref('')
-const lgPass = ref('')
-const lgErr = ref('')
-const lgBusy = ref(false)
-async function doLogin() {
-  lgErr.value = ''
-  lgBusy.value = true
-  try {
-    if (lgUser.value.trim()) await userLogin(lgUser.value, lgPass.value)
-    else { await login(lgPass.value); location.reload() }
-  } catch (e) { lgErr.value = errorMessage(e) } finally { lgBusy.value = false }
-}
-
 async function toggle() {
   open.value = !open.value
   langOpen.value = false
@@ -80,31 +61,13 @@ const setView = (v: string) => { if (viewMode.value !== v) toggleMode() }
 </script>
 
 <template>
-  <button ref="root" class="sm glass" :class="{ on: open, me: signedIn }" :title="signedIn ? 'Meg og innstillinger' : 'Innstillinger'" :aria-label="signedIn ? 'Meg og innstillinger' : 'Innstillinger'" :aria-expanded="open" @click="toggle">
-    <template v-if="signedIn">
-      <img v-if="photo" :src="photo" alt="" crossorigin="anonymous" />
-      <Settings v-else :size="19" aria-hidden="true" />
-      <i class="dot" aria-hidden="true"></i>
-    </template>
-    <Settings v-else :size="20" aria-hidden="true" />
+  <button ref="root" class="sm glass" :class="{ on: open }" title="Innstillinger" aria-label="Innstillinger" :aria-expanded="open" aria-haspopup="menu" @click="toggle">
+    <Settings :size="20" aria-hidden="true" />
   </button>
   <teleport to="body">
     <transition name="fade">
       <div v-if="open" ref="menuEl" class="smenu glass" role="menu" translate="no" :style="pos" @click.stop>
-        <router-link v-if="signedIn" to="/admin" class="row" role="menuitem" @click="close"><ShieldCheck :size="16" aria-hidden="true" /><span class="l"><b>Admin</b><small>Styr siden din</small></span></router-link>
-        <template v-else>
-          <button class="row" role="menuitem" :aria-expanded="loginOpen" @click="loginOpen = !loginOpen"><LogIn :size="16" aria-hidden="true" /><span class="l"><b>Logg inn</b><small>Styr rommet ditt</small></span><ChevronDown :size="14" class="chev" :class="{ up: loginOpen }" aria-hidden="true" /></button>
-          <form v-if="loginOpen" class="lgf" @submit.prevent="doLogin">
-            <input v-model="lgUser" placeholder="Brukernavn eller e-post (tomt = admin)" autocomplete="username" autocapitalize="none" spellcheck="false" />
-            <input v-model="lgPass" type="password" placeholder="Passord" autocomplete="current-password" required />
-            <p v-if="lgErr" class="lge" role="alert">{{ lgErr }}</p>
-            <button class="go" :disabled="lgBusy || !lgPass">{{ lgBusy ? 'Logger inn …' : 'Logg inn' }}</button>
-            <router-link to="/admin" class="reg" @click="close"><UserPlus :size="13" aria-hidden="true" />Ingen konto? Opprett en</router-link>
-            <router-link :to="{ path: '/admin', query: { forgot: '1' } }" class="reg" @click="close">Glemt passord?</router-link>
-          </form>
-        </template>
-
-        <div class="grp">
+        <div class="grp first">
           <span class="cap">Visning</span>
           <div class="seg" role="group" aria-label="Visning">
             <button :class="{ on: viewMode === 'rom' }" @click="setView('rom')"><Box :size="15" aria-hidden="true" />3D-rom</button>

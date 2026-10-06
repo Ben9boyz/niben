@@ -39,7 +39,7 @@ test('the listening corner shows the shelf of a connected room and survives a sw
   assert.ok(await looksDrawn(page))
   const before = await scene(page)
 
-  await page.getByRole('button', { name: 'Bytt rom' }).click()
+  await page.getByRole('button', { name: /Rom og konto/ }).click()
   await page.locator('.smenu .row', { hasText: alice.name }).click()
   await page.waitForFunction((id) => document.cookie.includes(`niben_r=${id}`), String(alice.id))
   await page.waitForTimeout(2500)
