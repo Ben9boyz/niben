@@ -1,11 +1,11 @@
 import { Play, Pause, ListEnd, ListPlus, FolderInput, ExternalLink, Link, User, Disc3, Heart, HeartOff, FolderOpen, EyeOff, Trash2 } from 'lucide-vue-next'
-import { deletePlaylist, spotify, play, control, lockLeft, fmtClock, lockNote, notify, enqueue, enqueueAlbum, addToPlaylist, isSaved, toggleAlbumSaved, isLiked, setLiked, addGuest } from '../composables/useSpotify'
+import { deletePlaylist, spotify, play, control, lockLeft, fmtClock, lockNote, notify, enqueue, enqueueAlbum, addToPlaylist, isSaved, toggleAlbumSaved, isLiked, setLiked, addGuest } from '@/composables/music/useSpotify'
 import type { Album, Track } from '../types'
 import { admin } from '../composables/useAdmin'
 import type { MenuEntry } from '../composables/useContextMenu'
-import { askNewPlaylist } from '../composables/usePlaylistDialog'
-import { groups, flatGroups, moveTo } from '../composables/useGroups'
-import { openAlbumPage, openArtistPage, albumOfTrack, firstArtist } from '../composables/useBrowse'
+import { askNewPlaylist } from '@/composables/music/usePlaylistDialog'
+import { groups, flatGroups, moveTo } from '@/composables/music/useGroups'
+import { openAlbumPage, openArtistPage, albumOfTrack, firstArtist } from '@/composables/music/useBrowse'
 
 // What the right-click menu offers on an album, a playlist or a song – the things Spotify has there.
 const say = (o: { text: string; error?: boolean }): void => { spotify.notice = { text: o.text, error: !!o.error, t: Date.now() } }

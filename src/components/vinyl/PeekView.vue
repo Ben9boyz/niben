@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import MusicDetail from '@/components/music/MusicDetail.vue'
 import ArtistPage from '@/components/music/ArtistPage.vue'
-import { peek, peekBack } from '@/composables/useBrowse'
+import { peek, peekBack } from '@/composables/music/useBrowse'
 import { mode } from '@/composables/useMode'
 
 // The "Gå til album / artist" pages, shared by the flat music page and the 3D room's side panel: the top of the browse

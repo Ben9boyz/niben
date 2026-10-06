@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { ListMusic, Music, ChevronRight, Pencil, Check, X, ArrowUp, ArrowDown, GripVertical, Trash2, Shuffle, Lock } from 'lucide-vue-next'
-import { spotify, fetchQueue, fetchTracks, fmtClock } from '@/composables/useSpotify'
-import { queueDrop, queueOver, drag } from '@/composables/useDrag'
+import { spotify, fetchQueue, fetchTracks, fmtClock } from '@/composables/music/useSpotify'
+import { queueDrop, queueOver, drag } from '@/composables/music/useDrag'
 import { admin } from '@/composables/useAdmin'
 import type { Track, QueueItem } from '@/types'
-import { openAlbumPage, openArtistPage, firstArtist } from '@/composables/useBrowse'
-import { myQueue, loadMyQueue, removeAt, moveRange, clearMine, shuffleMine, locked } from '@/composables/useQueue'
+import { openAlbumPage, openArtistPage, firstArtist } from '@/composables/music/useBrowse'
+import { myQueue, loadMyQueue, removeAt, moveRange, clearMine, shuffleMine, locked } from '@/composables/music/useQueue'
 
 // Under "now playing": what comes next. "Min kø" is MY list (admin): drag albums / songs around, move them with the
 // arrows, delete, or shuffle – Spotify only gets the next song, a moment before it's needed (see useQueue.js).

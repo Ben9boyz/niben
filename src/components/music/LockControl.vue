@@ -2,7 +2,7 @@
 import { errorMessage } from '@/composables/useAdmin'
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Lock, LockOpen } from 'lucide-vue-next'
-import { spotify, lockLeft, fmtClock, fmtLock, setLockSeconds } from '@/composables/useSpotify'
+import { spotify, lockLeft, fmtClock, fmtLock, setLockSeconds } from '@/composables/music/useSpotify'
 import { targetEl } from '@/lib/dom'
 
 // The lock length setting (admin): a pill with the length / countdown, or – `tiny` – just a small

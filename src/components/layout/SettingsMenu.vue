@@ -11,7 +11,7 @@ import { shortcuts } from '@/composables/useShortcuts'
 import { signedIn, login, userLogin, errorMessage } from '@/composables/useAdmin'
 import { useData } from '@/composables/useData'
 import { gfxUi } from '@/composables/useGraphics'
-import { vinyl, setVinyl, setVinylLevel, setVinylMech, setVinylWow } from '@/composables/useVinylNoise'
+import { vinyl, setVinyl, setVinylLevel, setVinylMech, setVinylWow } from '@/composables/music/useVinylNoise'
 import { targetEl, inputOf } from '@/lib/dom'
 
 // One button for everything about how the site looks: my photo (with the green dot) when I'm logged in, a cog for

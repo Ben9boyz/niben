@@ -1,9 +1,9 @@
 import { reactive, computed, onMounted, onBeforeUnmount } from 'vue'
-import type { Album, Notice, NowPlaying, PlayOrigin, Playlist, Result, Track, TrackList } from '../types'
-import { api, ApiError, errorMessage } from './useAdmin'
-import { pget, pset, pdel } from '../lib/pcache'
+import type { Album, Notice, NowPlaying, PlayOrigin, Playlist, Result, Track, TrackList } from '@/types'
+import { api, ApiError, errorMessage } from '@/composables/useAdmin'
+import { pget, pset, pdel } from '@/lib/pcache'
 import { CUSTOM_QUEUE, addSongs, addCollection, startQueueDriver, releaseSent, myQueue } from './useQueue'
-import { roomKey } from '../lib/room'
+import { roomKey } from '@/lib/room'
 
 // Shared Spotify state: what's saved, what's playing, and the 10-minute switch lock.
 export const spotify = reactive({

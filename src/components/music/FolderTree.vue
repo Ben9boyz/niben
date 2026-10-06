@@ -2,13 +2,13 @@
 import { computed } from 'vue'
 import { ChevronRight } from 'lucide-vue-next'
 import FolderIcon from '@/components/ui/FolderIcon.vue'
-import { spotify } from '@/composables/useSpotify'
+import { spotify } from '@/composables/music/useSpotify'
 import { ref } from 'vue'
-import { groups, topGroups, childrenOf, countIn, groupCover, moveTo } from '@/composables/useGroups'
+import { groups, topGroups, childrenOf, countIn, groupCover, moveTo } from '@/composables/music/useGroups'
 import { admin } from '@/composables/useAdmin'
-import { drag, endDrag } from '@/composables/useDrag'
-import type { SortKind } from '@/composables/useSort'
-import { notify } from '@/composables/useSpotify'
+import { drag, endDrag } from '@/composables/music/useDrag'
+import type { SortKind } from '@/composables/music/useSort'
+import { notify } from '@/composables/music/useSpotify'
 
 // The folders under the library (PC): click one to show just that folder in the grid, click it again for all.
 // A folder with folders inside folds in and out.

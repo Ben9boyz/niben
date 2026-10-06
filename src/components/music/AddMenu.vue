@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Search, ListEnd, ListMusic } from 'lucide-vue-next'
-import { spotify } from '@/composables/useSpotify'
-import { groups, sectionsOf, loadGroups } from '@/composables/useGroups'
+import { spotify } from '@/composables/music/useSpotify'
+import { groups, sectionsOf, loadGroups } from '@/composables/music/useGroups'
 import type { Playlist } from '@/types'
 import { roomKey } from '@/lib/room'
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import NavBar from '@/components/layout/NavBar.vue'
 import MusicToast from '@/components/music/MusicToast.vue'
-import { useMediaSession } from './composables/useMediaSession'
+import { useMediaSession } from '@/composables/music/useMediaSession'
 import { defineAsyncComponent } from 'vue'
 import SubTabs from '@/components/layout/SubTabs.vue'
 import DropTray from '@/components/music/DropTray.vue'

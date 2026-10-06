@@ -1,7 +1,7 @@
 import { reactive, watch } from 'vue'
-import { api, admin, errorMessage } from './useAdmin'
+import { api, admin, errorMessage } from '@/composables/useAdmin'
 import { playDevice, setLocalNow } from './useSpotify'
-import { loadSpotifySdk } from '../lib/spotifySdk'
+import { loadSpotifySdk } from '@/lib/spotifySdk'
 
 // niben.no as a Spotify speaker (Spotify Web Playback SDK). Admin only: the browser shows up as a
 // device called "niben.no" in Spotify, and "Spill av" plays straight here. Needs Spotify Premium.

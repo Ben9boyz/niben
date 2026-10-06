@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
-import { spotify } from '../composables/useSpotify'
+import { spotify } from '@/composables/music/useSpotify'
 import { mode } from '../composables/useMode'
 import { room } from '../composables/useRoom'
-import { peek, peekClear } from '../composables/useBrowse'
+import { peek, peekClear } from '@/composables/music/useBrowse'
 import PeekView from '@/components/vinyl/PeekView.vue'
 import DiscoverContent from '@/components/content/DiscoverContent.vue'
 import { Sparkles } from 'lucide-vue-next'

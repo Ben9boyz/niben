@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { ImagePlus, X } from 'lucide-vue-next'
-import { plDialog, finishPlaylistDialog } from '@/composables/usePlaylistDialog'
-import { createPlaylist } from '@/composables/useSpotify'
+import { plDialog, finishPlaylistDialog } from '@/composables/music/usePlaylistDialog'
+import { createPlaylist } from '@/composables/music/useSpotify'
 import { inputOf } from '@/lib/dom'
 
 // A small sheet for making a playlist: the name, and – if I like – a picture (Spotify takes it as the playlist's cover).

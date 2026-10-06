@@ -1,7 +1,7 @@
 import { reactive } from 'vue'
-import type { Album, Track } from '../types'
+import type { Album, Track } from '@/types'
 import { addGuest, spotify } from './useSpotify'
-import { pget, pset } from '../lib/pcache'
+import { pget, pset } from '@/lib/pcache'
 
 // Spotify-style browsing on the flat music page: a song opens its album, an artist opens their albums.
 // The pages stack up, so "back" goes to the one before (and finally to the grid / search you came from).

@@ -1,5 +1,5 @@
 import { reactive, ref } from 'vue'
-import type { Track } from '../types'
+import type { Track } from '@/types'
 import { enqueue, enqueueAlbum, notify, findAlbum, spotify } from './useSpotify'
 
 // What is being dragged right now (drag & drop on the PC): a song (to a playlist / the queue) or an album /

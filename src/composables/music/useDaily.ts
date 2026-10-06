@@ -1,6 +1,6 @@
 import { computed, reactive } from 'vue'
 import { shelfAlbums } from './useGroups'
-import type { Album } from '../types'
+import type { Album } from '@/types'
 
 // "Dagens plate": one record from my library, the same all day for everybody. It sticks out of the shelf in the 3D
 // room and has a card on the home page. (Picked from the date, so no server is needed.)

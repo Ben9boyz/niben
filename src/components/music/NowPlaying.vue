@@ -6,12 +6,12 @@ import LockBadge from './LockBadge.vue'
 import LikeButton from './LikeButton.vue'
 import NowAddButton from './NowAddButton.vue'
 import WebPlayerToggle from './WebPlayerToggle.vue'
-import { spotify } from '@/composables/useSpotify'
-import { queueDrop, queueOver } from '@/composables/useDrag'
+import { spotify } from '@/composables/music/useSpotify'
+import { queueDrop, queueOver } from '@/composables/music/useDrag'
 import { mode } from '@/composables/useMode'
 import { shell } from '@/composables/useShell'
 import { admin } from '@/composables/useAdmin'
-import { openNowAlbum, openNowArtist } from '@/composables/useBrowse'
+import { openNowAlbum, openNowArtist } from '@/composables/music/useBrowse'
 
 // stacked: big cover on top (the plain music page's sidebar)
 const props = defineProps({ stacked: Boolean })

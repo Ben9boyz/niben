@@ -1,6 +1,6 @@
 import { reactive } from 'vue'
-import type { Album, Track } from '../types'
-import { api, errorMessage } from './useAdmin'
+import type { Album, Track } from '@/types'
+import { api, errorMessage } from '@/composables/useAdmin'
 
 // "Oppdag": my picks (albums / songs I recommend) and suggestions for good albums I don't have yet.
 export interface Pick extends Partial<Album>, Partial<Track> {

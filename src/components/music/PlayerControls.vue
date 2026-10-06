@@ -2,12 +2,12 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Shuffle, SkipBack, SkipForward, Play, Pause, Repeat, Repeat1, MonitorSpeaker, Smartphone, Speaker, Laptop, Volume2 } from 'lucide-vue-next'
 import WebPlayerToggle from './WebPlayerToggle.vue'
-import { playPref, setPlayPref } from '@/composables/usePlayOn'
+import { playPref, setPlayPref } from '@/composables/music/usePlayOn'
 import { mode } from '@/composables/useMode'
 import { targetEl, inputOf } from '@/lib/dom'
 import type { Result } from '@/types'
 import type { Component } from 'vue'
-import { spotify, control, type SpotifyDevice, setShuffle, cycleRepeat, fetchDevices, transferTo, setDeviceVolume, lockLeft, fmtClock, notify } from '@/composables/useSpotify'
+import { spotify, control, type SpotifyDevice, setShuffle, cycleRepeat, fetchDevices, transferTo, setDeviceVolume, lockLeft, fmtClock, notify } from '@/composables/music/useSpotify'
 
 // The player's buttons (admin): shuffle · back · play/pause · next · repeat, the heart (liked songs),
 // what's up next, and which device plays (with its volume). Everything answers at once on screen and

@@ -2,8 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { RefreshCw, Trash2, Plus, Lock } from 'lucide-vue-next'
 import { errorMessage, api } from '../../composables/useAdmin'
-import { spotify, setLockSeconds, refreshSpotify, fmtLock } from '../../composables/useSpotify'
-import { discover, loadDiscover, addPick, delPick, refreshRecs } from '../../composables/useDiscover'
+import { spotify, setLockSeconds, refreshSpotify, fmtLock } from '@/composables/music/useSpotify'
+import { discover, loadDiscover, addPick, delPick, refreshRecs } from '@/composables/music/useDiscover'
 import type { Flash } from '../../types'
 
 // What the music corner does: how long a record stays on, the picks shown on "Oppdag", and a refresh from Spotify.

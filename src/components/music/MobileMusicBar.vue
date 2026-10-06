@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Library, Search, Play, Pause, SkipBack, SkipForward, Disc3 } from 'lucide-vue-next'
-import { spotify, progressMs, control } from '@/composables/useSpotify'
+import { spotify, progressMs, control } from '@/composables/music/useSpotify'
 import { admin } from '@/composables/useAdmin'
 
 // Phones, the plain music page: like Spotify's – ONE unit at the bottom: the player on top (cover, name, the buttons you need,

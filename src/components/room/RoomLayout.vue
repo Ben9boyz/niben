@@ -12,14 +12,14 @@ import { decor } from '@/composables/useDecor'
 import BrandLogo from '@/components/ui/BrandLogo.vue'
 import { useData } from '@/composables/useData'
 import { room } from '@/composables/useRoom'
-import { spotify } from '@/composables/useSpotify'
+import { spotify } from '@/composables/music/useSpotify'
 import { shell } from '@/composables/useShell'
 import GlobalMini from '@/components/music/GlobalMini.vue'
 import MusicSwitch from '@/components/music/MusicSwitch.vue'
 import ListenDock from '@/components/vinyl/ListenDock.vue'
 import TourCard from '@/components/layout/TourCard.vue'
 import { admin } from '@/composables/useAdmin'
-import { shelfAlbums } from '@/composables/useGroups'
+import { shelfAlbums } from '@/composables/music/useGroups'
 
 const data = useData()
 const route = useRoute()

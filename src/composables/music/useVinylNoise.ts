@@ -1,10 +1,10 @@
 import { reactive, watch } from 'vue'
 import { spotify } from './useSpotify'
 import { web } from './useWebPlayer'
-import { mode } from './useMode'
+import { mode } from '@/composables/useMode'
 import { playOn } from './usePlayOn'
-import { room } from './useRoom'
-import { newAudioContext } from '../lib/audio'
+import { room } from '@/composables/useRoom'
+import { newAudioContext } from '@/lib/audio'
 
 // A record player on top of the music, all made with the Web Audio API (no sound files). Spotify's own stream can't be
 // touched (DRM), so this is a second layer that is played alongside it, only while a song plays HERE and I'm in the 3D room:

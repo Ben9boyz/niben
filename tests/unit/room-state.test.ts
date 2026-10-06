@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { groups, resetGroups, setGrouping, setView } from '../../src/composables/useGroups'
-import { spotify, resetSpotify } from '../../src/composables/useSpotify'
+import { groups, resetGroups, setGrouping, setView } from '@/composables/music/useGroups'
+import { spotify, resetSpotify } from '@/composables/music/useSpotify'
 import { milestones, resetMilestones, setMilestones } from '../../src/composables/useMilestones'
-import { myQueue, resetQueue } from '../../src/composables/useQueue'
-import { discover, resetDiscover } from '../../src/composables/useDiscover'
+import { myQueue, resetQueue } from '@/composables/music/useQueue'
+import { discover, resetDiscover } from '@/composables/music/useDiscover'
 import { jp, resetJapanese } from '../../src/composables/useJapanese'
 import { steam, resetSteam } from '../../src/composables/useSteam'
 

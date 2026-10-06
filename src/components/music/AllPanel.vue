@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { spotify } from '@/composables/useSpotify'
-import { sort, sorted } from '@/composables/useSort'
+import { spotify } from '@/composables/music/useSpotify'
+import { sort, sorted } from '@/composables/music/useSort'
 import { room } from '@/composables/useRoom'
 import GroupedGrid from './GroupedGrid.vue'
 import GroupBar from './GroupBar.vue'

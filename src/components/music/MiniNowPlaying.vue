@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Play, Pause } from 'lucide-vue-next'
-import { spotify, progressMs, control } from '@/composables/useSpotify'
+import { spotify, progressMs, control } from '@/composables/music/useSpotify'
 import { admin } from '@/composables/useAdmin'
 import LockControl from './LockControl.vue'
 

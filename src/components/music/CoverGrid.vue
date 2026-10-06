@@ -1,8 +1,8 @@
 <script setup lang="ts" generic="T extends GridItem">
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { Music, Play, Pause } from 'lucide-vue-next'
-import { libView } from '@/composables/useLibView'
-import { spotify } from '@/composables/useSpotify'
+import { libView } from '@/composables/music/useLibView'
+import { spotify } from '@/composables/music/useSpotify'
 import { playItem, itemMenu } from '@/lib/menus'
 import { showMenu, longPress, type MenuPoint } from '@/composables/useContextMenu'
 import { admin } from '@/composables/useAdmin'

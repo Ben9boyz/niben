@@ -1,8 +1,8 @@
 import { reactive, watch } from 'vue'
-import type { QueueItem, Result, Track } from '../types'
-import { api, admin } from './useAdmin'
+import type { QueueItem, Result, Track } from '@/types'
+import { api, admin } from '@/composables/useAdmin'
 import { spotify, progressMs, notify, fetchTracks, findAlbum, playDevice } from './useSpotify'
-import { roomKey } from '../lib/room'
+import { roomKey } from '@/lib/room'
 
 // My own queue. Spotify's queue can only be added to – songs can't be moved or taken away – so the list lives HERE
 // (on the server, the same on every device) and Spotify only ever holds ONE song of it: the next one, sent in the last

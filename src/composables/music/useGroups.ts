@@ -1,10 +1,10 @@
 import { reactive, watch, computed } from 'vue'
-import type { Album, Group, Playlist, Result } from '../types'
-import { api, errorMessage } from './useAdmin'
+import type { Album, Group, Playlist, Result } from '@/types'
+import { api, errorMessage } from '@/composables/useAdmin'
 import { spotify } from './useSpotify'
-import { room } from './useRoom'
-import { pget, pset } from '../lib/pcache'
-import { roomKey } from '../lib/room'
+import { room } from '@/composables/useRoom'
+import { pget, pset } from '@/lib/pcache'
+import { roomKey } from '@/lib/room'
 
 // My groups ("Jobb og fokus", "Trening" …) for albums and playlists. They live on the server (the same on every
 // device); the on/off switch for grouping is per browser. New things get a guessed group, marked as guessed

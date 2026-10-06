@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Bookmark } from 'lucide-vue-next'
-import { spotify, isSaved, toggleAlbumSaved, findAlbum } from '@/composables/useSpotify'
+import { spotify, isSaved, toggleAlbumSaved, findAlbum } from '@/composables/music/useSpotify'
 import { admin } from '@/composables/useAdmin'
 
 // Save the ALBUM that plays to / from my library (admin). Only while an album plays: in playlist / song mode there is
