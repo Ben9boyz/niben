@@ -5,12 +5,12 @@ import { reactive } from 'vue'
 // in-browser player makes the gap itself:
 //   · the end of a song: the volume is brought down over 150 ms (no digital cut)
 //   · the next song is held (paused, silent) for 2.5 s – only the vinyl noise is heard
-//   · then it starts at once at full speed, with a 15 ms fade-in (no pop)
+//   · then it starts and comes in gently over ~220 ms (a soft curve, no "bang" – but short enough to feel like a needle dropping)
 // Spotify's stream is DRM-protected and cannot be run through the Web Audio graph, so the envelope is set with the player's own
 // volume; the vinyl noise (Web Audio) is the layer that carries on through the gap (useVinylNoise).
 export const GAP_MS = 2500
 export const FADE_OUT_MS = 150
-export const FADE_IN_MS = 15
+export const FADE_IN_MS = 220
 /** The fade is over this long BEFORE the song ends: the player's volume takes a moment to follow, and Spotify begins the next song a hair early – it must never be heard. */
 const SAFETY_MS = 300
 
@@ -42,11 +42,12 @@ export function trackGapFor(p: SpotifyPlayer, volume: () => number) {
   const setVol = (k: number): void => { void p.setVolume(Math.max(0, Math.min(1, volume() * k))) }
 
   /** A volume ramp in a few steps (the player takes a number, not a curve). */
-  async function ramp(from: number, to: number, ms: number, me: number): Promise<void> {
+  async function ramp(from: number, to: number, ms: number, me: number, soft = false): Promise<void> {
     const steps = Math.max(2, Math.round(ms / 25))
     for (let i = 1; i <= steps; i++) {
       if (me !== run) return
-      setVol(from + (to - from) * (i / steps))
+      const k = i / steps
+      setVol(from + (to - from) * (soft ? k * k : k)) // (soft: slow at first, then up – the ear hears volume on a curve)
       if (i < steps) await wait(ms / steps)
     }
   }
@@ -109,7 +110,7 @@ export function trackGapFor(p: SpotifyPlayer, volume: () => number) {
       const resumedAt = performance.now()
       await p.resume().catch(() => {})
       if (me !== run) return
-      await ramp(0, 1, FADE_IN_MS, me) // a hair of fade-in against a pop
+      await ramp(0, 1, FADE_IN_MS, me, true) // a short, soft fade-in against a bang
       if (me === run) {
         reset(true)
         void ensurePlaying(resumedAt)

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { trackGapFor, setGapWanted, trackGap, cancelGap, GAP_MS, FADE_OUT_MS } from '../../src/composables/music/useTrackGap'
+import { trackGapFor, setGapWanted, trackGap, cancelGap, GAP_MS, FADE_OUT_MS, FADE_IN_MS } from '../../src/composables/music/useTrackGap'
 
 // The pause between two songs on the record player, with a fake Spotify player and fake time: the volume comes down over
 // 150 ms at the end, the next song is held (silent) for 2.5 s, then it starts with a 15 ms fade-in.
@@ -50,8 +50,11 @@ describe('the pause between two songs', () => {
 
     await vi.advanceTimersByTimeAsync(200)
     expect(f.calls).toEqual(['pause', 'resume'])
-    await vi.advanceTimersByTimeAsync(100)
+    await vi.advanceTimersByTimeAsync(FADE_IN_MS + 60)
     expect(f.volumes.at(-1)).toBe(1) // back at full volume
+    const rise = f.volumes.slice(f.volumes.lastIndexOf(0) + 1)
+    expect(rise.length).toBeGreaterThan(3) // a ramp, not a jump
+    expect(rise[0]).toBeLessThan(0.1) // …that begins quietly
     expect(trackGap.active).toBe(false)
   })
 
@@ -65,7 +68,7 @@ describe('the pause between two songs', () => {
     expect(f.volumes.at(-1)).toBe(0)
     expect(f.calls).toEqual(['pause'])
     expect(trackGap.active).toBe(true)
-    await vi.advanceTimersByTimeAsync(GAP_MS + 100)
+    await vi.advanceTimersByTimeAsync(GAP_MS + FADE_IN_MS + 100)
     expect(f.calls).toEqual(['pause', 'resume'])
     expect(f.volumes.at(-1)).toBe(1)
   })
