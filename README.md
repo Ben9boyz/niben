@@ -1,5 +1,7 @@
 # niben.no
 
+Waddup
+
 Personal hobby site: a 3D room (Three.js) with stations for guitars, books, travel, code projects,
 an "about me" wall and a listening corner with Spotify — plus a plain, non-3D version of every page.
 
