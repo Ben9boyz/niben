@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import SettingsMenu from './SettingsMenu.vue'
-import RoomSwitch from './RoomSwitch.vue'
+import RoomSwitch from '@/components/RoomSwitch.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, type ComponentPublicInstance } from 'vue'
-import { navGroups, groupOf, groupTarget } from '../lib/nav'
+import { navGroups, groupOf, groupTarget } from '@/lib/nav'
 import { useRoute, useRouter } from 'vue-router'
-import { admin, checkLogin } from '../composables/useAdmin'
+import { admin, checkLogin } from '@/composables/useAdmin'
 import BrandLogo from '@/components/ui/BrandLogo.vue'
 import { Menu, X } from 'lucide-vue-next'
-import { targetEl } from '../lib/dom'
+import { targetEl } from '@/lib/dom'
 
 const route = useRoute()
 const router = useRouter()

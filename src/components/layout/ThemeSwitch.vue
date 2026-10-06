@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { Sun, Moon, Radio, Check } from 'lucide-vue-next'
-import { useTheme, type ThemeChoice } from '../composables/useTheme'
-import { targetEl } from '../lib/dom'
+import { useTheme, type ThemeChoice } from '@/composables/useTheme'
+import { targetEl } from '@/lib/dom'
 import type { Component } from 'vue'
-import { calm, setCalm } from '../composables/useCalm'
+import { calm, setCalm } from '@/composables/useCalm'
 import { Wind } from 'lucide-vue-next'
 
 // Light / dark: a button with a small menu – "Live" (day and night where I live), "Lys" and "Mørk".

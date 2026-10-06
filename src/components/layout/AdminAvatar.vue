@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Lock } from 'lucide-vue-next'
-import { useData } from '../composables/useData'
+import { useData } from '@/composables/useData'
 // The admin button: my own photo (the one on the about page) when there is one, else a lock. Only shown to me.
 const data = useData()
 const src = computed(() => data.om?.bilde || null)

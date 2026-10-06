@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { X, Gauge, RotateCcw } from 'lucide-vue-next'
-import { gfx, gfxUi, GROUPS, PRESET_LABELS, setPreset, setOptionLoose, setShowFps, type GfxKey, type GfxItem } from '../composables/useGraphics'
-import { room } from '../composables/useRoom'
-import { inputOf, selectOf } from '../lib/dom'
+import { gfx, gfxUi, GROUPS, PRESET_LABELS, setPreset, setOptionLoose, setShowFps, type GfxKey, type GfxItem } from '@/composables/useGraphics'
+import { room } from '@/composables/useRoom'
+import { inputOf, selectOf } from '@/lib/dom'
 
 // Innstillinger → Grafikk. "Auto" = the room picks what suits this device and keeps the frame rate up on its own.
 // Everything else is up to you: pick a preset, or change single things (that makes it "Egen").

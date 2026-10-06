@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { room } from '../composables/useRoom'
-import { admin } from '../composables/useAdmin'
-import { decor } from '../composables/useDecor'
-import { tx } from '../composables/useTexts'
-import { tour, steps, current, tourDone, startTour, nextStep, endTour } from '../composables/useTour'
+import { room } from '@/composables/useRoom'
+import { admin } from '@/composables/useAdmin'
+import { decor } from '@/composables/useDecor'
+import { tx } from '@/composables/useTexts'
+import { tour, steps, current, tourDone, startTour, nextStep, endTour } from '@/composables/useTour'
 
 // A small, quiet card at the bottom: what's here, "Neste" and "Hopp over". Only the very first time somebody opens the 3D room
 // (it remembers, and never comes back). Not for me (when I'm logged in), not in the admin pages.

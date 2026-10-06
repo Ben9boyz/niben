@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { groupOf, TAB_LABELS, ROUTE_ICONS } from '../lib/nav'
+import { groupOf, TAB_LABELS, ROUTE_ICONS } from '@/lib/nav'
 import SegSwitch from '@/components/ui/SegSwitch.vue'
 
 // The sub-tabs of the current group (Lære: Japansk / Gitar-øving …) – the same switch as Album / Spillelister.

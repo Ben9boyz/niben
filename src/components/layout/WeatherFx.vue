@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import { weather } from '../composables/useLive'
-import { calm } from '../composables/useCalm'
+import { weather } from '@/composables/useLive'
+import { calm } from '@/composables/useCalm'
 
 // The weather at home over the plain version: rain, snow or fog drifting over the background (never over the text –
 // it is behind the content, in front of the backdrop). Off with "reduce motion". One small canvas, ~30 frames a second.

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { Globe, Check, Search, Loader } from 'lucide-vue-next'
-import { LANGS } from '../lib/languages'
-import { i18n, setLang } from '../composables/useLang'
-import { admin } from '../composables/useAdmin'
-import { targetEl } from '../lib/dom'
+import { LANGS } from '@/lib/languages'
+import { i18n, setLang } from '@/composables/useLang'
+import { admin } from '@/composables/useAdmin'
+import { targetEl } from '@/lib/dom'
 
 // The globe: pick the language of the site. Everything except the language names themselves gets translated.
 const q = ref('')

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Globe } from 'lucide-vue-next'
-import { byCode } from '../lib/languages'
-import { i18n, setLang, dismissSuggestion } from '../composables/useLang'
+import { byCode } from '@/lib/languages'
+import { i18n, setLang, dismissSuggestion } from '@/composables/useLang'
 
 // First visit: offer the language that fits where the visitor is. Never switches on its own.
 const lang = computed(() => (i18n.suggest ? byCode[i18n.suggest] : null))

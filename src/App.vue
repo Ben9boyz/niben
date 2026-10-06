@@ -1,24 +1,24 @@
 <script setup lang="ts">
-import NavBar from './components/NavBar.vue'
+import NavBar from '@/components/layout/NavBar.vue'
 import MusicToast from './components/MusicToast.vue'
 import { useMediaSession } from './composables/useMediaSession'
 import { defineAsyncComponent } from 'vue'
-import SubTabs from './components/SubTabs.vue'
+import SubTabs from '@/components/layout/SubTabs.vue'
 import DropTray from './components/DropTray.vue'
 import GlobalMini from './components/GlobalMini.vue'
-import ShortcutsHelp from './components/ShortcutsHelp.vue'
-import GraphicsSettings from './components/GraphicsSettings.vue'
-import LangSuggest from './components/LangSuggest.vue'
-import ContextMenu from './components/ContextMenu.vue'
+import ShortcutsHelp from '@/components/layout/ShortcutsHelp.vue'
+import GraphicsSettings from '@/components/layout/GraphicsSettings.vue'
+import LangSuggest from '@/components/layout/LangSuggest.vue'
+import ContextMenu from '@/components/layout/ContextMenu.vue'
 import NewPlaylistDialog from './components/NewPlaylistDialog.vue'
-import WeatherFx from './components/WeatherFx.vue'
+import WeatherFx from '@/components/layout/WeatherFx.vue'
 import { useRoute } from 'vue-router'
 // three.js and the whole room are only fetched when the 3D version is used
 const RoomLayout = defineAsyncComponent(() => import('./components/RoomLayout.vue'))
 import { useData } from './composables/useData'
 import { mode } from './composables/useMode'
 import { shell } from './composables/useShell'
-import PlayerTop from './components/PlayerTop.vue'
+import PlayerTop from '@/components/layout/PlayerTop.vue'
 
 const data = useData()
 useMediaSession()
