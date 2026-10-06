@@ -68,13 +68,12 @@ async function post(body: Record<string, unknown>, ok: string) {
   } catch (e) { msg.value = { error: errorMessage(e) } } finally { busy.value = false }
 }
 const toggle = (id: SectionId) => { if (s.value && !s.value.locked.includes(id)) void post({ sections: { [id]: !s.value.sections[id] } }, 'Lagret.') }
-async function saveKeys() {
-  const body: Record<string, unknown> = {}
-  if (jpdbKey.value.trim()) body.jpdb_key = jpdbKey.value.trim()
+async function saveJpdb() { await post({ jpdb_key: jpdbKey.value.trim() }, 'jpdb-nøkkelen er lagret.'); jpdbKey.value = '' }
+async function saveSteam() {
+  const body: Record<string, unknown> = { steam_id: steamId.value.trim() }
   if (steamKey.value.trim()) body.steam_key = steamKey.value.trim()
-  body.steam_id = steamId.value.trim()
-  await post(body, 'Nøklene er lagret. De ligger kryptert på serveren og vises aldri igjen.')
-  jpdbKey.value = ''; steamKey.value = ''
+  await post(body, 'Steam er lagret.')
+  steamKey.value = ''
 }
 async function disconnectSpotify() {
   busy.value = true
@@ -152,72 +151,85 @@ async function changePw() {
       </button>
     </section>
 
-    <section v-if="part === 'tilkoblinger'">
-      <h3><KeyRound :size="16" /> API-nøkler</h3>
-      <p class="muted">Nøklene brukes bare til å hente det som vises i rommet ditt. De lagres kryptert og sendes aldri tilbake til nettleseren.</p>
-      <form class="keys" @submit.prevent="saveKeys">
-        <label class="field">
-          <span>jpdb (japansk) <small v-if="s.keys.jpdb">– nøkkel er lagret</small></span>
-          <input v-model="jpdbKey" type="password" autocomplete="off" :placeholder="s.keys.jpdb ? '•••••••• (skriv en ny for å bytte)' : 'Lim inn nøkkelen'" />
-          <small>jpdb.io → Settings → API → «API key». <a href="https://jpdb.io/settings" target="_blank" rel="noopener">Åpne jpdb <ExternalLink :size="11" /></a></small>
-        </label>
-        <button v-if="s.keys.jpdb" type="button" class="btn soft small" :disabled="busy" @click="clearJpdb">Fjern jpdb-nøkkelen</button>
-        <label class="field">
-          <span>Steam-ID</span>
-          <input v-model="steamId" placeholder="76561198… eller lenken til profilen din" />
-          <small>Profilen og spillene dine må være offentlige i Steam.</small>
-        </label>
-        <label class="field">
-          <span>Egen Steam API-nøkkel <small>(valgfritt – ellers brukes sidens)</small></span>
-          <input v-model="steamKey" type="password" autocomplete="off" :placeholder="s.keys.steam_key ? '•••••••• (lagret)' : ''" />
-        </label>
-        <button class="btn primary" :disabled="busy"><Check :size="15" />Lagre nøklene</button>
-      </form>
-    </section>
+    <section v-if="part === 'tilkoblinger'" class="svcs">
+      <h3><Plug :size="16" /> Tilkoblinger</h3>
+      <p class="muted">Tjenestene rommet henter fra. Åpne en for å koble til eller bytte. Nøkler lagres kryptert og vises aldri igjen.</p>
 
-
-    <section v-if="part === 'tilkoblinger'">
-      <h3><Music2 :size="16" /> Spotify</h3>
-      <p class="muted">Kobler platespilleren, hylla og spillelistene i rommet ditt til din egen Spotify-konto. Bare du kan styre musikken – de som besøker rommet ser bare hva som spilles. Styring og avspilling i nettleseren krever Spotify Premium.</p>
-      <p class="status">
-        <span class="pill" :class="s.spotify.connected ? 'ok' : 'off'">{{ s.spotify.connected ? 'Koblet til' : 'Ikke koblet til' }}</span>
-        <a v-if="s.keys.spotify_app" class="btn primary small" href="api.php?action=spotify_login"><Plug :size="14" />{{ s.spotify.connected ? 'Koble til på nytt' : 'Koble til Spotify' }}</a>
-        <button v-if="s.spotify.connected" class="btn soft small" :disabled="busy" @click="disconnectSpotify">Koble fra</button>
-      </p>
-      <p v-if="s.spotify.connected && s.spotify.denied" class="notice error">Spotify slipper ikke denne kontoen inn ennå, så hylla blir tom. Be eieren av siden legge til e-posten du bruker på Spotify (Spotify-dashboardet → appen → User Management). Når det er gjort, trykk «Koble til på nytt».</p>
-      <p v-if="s.keys.spotify_app && !s.spotify.connected" class="muted">Spotify slipper bare inn kontoer som eieren av siden har lagt til. Be eieren legge til navnet og e-posten du bruker på Spotify, og trykk så «Koble til».</p>
-      <p v-else-if="!s.keys.spotify_app" class="muted">Spotify er ikke satt opp på denne siden ennå.</p>
-    </section>
-
-    <section v-if="part === 'tilkoblinger'">
-      <h3><MapPin :size="16" /> Bosted</h3>
-      <p class="muted">Rommet kan regne når det regner der du bor, og bli mørkt om natta. Bare stedsnavnet og været vises – aldri koordinater.</p>
-      <p class="status"><span class="pill" :class="place ? 'ok' : 'off'">{{ place ? place.name : 'Ikke satt' }}</span><button v-if="place" class="btn soft small" :disabled="busy" @click="clearPlace">Fjern</button></p>
-      <label class="field keys"><span>Søk etter sted</span><input v-model="placeQ" placeholder="f.eks. Bergen" @input="findPlace" /></label>
-      <ul v-if="placeHits.length" class="hits"><li v-for="h in placeHits" :key="h.lat + ',' + h.lon"><button :disabled="busy" @click="setPlace(h)"><b>{{ h.name }}</b><small>{{ [h.region, h.country].filter(Boolean).join(', ') }}</small></button></li></ul>
-    </section>
-
-    <section v-if="part === 'tilkoblinger'">
-      <h3><KeyRound :size="16" /> Flere kilder</h3>
-      <form class="keys" @submit.prevent="saveGithub">
-        <label class="field">
-          <span>GitHub-brukernavn <small>– til Prosjekter</small></span>
-          <input v-model="ghUser" placeholder="navn eller lenken til profilen din" />
-          <small>Bare åpne (public) prosjekter vises. Skru på «Prosjekter» over.</small>
-        </label>
-        <button class="btn soft small" :disabled="busy"><Check :size="14" />Lagre GitHub</button>
-      </form>
-      <form class="keys" @submit.prevent="saveLastfm">
-        <label class="field">
-          <span>Last.fm API-nøkkel <small v-if="s.keys.lastfm">– lagret</small> <small>– til forslag på Oppdag</small></span>
-          <input v-model="lastfm" type="password" autocomplete="off" :placeholder="s.keys.lastfm ? '•••••••• (skriv en ny for å bytte)' : '32 tegn'" />
-          <small><a href="https://www.last.fm/api/account/create" target="_blank" rel="noopener">Lag en nøkkel (gratis) <ExternalLink :size="11" /></a></small>
-        </label>
-        <div class="btns">
-          <button class="btn soft small" :disabled="busy || !lastfm.trim()"><Check :size="14" />Lagre Last.fm</button>
-          <button v-if="s.keys.lastfm" type="button" class="btn soft small" :disabled="busy" @click="post({ lastfm_key: '' }, 'Last.fm-nøkkelen er fjernet.')">Fjern</button>
+      <details class="svc" :open="!s.spotify.connected && !!s.keys.spotify_app">
+        <summary><Music2 :size="18" /><span class="t"><b>Spotify</b><small>Lytteplassen: platespiller, hylle og spillelister</small></span><span class="pill" :class="s.spotify.connected ? 'ok' : 'off'">{{ s.spotify.connected ? 'Koblet til' : 'Ikke koblet' }}</span></summary>
+        <div class="body">
+          <p class="muted">Kobler platespilleren, hylla og spillelistene til din egen Spotify-konto. Bare du styrer musikken – besøkende ser hva som spilles. Avspilling i nettleseren krever Spotify Premium.</p>
+          <p class="status">
+            <a v-if="s.keys.spotify_app" class="btn primary small" href="api.php?action=spotify_login"><Plug :size="14" />{{ s.spotify.connected ? 'Koble til på nytt' : 'Koble til Spotify' }}</a>
+            <button v-if="s.spotify.connected" class="btn soft small" :disabled="busy" @click="disconnectSpotify">Koble fra</button>
+          </p>
+          <p v-if="s.spotify.connected && s.spotify.denied" class="notice error">Spotify slipper ikke denne kontoen inn ennå, så hylla blir tom. Be eieren av siden legge til e-posten du bruker på Spotify (Spotify-dashboardet → appen → User Management).</p>
+          <p v-if="s.keys.spotify_app && !s.spotify.connected" class="muted">Spotify slipper bare inn kontoer som eieren av siden har lagt til. Be eieren legge til navnet og e-posten du bruker på Spotify, og trykk så «Koble til».</p>
+          <p v-else-if="!s.keys.spotify_app" class="muted">Spotify er ikke satt opp på denne siden ennå.</p>
         </div>
-      </form>
+      </details>
+
+      <details class="svc">
+        <summary><KeyRound :size="18" /><span class="t"><b>jpdb</b><small>Japansk: ord, repetisjon og anime</small></span><span class="pill" :class="s.keys.jpdb ? 'ok' : 'off'">{{ s.keys.jpdb ? 'Nøkkel lagret' : 'Ikke satt' }}</span></summary>
+        <form class="body keys" @submit.prevent="saveJpdb">
+          <label class="field">
+            <span>API-nøkkel</span>
+            <input v-model="jpdbKey" type="password" autocomplete="off" :placeholder="s.keys.jpdb ? '•••••••• (skriv en ny for å bytte)' : 'Lim inn nøkkelen'" />
+            <small>jpdb.io → Settings → API → «API key». <a href="https://jpdb.io/settings" target="_blank" rel="noopener">Åpne jpdb <ExternalLink :size="11" /></a></small>
+          </label>
+          <div class="btns"><button class="btn primary small" :disabled="busy || !jpdbKey.trim()"><Check :size="14" />Lagre</button><button v-if="s.keys.jpdb" type="button" class="btn soft small" :disabled="busy" @click="clearJpdb">Fjern</button></div>
+        </form>
+      </details>
+
+      <details class="svc">
+        <summary><KeyRound :size="18" /><span class="t"><b>Steam</b><small>Spill: profilen og biblioteket</small></span><span class="pill" :class="s.keys.steam_id ? 'ok' : 'off'">{{ s.keys.steam_id ? 'Koblet til' : 'Ikke satt' }}</span></summary>
+        <form class="body keys" @submit.prevent="saveSteam">
+          <label class="field"><span>Steam-ID</span><input v-model="steamId" placeholder="76561198… eller lenken til profilen din" /><small>Profilen og spillene dine må være offentlige i Steam.</small></label>
+          <label class="field"><span>Egen Steam API-nøkkel <small>(valgfritt – ellers brukes sidens)</small></span><input v-model="steamKey" type="password" autocomplete="off" :placeholder="s.keys.steam_key ? '•••••••• (lagret)' : ''" /></label>
+          <div class="btns"><button class="btn primary small" :disabled="busy"><Check :size="14" />Lagre</button></div>
+        </form>
+      </details>
+
+      <details class="svc">
+        <summary><KeyRound :size="18" /><span class="t"><b>GitHub</b><small>Prosjekter: dine åpne prosjekter</small></span><span class="pill" :class="s.keys.github_user ? 'ok' : 'off'">{{ s.keys.github_user ? s.keys.github_user : 'Ikke satt' }}</span></summary>
+        <form class="body keys" @submit.prevent="saveGithub">
+          <label class="field"><span>Brukernavn</span><input v-model="ghUser" placeholder="navn eller lenken til profilen din" /><small>Bare åpne (public) prosjekter vises. Skru på «Prosjekter» under «Hva vises».</small></label>
+          <div class="btns"><button class="btn primary small" :disabled="busy"><Check :size="14" />Lagre</button></div>
+        </form>
+      </details>
+
+      <details class="svc">
+        <summary><KeyRound :size="18" /><span class="t"><b>Last.fm</b><small>Oppdag: forslag til ny musikk</small></span><span class="pill" :class="s.keys.lastfm ? 'ok' : 'off'">{{ s.keys.lastfm ? 'Nøkkel lagret' : 'Ikke satt' }}</span></summary>
+        <form class="body keys" @submit.prevent="saveLastfm">
+          <label class="field"><span>API-nøkkel</span><input v-model="lastfm" type="password" autocomplete="off" :placeholder="s.keys.lastfm ? '•••••••• (skriv en ny for å bytte)' : '32 tegn'" /><small><a href="https://www.last.fm/api/account/create" target="_blank" rel="noopener">Lag en nøkkel (gratis) <ExternalLink :size="11" /></a></small></label>
+          <div class="btns"><button class="btn primary small" :disabled="busy || !lastfm.trim()"><Check :size="14" />Lagre</button><button v-if="s.keys.lastfm" type="button" class="btn soft small" :disabled="busy" @click="post({ lastfm_key: '' }, 'Last.fm-nøkkelen er fjernet.')">Fjern</button></div>
+        </form>
+      </details>
+
+      <details class="svc">
+        <summary><MapPin :size="18" /><span class="t"><b>Bosted</b><small>Været og dag/natt i rommet</small></span><span class="pill" :class="place ? 'ok' : 'off'">{{ place ? place.name : 'Ikke satt' }}</span></summary>
+        <div class="body">
+          <p class="muted">Rommet kan regne når det regner der du bor, og bli mørkt om natta. Bare stedsnavnet og været vises – aldri koordinater.</p>
+          <p v-if="place" class="status"><button class="btn soft small" :disabled="busy" @click="clearPlace">Fjern {{ place.name }}</button></p>
+          <label class="field keys"><span>Søk etter sted</span><input v-model="placeQ" placeholder="f.eks. Bergen" @input="findPlace" /></label>
+          <ul v-if="placeHits.length" class="hits"><li v-for="h in placeHits" :key="h.lat + ',' + h.lon"><button :disabled="busy" @click="setPlace(h)"><b>{{ h.name }}</b><small>{{ [h.region, h.country].filter(Boolean).join(', ') }}</small></button></li></ul>
+        </div>
+      </details>
+
+      <details class="svc free">
+        <summary><Plug :size="18" /><span class="t"><b>Uten oppsett</b><small>Brukes av hobbymodulene – ingen nøkkel trengs</small></span><span class="pill ok">Klare</span></summary>
+        <ul class="body free-list">
+          <li><b>Filmer og podkaster</b> – plakater og lenker fra iTunes</li>
+          <li><b>Serier</b> – TVmaze</li>
+          <li><b>Oppskrifter og baking</b> – TheMealDB</li>
+          <li><b>Fugler og planter</b> – artsnavn fra GBIF</li>
+          <li><b>Reisemål</b> – flagg fra REST Countries</li>
+          <li><b>Restauranter, turer og camping</b> – steder fra OpenStreetMap</li>
+          <li><b>Sjakk</b> – rating fra chess.com og lichess</li>
+          <li><b>Stjernekikking</b> – NASAs dagsbilde</li>
+          <li><b>Trening</b> – GPX-filer fra klokka eller Strava (leses i nettleseren)</li>
+        </ul>
+      </details>
     </section>
 
     <section v-if="part === 'konto'">
@@ -291,4 +303,14 @@ h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 1
 .hits button { display: grid; width: 100%; text-align: left; padding: 8px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--text); cursor: pointer; }
 .hits button:hover { background: var(--accent-soft); }
 .hits small { color: var(--text-3); }
+.svcs { display: grid; gap: 8px; }
+.svc { border: 1px solid var(--glass-border); border-radius: 16px; background: color-mix(in srgb, var(--bg) 60%, transparent); }
+.svc > summary { list-style: none; display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; border-radius: 16px; }
+.svc > summary::-webkit-details-marker { display: none; }
+.svc > summary:hover { background: var(--accent-soft); }
+.svc .t { flex: 1; display: grid; min-width: 0; } .svc .t small { color: var(--text-3); font-size: 0.78rem; }
+.svc[open] > summary { border-bottom: 1px solid var(--glass-border); border-radius: 16px 16px 0 0; }
+.svc .body { padding: 14px; margin: 0; }
+.pill.off { opacity: 0.8; }
+.free-list { list-style: none; display: grid; gap: 6px; font-size: 0.88rem; color: var(--text-2); } .free-list b { color: var(--text); }
 </style>

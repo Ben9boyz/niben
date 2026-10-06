@@ -3,7 +3,7 @@ import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createRoom, type PickEvent } from '@/three/room'
 import { room, clearSelection } from '@/composables/room/useRoom'
-import { rooms, enterRoom } from '@/composables/room/useRooms'
+import { rooms, hall, loadHall, enterRoom } from '@/composables/room/useRooms'
 import { useData } from '@/composables/site/useData'
 import { useTheme } from '@/composables/ui/useTheme'
 import { timer, timerState, toggle as toggleTimer } from '@/composables/site/useTimer'
@@ -162,7 +162,8 @@ watch(() => [room.api, accentHex.value], () => room.api?.setAccent(accentHex.val
 watch(() => [room.api, JSON.stringify(data.figurer), data.profile.owner], () => room.api?.setFigures(data.figurer.map((f) => ({ id: f.id, file: f.file, name: f.name })), !!data.profile.owner), { immediate: true })
 // free roam: walking around in the room
 watch(() => [room.api, room.roam], () => { room.api?.setRoam(room.roam, room.roam ? room.roamBack : null); if (room.roam) room.roamBack = null }, { immediate: true })
-watch(() => [room.api, JSON.stringify(rooms.list.map((r) => [r.username, r.photo, r.door]))], () => room.api?.setDoors(rooms.list.map((r) => ({ username: r.username, label: r.owner ? 'Mitt rom' : r.username, photo: r.photo, door: r.door ?? null, owner: r.owner }))), { immediate: true })
+watch(() => rooms.loaded && rooms.total > 1, (many) => { if (many && !hall.loaded) void loadHall() }, { immediate: true }) // (the doors of the hall: one page of them)
+watch(() => [room.api, JSON.stringify(hall.items.map((r) => [r.username, r.photo, r.door]))], () => room.api?.setDoors(hall.items.map((r) => ({ username: r.username, label: r.owner ? 'Mitt rom' : r.username, photo: r.photo, door: r.door ?? null, owner: r.owner }))), { immediate: true })
 watch(theme, (t) => api?.setTheme(t))
 watch(() => weather.value?.kind, () => api?.setWeather(weather.value))
 watch(calm, (v) => api?.setCalm(v))

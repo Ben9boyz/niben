@@ -1,14 +1,21 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { rooms, enterRoom } from '@/composables/room/useRooms'
+import { onMounted } from 'vue'
+import { rooms, hall, loadHall, searchHall, pageHall, enterRoom } from '@/composables/room/useRooms'
 
 defineProps<{ compact?: boolean }>()
 const hue = (s: string): number => { let h = 7; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 360 }
-const list = computed(() => rooms.list)
+const list = computed(() => hall.items)
+onMounted(() => { if (!hall.loaded) void loadHall() })
+const from = computed(() => (hall.total ? hall.offset + 1 : 0))
+const to = computed(() => hall.offset + hall.items.length)
 </script>
 
 <template>
-  <ul class="doors" :class="{ compact }">
+  <div class="hall">
+  <label v-if="hall.total > 6 || hall.q" class="find"><span class="sr">Søk etter et rom</span><input type="search" :value="hall.q" placeholder="Søk etter et rom …" autocomplete="off" @input="searchHall(($event.target as HTMLInputElement).value)" /></label>
+  <p v-if="hall.loaded && !list.length" class="none">Ingen rom med det navnet.</p>
+  <ul class="doors" :class="{ compact, busy: hall.busy }">
     <li v-for="r in list" :key="r.username">
       <button class="door" :class="{ here: r.username === rooms.current }" :style="{ '--h': hue(r.username) }" :data-room="r.username" @click="enterRoom(r.username)">
         <span class="frame" :class="{ art: r.door }" :style="r.door ? { backgroundImage: `url(${r.door})` } : undefined">
@@ -23,9 +30,22 @@ const list = computed(() => rooms.list)
       </button>
     </li>
   </ul>
+  <nav v-if="hall.total > hall.limit" class="pager" aria-label="Sider med dører">
+    <button type="button" :disabled="hall.offset === 0 || hall.busy" @click="pageHall(-1)">‹ Forrige</button>
+    <span>{{ from }}–{{ to }} av {{ hall.total }}</span>
+    <button type="button" :disabled="to >= hall.total || hall.busy" @click="pageHall(1)">Neste ›</button>
+  </nav>
+  </div>
 </template>
 
 <style scoped>
+.hall { display: flex; flex-direction: column; gap: 14px; }
+.find input { width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1px solid var(--glass-border); border-radius: 12px; background: var(--bg); color: var(--text); font: inherit; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.none { margin: 0; color: var(--text-3); }
+.busy { opacity: 0.6; transition: opacity 0.2s; }
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.85rem; color: var(--text-3); }
+.pager button { all: unset; cursor: pointer; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--glass-border); color: var(--text); } .pager button:disabled { opacity: 0.4; cursor: default; }
 .doors { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 22px 16px; }
 .compact { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 16px 10px; }
 .door { all: unset; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; cursor: pointer; text-align: center; }

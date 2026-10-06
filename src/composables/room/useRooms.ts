@@ -20,12 +20,31 @@ import { resetModules } from './useModules'
 // page: the room flies off, everything that belonged to it is reset and fetched again for the new room, and the new
 // one flies in (the 3D scene stays loaded – it only gets new data).
 export interface RoomInfo { username: string; owner: boolean; photo: string | null; door?: string | null; tagline: string }
-export const rooms = reactive({ list: [] as RoomInfo[], current: null as string | null, loaded: false })
+export const rooms = reactive({ list: [] as RoomInfo[], total: 0, current: null as string | null, loaded: false })
+
+// The hall: every room has a door, so a page at a time (and a search) – a house with a thousand rooms has to stay quick.
+export const hall = reactive({ q: '', offset: 0, limit: 12, items: [] as RoomInfo[], total: 0, busy: false, loaded: false })
+let hallSeq = 0
+export async function loadHall(): Promise<void> {
+  const seq = ++hallSeq
+  hall.busy = true
+  try {
+    const r = await api<{ rooms: RoomInfo[]; total: number }>('rooms_find', { q: hall.q, offset: hall.offset, limit: hall.limit })
+    if (seq !== hallSeq) return // (a newer search has been asked for)
+    hall.items = r.rooms
+    hall.total = r.total
+    if (r.rooms.length === 0 && hall.offset > 0) { hall.offset = Math.max(0, (Math.ceil(r.total / hall.limit) - 1) * hall.limit); void loadHall(); return }
+  } catch { /* no server: the hall stays as it was */ } finally { if (seq === hallSeq) { hall.busy = false; hall.loaded = true } }
+}
+let hallTimer = 0
+export function searchHall(q: string): void { hall.q = q; hall.offset = 0; clearTimeout(hallTimer); hallTimer = window.setTimeout(() => void loadHall(), 250) }
+export function pageHall(dir: 1 | -1): void { hall.offset = Math.max(0, hall.offset + dir * hall.limit); void loadHall() }
 
 export async function loadRooms(): Promise<void> {
   try {
-    const r = await api<{ rooms: RoomInfo[]; current: string | null }>('rooms')
+    const r = await api<{ rooms: RoomInfo[]; total?: number; current: string | null }>('rooms')
     rooms.list = r.rooms
+    rooms.total = r.total ?? r.rooms.length
     rooms.current = r.current
   } catch { /* no server: only one room */ }
   rooms.loaded = true

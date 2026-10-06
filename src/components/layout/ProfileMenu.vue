@@ -75,6 +75,7 @@ watch(() => route.fullPath, close)
           <span class="l"><b>{{ r.username }}<small v-if="r.owner"> · hovedrommet</small></b><small v-if="r.tagline">{{ r.tagline }}</small></span>
           <Check v-if="r.username === rooms.current" :size="16" aria-hidden="true" />
         </button>
+        <router-link v-if="rooms.total > rooms.list.length" class="row more" role="menuitem" to="/gangen" @click="close()"><span class="l"><b>Se alle {{ rooms.total }} rommene i gangen</b></span></router-link>
         <div v-if="rooms.list.length <= 1" class="grp first"><span class="cap">Du står i</span><div class="row cur"><span class="l"><b>{{ roomName }}</b></span></div></div>
 
         <template v-if="signedIn">

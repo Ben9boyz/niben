@@ -57,7 +57,7 @@ export const navGroups = computed<NavGroup[]>(() => {
   // a tab of one's own goes in before "Om meg" and the hall
   const at = out.findIndex((g) => g.id === 'gangen')
   out.splice(at < 0 ? out.length : at, 0, ...custom.values())
-  return out.filter((g) => g.routes.length > 0 && (g.id !== 'gangen' || rooms.list.length > 1)) // (the hall is only there when there is more than one room)
+  return out.filter((g) => g.routes.length > 0 && (g.id !== 'gangen' || rooms.total > 1)) // (the hall is only there when there is more than one room)
 })
 /** A hobby module's tab is called 'h:<id>' (the route itself is /h/<id>). */
 export const HOBBY = 'h:'

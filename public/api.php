@@ -272,7 +272,7 @@ require_once __DIR__ . '/_modules.inc.php';
 require_once __DIR__ . '/_news.inc.php';
 
 try {
-    if (in_array($action, ['user_register', 'user_login', 'rooms', 'room_set', 'me_settings', 'me_password', 'me_email', 'me_delete', 'user_forgot', 'user_reset', 'admin_users', 'admin_user_set'], true)) { users_handle($action, $post); fail('Ukjent handling.', 404); }
+    if (in_array($action, ['user_register', 'user_login', 'rooms', 'rooms_find', 'room_set', 'me_settings', 'me_password', 'me_email', 'me_delete', 'user_forgot', 'user_reset', 'admin_users', 'admin_user_set'], true)) { users_handle($action, $post); fail('Ukjent handling.', 404); }
     if (in_array($action, ['guitar_save', 'guitar_delete'], true)) { users_ready(); guitars_handle($action, $post); fail('Ukjent handling.', 404); }
     if (str_starts_with($action, 'spotify_')) {
         sp_more_handle($action, $post);

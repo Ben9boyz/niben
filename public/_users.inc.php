@@ -197,6 +197,40 @@ function user_public(array $u): array {
     return ['id' => (int)$u['id'], 'username' => $u['username'], 'owner' => (int)$u['id'] === 1];
 }
 
+/** One page of approved rooms (the owner's first, then by name) with their photo, door and tagline – two queries however many rooms there are.
+ *  `$alsoId` (> 0): that room is always in the page (the one you stand in, so the menu can show it). */
+function rooms_page(string $q, int $offset, int $limit, int $alsoId): array {
+    $like = '%' . addcslashes($q, '%_\\') . '%';
+    $where = $q === '' ? "status = 'approved'" : "status = 'approved' AND username LIKE ?";
+    $args = $q === '' ? [] : [$like];
+    $cnt = db()->prepare("SELECT COUNT(*) FROM users WHERE $where");
+    $cnt->execute($args);
+    $total = (int)$cnt->fetchColumn();
+    $st = db()->prepare("SELECT id, username FROM users WHERE $where ORDER BY id = 1 DESC, username LIMIT " . (int)$limit . ' OFFSET ' . (int)$offset);
+    $st->execute($args);
+    $rows = $st->fetchAll();
+    if ($alsoId > 0 && $q === '' && !in_array($alsoId, array_map(fn($r) => (int)$r['id'], $rows), true)) {
+        $one = db()->prepare("SELECT id, username FROM users WHERE id = ? AND status = 'approved'");
+        $one->execute([$alsoId]);
+        if ($r = $one->fetch()) $rows[] = $r;
+    }
+    $keys = [];
+    foreach ($rows as $r) { $keys[(int)$r['id'] === 1 ? 'about' : 'u' . (int)$r['id'] . '_about'] = (int)$r['id']; }
+    $abouts = [];
+    if ($keys) {
+        $in = implode(',', array_fill(0, count($keys), '?'));
+        $kv = db()->prepare("SELECT k, v FROM spotify_state WHERE k IN ($in)");
+        $kv->execute(array_keys($keys));
+        foreach ($kv->fetchAll() as $row) $abouts[$keys[$row['k']]] = json_decode((string)$row['v'], true) ?: [];
+    }
+    $list = [];
+    foreach ($rows as $r) {
+        $a = $abouts[(int)$r['id']] ?? [];
+        $list[] = ['username' => $r['username'], 'owner' => (int)$r['id'] === 1, 'photo' => $a['bilde'] ?? null, 'door' => $a['bilder']['door'] ?? null, 'tagline' => $a['tagline'] ?? ''];
+    }
+    return ['rooms' => $list, 'total' => $total];
+}
+
 function users_handle(string $action, bool $post): void {
     switch ($action) {
 
@@ -260,19 +294,21 @@ function users_handle(string $action, bool $post): void {
     }
 
     case 'rooms': {
-        // the rooms to choose between: the owner's first, then every approved user
+        // the rooms to choose between in the menu: the owner's first, then the first approved users (and the one you stand in). The whole
+        // list can be long: the hall asks for it a page at a time (rooms_find)
         users_ready();
-        $rows = db()->query("SELECT id, username FROM users WHERE status = 'approved' ORDER BY id = 1 DESC, username LIMIT 80")->fetchAll();
         $scope = kv_scope();
-        $list = [];
-        foreach ($rows as $r) {
-            kv_scope((int)$r['id']);
-            $about = json_decode((string)kv_get('about'), true) ?: [];
-            $list[] = ['username' => $r['username'], 'owner' => (int)$r['id'] === 1, 'photo' => $about['bilde'] ?? null, 'door' => $about['bilder']['door'] ?? null, 'tagline' => $about['tagline'] ?? ''];
-        }
-        kv_scope($scope);
+        $page = rooms_page('', 0, 24, $scope);
         $cur = user_by_id($scope);
-        out(['rooms' => $list, 'current' => $cur ? $cur['username'] : null]);
+        out(['rooms' => $page['rooms'], 'total' => $page['total'], 'current' => $cur ? $cur['username'] : null]);
+    }
+
+    case 'rooms_find': {
+        // a page of rooms, matching a search: { q, offset, limit (at most 48) }
+        users_ready();
+        $b = body();
+        $page = rooms_page(mb_substr(trim((string)($b['q'] ?? '')), 0, 40), max(0, (int)($b['offset'] ?? 0)), max(1, min(48, (int)($b['limit'] ?? 12))), 0);
+        out($page);
     }
 
     case 'room_set': {
