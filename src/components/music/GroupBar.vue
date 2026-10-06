@@ -13,8 +13,9 @@ import type { Group } from '@/types'
 // and adding / renaming / reordering / deleting the groups themselves.
 const props = defineProps<{ artist?: boolean; all?: boolean }>() // all: the "Alt" pot – albums + playlists, no Artist view // albums: the "Artist" view is offered (and no "Lister")
 const view = computed(() => (!props.artist && groups.view === 'artist' ? 'mapper' : groups.view))
+const canEdit = computed(() => view.value !== 'artist')
 const draft = ref<Group[]>([])
-const open = computed(() => admin.mine && groups.editing)
+const open = computed(() => admin.mine && groups.editing && canEdit.value)
 watch(open, (on) => { if (on) draft.value = groups.list.map((g) => ({ ...g })) }, { immediate: true })
 
 const move = (i: number, d: number) => { const a = draft.value, j = i + d; const x = a[i], y = a[j]; if (!x || !y) return; a[i] = y; a[j] = x }
@@ -55,7 +56,8 @@ async function save() {
         <button v-if="artist" :class="{ on: view === 'artist' }" @click="setView('artist')">Artist</button>
       </span>
       <span class="tools"><SortButton :kind="all ? 'all' : artist ? 'album' : 'playlist'" />
-      <button v-if="admin.mine && groups.on && groups.view !== 'artist'" class="ed" :class="{ on: groups.editing }" @click="groups.editing = !groups.editing"><Pencil :size="13" />{{ groups.editing ? 'Ferdig' : 'Rediger' }}</button></span>
+      <!-- the place of the edit button is always there for me (it is dimmed on the Artist view): nothing jumps when the view changes -->
+      <button v-if="admin.mine && groups.on" class="ed" :class="{ on: groups.editing && canEdit }" :disabled="!canEdit" :aria-pressed="groups.editing && canEdit" :aria-label="groups.editing ? 'Ferdig med å redigere' : 'Rediger mapper og lister'" :title="canEdit ? (groups.editing ? 'Ferdig' : 'Rediger mapper og lister') : 'Rediger gjelder mapper og lister, ikke Artist'" @click="groups.editing = !groups.editing"><Check v-if="groups.editing && canEdit" :size="15" /><Pencil v-else :size="15" /></button></span>
     </div>
     <div v-if="open && groups.on" class="editor">
       <p class="hint">Flytt ting med valgene på hver flis, eller dra dem til en annen gruppe. «gjettet» betyr at gruppen bare er et forslag – fra sjangeren til artistene, lyden (instrumentalitet og energi) eller navnet.</p>
@@ -87,16 +89,18 @@ async function save() {
 
 <style scoped>
 .gb { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; max-width: 100%; }
-.tools { display: inline-flex; align-items: center; gap: 6px; }
+.tools { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
 .gbrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.sw, .ed { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.78rem var(--font); cursor: pointer; }
-.sw { padding: 5px 8px; }
+/* the same height and the same look for every control in the row: grouping, the view, sorting, edit */
+.sw, .ed { display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); cursor: pointer; transition: background 0.2s, color 0.2s, border-color 0.2s; }
+.ed:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.ed:disabled { opacity: 0.35; cursor: default; }
 .sw.on { color: #fff; background: var(--accent); border-color: var(--accent); }
 .sw i { position: relative; width: 26px; height: 15px; border-radius: 999px; background: var(--accent-soft); }
 .sw i b { position: absolute; top: 2px; left: 2px; width: 11px; height: 11px; border-radius: 50%; background: var(--text-3); transition: transform 0.2s, background 0.2s; }
 .sw.on i b { transform: translateX(11px); background: var(--accent); }
-.vw { display: inline-flex; padding: 2px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); }
-.vw button { padding: 3px 10px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: 600 0.74rem var(--font); cursor: pointer; }
+.vw { display: inline-flex; align-items: center; height: 32px; box-sizing: border-box; padding: 2px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); }
+.vw button { height: 26px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: 600 0.74rem var(--font); cursor: pointer; }
 .vw button.on { background: var(--accent); color: #fff; }
 .ed.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .editor { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 6px; padding: 10px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--glass-border); }

@@ -1,6 +1,6 @@
 import { reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import type { Album, Notice, NowPlaying, PlayOrigin, Playlist, Result, Track, TrackList } from '@/types'
-import { api, ApiError, errorMessage } from '@/composables/site/useAdmin'
+import { api, admin, ApiError, errorMessage } from '@/composables/site/useAdmin'
 import { pget, pset, pdel } from '@/lib/pcache'
 import { CUSTOM_QUEUE, addSongs, addCollection, startQueueDriver, releaseSent, myQueue } from './useQueue'
 import { roomKey } from '@/lib/room'
@@ -299,12 +299,35 @@ export interface PlayDevice {
   reconnect: (() => Promise<string | null>) | null
   waitReady: ((ms: number) => Promise<string | null>) | null
   start: (() => Promise<string | null>) | null
+  mute: ((on: boolean) => void) | null // the browser player: silent while hopping over songs
 }
-export const playDevice: PlayDevice = { id: null, activate: null, control: null, reconnect: null, waitReady: null, start: null }
+export const playDevice: PlayDevice = { id: null, activate: null, control: null, reconnect: null, waitReady: null, start: null, mute: null }
 
 /** Show a short message about playback (where it ended up, why it failed). */
 export function notify(text: string, error = false): void {
   spotify.notice = { text, error, t: Date.now() }
+}
+
+/** Spotify cannot jump to a place in the queue: "next" is pressed once for every song in between (the ones skipped leave the queue).
+ *  `steps` = how many "next" (1 = the next song). In the browser player the volume is down meanwhile, so the songs in between are not heard. */
+export const SKIP_MAX = 15
+export async function skipTo(steps: number): Promise<Result> {
+  if (!admin.mine) return { ok: false, error: 'Logg inn for å styre musikken' }
+  if (lockLeft.value > 0) return { ok: false, error: `Låst – hør ferdig (${fmtClock(lockLeft.value)})` }
+  if (steps > SKIP_MAX) return { ok: false, error: `For langt ned i køen – Spotify tåler ikke mer enn ${SKIP_MAX} hopp på rad. Hopp et stykke først.` }
+  if (steps < 1) return { ok: true }
+  cancelGap()
+  if (steps > 1) playDevice.mute?.(true)
+  try {
+    for (let i = 0; i < steps; i++) {
+      const r = await control('next')
+      if (!r.ok) return r
+      if (i < steps - 1) await new Promise((res) => setTimeout(res, 220)) // (Spotify limits how fast commands may come)
+    }
+    return { ok: true }
+  } finally {
+    if (steps > 1) setTimeout(() => playDevice.mute?.(false), 450)
+  }
 }
 
 /** Pause / resume / seek / next / previous (admin). Goes straight to the browser player when it's

@@ -28,12 +28,12 @@ onBeforeUnmount(() => { document.removeEventListener('pointerdown', onDoc); wind
 
 <style scoped>
 .sortw { position: relative; display: inline-flex; }
-.sb { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.78rem var(--font); cursor: pointer; max-width: 190px; }
+.sb { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; height: 32px; min-width: 144px; padding: 0 12px; border: 1px solid var(--glass-border); border-radius: 999px; background: var(--glass-strong); color: var(--text-2); font: 600 0.78rem var(--font); cursor: pointer; max-width: 190px; }
 .sb span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sb:hover, .sb.on { color: var(--accent); border-color: var(--accent); }
 .pop { position: absolute; z-index: 40; top: calc(100% + 6px); right: 0; width: 220px; padding: 6px; border-radius: 14px; background: var(--bg); box-shadow: 0 16px 44px rgba(0, 0, 0, 0.25); display: grid; gap: 1px; }
 .pop button { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 0; border-radius: 9px; background: transparent; color: var(--text); font: 600 0.84rem var(--font); text-align: left; cursor: pointer; }
 .pop button:hover { background: var(--accent-soft); }
 .pop button.on { color: var(--accent); }
-@media (max-width: 820px) { .sb span { display: none; } .sb { padding: 6px 9px; } .pop { right: auto; left: 0; } }
+@media (max-width: 820px) { .sb span { display: none; } .sb { min-width: 32px; width: 32px; padding: 0; } .pop { right: auto; left: 0; } }
 </style>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { ListMusic, Music, ChevronRight, Pencil, Check, X, ArrowUp, ArrowDown, GripVertical, Trash2, Shuffle, Lock } from 'lucide-vue-next'
-import { spotify, fetchQueue, fetchTracks, fmtClock } from '@/composables/music/useSpotify'
+import { ListMusic, Music, Play, ChevronRight, Pencil, Check, X, ArrowUp, ArrowDown, GripVertical, Trash2, Shuffle, Lock } from 'lucide-vue-next'
+import { spotify, fetchQueue, fetchTracks, fmtClock, skipTo, notify } from '@/composables/music/useSpotify'
 import { queueDrop, queueOver, drag } from '@/composables/music/useDrag'
 import { admin } from '@/composables/site/useAdmin'
 import type { Track, QueueItem } from '@/types'
@@ -89,6 +89,14 @@ function onDrop(e: DragEvent, target: Tile) {
 }
 const onDragEnd = () => { dragging.value = null; overKey.value = null }
 
+// a click on a song in Spotify's queue: jump to it (the songs before it are skipped). Only for me – the others just see the queue.
+const canHop = computed(() => admin.mine)
+async function hop(idx: number, name: string) {
+  if (!canHop.value) return
+  const r = await skipTo(idx + 1)
+  notify(r.ok ? `Spiller «${name}»` : r.error ?? '', !r.ok)
+  clearTimeout(soon); soon = setTimeout(load, 900)
+}
 async function load() { queue.value = await fetchQueue() }
 async function where() {
   const ctx = spotify.now?.context
@@ -159,22 +167,23 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
         <ol v-else-if="asAlbums" class="albums">
           <li v-for="(g, i) in groups.slice(0, 20)" :key="(g.uri || g.name) + i" class="grp" :class="{ one: !isAlbum(g) }">
             <div v-if="isAlbum(g)" class="gh" role="button" tabindex="0" :aria-expanded="open.has('s' + i)" @click="toggle('s' + i)" @keydown.enter="toggle('s' + i)">
-              <img v-if="g.image" crossorigin="anonymous" :src="g.image" alt="" /><span v-else class="ph"><Music :size="13" /></span>
+              <button v-if="canHop" class="hopb" :title="`Hopp hit: «${g.tracks[0].t.name}»`" :aria-label="`Hopp til ${g.tracks[0].t.name}`" @click.stop="hop(g.tracks[0].idx, g.tracks[0].t.name)"><img v-if="g.image" crossorigin="anonymous" :src="g.image" alt="" /><span v-else class="ph"><Music :size="13" /></span><Play :size="14" fill="currentColor" class="hopi" /></button>
+              <template v-else><img v-if="g.image" crossorigin="anonymous" :src="g.image" alt="" /><span v-else class="ph"><Music :size="13" /></span></template>
               <span class="t" translate="no"><b><template v-if="rest(g)">Resten av </template><a v-if="g.uri" class="lnk" href="#" title="Åpne albumet" @click.stop.prevent="openGroupAlbum(g)">{{ g.name }}</a><template v-else>{{ g.name }}</template></b><small><i class="tag">Album</i>{{ g.tracks.length }} låter · {{ minutes(g) }}</small></span>
               <ChevronRight :size="15" class="chev" :class="{ on: open.has('s' + i) }" aria-hidden="true" />
             </div>
-            <div v-else class="gh single">
+            <div v-else class="gh single" :class="{ hop: canHop }" :role="canHop ? 'button' : undefined" :tabindex="canHop ? 0 : undefined" :title="canHop ? 'Hopp hit' : undefined" @click="hop(g.tracks[0].idx, g.tracks[0].t.name)" @keydown.enter="hop(g.tracks[0].idx, g.tracks[0].t.name)">
               <img v-if="g.tracks[0].t.img || g.image" crossorigin="anonymous" :src="g.tracks[0].t.img || g.image || undefined" alt="" /><span v-else class="ph"><Music :size="13" /></span>
               <span class="t" translate="no"><b>{{ g.tracks[0].t.name }}</b><small><i class="tag pl">Spilleliste</i><a v-if="g.tracks[0].t.artist" class="lnk" href="#" title="Åpne artisten" @click.prevent="openArtistOf(g.tracks[0].t)">{{ g.tracks[0].t.artist }}</a></small></span>
               <small class="d">{{ fmtClock((g.tracks[0].t.ms ?? 0) / 1000) }}</small>
             </div>
             <ol v-if="isAlbum(g) && open.has('s' + i)" class="songs">
-              <li v-for="(x, j) in g.tracks" :key="x.t.uri + j"><span class="n">{{ j + 1 }}</span><span class="t" translate="no"><b>{{ x.t.name }}</b></span><small class="d">{{ fmtClock((x.t.ms ?? 0) / 1000) }}</small></li>
+              <li v-for="(x, j) in g.tracks" :key="x.t.uri + j" :class="{ hop: canHop }" :title="canHop ? 'Hopp hit' : undefined" @click="hop(x.idx, x.t.name)"><span class="n">{{ j + 1 }}</span><span class="t" translate="no"><b>{{ x.t.name }}</b></span><small class="d">{{ fmtClock((x.t.ms ?? 0) / 1000) }}</small></li>
             </ol>
           </li>
         </ol>
         <ol v-else>
-          <li v-for="(t, i) in spotQueue.slice(0, 12)" :key="t.uri + i">
+          <li v-for="(t, i) in spotQueue.slice(0, 12)" :key="t.uri + i" :class="{ hop: canHop }" :title="canHop ? 'Hopp hit' : undefined" @click="hop(i, t.name)">
             <img v-if="t.img" crossorigin="anonymous" :src="t.img" alt="" /><span v-else class="ph"><Music :size="13" /></span>
             <span class="t" translate="no"><b>{{ t.name }}</b><small><a v-if="t.artist" class="lnk" href="#" title="Åpne artisten" @click.prevent="openArtistOf(t)">{{ t.artist }}</a></small></span>
             <small class="d">{{ fmtClock((t.ms ?? 0) / 1000) }}</small>
@@ -186,6 +195,12 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
 </template>
 
 <style scoped>
+.hop { cursor: pointer; }
+.gh.hop:hover, li.hop:hover { background: var(--accent-soft); border-radius: 10px; }
+.hopb { position: relative; flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; background: transparent; cursor: pointer; overflow: hidden; }
+.hopb img, .hopb .ph { grid-area: 1 / 1; }
+.hopb .hopi { grid-area: 1 / 1; z-index: 1; color: #fff; opacity: 0; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6)); transition: opacity 0.15s; }
+.hopb:hover .hopi, .hopb:focus-visible .hopi { opacity: 1; }
 .qp { display: grid; gap: 8px; padding: 12px; border-radius: 18px; background: var(--glass-strong); border: 1px solid var(--glass-border); min-width: 0; }
 .qp.armed { border-style: dashed; border-color: #1db954; }
 .qp.over { background: color-mix(in srgb, #1db954 14%, var(--glass-strong)); }

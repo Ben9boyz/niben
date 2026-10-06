@@ -168,6 +168,7 @@ export async function start({ force = false }: { force?: boolean } = {}): Promis
   })
   // browsers block sound until the page has been clicked: unlock on the first click/tap
   playDevice.activate = () => { void player?.activateElement() }
+  playDevice.mute = (on) => { void player?.setVolume(on ? 0 : web.volume) }
   // pause / resume / seek go straight to the player when the music is playing here
   playDevice.control = async (op, ms) => {
     if (!player || !activeHere) return false
@@ -225,6 +226,7 @@ export function stop(): void {
   player = null
   playDevice.id = null
   playDevice.activate = null
+  playDevice.mute = null
   playDevice.control = null
   playDevice.reconnect = null
   playDevice.waitReady = null
