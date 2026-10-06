@@ -62,9 +62,20 @@ export function buildHall(scene: THREE.Scene, tag: <T extends THREE.Object3D>(o:
     return new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.5, roughness: 0.6 })
   }
 
+  let gen = 0 // (a picture that arrives after the doors were rebuilt belongs to doors that are gone: it is dropped)
+  const freeDoors = (): void => {
+    doors.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return
+      o.geometry.dispose()
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) m.dispose()
+    })
+    doors.clear()
+  }
   function setDoors(next: Door[]): void {
     list = next
-    doors.clear()
+    const my = ++gen
+    const late = (t: THREE.Texture): boolean => { if (my === gen) return false; t.dispose(); return true }
+    freeDoors()
     wall?.geometry.dispose()
     if (wall) root.remove(wall)
     texs.splice(0).forEach((t) => t.dispose())
@@ -98,7 +109,7 @@ export function buildHall(scene: THREE.Scene, tag: <T extends THREE.Object3D>(o:
         const art = new THREE.Mesh(new THREE.PlaneGeometry(WIDTH, HEIGHT), dm)
         art.position.set(0, HEIGHT / 2, 0.056)
         g.add(art)
-        loadTexture(d.door, (t) => { t.colorSpace = THREE.SRGBColorSpace; dm.map = t; dm.needsUpdate = true; texs.push(t); onChange() })
+        loadTexture(d.door, (t) => { if (late(t)) return; t.colorSpace = THREE.SRGBColorSpace; dm.map = t; dm.needsUpdate = true; texs.push(t); onChange() })
       } else {
         for (const y of [0.55, 1.45]) {
           const p = new THREE.Mesh(new THREE.BoxGeometry(WIDTH * 0.7, y < 1 ? 0.65 : 0.7, 0.02), inset)
@@ -124,7 +135,7 @@ export function buildHall(scene: THREE.Scene, tag: <T extends THREE.Object3D>(o:
       })
       texs.push(initial)
       pm.map = initial
-      if (d.photo) loadTexture(d.photo, (t) => { t.colorSpace = THREE.SRGBColorSpace; pm.map = t; pm.needsUpdate = true; texs.push(t); onChange() })
+      if (d.photo) loadTexture(d.photo, (t) => { if (late(t)) return; t.colorSpace = THREE.SRGBColorSpace; pm.map = t; pm.needsUpdate = true; texs.push(t); onChange() })
       doors.add(g)
     })
     onChange()

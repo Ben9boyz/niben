@@ -1094,6 +1094,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     const ids = new Set(list.map((i) => i.id))
     for (const [id, o] of decorObjs) {
       if (ids.has(id)) continue
+      o.prop?.dispose()
       decorGroup.remove(o.root)
       decorObjs.delete(id)
       if (decorSel === id) selectDecor(null)
@@ -1866,7 +1867,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       renderer.info.autoReset = false
       renderer.info.reset()
       renderer.render(scene, camera)
-      const r = { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, meshes: 0, lights: countLights() }
+      const r = { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, meshes: 0, lights: countLights(), geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }
       scene.traverse((o) => { if (o instanceof THREE.Mesh || o instanceof THREE.Line) r.meshes++ })
       renderer.info.autoReset = false
       return r

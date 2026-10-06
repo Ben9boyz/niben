@@ -47,6 +47,12 @@ test('everything with stars from all modules is gathered on one page, best first
   assert.deepEqual(page.errors, [])
 })
 
+test('the address of a module this room does not have goes home instead of to an empty page', async () => {
+  const page = await openPage(browser, { hash: '/h/ffffffffff' })
+  await page.waitForFunction(() => location.hash === '#/' || location.hash === '', null, { timeout: 15000 })
+  assert.deepEqual(page.errors, [])
+})
+
 test('a module can have its own tab with its own symbol, or sit under one of the existing tabs', async () => {
   const owner = await ownerClient()
   const m = (await owner.post('mod_add', { type: 'svomming', name: 'Bassenget' })).json.item

@@ -7,7 +7,7 @@ import { shell, enterPlayer } from '@/composables/ui/useShell'
 import { rememberTab } from './lib/nav'
 import { routeAllowed } from './lib/sections'
 import { routeKey } from './lib/nav'
-import { loadDecor } from './composables/room/useDecor'
+import { loadDecor, decor } from './composables/room/useDecor'
 import { useData } from '@/composables/site/useData'
 import { watch } from 'vue'
 import { startDomTranslate } from './lib/domTranslate'
@@ -58,6 +58,11 @@ void loadDecor() // (the hobby modules live in this list: the menu and the modul
 // a corner that is switched off in this room: its page is not there (also when the address was typed in)
 const roomData = useData()
 watch([() => roomData.profile, () => router.currentRoute.value.name], () => { if (!routeAllowed(router.currentRoute.value.name, roomData.profile)) void router.replace('/') }, { deep: true })
+// a hobby module this room does not have (another room's, or one that was removed): home instead of an empty page
+watch([() => decor.loaded, () => decor.items.length, () => router.currentRoute.value.params.id], () => {
+  const r = router.currentRoute.value
+  if (r.name === 'modul' && decor.loaded && !decor.items.some((i) => i.id === String(r.params.id) && i.mod)) void router.replace('/')
+})
 // when the page has settled: fetch the other pages' code quietly, one by one – so a click on a tab never waits for it
 {
   let k = 0

@@ -26,7 +26,13 @@ export const decor = reactive({
   saved: true,
 })
 
-export async function loadDecor(): Promise<void> {
+let loading: Promise<void> | null = null
+/** The room's models and hobby modules (asked for from several places at once: one request). */
+export function loadDecor(): Promise<void> {
+  loading ??= fetchDecor().finally(() => { loading = null })
+  return loading
+}
+async function fetchDecor(): Promise<void> {
   try {
     const r = await fetch('api.php?action=decor_get', { cache: 'no-cache' })
     const j = (await r.json()) as { items?: DecorItem[]; error?: string }

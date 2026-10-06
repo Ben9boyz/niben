@@ -66,3 +66,21 @@ test('a corner far out of view is switched off, and comes back when the camera g
   assert.ok(out.away.calls < out.all.calls / 2, `a close-up draws far less than the overview (${out.away.calls} vs ${out.all.calls})`)
   assert.ok(out.away.lights <= out.all.lights)
 })
+
+test('paging through the hall a hundred times does not leave the old doors in memory', async () => {
+  const page = await openPage(browser, { mode: 'rom', width: 1000, height: 700, hash: '/gangen' })
+  await page.waitForFunction(() => !!window.__room, null, { timeout: 30000 })
+  await page.waitForTimeout(2000)
+  const mem = await page.evaluate(() => {
+    const r = window.__room
+    const doors = (n) => Array.from({ length: 12 }, (_, i) => ({ username: `rom${n}_${i}`, label: `Rom ${n}.${i}`, photo: null, door: null, owner: false }))
+    r.goTo('gangen', { instant: true })
+    r.setDoors(doors(0)); r.fastForward(1)
+    const before = r.stats().geometries
+    for (let n = 1; n <= 100; n++) { r.setDoors(doors(n)); r.fastForward(0.05) }
+    r.fastForward(1)
+    return { before, after: r.stats().geometries }
+  })
+  assert.ok(mem.after <= mem.before + 20, `geometries in memory: ${mem.before} → ${mem.after}`)
+  assert.deepEqual(page.errors, [])
+})

@@ -99,5 +99,5 @@ export function buildModuleProp(kind: ModuleKind, title: string, icon: string = 
   sign.position.set(0, top + 0.26, 0)
   sign.userData.noCull = true
   root.add(sign)
-  return { root, body, sign, dispose: () => { tex.dispose(); mat.dispose() } }
+  return { root, body, sign, dispose: () => { tex.dispose(); mat.dispose(); body.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose() }) } }
 }
