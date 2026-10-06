@@ -33,6 +33,7 @@ export async function loadRooms(): Promise<void> {
 const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 const frames = (): Promise<void> => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())))
 let switching = false
+let queued: string | null = null // a room asked for while one is still on its way: it comes next
 
 /** Forget the room we leave and fetch what the new one needs – only the parts that were in use. */
 async function swapRoomState(): Promise<void> {
@@ -57,7 +58,8 @@ async function swapRoomState(): Promise<void> {
 }
 
 export async function setRoom(username: string): Promise<void> {
-  if (switching || username === rooms.current) return
+  if (switching) { queued = username; return }
+  if (username === rooms.current) return
   switching = true
   const root = document.documentElement
   root.dataset.roomfx = 'out' // the room flies off (style.css)
@@ -76,4 +78,7 @@ export async function setRoom(username: string): Promise<void> {
     delete root.dataset.roomfx
     switching = false
   }
+  const next = queued
+  queued = null
+  if (next && next !== rooms.current) await setRoom(next)
 }

@@ -48,3 +48,17 @@ NIBEN_API=http://127.0.0.1:8099 npm run dev   # the frontend against a real api.
 Desktop apps: `cd desktop && npm install && npm run dist` (niben) / `npm run dist:music` (niben musikk).
 
 `public/_config.php`, `public/_spotify.php` and uploads are deliberately **not** in this repository.
+
+
+## Tests
+
+`npm test` runs all three; each also runs alone. CI (`.github/workflows/ci.yml`) runs them on every push.
+
+| | what | needs |
+|---|---|---|
+| `npm run test:unit` | vitest: room keys, which corners a room shows, chords, and that the browser stores forget one room and read the next | nothing |
+| `npm run test:api` | `api.php` in a throw-away copy of `public/` against a **test database** (emptied first – its name must contain `test`), a fake Spotify and mail written to a file: accounts, approval, forgotten password, rooms that must not leak, who may control the music, caches | php, mysql/mariadb, node |
+| `npm run test:e2e` | the real front end in Chromium: switching rooms without a reload, logging in from the cog, the grouped admin | the same + Chromium (`NIBEN_CHROMIUM=/path/to/chrome` to use one you have) |
+
+The database is read from `NIBEN_TEST_DB` (default `niben_test`), `NIBEN_TEST_DB_USER`, `NIBEN_TEST_DB_PASS`, `NIBEN_TEST_DB_HOST`.
+`npm run zip` builds `niben-upload.zip` for uploading (not kept in git).

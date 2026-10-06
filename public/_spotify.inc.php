@@ -150,7 +150,8 @@ function sp_denied(): bool { return (int)kv_get('sp_denied') > time() - 600; }
  *  themselves kept for 45 s. When it changes, something was added or removed in Spotify – the lists are fetched again
  *  at once instead of waiting for the half hour they are normally kept. '' = could not tell. */
 function sp_library_stamp(): string {
-    $r = sp_cached('probe_lib', 45, function () {
+    global $config;
+    $r = sp_cached('probe_lib', (int)($config['probe_ttl'] ?? 45), function () { // (probe_ttl: for the tests)
         $one = function (string $path, string $field) {
             [$s, $j] = sp_api('GET', $path);
             return $s === 200 ? ((int)($j['total'] ?? 0)) . ':' . (string)($field === 'album' ? ($j['items'][0]['album']['id'] ?? '') : ($j['items'][0]['id'] ?? '')) : null;
