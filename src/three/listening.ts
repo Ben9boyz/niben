@@ -1,14 +1,21 @@
 import * as THREE from 'three'
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import type { NowPlaying } from '../types'
-import { canvasTex, context2d } from './textures'
+import { context2d } from './textures'
 import { meshAdder } from './helpers'
-import { SLEEVE, THICK, SLEEVE_T, DISC_R, BOARD_W, TOP_Y, FRONT_Z, LEAN_Q, LEAN_UP, LEAN_Z, COLS, FLOORS, TT_C, TT_ARM, COMPARTMENT } from './listening/constants'
-import type { ShelfAlbum, StackEntry, ShelfRecord, LooseRecord, ScreenRect, CoverJob, SpriteData } from './listening/constants'
-import { averageColor, spineTex, placeholderCover, grooves } from './listening/textures'
+import { SLEEVE, THICK, SLEEVE_T, TOP_Y, FRONT_Z, LEAN_Q, LEAN_UP, LEAN_Z, TT_C, COMPARTMENT } from './listening/constants'
+import type { ShelfAlbum, StackEntry, ShelfRecord, LooseRecord, ScreenRect, CoverJob } from './listening/constants'
+import { averageColor } from './listening/textures'
 import { drawIpodScreen } from './listening/ipodScreen'
-import { hash01, wearAmount, wearSleeve } from './listening/wear'
-import { glbLoader, warnLoad } from './listening/models'
+import { hash01, wearAmount } from './listening/wear'
+import type { Kit } from './listening/kit'
+import { buildCabinet } from './listening/cabinet'
+import { buildTurntable } from './listening/turntable'
+import { buildDecor } from './listening/decor'
+import { buildStack } from './listening/stack'
+import { buildWall } from './listening/wall'
+import { buildIpod } from './listening/ipod'
+import { buildLiving } from './listening/living'
+import { makeLooseRecord } from './listening/loose'
 
 export type { StackEntry, ScreenRect }
 
@@ -25,611 +32,28 @@ export function buildListeningCorner() {
   const wood = new THREE.MeshStandardMaterial({ color: 0xc89b6d, roughness: 0.5 })
   const dark = new THREE.MeshStandardMaterial({ color: 0x18191d, roughness: 0.4, metalness: 0.2 })
   const alu = new THREE.MeshStandardMaterial({ color: 0xd5dae0, roughness: 0.25, metalness: 0.9 })
-  const add = meshAdder(group)
-
-  // ── Record cabinet (3 × 2 compartments; the frame is the model public/models/plateskap.glb – the boards below are what shows until it has loaded) ──
-  const sideboardStart = group.children.length
-  const cabinet = new THREE.Group()
-  group.add(cabinet)
-  const CAB_Z = 0.255 // centre of the cabinet's depth (front plane at FRONT_Z)
-  const CAB_D = 0.39
-  const T = 0.015
-  ;[-0.64, -0.215, 0.21, 0.641].forEach((x) => add(new THREE.BoxGeometry(T, TOP_Y, CAB_D), wood, x, TOP_Y / 2, CAB_Z, cabinet))
-  ;[T / 2, 0.4255, TOP_Y - T / 2].forEach((y) => add(new THREE.BoxGeometry(BOARD_W, T, CAB_D), wood, 0.0005, y, CAB_Z, cabinet))
-  add(new THREE.BoxGeometry(BOARD_W, TOP_Y, 0.008), inner, 0.0005, TOP_Y / 2, CAB_Z - CAB_D / 2 + 0.004, cabinet)
-  const frameModel = new THREE.Group() // the model's frame (same size as the boards), once it has loaded
-  frameModel.position.set(-0.215, 0, CAB_Z)
-  group.add(frameModel)
-  glbLoader().load('models/plateskap.glb', (g) => {
-    g.scene.traverse((o) => { if (o instanceof THREE.Mesh) { o.castShadow = o.receiveShadow = true; o.userData.kind = 'shelf' } })
-    frameModel.add(g.scene)
-    cabinet.visible = false
-    shelfDirty = true
-  }, undefined, warnLoad('plateskap'))
-  let shelfDirty = false
-
-  // ── lighting for the records ──
-  // a warm spot from above onto the turntable and the sleeve that's playing
-  const spot = new THREE.SpotLight(0xffd9a8, 9, 3.2, 0.62, 0.85, 1.6)
-  spot.position.set(-0.15, 2.15, 0.95)
-  spot.target.position.set(-0.2, TOP_Y, 0.2)
-  group.add(spot, spot.target)
-  // an LED strip under the top board, washing down over the record spines
-  const led = new THREE.Mesh(new THREE.BoxGeometry(BOARD_W - 0.06, 0.008, 0.012), new THREE.MeshBasicMaterial({ color: 0xffe2b8, toneMapped: false }))
-  led.position.set(0, TOP_Y - 0.03, FRONT_Z - 0.03) // (under the top board: over the top row of records)
-  group.add(led)
-  const ledLight = new THREE.RectAreaLight(0xffd9a8, 5, BOARD_W - 0.06, 0.06)
-  ledLight.position.copy(led.position)
-  ledLight.lookAt(led.position.x, 0, led.position.z - 0.12) // shine down and slightly back onto the spines
-  group.add(ledLight)
-
-  // the whole sideboard is clickable ("go to the shelf"), not just the records in it
-  cabinet.traverse((m) => { m.userData.kind = 'shelf' })
-  frameModel.userData.kind = 'shelf'
-  // ── Turntable ──
-  const tt = new THREE.Group()
-  tt.position.set(-0.38, TOP_Y, 0.24)
-  tt.userData = { kind: 'turntable' } // click: pause / play
-  group.add(tt)
-  add(new RoundedBoxGeometry(0.46, 0.08, 0.36, 3, 0.012), wood, 0, 0.04, 0, tt)
-  add(new THREE.CylinderGeometry(0.155, 0.155, 0.016, 64), dark, -0.04, 0.088, 0, tt)
-  const platter = new THREE.Group()
-  platter.position.set(TT_C.x, 0.111, TT_C.z) // (the platter's centre on the model)
-  tt.add(platter)
-  const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.004, 96), [
-    new THREE.MeshStandardMaterial({ color: 0x0c0c0e, roughness: 0.4 }),
-    new THREE.MeshStandardMaterial({ map: grooves(), roughness: 0.35, metalness: 0.1 }),
-    new THREE.MeshStandardMaterial({ color: 0x0c0c0e }),
-  ])
-  disc.castShadow = true
-  // the record on the turntable: only there while one is playing (it comes out of its sleeve and lands on the platter)
-  const rec = new THREE.Group()
-  rec.visible = false
-  platter.add(rec)
-  rec.add(disc)
-  const labelMat = new THREE.MeshStandardMaterial({ color: 0xd33a2c, roughness: 0.6 })
-  const label = new THREE.Mesh(new THREE.CircleGeometry(0.048, 48), labelMat)
-  label.rotation.x = -Math.PI / 2
-  label.position.y = 0.0025
-  rec.add(label)
-  // the same record in flight between the sleeve and the platter
-  const flyDisc = new THREE.Group()
-  flyDisc.add(disc.clone(), label.clone())
-  flyDisc.visible = false
-  group.add(flyDisc)
-  // the record's own model (public/models/record.glb: a 12-inch with a hole, grooves as a normal map). Its label is painted here:
-  // the cover of the album that plays, on both sides. The plain disc above stays until the model has loaded.
-  const discCanvas = document.createElement('canvas')
-  discCanvas.width = discCanvas.height = 1024
-  const discTex = new THREE.CanvasTexture(discCanvas)
-  discTex.flipY = false // (like the model's own textures)
-  discTex.colorSpace = THREE.SRGBColorSpace
-  discTex.anisotropy = 8
-  let discLabel: HTMLImageElement | null = null // the cover image on the label (null: a plain red label)
-  function paintDisc(): void {
-    const x = context2d(discCanvas)
-    x.fillStyle = '#0a0a0c'
-    x.fillRect(0, 0, 1024, 1024)
-    for (const c of [296, 724]) { // the two sides
-      x.save()
-      x.beginPath(); x.arc(c, c, 97, 0, Math.PI * 2); x.clip()
-      if (discLabel) x.drawImage(discLabel, c - 97, c - 97, 194, 194)
-      else { x.fillStyle = '#d33a2c'; x.fillRect(c - 97, c - 97, 194, 194) }
-      x.restore()
-      x.fillStyle = '#0a0a0c'; x.beginPath(); x.arc(c, c, 7, 0, Math.PI * 2); x.fill() // the spindle hole
-    }
-    discTex.needsUpdate = true
-  }
-  paintDisc()
-  /** The record model, kept to make the discs inside the sleeves. */
-  let recTpl: { geometry: THREE.BufferGeometry; material: THREE.MeshStandardMaterial; matrix: THREE.Matrix4 } | null = null
-  let sleeveTpl: THREE.Object3D | null = null // the sleeve model (a Group)
-  glbLoader().load('models/sleeve.glb', (g) => { sleeveTpl = g.scene }, undefined, warnLoad('sleeve'))
-  glbLoader().load('models/record.glb', (g) => {
-    let found: THREE.Mesh | null = null
-    g.scene.traverse((o) => { if (o instanceof THREE.Mesh && !found) found = o })
-    const src = found as THREE.Mesh | null
-    if (!src || !(src.material instanceof THREE.MeshStandardMaterial)) return
-    src.updateWorldMatrix(true, false)
-    const mat = src.material.clone()
-    mat.map = discTex
-    mat.metalness = 0.15
-    mat.needsUpdate = true
-    recTpl = { geometry: src.geometry, material: src.material, matrix: src.matrixWorld.clone() }
-    const flat = (): THREE.Mesh => { const m = new THREE.Mesh(src.geometry, mat); m.applyMatrix4(src.matrixWorld); m.castShadow = true; return m }
-    for (const c of rec.children) c.visible = false
-    for (const c of flyDisc.children) c.visible = false
-    rec.add(flat())
-    flyDisc.add(flat())
-    shelfDirty = true
-  }, undefined, warnLoad('record'))
-  add(new THREE.CylinderGeometry(0.004, 0.004, 0.02, 8), alu, -0.04, 0.11, 0, tt)
-  add(new THREE.CylinderGeometry(0.025, 0.028, 0.03, 24), alu, 0.16, 0.095, -0.1, tt)
-  const arm = new THREE.Group()
-  arm.position.set(TT_ARM.x, 0.12, TT_ARM.z) // (where the tonearm turns on the model)
-  tt.add(arm)
-  const armRod = add(new THREE.CylinderGeometry(0.004, 0.004, 0.24, 8), alu, -0.06, 0, 0.1, arm)
-  armRod.rotation.x = Math.PI / 2
-  armRod.rotation.z = 0.5
-  add(new THREE.BoxGeometry(0.018, 0.01, 0.03), dark, -0.115, -0.006, 0.205, arm)
-  add(new THREE.CylinderGeometry(0.012, 0.012, 0.012, 16), alu, 0.17, 0.09, 0.13, tt)
-
-  // ── Decor: speakers, a plant, a candle, frames, fairy lights, headphones, a floor lamp ──
-  const terracotta = new THREE.MeshStandardMaterial({ color: 0xc9774f, roughness: 0.85 })
-  const leafMat = new THREE.MeshStandardMaterial({ color: 0x4f8a5b, roughness: 0.7 })
-  const leafMat2 = new THREE.MeshStandardMaterial({ color: 0x66a06d, roughness: 0.7 })
-  const speakerWood = new THREE.MeshStandardMaterial({ color: 0x8a5a36, roughness: 0.5 })
   const grill = new THREE.MeshStandardMaterial({ color: 0x1b1c20, roughness: 0.9 })
-  // floor-standing speakers either side of the sideboard
-  ;[-1, 1].forEach((side) => {
-    const sp = new THREE.Group()
-    sp.position.set(side * 0.9, 0, 0.2)
-    group.add(sp)
-    add(new RoundedBoxGeometry(0.26, 0.82, 0.24, 3, 0.012), speakerWood, 0, 0.5, 0, sp)
-    add(new THREE.CylinderGeometry(0.022, 0.03, 0.09, 12), dark, 0, 0.045, 0, sp) // plinth
-    const w = add(new THREE.CylinderGeometry(0.085, 0.085, 0.01, 40), grill, 0, 0.36, 0.122, sp)
-    w.rotation.x = Math.PI / 2
-    const w2 = add(new THREE.CylinderGeometry(0.03, 0.03, 0.01, 24), alu, 0, 0.36, 0.128, sp) // dust cap
-    w2.rotation.x = Math.PI / 2
-    const tw = add(new THREE.CylinderGeometry(0.03, 0.03, 0.01, 24), grill, 0, 0.66, 0.122, sp)
-    tw.rotation.x = Math.PI / 2
-  })
-  // a plant on the sideboard
-  const plantLeaves: THREE.Mesh[] = []
-  const plant = new THREE.Group()
-  plant.position.set(0.56, TOP_Y, 0.14)
-  group.add(plant)
-  add(new THREE.CylinderGeometry(0.058, 0.044, 0.1, 20), terracotta, 0, 0.05, 0, plant)
-  for (let i = 0; i < 9; i++) {
-    const a = (i / 9) * Math.PI * 2 + i * 0.4
-    const lf = add(new THREE.SphereGeometry(0.05, 10, 8), i % 2 ? leafMat : leafMat2, Math.cos(a) * 0.035, 0.17 + (i % 3) * 0.05, Math.sin(a) * 0.035, plant)
-    lf.scale.set(0.34, 1.35 + (i % 3) * 0.2, 0.12)
-    lf.rotation.set(Math.sin(a) * 0.55, -a, -Math.cos(a) * 0.55)
-    lf.userData.rx = lf.rotation.x
-    lf.userData.rz = lf.rotation.z
-    plantLeaves.push(lf)
-  }
-  // a candle that flickers (the flame is part of the beat pulse below)
-  const candle = new THREE.Group()
-  candle.position.set(0.6, TOP_Y, 0.4)
-  group.add(candle)
-  add(new THREE.CylinderGeometry(0.03, 0.03, 0.06, 20), new THREE.MeshStandardMaterial({ color: 0xe9d9bd, roughness: 0.5 }), 0, 0.03, 0, candle)
-  add(new THREE.CylinderGeometry(0.0015, 0.0015, 0.014, 6), dark, 0, 0.067, 0, candle)
-  const flameMat = new THREE.MeshBasicMaterial({ color: 0xe8a24e }) // not too bright: the bloom would make it glow
-  const flame = new THREE.Mesh(new THREE.SphereGeometry(0.009, 10, 8), flameMat)
-  flame.scale.set(0.8, 1.7, 0.8)
-  flame.position.set(0, 0.082, 0)
-  candle.add(flame)
-  const candleLight = new THREE.PointLight(0xffb76b, 0.05, 0.35, 2)
-  candleLight.position.set(0, 0.1, 0.02)
-  candle.add(candleLight)
-  // ── The stack of records on the table: the albums coming up in the queue on top (next one first), the albums
-  // I listened to last below them. Any height: the sleeves get thinner the more there are. ──
-  const stackGroup = new THREE.Group()
-  stackGroup.position.set(0.42, TOP_Y, 0.27)
-  group.add(stackGroup)
-  let stackItems: StackEntry[] = []
-  const stackTex = new Map<string, THREE.Texture>()
-  const hueOf = (str: string): number => { let h = 0; for (const c of str) h = (h * 31 + c.charCodeAt(0)) % 360; return h }
-  function setStack(list: StackEntry[], onChange?: () => void): void {
-    const key = list.map((x) => x.uri + (x.queued ? 'q' : '')).join('|')
-    if (key === stackKey) return
-    stackKey = key
-    stackItems = list.slice(0, 30)
-    for (const m of [...stackGroup.children]) {
-      stackGroup.remove(m)
-      if (!(m instanceof THREE.Mesh)) continue
-      m.geometry.dispose()
-      for (const mt of Array.isArray(m.material) ? m.material : [m.material]) if (!(mt instanceof THREE.MeshStandardMaterial && mt.map)) mt.dispose()
-    }
-    const n = stackItems.length
-    const t = Math.min(0.0095, 0.26 / Math.max(n, 1)) // 30 sleeves still fit in 26 cm
-    stackItems.forEach((it, i) => {
-      const fromBottom = n - 1 - i
-      const hue = hueOf(it.uri)
-      const edge = new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(hue / 360, it.queued ? 0.55 : 0.4, it.queued ? 0.5 : 0.42), roughness: 0.75 })
-      let top: THREE.MeshStandardMaterial = edge
-      if (i === 0) { // only the top sleeve shows its cover
-        top = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
-        const src = it.image_large || it.image
-        if (src) {
-          const apply = (tex: THREE.Texture): void => { top.map = tex; top.needsUpdate = true; onChange?.() }
-          const known = stackTex.get(src)
-          if (known) apply(known)
-          else loader.load(src, (tex) => { tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; stackTex.set(src, tex); apply(tex) }, undefined, () => {})
-        } else top.color.setHSL(hue / 360, 0.4, 0.55)
-      }
-      const m = new THREE.Mesh(new THREE.BoxGeometry(0.3, t * 0.92, 0.3), [edge, edge, top, edge, edge, edge])
-      const j = ((hueOf(it.uri + i) % 100) / 100 - 0.5)
-      m.position.set(j * 0.02, t * fromBottom + t / 2, ((hueOf(it.name || it.uri) % 100) / 100 - 0.5) * 0.02)
-      m.rotation.y = j * 0.16
-      m.castShadow = m.receiveShadow = true
-      m.userData = { kind: 'stack', index: i }
-      stackGroup.add(m)
-    })
-    onChange?.()
-  }
-  let stackKey = ''
-  // where a record lies when it is one of the sleeves in the stack on the table (group-local), or null
-  const slotQ = new THREE.Quaternion(), slotFlat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2))
-  function stackSlot(uri: string): { pos: THREE.Vector3; q: THREE.Quaternion } | null {
-    const i = stackItems.findIndex((x) => x.uri === uri)
-    if (i < 0) return null
-    const m = stackGroup.children.find((c) => c.userData.index === i)
-    if (!m) return null
-    slotQ.setFromEuler(new THREE.Euler(0, m.rotation.y, 0)).multiply(slotFlat) // lying flat, cover up
-    return { pos: new THREE.Vector3().copy(stackGroup.position).add(m.position), q: slotQ.clone() }
-  }
-  // the next album (all of it is in the queue): one sleeve leaning against the wall at the left of the plant
-  const nextMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
-  const nextEdge = new THREE.MeshStandardMaterial({ color: 0xe9e4d8, roughness: 0.8 })
-  const nextMesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.008), [nextEdge, nextEdge, nextEdge, nextEdge, nextMat, nextEdge])
-  nextMesh.position.set(0.26, TOP_Y + 0.15 * Math.cos(0.26) + 0.002, 0.11)
-  nextMesh.rotation.x = -0.26
-  nextMesh.castShadow = nextMesh.receiveShadow = true
-  nextMesh.userData = { kind: 'next' }
-  nextMesh.visible = false
-  group.add(nextMesh)
-  let nextUri: string | null = null
-  function setNext(a: StackEntry | null | undefined, onChange?: () => void): void {
-    const uri = a?.uri ?? null
-    if (uri === nextUri) return
-    nextUri = uri
-    nextMesh.visible = !!a
-    if (!a) { onChange?.(); return }
-    const src = a.image_large || a.image
-    if (src) loader.load(src, (tex) => { tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; nextMat.map?.dispose(); nextMat.map = tex; nextMat.needsUpdate = true; onChange?.() }, undefined, () => {})
-    onChange?.()
-  }
-  // frames on the wall above (abstract "records at sunset")
-  const art = (seed: number): THREE.CanvasTexture => canvasTex(300, 380, (x, w, h) => {
-    const g = x.createLinearGradient(0, 0, 0, h)
-    const pal: [string, string] = ([['#f6c177', '#d9694f'], ['#8fb8de', '#3f5f93'], ['#cfe3c0', '#5c8a6a']] as [string, string][])[seed % 3] ?? ['#f6c177', '#d9694f']
-    g.addColorStop(0, pal[0]); g.addColorStop(1, pal[1])
-    x.fillStyle = g; x.fillRect(0, 0, w, h)
-    x.fillStyle = 'rgba(20,20,26,.92)'; x.beginPath(); x.arc(w / 2, h * 0.58, w * 0.32, 0, Math.PI * 2); x.fill()
-    x.strokeStyle = 'rgba(255,255,255,.14)'; x.lineWidth = 2
-    for (let r = 0.16; r < 0.3; r += 0.035) { x.beginPath(); x.arc(w / 2, h * 0.58, w * r, 0, Math.PI * 2); x.stroke() }
-    x.fillStyle = pal[0]; x.beginPath(); x.arc(w / 2, h * 0.58, w * 0.08, 0, Math.PI * 2); x.fill()
-  })
-  ;[[-0.5, 1.38, 0.3, 0.38, 0], [0.02, 1.5, 0.36, 0.46, 1], [0.54, 1.38, 0.3, 0.38, 2]].forEach(([x, y, fw, fh, seed]) => {
-    add(new THREE.BoxGeometry(fw + 0.03, fh + 0.03, 0.02), wood, x, y, 0.025)
-    const pic = new THREE.Mesh(new THREE.PlaneGeometry(fw, fh), new THREE.MeshStandardMaterial({ map: art(seed), roughness: 0.6 }))
-    pic.position.set(x, y, 0.0362)
-    group.add(pic)
-  })
-  // fairy lights along the wall
-  const fairyMat = new THREE.MeshBasicMaterial({ color: 0xffd9a8, toneMapped: false })
-  const bulbs = new THREE.InstancedMesh(new THREE.SphereGeometry(0.011, 8, 6), fairyMat, 24)
-  const fm = new THREE.Matrix4()
-  const wirePts: THREE.Vector3[] = []
-  for (let i = 0; i < 24; i++) {
-    const u = i / 23
-    const x = -1.15 + u * 2.3
-    const y = 2.02 - Math.sin(u * Math.PI) * 0.16 - (i % 2) * 0.03
-    fm.makeTranslation(x, y, 0.04)
-    bulbs.setMatrixAt(i, fm)
-  }
-  for (let i = 0; i <= 40; i++) { const u = i / 40; wirePts.push(new THREE.Vector3(-1.15 + u * 2.3, 2.03 - Math.sin(u * Math.PI) * 0.16, 0.037)) }
-  group.add(bulbs)
-  group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(wirePts), 60, 0.0018, 4), grill))
-  // headphones on a hook
-  const hp = new THREE.Group()
-  hp.position.set(-0.98, 1.2, 0.05)
-  group.add(hp)
-  add(new THREE.CylinderGeometry(0.004, 0.004, 0.03, 8), alu, 0, 0.09, -0.01, hp).rotation.x = Math.PI / 2
-  const band = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.006, 8, 24, Math.PI), dark)
-  band.position.set(0, 0.02, 0.02)
-  hp.add(band)
-  ;[-1, 1].forEach((side) => add(new THREE.CylinderGeometry(0.03, 0.03, 0.022, 18), dark, side * 0.07, 0.02, 0.02, hp).rotation.z = Math.PI / 2)
-  // a floor lamp by the sofa
-  const lamp = new THREE.Group()
-  lamp.position.set(3.25, 0, 0.35)
-  group.add(lamp)
-  add(new THREE.CylinderGeometry(0.1, 0.11, 0.025, 24), dark, 0, 0.0125, 0, lamp)
-  add(new THREE.CylinderGeometry(0.008, 0.008, 1.35, 8), alu, 0, 0.7, 0, lamp)
-  const shadeMat = new THREE.MeshBasicMaterial({ color: 0xffdcae, toneMapped: false, side: THREE.DoubleSide })
-  const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.2, 0.26, 28, 1, true), shadeMat)
-  shade.position.set(0, 1.5, 0)
-  lamp.add(shade)
-  const lampLight = new THREE.PointLight(0xffc98a, 0.45, 2.2, 2)
-  lampLight.position.set(0, 1.45, 0.05)
-  lamp.add(lampLight)
+  const add = meshAdder(group)
+  const loader = new THREE.TextureLoader()
+  loader.setCrossOrigin('anonymous')
+  let shelfDirty = false // a model has just arrived: the room must draw a frame (see update)
+  const kit: Kit = { group, add, white, inner, wood, dark, alu, grill, loader, markDirty: () => { shelfDirty = true } }
 
-  // more turntable details: strobe dots, felt mat, speed buttons, pitch fader, power LED, counterweight, headshell, dust cover, feet
-  const feltMat = new THREE.MeshStandardMaterial({ color: 0x2a2b30, roughness: 1 })
-  add(new THREE.CylinderGeometry(0.146, 0.146, 0.002, 64), feltMat, 0, 0.0005, 0, platter)
-  const dots = new THREE.InstancedMesh(new THREE.BoxGeometry(0.004, 0.006, 0.0025), new THREE.MeshStandardMaterial({ color: 0xe9e6dc, roughness: 0.5 }), 72)
-  const dm = new THREE.Matrix4(), dq = new THREE.Quaternion(), dv = new THREE.Vector3(), ds = new THREE.Vector3(1, 1, 1)
-  for (let i = 0; i < 72; i++) {
-    const a = (i / 72) * Math.PI * 2
-    dq.setFromEuler(new THREE.Euler(0, -a + Math.PI / 2, 0))
-    dm.compose(dv.set(Math.cos(a) * 0.1535, 0.0035, Math.sin(a) * 0.1535), dq, ds)
-    dots.setMatrixAt(i, dm)
-  }
-  platter.add(dots)
-  // speed buttons 33 / 45 and the start-stop button along the front
-  ;[[-0.17, 0.12], [-0.145, 0.12]].forEach(([x, z], i) => add(new THREE.CylinderGeometry(0.0085, 0.0085, 0.008, 16), i ? dark : alu, x, 0.084, z, tt))
-  const startBtn = add(new THREE.CylinderGeometry(0.011, 0.011, 0.009, 18), alu, -0.2, 0.0845, 0.12, tt)
-  const ttLed = new THREE.Mesh(new THREE.SphereGeometry(0.0033, 8, 6), new THREE.MeshBasicMaterial({ color: 0x3be08a, toneMapped: false }))
-  ttLed.position.set(-0.2, 0.0905, 0.1)
-  tt.add(ttLed)
-  // the turntable model replaces the plain one above (which stays until it has loaded)
-  glbLoader().load('models/turntable.glb', (g) => {
-    const part = (name: string): THREE.Object3D | undefined => g.scene.getObjectByName(name)
-    const mark = (o: THREE.Object3D): void => o.traverse((m) => {
-      if (!(m instanceof THREE.Mesh)) return
-      m.castShadow = m.receiveShadow = true
-      const mt: unknown = m.material
-      if (mt instanceof THREE.MeshStandardMaterial && mt.metalness > 0.5 && !mt.userData.tuned) { mt.userData.tuned = true; mt.envMapIntensity = 0.22 } // (full metal just mirrors the bright room: the platter turned pale)
-    })
-    for (const c of tt.children) if (c !== platter && c !== arm && c !== ttLed && !deckBtns.some((b) => b === c)) c.visible = false
-    for (const c of platter.children) if (c !== rec) c.visible = false
-    for (const c of arm.children) c.visible = false
-    const base = part('tt_static'), pl = part('tt_platter'), ar = part('tt_arm')
-    if (base) { mark(base); tt.add(base) }
-    if (pl) { mark(pl); pl.traverse((m) => { if (m instanceof THREE.Mesh && m.material instanceof THREE.MeshStandardMaterial) { const own = m.material.clone(); own.color.multiplyScalar(0.4); m.material = own } }); pl.position.set(-TT_C.x, -0.111, -TT_C.z); platter.add(pl) } // (the platter under the spot light looked too pale: graphite)
-    if (ar) { mark(ar); ar.position.set(-TT_ARM.x, -0.12, -TT_ARM.z); arm.add(ar) }
-    arm.userData.kind = 'tt-arm' // press the tonearm: the needle lifts (pause) / goes down again (play)
-    shelfDirty = true
-  }, undefined, warnLoad('turntable'))
-  // the turntable seen from above (deck view): its three knobs on the right become buttons – previous, play / pause, next –
-  // and the tonearm lifts / lowers the needle. Round marks with icons show where to press (only in that view).
-  const deckBtns: THREE.Mesh[] = []
-  const iconTex = (draw: (x: CanvasRenderingContext2D) => void): THREE.CanvasTexture => canvasTex(128, 128, (x) => { x.fillStyle = 'rgba(20,24,32,0.78)'; x.beginPath(); x.arc(64, 64, 62, 0, Math.PI * 2); x.fill(); x.strokeStyle = 'rgba(255,255,255,0.9)'; x.lineWidth = 6; x.beginPath(); x.arc(64, 64, 58, 0, Math.PI * 2); x.stroke(); x.fillStyle = '#fff'; draw(x) })
-  const tri = (x: CanvasRenderingContext2D, cx: number, dir: number, h = 22): void => { x.beginPath(); x.moveTo(cx - dir * 14, 64 - h); x.lineTo(cx + dir * 14, 64); x.lineTo(cx - dir * 14, 64 + h); x.closePath(); x.fill() }
-  ;([
-    { kind: 'tt-prev', z: 0.052, draw: (x: CanvasRenderingContext2D) => { x.fillRect(34, 40, 9, 48); tri(x, 66, -1); tri(x, 90, -1) } },
-    { kind: 'tt-toggle', z: 0.087, draw: (x: CanvasRenderingContext2D) => { tri(x, 52, 1); x.fillRect(74, 40, 10, 48); x.fillRect(94, 40, 10, 48) } },
-    { kind: 'tt-next', z: 0.109, draw: (x: CanvasRenderingContext2D) => { tri(x, 38, 1); tri(x, 62, 1); x.fillRect(85, 40, 9, 48) } },
-  ]).forEach((b) => {
-    const m = new THREE.Mesh(new THREE.CircleGeometry(b.kind === 'tt-toggle' ? 0.0125 : 0.0105, 32), new THREE.MeshBasicMaterial({ map: iconTex(b.draw), transparent: true, opacity: 0, depthWrite: false, toneMapped: false }))
-    m.rotation.x = -Math.PI / 2
-    m.position.set(0.191, 0.142, b.z)
-    m.userData.kind = b.kind
-    m.renderOrder = 5
-    tt.add(m)
-    deckBtns.push(m)
-  })
-  let deckOn = false
-  let deckA = 0
-  function updateDeck(dt: number, t: number): boolean {
-    deckA += ((deckOn ? 1 : 0) - deckA) * Math.min(1, dt * 6)
-    for (const m of deckBtns) (m.material as THREE.MeshBasicMaterial).opacity = deckA * (0.82 + 0.18 * Math.sin(t * 3 + m.position.z * 90))
-    return deckA > 0.01
-  }
-  // pitch fader on the right
-  add(new THREE.BoxGeometry(0.012, 0.003, 0.09), dark, 0.2, 0.0815, 0.04, tt)
-  add(new THREE.BoxGeometry(0.02, 0.008, 0.012), alu, 0.2, 0.0845, 0.03, tt)
-  // dust cover: open, hinged at the back, tilted up
-  const lid = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.003, 0.3), new THREE.MeshPhysicalMaterial({ color: 0xcfe6ff, roughness: 0.05, transmission: 0.0, transparent: true, opacity: 0.18, metalness: 0, clearcoat: 1 }))
-  lid.castShadow = false
-  const lidPivot = new THREE.Group()
-  lidPivot.position.set(0, 0.082, -0.172)
-  lidPivot.rotation.x = -1.75
-  lid.position.set(0, 0, 0.15)
-  lidPivot.add(lid)
-  tt.add(lidPivot)
-  add(new THREE.BoxGeometry(0.44, 0.004, 0.004), alu, 0, 0.082, -0.172, tt) // hinge
-  // rubber feet
-  ;[[-0.2, -0.15], [0.2, -0.15], [-0.2, 0.15], [0.2, 0.15]].forEach(([x, z]) => add(new THREE.CylinderGeometry(0.018, 0.02, 0.012, 14), dark, x, -0.006, z, tt))
-  // arm: counterweight, headshell + cartridge + finger lift, arm rest
-  add(new THREE.CylinderGeometry(0.014, 0.014, 0.03, 16), dark, -0.045, 0.0, -0.06, arm).rotation.x = Math.PI / 2
-  add(new THREE.CylinderGeometry(0.018, 0.018, 0.012, 16), alu, 0, 0, 0, arm)
-  add(new THREE.BoxGeometry(0.014, 0.004, 0.035), alu, -0.119, -0.002, 0.232, arm) // headshell
-  add(new THREE.BoxGeometry(0.01, 0.008, 0.016), new THREE.MeshStandardMaterial({ color: 0xd33a2c, roughness: 0.4 }), -0.119, -0.008, 0.24, arm) // cartridge
-  add(new THREE.CylinderGeometry(0.0012, 0.0012, 0.02, 6), alu, -0.128, 0.004, 0.22, arm).rotation.z = 1.2 // finger lift
-  add(new THREE.CylinderGeometry(0.0045, 0.0045, 0.03, 10), alu, 0.04, 0.1, 0.07, tt)
-  add(new THREE.BoxGeometry(0.022, 0.006, 0.012), dark, 0.04, 0.115, 0.07, tt) // arm rest clip
-  // a yellow "45" adapter on the board next to it
-  add(new THREE.CylinderGeometry(0.018, 0.018, 0.004, 20), new THREE.MeshStandardMaterial({ color: 0xe8b934, roughness: 0.5 }), 0.27, 0.002, 0.07, tt)
-
-  // ── iPod classic ──
-  // on the sideboard, in front of the leaning sleeve – next to the turntable, so the camera hardly has to move
-  const ipodHome = { pos: new THREE.Vector3(-0.02, TOP_Y, 0.36), rotY: 0.22 }
-  const ipod = new THREE.Group()
-  ipod.position.copy(ipodHome.pos)
-  ipod.rotation.y = ipodHome.rotY
-  ipod.userData = { kind: 'ipod' }
-  group.add(ipod)
-  const stand = add(new THREE.BoxGeometry(0.1, 0.02, 0.07), dark, 0, 0.01, 0, ipod)
-  const body = new THREE.Group()
-  body.position.set(0, 0.105, 0)
-  body.rotation.x = -0.18
-  ipod.add(body)
-  const W = 0.1, H = 0.166, D = 0.018
-  // the iPod is the model public/models/ipod.glb (an iPod classic, 10 × 16.6 cm, front towards +z); the plain box is only there until it has loaded
-  const ipodFallback = new THREE.Group()
-  body.add(ipodFallback)
-  add(new RoundedBoxGeometry(W, H, D, 4, 0.008), new THREE.MeshPhysicalMaterial({ color: 0xe2e4e8, roughness: 0.18, clearcoat: 1, metalness: 0.05 }), 0, 0, 0, ipodFallback)
-  glbLoader().load('models/ipod.glb', (g) => {
-    g.scene.traverse((o) => { if (o instanceof THREE.Mesh) { o.castShadow = o.receiveShadow = true } })
-    body.add(g.scene)
-    ipodFallback.visible = false
-    shelfDirty = true
-  }, undefined, warnLoad('ipod'))
-  // sound coming out of the iPod: a few music notes drifting up from it (only while it plays)
-  const soundFx = new THREE.Group()
-  soundFx.position.copy(ipodHome.pos).add(new THREE.Vector3(0, 0.13, 0.02))
-  soundFx.visible = false
-  group.add(soundFx)
-  // white notes on solid black, drawn ADDITIVELY: black adds nothing, so there is no transparency to go wrong (on some Macs the
-  // transparent corners of a note came out as black boxes)
-  const noteTex = ['\u266A', '\u266B'].map((ch) => canvasTex(64, 64, (x, w, h) => {
-    x.fillStyle = '#000000'; x.fillRect(0, 0, w, h)
-    x.font = '700 52px "Helvetica Neue", Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'
-    x.fillStyle = '#ffffff'; x.fillText(ch, w / 2, h / 2 + 4)
-  }))
-  const notes = [0, 1, 2, 3].map((i) => {
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: noteTex[i % 2], color: i % 2 ? 0xffd27a : 0x8fc6ff, transparent: true, blending: THREE.AdditiveBlending, opacity: 0, depthWrite: false, toneMapped: false }))
-    const data: SpriteData = { phase: i / 4, side: i % 2 ? 1 : -1, sway: 0.6 + i * 0.35 }
-    sp.userData = data
-    sp.raycast = () => {} // only decoration: never in the way of a click
-    soundFx.add(sp)
-    return sp
-  })
-  let soundA = 0 // fades in and out
-  /** Returns true while the effect is visible (the room must keep drawing). */
-  function updateSound(dt: number, t: number, _camera: THREE.Camera, on: boolean): boolean {
-    soundA += ((on ? 1 : 0) - soundA) * Math.min(1, dt * (on ? 3 : 4))
-    soundFx.visible = soundA > 0.02
-    if (!soundFx.visible) return false
-    for (const n of notes) {
-      const d = n.userData as SpriteData
-      const k = (t * 0.32 + d.phase) % 1
-      n.position.set(d.side * (0.03 + k * 0.1) + Math.sin(t * 1.6 + d.sway * 6) * 0.012 * d.sway, 0.03 + k * 0.25, 0.02)
-      n.scale.setScalar(0.04 + 0.012 * Math.sin(k * Math.PI))
-      n.material.opacity = soundA * Math.sin(Math.PI * k) * 0.9
-    }
-    return true
-  }
-  const screenCanvas = document.createElement('canvas')
-  screenCanvas.width = 2048
-  screenCanvas.height = 1661 // same shape as the screen (SW : SH), at 4× – sharp even when the iPod stands there and the camera is close
-  const screenCtx = context2d(screenCanvas)
-  const screenTex = new THREE.CanvasTexture(screenCanvas)
-  screenTex.colorSpace = THREE.SRGBColorSpace
-  screenTex.anisotropy = 16
-  const SW = 0.0672, SH = 0.0545 // the model's LCD (measured on the model)
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false, color: new THREE.Color(1, 1, 1) }))
-  screen.position.set(0.0003, 0.0547, 0.0168) // just in front of the glass over the LCD
-  body.add(screen)
-  const wheel = new THREE.Mesh(new THREE.CircleGeometry(W * 0.36, 48), new THREE.MeshStandardMaterial({ color: 0xcfd3d9, roughness: 0.55 }))
-  wheel.position.set(0, -H * 0.2, D / 2 + 0.0006)
-  ipodFallback.add(wheel)
-  const center = new THREE.Mesh(new THREE.CircleGeometry(W * 0.13, 32), new THREE.MeshStandardMaterial({ color: 0xf7f7f5, roughness: 0.3 }))
-  center.position.set(0, -H * 0.2, D / 2 + 0.0012)
-  ipodFallback.add(center)
-  const wheelText = new THREE.Mesh(new THREE.CircleGeometry(W * 0.36, 48), new THREE.MeshBasicMaterial({
-    transparent: true,
-    // the wheel's symbols, drawn as shapes at a high resolution: shuffle (top), previous (left),
-    // next (right), play/pause (bottom)
-    map: (() => {
-      const t = canvasTex(512, 512, (x, w) => {
-        const c = w / 2
-        x.fillStyle = x.strokeStyle = '#8f96a0'
-        x.lineWidth = 9
-        x.lineCap = x.lineJoin = 'round'
-        const tri = (cx: number, cy: number, dir: number, sz: number): void => { x.beginPath(); x.moveTo(cx - dir * sz * 0.5, cy - sz * 0.6); x.lineTo(cx + dir * sz * 0.5, cy); x.lineTo(cx - dir * sz * 0.5, cy + sz * 0.6); x.closePath(); x.fill() }
-        // shuffle: two crossing arrows
-        const sy = 66, sw = 46
-        x.beginPath(); x.moveTo(c - sw, sy - 16); x.bezierCurveTo(c - 10, sy - 16, c + 10, sy + 16, c + sw - 12, sy + 16); x.stroke()
-        x.beginPath(); x.moveTo(c - sw, sy + 16); x.bezierCurveTo(c - 10, sy + 16, c + 10, sy - 16, c + sw - 12, sy - 16); x.stroke()
-        tri(c + sw - 4, sy - 16, 1, 22)
-        tri(c + sw - 4, sy + 16, 1, 22)
-        // previous: |◀◀
-        x.fillRect(48, c - 22, 9, 44); tri(80, c, -1, 34); tri(108, c, -1, 34)
-        // next: ▶▶|
-        tri(w - 108, c, 1, 34); tri(w - 80, c, 1, 34); x.fillRect(w - 57, c - 22, 9, 44)
-        // play / pause
-        tri(c - 26, w - 66, 1, 38)
-        x.fillRect(c + 4, w - 88, 11, 44); x.fillRect(c + 24, w - 88, 11, 44)
-      })
-      t.anisotropy = 8
-      return t
-    })(),
-  }))
-  wheelText.position.set(0, -H * 0.2, D / 2 + 0.001)
-  ipodFallback.add(wheelText)
-
-  // ── Sofa corner ──
-  const fabric = new THREE.MeshStandardMaterial({ color: 0x9fb2c6, roughness: 0.95 })
-  const fabricDark = new THREE.MeshStandardMaterial({ color: 0x8295aa, roughness: 0.95 })
-  const pillow = new THREE.MeshStandardMaterial({ color: 0x2b8cff, roughness: 0.9 })
-  const sofa = new THREE.Group()
-  sofa.position.set(2.1, 0, 0)
-  group.add(sofa)
-  add(new RoundedBoxGeometry(1.9, 0.3, 0.86, 3, 0.04), fabricDark, 0, 0.26, 0.47, sofa) // base
-  ;[-0.62, 0, 0.62].forEach((x) => {
-    add(new RoundedBoxGeometry(0.6, 0.14, 0.64, 4, 0.05), fabric, x, 0.48, 0.55, sofa) // seat
-    const back = add(new RoundedBoxGeometry(0.6, 0.42, 0.2, 4, 0.06), fabric, x, 0.68, 0.17, sofa)
-    back.rotation.x = -0.12
-  })
-  ;[-0.88, 0.88].forEach((x) => add(new RoundedBoxGeometry(0.16, 0.56, 0.86, 3, 0.05), fabricDark, x, 0.34, 0.47, sofa))
-  ;[[-0.85, 0.08], [0.85, 0.08], [-0.85, 0.84], [0.85, 0.84]].forEach(([x, z]) => add(new THREE.CylinderGeometry(0.02, 0.015, 0.11, 10), wood, x, 0.055, z, sofa))
-  const p1 = add(new RoundedBoxGeometry(0.36, 0.34, 0.12, 4, 0.05), pillow, -0.55, 0.66, 0.3, sofa)
-  p1.rotation.set(-0.25, 0.25, 0.12)
-  const p2 = add(new RoundedBoxGeometry(0.34, 0.32, 0.11, 4, 0.05), new THREE.MeshStandardMaterial({ color: 0xf0ece4, roughness: 0.9 }), 0.58, 0.65, 0.3, sofa)
-  p2.rotation.set(-0.25, -0.3, -0.1)
-  // rug + coffee table
-  const rug = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.01, 72), new THREE.MeshStandardMaterial({ color: 0xd9d0c3, roughness: 1 }))
-  rug.scale.set(1.25, 1, 0.85)
-  rug.position.set(2.05, 0.005, 1.15)
-  rug.receiveShadow = true
-  group.add(rug)
-  add(new THREE.CylinderGeometry(0.36, 0.36, 0.03, 64), wood, 1.95, 0.405, 1.3)
-  add(new THREE.CylinderGeometry(0.3, 0.3, 0.012, 64), white, 1.95, 0.05, 1.3)
-  ;[0, 1, 2].forEach((i) => {
-    const a = (i / 3) * Math.PI * 2
-    const leg = add(new THREE.CylinderGeometry(0.014, 0.014, 0.4, 10), white, 1.95 + Math.cos(a) * 0.2, 0.2, 1.3 + Math.sin(a) * 0.2)
-    leg.rotation.set(Math.sin(a) * 0.18, 0, -Math.cos(a) * 0.18)
-  })
-  add(new THREE.CylinderGeometry(0.04, 0.036, 0.09, 24), white, 2.17, 0.465, 1.42) // mug
-
-  // ── Alive: a sleeping cat on the sofa, steam over the mug, dust in the sunbeam, a swaying plant ──
-  const cat = new THREE.Group()
-  cat.position.set(0.66, 0.555, 0.52)
-  cat.rotation.y = 0.5
-  sofa.add(cat)
-  const fur = new THREE.MeshStandardMaterial({ color: 0xd9904a, roughness: 0.95 })
-  const furLight = new THREE.MeshStandardMaterial({ color: 0xf3d2a4, roughness: 0.95 })
-  const catBody = add(new THREE.SphereGeometry(0.1, 20, 14), fur, 0, 0.055, 0, cat)
-  catBody.scale.set(1.5, 0.62, 1)
-  const catHead = add(new THREE.SphereGeometry(0.055, 16, 12), fur, -0.15, 0.05, 0.04, cat)
-  ;[-1, 1].forEach((s) => { const e = add(new THREE.ConeGeometry(0.02, 0.04, 6), fur, -0.16 + s * 0.03, 0.1, 0.045, cat); e.rotation.z = s * 0.12 })
-  add(new THREE.SphereGeometry(0.03, 10, 8), furLight, -0.188, 0.04, 0.045, cat) // muzzle
-  const tail = add(new THREE.TorusGeometry(0.09, 0.016, 8, 22, 4.2), fur, 0.02, 0.025, 0.05, cat)
-  tail.rotation.x = Math.PI / 2
-  tail.rotation.z = 0.4
-  ;[0.0, 0.05, 0.1].forEach((x) => add(new THREE.BoxGeometry(0.012, 0.004, 0.04), furLight, x - 0.02, 0.1, 0.0, cat).rotation.y = 0.3) // stripes
-  const steam: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>[] = []
-  const steamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })
-  for (let i = 0; i < 4; i++) {
-    const s = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), steamMat.clone())
-    s.userData.phase = i / 4
-    s.scale.set(1, 1.4, 1)
-    group.add(s)
-    steam.push(s)
-  }
-  const DUST = 70
-  const dustPos = new Float32Array(DUST * 3)
-  const dustSeed: { x: number; y: number; z: number; p: number; sp: number }[] = []
-  for (let i = 0; i < DUST; i++) {
-    dustSeed.push({ x: 1.6 + Math.random() * 1.8, y: 0.5 + Math.random() * 1.5, z: 0.1 + Math.random() * 1.1, p: Math.random() * 6.28, sp: 0.04 + Math.random() * 0.08 })
-  }
-  const dustGeo = new THREE.BufferGeometry()
-  dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3))
-  const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xfff1d6, size: 0.012, transparent: true, opacity: 0.55, depthWrite: false, toneMapped: false, sizeAttenuation: true }))
-  dust.frustumCulled = false
-  group.add(dust)
-  function animateLife(t: number): void {
-    catBody.scale.y = 0.62 + Math.sin(t * 1.6) * 0.035 // breathing
-    catBody.scale.x = 1.5 + Math.sin(t * 1.6) * 0.015
-    const catFirst = cat.children[0]
-    if (catFirst) catFirst.position.y = 0.055 + Math.sin(t * 1.6) * 0.003
-    steam.forEach((s) => {
-      const k = (t * 0.25 + (s.userData.phase as number)) % 1
-      s.position.set(2.17 + Math.sin(t * 1.3 + (s.userData.phase as number) * 9) * 0.01 * k, 0.5 + k * 0.16, 1.42 + Math.cos(t * 1.1 + (s.userData.phase as number) * 7) * 0.008 * k)
-      s.material.opacity = Math.sin(k * Math.PI) * 0.16
-      s.scale.setScalar(0.8 + k * 1.1)
-    })
-    for (let i = 0; i < DUST; i++) {
-      const d = dustSeed[i]
-      if (!d) continue
-      dustPos[i * 3] = d.x + Math.sin(t * d.sp * 3 + d.p) * 0.12
-      dustPos[i * 3 + 1] = d.y + ((t * d.sp + d.p) % 1.5) * 0.1 + Math.sin(t * 0.6 + d.p) * 0.03
-      dustPos[i * 3 + 2] = d.z + Math.cos(t * d.sp * 2 + d.p) * 0.1
-    }
-    dustGeo.attributes.position.needsUpdate = true
-    plantLeaves.forEach((l, i) => { l.rotation.z = (l.userData.rz as number) + Math.sin(t * 0.9 + i) * 0.045; l.rotation.x = (l.userData.rx as number) + Math.cos(t * 0.7 + i * 1.3) * 0.03 })
-  }
+  // ── the pieces, in the order they were always added to the group ──
+  buildCabinet(kit)
+  const turntable = buildTurntable(kit)
+  const { platter, rec, flyDisc, arm, ttLed, labelMat, models, updateDeck } = turntable
+  const { plantLeaves, flame, candleLight } = buildDecor(kit)
+  const stack = buildStack(kit)
+  const { stackGroup, setStack, stackSlot, setNext } = stack
+  const { fairyMat, shadeMat } = buildWall(kit)
+  const { ipod, ipodHome, body, stand, screen, screenCtx, screenTex, updateSound, W, H, SW, SH } = buildIpod(kit)
+  const { animateLife } = buildLiving(kit, { plantLeaves })
 
   // ── Records ──
   // All records on the shelf are ONE instanced mesh. Spines come from a shared texture atlas
   // (one 16-px column per record), so 65+ records cost a single draw call. Only a record that is
   // selected or playing becomes its own mesh with a real cover.
-  const loader = new THREE.TextureLoader()
-  loader.setCrossOrigin('anonymous')
   const pageMat = new THREE.MeshStandardMaterial({ color: 0xf1ede4, roughness: 0.8 })
   const COLW = 24 // px per record in the atlas (a spine is 9.5 mm wide)
   const AH = 1024 // atlas height: the spine fills the lower 90 %
@@ -917,147 +341,8 @@ export function buildListeningCorner() {
     atlasTex.needsUpdate = true
   }
 
-  /** A real mesh (with cover) for a record that leaves the shelf. */
   function makeLoose(r: ShelfRecord): LooseRecord {
-    // the cover glows a touch on its own so it stays readable in the shade of the shelf
-    const cached = coverTex.get(r.album.uri) // the cover loaded in the background: on it from the first frame
-    // everything made here for this one record is freed again when it goes back (browsing many records must not eat the memory)
-    const ownTex: THREE.Texture[] = [], ownMat: THREE.Material[] = [], ownGeo: THREE.BufferGeometry[] = []
-    const mkTex = <T extends THREE.Texture>(t: T): T => { ownTex.push(t); return t }
-    let ownMap = !cached
-    const coverMat = new THREE.MeshStandardMaterial({ map: cached || (sleeveTpl ? null : mkTex(placeholderCover(r.album))), roughness: 0.5, emissive: 0xffffff, emissiveIntensity: 0.16 })
-    ownMat.push(coverMat)
-    coverMat.emissiveMap = coverMat.map
-    const src = r.album.image_large || r.album.image // the 640 px cover: sharp even when held up close
-    if (src) {
-      loader.load(src, (t) => {
-        t.colorSpace = THREE.SRGBColorSpace
-        t.anisotropy = 16 // stays crisp at a distance and at an angle (clamped to what the GPU allows)
-        paintLabelFn?.(t.image)
-        if (paintCover) { paintCover(t.image); t.dispose() } else {
-          if (ownMap) coverMat.map?.dispose() // (never the shared one)
-          ownMap = true
-          mkTex(t)
-          coverMat.map = t
-          coverMat.emissiveMap = t
-          coverMat.needsUpdate = true
-        }
-      }, undefined, () => {})
-    }
-    const backMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(r.color), roughness: 0.6 })
-    ownMat.push(backMat)
-    // the sleeve: the model (rounded corners, an opening) – its texture is made here: the back on the left half, the cover on the right half –
-    // or a plain box (faces: +x front cover, -x back, +y/-y edges, +z spine, -z back edge) until the model has loaded
-    let mesh: THREE.Object3D
-    let tint: (col: string) => void = (col) => { backMat.color.set(col) }
-    let paintCover: ((img: CanvasImageSource) => void) | null = null
-    let paintLabelFn: ((img: CanvasImageSource | null) => void) | null = null
-    if (sleeveTpl) {
-      const cv = document.createElement('canvas')
-      cv.width = 1536; cv.height = 768 // (drawn in a 2048 × 1024 grid, scaled down)
-      const tex = mkTex(new THREE.CanvasTexture(cv))
-      tex.colorSpace = THREE.SRGBColorSpace
-      tex.anisotropy = 16
-      let backCol = r.color, coverImg: CanvasImageSource | null = (cached?.image as CanvasImageSource | undefined) ?? null
-      const draw = (): void => {
-        const x = context2d(cv)
-        x.setTransform(0.75, 0, 0, 0.75, 0, 0)
-        const g = x.createLinearGradient(0, 0, 1024, 1024)
-        g.addColorStop(0, backCol); g.addColorStop(1, '#14161c')
-        x.fillStyle = g; x.fillRect(0, 0, 1024, 1024) // the back
-        x.fillStyle = 'rgba(255,255,255,0.88)'; x.font = '700 58px Inter, sans-serif'; x.textAlign = 'center'
-        x.fillText(String(r.album.name || '').slice(0, 26), 512, 480); x.font = '600 38px Inter, sans-serif'; x.fillText(String(r.album.artist || '').slice(0, 30), 512, 540)
-        x.fillStyle = backCol; x.fillRect(1024, 0, 1024, 1024)
-        if (coverImg) x.drawImage(coverImg, 1024, 0, 1024, 1024) // the front
-        const wa = wearAmount(r.album)
-        wearSleeve(x, 0, 0, 1024, r.album.uri + 'b', wa * 0.9) // worn (old ones more): the back and the front
-        wearSleeve(x, 1024, 0, 1024, r.album.uri + 'f', wa * 0.75)
-        tex.needsUpdate = true
-      }
-      draw()
-      tint = (col) => { backCol = col; draw() }
-      paintCover = (img) => { coverImg = img; draw() }
-      coverMat.map = tex; coverMat.emissiveMap = tex; coverMat.needsUpdate = true
-      mesh = new THREE.Group()
-      const body = sleeveTpl.clone(true)
-      body.traverse((o) => { if (o instanceof THREE.Mesh) { o.castShadow = o.receiveShadow = true; o.userData.sharedGeo = true; if (!Array.isArray(o.material) && /^cover/.test(o.material.name)) o.material = coverMat } }) // (the geometry and the cardboard belong to the model: shared)
-      mesh.add(body)
-    } else {
-      const spineMat = new THREE.MeshStandardMaterial({ map: mkTex(spineTex(r.album, r.color)), roughness: 0.6 })
-      ownMat.push(spineMat)
-      const bg = new THREE.BoxGeometry(SLEEVE_T, SLEEVE, SLEEVE)
-      ownGeo.push(bg)
-      mesh = new THREE.Mesh(bg, [coverMat, backMat, pageMat, pageMat, spineMat, pageMat])
-    }
-    // the vinyl itself, inside the sleeve: it slides a little way out of the top when the record is held, browsed or playing
-    const labelCol = r.color || '#c9553a'
-    let disc: THREE.Object3D
-    if (!recTpl) { // (the plain disc, until the record model has loaded)
-      const discTex = mkTex(canvasTex(512, 512, (x, w, h) => {
-        x.fillStyle = '#0c0c0e'; x.fillRect(0, 0, w, h)
-        const c = w / 2
-        for (let g = 0.36; g < 0.99; g += 0.011) { x.strokeStyle = `rgba(255,255,255,${0.025 + ((g * 977) % 1) * 0.05})`; x.lineWidth = 1; x.beginPath(); x.arc(c, c, c * g, 0, Math.PI * 2); x.stroke() }
-        x.strokeStyle = 'rgba(255,255,255,0.09)'; x.lineWidth = 3; x.beginPath(); x.arc(c, c, c * 0.355, 0, Math.PI * 2); x.stroke()
-        x.fillStyle = labelCol; x.beginPath(); x.arc(c, c, c * 0.33, 0, Math.PI * 2); x.fill()
-        x.fillStyle = 'rgba(255,255,255,0.18)'; x.beginPath(); x.arc(c, c, c * 0.33, 0, Math.PI * 2); x.arc(c, c, c * 0.27, 0, Math.PI * 2, true); x.fill()
-        x.fillStyle = '#0c0c0e'; x.beginPath(); x.arc(c, c, c * 0.028, 0, Math.PI * 2); x.fill()
-      }))
-      const discMat = new THREE.MeshStandardMaterial({ map: discTex, roughness: 0.32, metalness: 0.15 })
-      const discEdge = new THREE.MeshStandardMaterial({ color: 0x0c0c0e, roughness: 0.4 })
-      const dg = new THREE.CylinderGeometry(DISC_R, DISC_R, 0.0016, 72)
-      ownGeo.push(dg)
-      ownMat.push(discMat, discEdge)
-      disc = new THREE.Mesh(dg, [discEdge, discMat, discMat])
-      disc.rotation.z = Math.PI / 2 // the disc's axis points the same way as the cover's
-    }
-    else { // the record model: the label shows the cover
-      const dc = document.createElement('canvas')
-      dc.width = dc.height = 512
-      const dt = mkTex(new THREE.CanvasTexture(dc))
-      dt.flipY = false; dt.colorSpace = THREE.SRGBColorSpace; dt.anisotropy = 8
-      const paintLabel = (img: CanvasImageSource | null): void => {
-        const x = context2d(dc)
-        x.fillStyle = '#0a0a0c'; x.fillRect(0, 0, 512, 512)
-        for (const c of [148, 362]) { x.save(); x.beginPath(); x.arc(c, c, 48, 0, Math.PI * 2); x.clip(); if (img) x.drawImage(img, c - 48, c - 48, 96, 96); else { x.fillStyle = labelCol; x.fillRect(c - 48, c - 48, 96, 96) } x.restore(); x.fillStyle = '#0a0a0c'; x.beginPath(); x.arc(c, c, 3.5, 0, Math.PI * 2); x.fill() }
-        dt.needsUpdate = true
-      }
-      paintLabel((cached?.image as CanvasImageSource | undefined) ?? null)
-      const dm = recTpl.material.clone()
-      dm.map = dt; dm.metalness = 0.15
-      ownMat.push(dm)
-      const model = new THREE.Mesh(recTpl.geometry, dm)
-      model.userData.sharedGeo = true
-      model.applyMatrix4(recTpl.matrix)
-      model.castShadow = true
-      disc = new THREE.Group()
-      model.rotation.z += 0
-      disc.add(model)
-      disc.rotation.z = Math.PI / 2
-      paintLabelFn = paintLabel
-    }
-    const free = (): void => { // give back what this record used (not the shared model geometry / cardboard)
-      for (const t of ownTex) { t.dispose(); const img: unknown = t.image; if (img instanceof HTMLCanvasElement) { img.width = 1; img.height = 1 } }
-      for (const m of ownMat) m.dispose()
-      for (const g of ownGeo) g.dispose()
-    }
-    disc.castShadow = true
-    const discHolder = new THREE.Group()
-    discHolder.add(disc)
-    mesh.add(discHolder)
-    const slot = r.guest ? null : stackSlot(r.album.uri)
-    if (slot) { mesh.position.copy(slot.pos); mesh.quaternion.copy(slot.q) } // it lies in the stack on the table: it comes from there
-    else mesh.position.copy(r.home).setZ(r.home.z + r.out * 0.09)
-    mesh.castShadow = mesh.receiveShadow = true
-    mesh.userData = { kind: r.guest ? 'guest' : 'album', index: r.index }
-    group.add(mesh)
-    if (r.guest) {
-      // tumbling in from the window
-      mesh.quaternion.setFromEuler(new THREE.Euler(0.8, -1.2, 0.5))
-      return { mesh, rec: r, disc: discHolder, tint, free, vel: new THREE.Vector3(0, 0.4, 0), returning: false }
-    }
-    r.hidden = true
-    writeInstance(r)
-    return { mesh, rec: r, disc: discHolder, tint, free, vel: new THREE.Vector3(), returning: false }
+    return makeLooseRecord(r, { group, loader, coverTex, models, pageMat, stackSlot, writeInstance })
   }
   function dropLoose(uri: string): void {
     const l = loose.get(uri)
@@ -1140,8 +425,7 @@ export function buildListeningCorner() {
       loader.load(vNow.image_large || vNow.image, (t) => {
         t.anisotropy = 16
         t.colorSpace = THREE.SRGBColorSpace
-        discLabel = t.image
-        paintDisc()
+        turntable.setDiscLabel(t.image)
         labelMat.map?.dispose()
         labelMat.map = t
         labelMat.color.set(0xffffff)
@@ -1298,7 +582,7 @@ export function buildListeningCorner() {
     }
 
     // a sleeve from the stack that has been picked up is not in the stack meanwhile
-    for (const m of stackGroup.children) m.visible = !loose.has(stackItems[m.userData.index]?.uri)
+    for (const m of stackGroup.children) m.visible = !loose.has(stack.items()[m.userData.index]?.uri)
 
     // iPod: on its stand, or held in front of the camera
     if (holdIpod) {
@@ -1374,7 +658,7 @@ export function buildListeningCorner() {
     setSelected(uri: string | null) { selectedUri = uri },
     setPeek(uri: string | null) { peekUri = uri },
     setFilter(list: string[] | null | undefined) { filterSet = list?.length ? new Set(list) : null },
-    setDeck(v: boolean) { deckOn = !!v },
+    setDeck(v: boolean) { turntable.setDeck(!!v) },
     setHoldIpod(v: boolean, big = false) { holdIpod = v; ipodBig = big },
     setFlip(v: boolean) { flipSel = v },
     setCalm(v: boolean) { calm = !!v },

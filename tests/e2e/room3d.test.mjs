@@ -11,7 +11,7 @@ afterEach(closePages)
 // desk and light does not.
 const scene = async (page) => {
   const hide = await page.addStyleTag({ content: '.dock, .nav-wrap, .mtop, .loader { display: none !important }' }) // (just the 3D scene)
-  const png = await page.screenshot()
+  const png = await page.screenshot({ timeout: 60000 }) // (a software-rendered room can take its time to draw a frame)
   await hide.evaluate((el) => el.remove())
   return png
 }

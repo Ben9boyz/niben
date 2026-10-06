@@ -62,3 +62,16 @@ Desktop apps: `cd desktop && npm install && npm run dist` (niben) / `npm run dis
 
 The database is read from `NIBEN_TEST_DB` (default `niben_test`), `NIBEN_TEST_DB_USER`, `NIBEN_TEST_DB_PASS`, `NIBEN_TEST_DB_HOST`.
 `npm run zip` builds `niben-upload.zip` for uploading (not kept in git).
+
+### Refactoring the 3D listening corner
+
+`src/three/listening.ts` ties the corner together (the shelf of records, what is held / playing, the per-frame update); the pieces
+it is made of are in `src/three/listening/` (cabinet, turntable, decor, stack, wall, ipod, living, a loose record, textures …).
+Before changing how the corner is built, take a snapshot of the scene and compare afterwards – every object's place, size, colour
+and visibility in ten states (shelf, record out, playing, deck view, iPod held …):
+
+```
+NIBEN_GOLDEN_OUT=/tmp/before ./tests/e2e/run-golden.sh      # before
+NIBEN_GOLDEN_OUT=/tmp/after  ./tests/e2e/run-golden.sh      # after
+node tests/e2e/golden.mjs diff /tmp/before /tmp/after       # exit 1 on a difference (position tolerance 3 cm)
+```
