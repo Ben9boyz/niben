@@ -4,18 +4,14 @@
 
 
 // ── groups: my albums and playlists sorted into a few groups of my own ("Jobb og fokus", "Trening" …) ──
-const SP_DEFAULT_GROUPS = [
-    ['id' => 'fokus', 'name' => 'Jobb og fokus'],
-    ['id' => 'jazz', 'name' => 'Jazz fusion', 'parent' => 'fokus'], // a folder inside "Jobb og fokus"
-    ['id' => 'trening', 'name' => 'Trening'],
-    ['id' => 'rolig', 'name' => 'Rolig'],
-    ['id' => 'annet', 'name' => 'Annet'],
-];
+// No folders to begin with: each room makes its own (the grouping stays off until there are some).
+const SP_DEFAULT_GROUPS = [];
 
 function sp_groups_load(): array {
     $raw = kv_get('groups');
     $d = $raw ? json_decode($raw, true) : null;
-    if (!is_array($d) || empty($d['groups'])) $d = ['groups' => SP_DEFAULT_GROUPS, 'assign' => [], 'auto' => []];
+    if (!is_array($d)) $d = ['groups' => SP_DEFAULT_GROUPS, 'assign' => [], 'auto' => []];
+    $d['groups'] = $d['groups'] ?? [];
     $d['assign'] = $d['assign'] ?? [];
     $d['auto'] = $d['auto'] ?? [];
     $d['why'] = $d['why'] ?? [];
@@ -161,6 +157,7 @@ function sp_refine_by_audio(array &$d, array $ids): bool {
 function sp_groups_state(): array {
     $d = sp_groups_load();
     $ids = array_column($d['groups'], 'id');
+    if (!$ids) { unset($d['af']); $d['audio'] = kv_get('audio_features') ?: null; return $d; } // no folders: nothing to sort into
     $fallback = in_array('annet', $ids, true) ? 'annet' : (string)end($ids);
     $albums = [];
     $items = [];
@@ -222,7 +219,6 @@ function sp_more_handle(string $action, bool $post): bool {
                 if ($par !== '' && $par !== $gid && isset($seen[$par]) && empty($parents[$par])) { $g2['parent'] = $par; $parents[$gid] = $par; }
                 $groups[] = $g2;
             }
-            if (!$groups) fail('Du trenger minst én gruppe.');
             // pictures that are no longer on any folder are deleted
             $keepImg = array_filter(array_column($groups, 'img'));
             foreach ($d['groups'] as $og) if (!empty($og['img']) && !in_array($og['img'], $keepImg, true)) delete_upload($og['img']);
@@ -230,7 +226,8 @@ function sp_more_handle(string $action, bool $post): bool {
             // what was in a group that no longer exists moves to the last one
             $ids = array_column($groups, 'id');
             $last = (string)end($ids);
-            foreach ($d['assign'] as $u => $gid) if (!in_array($gid, $ids, true)) $d['assign'][$u] = $last;
+            if ($ids) { foreach ($d['assign'] as $u => $gid) if (!in_array($gid, $ids, true)) $d['assign'][$u] = $last; }
+            else { $d['assign'] = []; $d['auto'] = []; $d['why'] = []; }
         }
         if (isset($b['assign']) && is_array($b['assign'])) {
             $ids = array_column($d['groups'], 'id');

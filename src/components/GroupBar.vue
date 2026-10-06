@@ -35,7 +35,7 @@ async function pickImage(g: Group, e: Event) {
   if (r.ok) { draft.value = groups.list.map((x) => ({ ...x })); picking.value = null } else notify(r.error ?? '', true)
 }
 const add = () => draft.value.push({ id: '', name: '' })
-const remove = (i: number) => { if (draft.value.length > 1) draft.value.splice(i, 1) }
+const remove = (i: number) => { draft.value.splice(i, 1) }
 async function save() {
   const r = await saveGroups(draft.value.filter((g) => g.name.trim()))
   if (r.ok) draft.value = groups.list.map((g) => ({ ...g }))
@@ -70,7 +70,7 @@ async function save() {
         </select>
         <button aria-label="Opp" :disabled="i === 0" @click="move(i, -1); save()"><ArrowUp :size="14" /></button>
         <button aria-label="Ned" :disabled="i === draft.length - 1" @click="move(i, 1); save()"><ArrowDown :size="14" /></button>
-        <button aria-label="Slett gruppen" :disabled="draft.length < 2" @click="remove(i); save()"><X :size="14" /></button>
+        <button aria-label="Slett gruppen" @click="remove(i); save()"><X :size="14" /></button>
       </div>
       <div v-if="picking === i" class="covers">
         <label v-if="g.id" class="c0 up" :class="{ on: !!g.img }"><input type="file" accept="image/*" hidden :disabled="busyImg" @change="pickImage(g, $event)" />{{ busyImg ? 'Laster opp …' : g.img ? 'Bytt eget bilde' : 'Last opp eget bilde' }}</label>
