@@ -9,7 +9,7 @@ import { play, notify } from '@/composables/useSpotify'
 import { itemMenu, playItem } from '@/lib/menus'
 import { showMenu, longPress, type MenuPoint } from '@/composables/useContextMenu'
 import CoverGrid from '@/components/CoverGrid.vue'
-import PeekView from '@/components/PeekView.vue'
+import PeekView from '@/components/vinyl/PeekView.vue'
 
 // Oppdag: what I recommend (pasted Spotify links with a note) and good albums I don't have yet. Tap an album to look
 // inside it, right-click for play / queue / "Lagre i biblioteket".

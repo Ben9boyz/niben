@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { Ellipsis, ChevronLeft, ChevronRight, ArrowUpFromLine, Library, ScanEye, Smartphone, SkipBack, SkipForward, Play, Pause, RotateCw, X, Lock, Undo2 } from 'lucide-vue-next'
-import { room } from '../composables/useRoom'
-import { shelfAlbums } from '../composables/useGroups'
-import { spotify, lockLeft, play, control, findAlbum, fmtClock } from '../composables/useSpotify'
-import { admin } from '../composables/useAdmin'
-import { targetEl } from '../lib/dom'
-import { showMenu } from '../composables/useContextMenu'
-import { itemMenu } from '../lib/menus'
+import { room } from '@/composables/useRoom'
+import { shelfAlbums } from '@/composables/useGroups'
+import { spotify, lockLeft, play, control, findAlbum, fmtClock } from '@/composables/useSpotify'
+import { admin } from '@/composables/useAdmin'
+import { targetEl } from '@/lib/dom'
+import { showMenu } from '@/composables/useContextMenu'
+import { itemMenu } from '@/lib/menus'
 
 // Phones, the 3D listening corner: ONE small bar at the bottom with exactly what you can do where you are – no
 // side menus. At the turntable: down to the shelf · look from above · the iPod. From above: the buttons (back / play /

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Play, Pause, Lock, RotateCw, X, ChevronLeft, ChevronRight, ArrowUpFromLine } from 'lucide-vue-next'
-import { room } from '../composables/useRoom'
-import { shelfAlbums } from '../composables/useGroups'
-import { spotify, lockLeft, fmtClock, play, lockNote, control, fetchTracks, findAlbum } from '../composables/useSpotify'
-import { admin } from '../composables/useAdmin'
-import { targetEl } from '../lib/dom'
-import type { Track, TrackList } from '../types'
+import { room } from '@/composables/useRoom'
+import { shelfAlbums } from '@/composables/useGroups'
+import { spotify, lockLeft, fmtClock, play, lockNote, control, fetchTracks, findAlbum } from '@/composables/useSpotify'
+import { admin } from '@/composables/useAdmin'
+import { targetEl } from '@/lib/dom'
+import type { Track, TrackList } from '@/types'
 
 // Sits on the record held up in the 3D room: a play button in its corner, its name underneath, a button
 // to turn it over – the back shows the track list (scrolls if it's long) – and one to put it back.

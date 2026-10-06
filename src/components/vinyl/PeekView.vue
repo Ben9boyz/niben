@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import MusicDetail from './MusicDetail.vue'
-import ArtistPage from './ArtistPage.vue'
-import { peek, peekBack } from '../composables/useBrowse'
-import { mode } from '../composables/useMode'
+import MusicDetail from '@/components/MusicDetail.vue'
+import ArtistPage from '@/components/ArtistPage.vue'
+import { peek, peekBack } from '@/composables/useBrowse'
+import { mode } from '@/composables/useMode'
 
 // The "Gå til album / artist" pages, shared by the flat music page and the 3D room's side panel: the top of the browse
 // stack, with "Tilbake" going to the one before it (and finally to the shelf / playlists you came from).

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ChevronLeft, ChevronRight, Play, Lock, Shuffle, Folder, X } from 'lucide-vue-next'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { room } from '../composables/useRoom'
-import { ipodRows, ipodFolderName, type IpodRow } from '../composables/useIpodList'
-import { groups, openFolder } from '../composables/useGroups'
-import { spotify, useSpotify, lockLeft, progressMs, fmtClock, play, fetchTracks, lockNote, control, setShuffle } from '../composables/useSpotify'
-import { admin, checkLogin } from '../composables/useAdmin'
-import { targetEl } from '../lib/dom'
-import type { Track, TrackList, Playlist } from '../types'
+import { room } from '@/composables/useRoom'
+import { ipodRows, ipodFolderName, type IpodRow } from '@/composables/useIpodList'
+import { groups, openFolder } from '@/composables/useGroups'
+import { spotify, useSpotify, lockLeft, progressMs, fmtClock, play, fetchTracks, lockNote, control, setShuffle } from '@/composables/useSpotify'
+import { admin, checkLogin } from '@/composables/useAdmin'
+import { targetEl } from '@/lib/dom'
+import type { Track, TrackList, Playlist } from '@/types'
 
 // HTML screen laid over the 3D iPod while it's held in front of the camera.
 useSpotify()

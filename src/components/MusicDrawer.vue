@@ -6,7 +6,7 @@ import { room } from '../composables/useRoom'
 import { spotify } from '../composables/useSpotify'
 import NowPlaying from './NowPlaying.vue'
 import QueuePanel from './QueuePanel.vue'
-import VinylPanel from './VinylPanel.vue'
+import VinylPanel from '@/components/vinyl/VinylPanel.vue'
 import PlaylistPanel from './PlaylistPanel.vue'
 
 // The music panel on its own, opened from the mini player: floats over whatever station you're at
