@@ -12,8 +12,7 @@
 const SP_LOCK_SECONDS = 600;
 const SP_SCOPES = 'user-library-read playlist-read-private playlist-read-collaborative user-read-currently-playing user-read-playback-state user-modify-playback-state streaming user-read-email user-read-private user-library-modify playlist-modify-private playlist-modify-public user-read-recently-played user-top-read ugc-image-upload';
 
-/** The Spotify app this room connects through: its own (Client ID + secret saved in its settings, so it is not held to the
- *  site app's 25-user limit) or else the site's (_spotify.php). */
+/** Every room connects through the site's Spotify app (_spotify.php): its own Spotify account, its own tokens. */
 function sp_site_config(): ?array {
     static $c = false;
     if ($c === false) {
@@ -22,12 +21,8 @@ function sp_site_config(): ?array {
     }
     return $c;
 }
-function sp_own_config(): ?array {
-    $s = function_exists('room_secrets') ? room_secrets() : [];
-    return !empty($s['spotify_id']) && !empty($s['spotify_secret']) ? ['client_id' => $s['spotify_id'], 'client_secret' => $s['spotify_secret']] : null;
-}
 function sp_config(): ?array {
-    return sp_own_config() ?? sp_site_config();
+    return sp_site_config();
 }
 
 function sp_redirect_uri(): string {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Check, KeyRound, ExternalLink, Music2, MapPin, Plug, Copy } from 'lucide-vue-next'
+import { Check, KeyRound, ExternalLink, Music2, MapPin, Plug } from 'lucide-vue-next'
 import { api, errorMessage, account } from '../../composables/useAdmin'
 import { reloadData, type SectionId } from '../../composables/useData'
 import type { Flash } from '../../types'
@@ -12,7 +12,7 @@ interface Settings {
   email: string
   sections: Record<SectionId, boolean>
   locked: SectionId[]
-  keys: { jpdb: boolean; steam_id: string | null; steam_key: boolean; github_user: string | null; lastfm: boolean; spotify_app: 'own' | 'site' | null }
+  keys: { jpdb: boolean; steam_id: string | null; steam_key: boolean; github_user: string | null; lastfm: boolean; spotify_app: 'site' | null }
   spotify: { connected: boolean; redirect: string }
 }
 interface PlaceHit { name: string; region: string; country: string; lat: number; lon: number }
@@ -35,13 +35,10 @@ const steamId = ref('')
 const steamKey = ref('')
 const ghUser = ref('')
 const lastfm = ref('')
-const spId = ref('')
-const spSecret = ref('')
 const place = ref<{ name: string } | null>(null)
 const placeQ = ref('')
 const placeHits = ref<PlaceHit[]>([])
 let placeTimer: ReturnType<typeof setTimeout> | undefined
-const copied = ref(false)
 const oldPw = ref('')
 const newPw = ref('')
 
@@ -73,11 +70,6 @@ async function saveKeys() {
   await post(body, 'Nøklene er lagret. De ligger kryptert på serveren og vises aldri igjen.')
   jpdbKey.value = ''; steamKey.value = ''
 }
-async function saveSpotifyApp() {
-  await post({ spotify_id: spId.value.trim(), spotify_secret: spSecret.value.trim() }, 'Spotify-appen er lagret. Koble til Spotify under.')
-  spId.value = ''; spSecret.value = ''
-}
-const dropSpotifyApp = () => post({ spotify_id: '', spotify_secret: '' }, 'Din egen Spotify-app er fjernet.')
 async function disconnectSpotify() {
   busy.value = true
   try { await api('spotify_disconnect', {}); await load(); await reloadData(); msg.value = { ok: 'Spotify er koblet fra.' } } catch (e) { msg.value = { error: errorMessage(e) } } finally { busy.value = false }
@@ -102,10 +94,6 @@ async function setPlace(h: PlaceHit) {
 async function clearPlace() {
   busy.value = true
   try { await api('home_set', { clear: true }); place.value = null; msg.value = { ok: 'Bostedet er fjernet.' } } catch (e) { msg.value = { error: errorMessage(e) } } finally { busy.value = false }
-}
-async function copyRedirect() {
-  if (!s.value) return
-  try { await navigator.clipboard.writeText(s.value.spotify.redirect); copied.value = true; setTimeout(() => (copied.value = false), 1800) } catch { /* no clipboard */ }
 }
 const clearJpdb = () => post({ jpdb_key: '' }, 'jpdb-nøkkelen er fjernet.')
 async function changePw() {
@@ -160,24 +148,8 @@ async function changePw() {
         <a v-if="s.keys.spotify_app" class="btn primary small" href="api.php?action=spotify_login"><Plug :size="14" />{{ s.spotify.connected ? 'Koble til på nytt' : 'Koble til Spotify' }}</a>
         <button v-if="s.spotify.connected" class="btn soft small" :disabled="busy" @click="disconnectSpotify">Koble fra</button>
       </p>
-      <details class="how" :open="!s.keys.spotify_app || s.keys.spotify_app === 'own' && !s.spotify.connected">
-        <summary>{{ s.keys.spotify_app === 'own' ? 'Din egen Spotify-app er satt opp' : 'Bruk din egen Spotify-app (anbefalt)' }}</summary>
-        <ol class="steps">
-          <li>Gå til <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com/dashboard <ExternalLink :size="11" /></a> og lag en app (gratis).</li>
-          <li>Skriv denne som <b>Redirect URI</b>: <button type="button" class="copy" @click="copyRedirect"><code>{{ s.spotify.redirect }}</code><Check v-if="copied" :size="12" /><Copy v-else :size="12" /></button></li>
-          <li>Kryss av for <b>Web API</b> og <b>Web Playback SDK</b>, og lagre.</li>
-          <li>Lim inn <b>Client ID</b> og <b>Client secret</b> her.</li>
-        </ol>
-        <form class="keys" @submit.prevent="saveSpotifyApp">
-          <label class="field"><span>Client ID</span><input v-model="spId" autocomplete="off" :placeholder="s.keys.spotify_app === 'own' ? '•••••••• (lagret)' : '32 tegn'" /></label>
-          <label class="field"><span>Client secret</span><input v-model="spSecret" type="password" autocomplete="off" :placeholder="s.keys.spotify_app === 'own' ? '•••••••• (lagret)' : '32 tegn'" /></label>
-          <div class="btns">
-            <button class="btn primary" :disabled="busy || !spId.trim() || !spSecret.trim()"><Check :size="15" />Lagre Spotify-appen</button>
-            <button v-if="s.keys.spotify_app === 'own'" type="button" class="btn soft small" :disabled="busy" @click="dropSpotifyApp">Fjern</button>
-          </div>
-        </form>
-        <p v-if="s.keys.spotify_app === 'site'" class="muted">Uten egen app kan du bruke sidens, men da må eieren først legge e-posten din (den Spotify-kontoen bruker) til i sin Spotify-app, og den tar bare imot 25 personer.</p>
-      </details>
+      <p v-if="s.keys.spotify_app && !s.spotify.connected" class="muted">Spotify slipper bare inn kontoer som eieren av siden har lagt til. Be eieren legge til navnet og e-posten du bruker på Spotify, og trykk så «Koble til».</p>
+      <p v-else-if="!s.keys.spotify_app" class="muted">Spotify er ikke satt opp på denne siden ennå.</p>
     </section>
 
     <section>
