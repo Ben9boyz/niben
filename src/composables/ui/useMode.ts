@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { shell } from './useShell'
 
 // "rom" = the 3D room, "enkel" = plain pages without the room.
@@ -25,7 +25,20 @@ function apply(): void {
 apply()
 watch([mode, shell], apply)
 
-export function toggleMode(): void {
+function flip(): void {
   mode.value = mode.value === 'rom' ? 'enkel' : 'rom'
   try { localStorage.setItem(KEY, mode.value) } catch { /* private mode */ }
+}
+
+/** Switch between the 3D room and the plain version. The page "walks" in or out of the room: the old view
+ *  zooms away while the new one settles in (the browser's view transition – skipped without it, and for
+ *  people who want less motion). */
+export function toggleMode(): void {
+  const doc = document as Document & { startViewTransition?: (cb: () => Promise<void>) => unknown }
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (!doc.startViewTransition || reduce) return flip()
+  const html = document.documentElement
+  html.dataset.vt = mode.value === 'rom' ? 'out' : 'in' // out of the room / into the room
+  const t = doc.startViewTransition(async () => { flip(); await nextTick() }) as { finished?: Promise<unknown> }
+  void t.finished?.finally(() => { delete html.dataset.vt })
 }

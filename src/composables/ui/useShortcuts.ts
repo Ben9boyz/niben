@@ -39,6 +39,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ['↓ / ←', 'Metronom: ett slag saktere'],
   ] },
   { title: 'Generelt', keys: [
+    ['V', 'Bytt mellom 3D-rommet og 2D-versjonen'],
     ['?', 'Vis og skjul denne lista'],
     ['Esc', 'Lukk det som er åpent'],
   ] },

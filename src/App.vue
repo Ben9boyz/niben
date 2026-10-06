@@ -9,6 +9,7 @@ import GlobalMini from '@/components/music/GlobalMini.vue'
 import ShortcutsHelp from '@/components/layout/ShortcutsHelp.vue'
 import GraphicsSettings from '@/components/layout/GraphicsSettings.vue'
 import LangSuggest from '@/components/layout/LangSuggest.vue'
+import SlowSuggest from '@/components/layout/SlowSuggest.vue'
 import ContextMenu from '@/components/layout/ContextMenu.vue'
 import NewPlaylistDialog from '@/components/music/NewPlaylistDialog.vue'
 import WeatherFx from '@/components/layout/WeatherFx.vue'
@@ -54,6 +55,7 @@ const toTop = () => window.scrollTo(0, 0)
   <ShortcutsHelp />
   <GraphicsSettings />
   <LangSuggest />
+  <SlowSuggest />
   <ContextMenu />
   <NewPlaylistDialog />
   <GlobalMini v-if="mode !== 'rom' || shell === 'player'" :show="route.name !== 'lytte' && route.name !== 'admin'" />

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SettingsMenu from './SettingsMenu.vue'
+import ViewSwitch from './ViewSwitch.vue'
 import ProfileMenu from './ProfileMenu.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, type ComponentPublicInstance } from 'vue'
 import { navGroups, groupOf, groupTarget } from '@/lib/nav'
@@ -9,7 +10,7 @@ import BrandLogo from '@/components/ui/BrandLogo.vue'
 import { Menu, X, Footprints } from 'lucide-vue-next'
 import { room } from '@/composables/room/useRoom'
 import { targetEl } from '@/lib/dom'
-import { mode, toggleMode } from '@/composables/ui/useMode'
+import { mode } from '@/composables/ui/useMode'
 
 const route = useRoute()
 const router = useRouter()
@@ -149,13 +150,14 @@ onBeforeUnmount(() => {
 
     <span class="spacer" aria-hidden="true"></span>
     <!-- me / settings: my photo (logged in) or a cog – opens the menu with view, theme, language … -->
+    <ViewSwitch v-if="!isPhone" />
     <SettingsMenu v-if="!isPhone" />
   </header>
   <!-- phones: the whole menu sits behind the logo (tap it); the settings cog is in the other corner -->
   <div v-if="isPhone" class="mbar" aria-hidden="true"></div>
   <button v-if="isPhone" class="mlogo glass" :aria-expanded="navOpen" aria-label="Meny" @click="navOpen = !navOpen" @dblclick.prevent="toAdmin" @pointerdown="pressStart" @pointerup="pressEnd" @pointerleave="pressEnd"><X v-if="navOpen" :size="24" aria-hidden="true" /><Menu v-else :size="24" aria-hidden="true" /></button>
-  <!-- phones, 3D: the way to the plain (2D) version, right in the bar -->
-  <button v-if="isPhone && mode === 'rom'" class="m2d" aria-label="Bytt til 2D-versjonen" title="Bytt til 2D-versjonen" @click="toggleMode">2D</button>
+  <!-- phones: the way between the 3D room and the plain version sits flat in the bar, next to the menu -->
+  <ViewSwitch v-if="isPhone" />
   <ProfileMenu v-if="isPhone" />
   <SettingsMenu v-if="isPhone" />
 </template>
@@ -358,10 +360,12 @@ button.item { border: 0; background: transparent; font-family: inherit; cursor: 
 </style>
 
 <style>
-/* phones: the 2D button sits flat in the bar, next to the menu */
+/* phones: the 2D / 3D button sits flat in the bar, next to the menu */
 @media (max-width: 720px) {
-  html body .m2d { position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 58px; z-index: 42; height: 42px; min-width: 42px; padding: 0 10px; border: 0; background: transparent; color: var(--text-2); font: 700 0.8rem var(--font); cursor: pointer; touch-action: manipulation; }
-  html body .m2d:active { color: var(--accent); }
+  html body .vs.vs { position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 58px; z-index: 42; flex-direction: row; gap: 4px; height: 42px; width: auto; min-width: 42px; padding: 0 10px; border-radius: 0; background: transparent; box-shadow: none; border: 0; -webkit-backdrop-filter: none; backdrop-filter: none; touch-action: manipulation; }
+  html body .vs.vs::before, html body .vs.vs::after { display: none; }
+  html body .vs.vs b { font-size: 0.8rem; }
+  html body .vs.vs:active { color: var(--accent); }
 }
 /* phones: logo and cog sit flat in the bar (no pills of their own) */
 @media (max-width: 720px) {
@@ -369,7 +373,7 @@ button.item { border: 0; background: transparent; font-family: inherit; cursor: 
   html body .mlogo.mlogo::before, html body .mlogo.mlogo::after, html body .sm.sm::before, html body .sm.sm::after { display: none; }
 }
 /* the settings button (SettingsMenu): the last thing in the rail; on phones in the top-right corner */
-@media (min-width: 721px) { .nav-wrap .sm { align-self: center; flex: none; width: 50px; height: 50px; } .nav-wrap .sm.profile { width: 58px; height: 58px; } }
+@media (min-width: 721px) { .nav-wrap .sm { align-self: center; flex: none; width: 50px; height: 50px; } .nav-wrap .vs { margin-bottom: -2px; } .nav-wrap .sm.profile { width: 58px; height: 58px; } }
 @media (min-width: 721px) and (max-height: 860px) { .nav-wrap .sm { width: 44px; height: 44px; } .nav-wrap .sm.profile { width: 50px; height: 50px; } }
 @media (max-width: 720px) {
   html body .sm.sm { position: fixed; top: calc(12px + env(safe-area-inset-top)); right: 12px; width: 42px; height: 42px; z-index: 41; }

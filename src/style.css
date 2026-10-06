@@ -535,3 +535,14 @@ html[data-roomfx='in'] canvas, html[data-roomfx='in'] main, html[data-roomfx='in
   html[data-roomfx='out'] canvas, html[data-roomfx='out'] main, html[data-roomfx='out'] .dock,
   html[data-roomfx='pre'] canvas, html[data-roomfx='pre'] main, html[data-roomfx='pre'] .dock { translate: none; scale: none; rotate: none; filter: none; }
 }
+
+/* switching between the 3D room and the plain version: the room zooms away (or back in) */
+html[data-vt] ::view-transition-old(root), html[data-vt] ::view-transition-new(root) { animation-duration: 0.6s; animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); mix-blend-mode: normal; }
+html[data-vt='out'] ::view-transition-old(root) { animation-name: vtRoomAway; }
+html[data-vt='out'] ::view-transition-new(root) { animation-name: vtPageIn; }
+html[data-vt='in'] ::view-transition-old(root) { animation-name: vtPageAway; }
+html[data-vt='in'] ::view-transition-new(root) { animation-name: vtRoomIn; }
+@keyframes vtRoomAway { to { opacity: 0; transform: scale(1.18); filter: blur(10px); } }
+@keyframes vtPageIn { from { opacity: 0; transform: scale(0.97); } }
+@keyframes vtPageAway { to { opacity: 0; transform: scale(0.97); } }
+@keyframes vtRoomIn { from { opacity: 0; transform: scale(1.18); filter: blur(10px); } }
