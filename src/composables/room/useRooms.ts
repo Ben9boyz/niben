@@ -1,6 +1,6 @@
 import { reactive } from 'vue'
-import { api, checkLogin } from '@/composables/site/useAdmin'
-import { reloadData } from '@/composables/site/useData'
+import { api, checkLogin, admin } from '@/composables/site/useAdmin'
+import { reloadData, useData } from '@/composables/site/useData'
 import { spotify, resetSpotify, refreshLists, refreshNow } from '@/composables/music/useSpotify'
 import { groups, resetGroups, loadGroups } from '@/composables/music/useGroups'
 import { discover, resetDiscover, loadDiscover } from '@/composables/music/useDiscover'
@@ -40,8 +40,8 @@ async function swapRoomState(): Promise<void> {
   const used = { groups: groups.loaded, discover: discover.loaded, milestones: milestones.loaded, jp: jp.loaded, steam: steam.loaded, decor: decor.loaded, live: live.loaded, queue: myQueue.loaded, lists: spotify.loaded }
   resetSpotify(); resetGroups(); resetDiscover(); resetMilestones(); resetJapanese(); resetSteam(); resetDecor(); resetLive(); resetQueue(); resetDaily(); peekClear()
   clearSelection(); room.shelfQ = ''; room.peekIndex = 0 // (no record held up from the other room)
-  await checkLogin() // (is the new room mine?)
   await Promise.all([
+    checkLogin(), // (is the new room mine?) – at the same time as the rest, not before it
     reloadData(),
     loadRooms(),
     used.lists ? Promise.all([refreshLists(true), refreshNow()]) : undefined,
@@ -64,13 +64,15 @@ export async function setRoom(username: string): Promise<void> {
   const root = document.documentElement
   root.dataset.roomfx = 'out' // the room flies off (style.css)
   try {
-    await Promise.all([api('room_set', { username }), wait(430)])
+    await Promise.all([api('room_set', { username }), wait(320)])
     await swapRoomState()
-    location.hash = '#/'
+    // stay in the corner you are in – only a corner this room does not have (or the admin of somebody else's room) sends you home
+    const here = location.hash.replace(/^#\/?/, '').split(/[/?]/)[0]
+    if (here && ((useData().profile.sections as Record<string, boolean | undefined>)?.[here] === false || (here === 'admin' && !admin.mine))) location.hash = '#/'
     root.dataset.roomfx = 'pre' // out of sight on the other side …
     await frames()
     root.dataset.roomfx = 'in' // … and in
-    await wait(700)
+    await wait(450)
   } catch {
     location.reload() // anything odd: the safe way, a fresh page
     return
