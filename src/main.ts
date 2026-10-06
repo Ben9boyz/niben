@@ -7,6 +7,7 @@ import { shell, enterPlayer } from '@/composables/ui/useShell'
 import { rememberTab } from './lib/nav'
 import { routeAllowed } from './lib/sections'
 import { routeKey } from './lib/nav'
+import { loadDecor } from './composables/room/useDecor'
 import { useData } from '@/composables/site/useData'
 import { watch } from 'vue'
 import { startDomTranslate } from './lib/domTranslate'
@@ -52,6 +53,7 @@ router.afterEach((to) => {
 })
 
 createApp(App).use(router).mount('#app')
+void loadDecor() // (the hobby modules live in this list: the menu and the module pages need it in the plain version too)
 // a corner that is switched off in this room: its page is not there (also when the address was typed in)
 const roomData = useData()
 watch([() => roomData.profile, () => router.currentRoute.value.name], () => { if (!routeAllowed(router.currentRoute.value.name, roomData.profile)) void router.replace('/') }, { deep: true })

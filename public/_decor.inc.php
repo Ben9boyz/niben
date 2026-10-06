@@ -180,6 +180,10 @@ function decor_handle(string $action, bool $post): void {
             $d['scale'] = decor_num($n['scale'] ?? null, 0.05, 8, $d['scale']);
             if (isset($n['visible'])) $d['visible'] = !!$n['visible'];
             if (isset($n['name'])) $d['name'] = mb_substr(trim((string)$n['name']), 0, 50);
+            if (!empty($d['mod'])) { // a hobby module: its own symbol, and which tab of the menu it sits under ('' = Hobbyer, lare / laget / opplevd, or a name of one's own)
+                if (isset($n['ico'])) $d['ico'] = mb_substr(trim(strip_tags((string)$n['ico'])), 0, 8);
+                if (isset($n['grp'])) $d['grp'] = mb_substr(trim(strip_tags((string)$n['grp'])), 0, 30);
+            }
         }
         unset($d);
         decor_store($list);

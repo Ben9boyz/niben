@@ -3,7 +3,7 @@ import SettingsMenu from './SettingsMenu.vue'
 import ViewSwitch from './ViewSwitch.vue'
 import ProfileMenu from './ProfileMenu.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, type Component, type ComponentPublicInstance } from 'vue'
-import { navGroups, groupOf, groupTarget, tabLabel, tabTarget, ROUTE_ICONS } from '@/lib/nav'
+import { navGroups, groupOf, groupTarget, tabLabel, tabTarget, routeKey, ROUTE_ICONS } from '@/lib/nav'
 import { useRoute, useRouter } from 'vue-router'
 import { admin, checkLogin } from '@/composables/site/useAdmin'
 import BrandLogo from '@/components/ui/BrandLogo.vue'
@@ -26,10 +26,10 @@ function pressEnd() { clearTimeout(pressTimer) }
 
 // the menu shows the main tabs; the sub-tabs are pills inside the page (SubTabs). A tab opens the
 // sub-tab you were last on.
-const links = computed(() => navGroups.value.map((g) => ({ name: g.id, label: g.label, icon: g.icon, to: groupTarget(g), routes: g.routes })))
-const activeGroup = computed(() => groupOf(route.name)?.id)
+const links = computed(() => navGroups.value.map((g) => ({ name: g.id, label: g.label, icon: g.icon, emoji: g.emoji, to: groupTarget(g), routes: g.routes })))
+const activeGroup = computed(() => groupOf(routeKey(route))?.id)
 // phones (plain version): a top bar with the page's name – the group (its sub-tabs sit just below)
-const barTitle = computed(() => (route.name === 'hjem' ? '' : route.name === 'admin' ? 'Admin' : groupOf(route.name)?.label || route.meta?.title || ''))
+const barTitle = computed(() => (route.name === 'hjem' ? '' : route.name === 'admin' ? 'Admin' : groupOf(routeKey(route))?.label || route.meta?.title || ''))
 
 const track = ref<HTMLElement | null>(null)
 const itemEls = ref<HTMLElement[]>([])
@@ -202,7 +202,8 @@ onBeforeUnmount(() => {
         @mouseleave="closeFlySoon"
         @focus="openFly(l.name, l.routes, $event)"
       >
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path :d="l.icon" /></svg>
+        <span v-if="l.emoji" class="emo" aria-hidden="true">{{ l.emoji }}</span>
+        <svg v-else viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path :d="l.icon" /></svg>
         <span class="label">{{ l.label }}</span>
         <span class="tip">{{ l.label }}</span>
       </router-link>
@@ -432,6 +433,7 @@ button.item { border: 0; background: transparent; font-family: inherit; cursor: 
   .item.active { background: var(--accent-soft); }
 }
 @media (min-width: 721px) { .mlogo { display: none; } }
+.emo { font-size: 1.15rem; line-height: 20px; height: 20px; display: block; }
 </style>
 
 <style>

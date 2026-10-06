@@ -1019,14 +1019,14 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     onDecorSelect?.(decorSel)
     invalidate(0.5)
   }
-  const modSig = (it: DecorItem): string => `${it.mod}|${it.name}`
+  const modSig = (it: DecorItem): string => `${it.mod}|${it.name}|${it.ico ?? ''}`
   function buildMod(o: DecorObject): void {
     o.prop?.root.removeFromParent()
     o.prop?.dispose()
     const kind = kindOf(o.item.mod)
     if (!kind) return
     o.sig = modSig(o.item)
-    o.prop = buildModuleProp(kind, o.item.name || kind.name)
+    o.prop = buildModuleProp(kind, o.item.name || kind.name, o.item.ico || kind.icon)
     o.root.userData.modTitle = o.item.name || kind.name
     o.root.add(o.prop.root)
     shadowsDirty = true

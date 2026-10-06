@@ -5,6 +5,8 @@ import { api, errorMessage } from '@/composables/site/useAdmin'
 export interface DecorItem {
   id: string
   file: string
+  ico?: string // a module's own symbol (an emoji) instead of its kind's
+  grp?: string // which tab of the menu a module sits under: '' = Hobbyer, 'lare' | 'laget' | 'opplevd', or the name of a tab of one's own
   mod?: string // a hobby module (its kind) instead of a model: see lib/modules/catalog.ts
   name: string
   x: number

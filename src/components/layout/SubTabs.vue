@@ -9,7 +9,7 @@ import SegSwitch from '@/components/ui/SegSwitch.vue'
 defineProps<{ floating?: boolean }>()
 const route = useRoute()
 const items = computed(() => {
-  const g = groupOf(route.name)
+  const g = groupOf(routeKey(route))
   return g && g.routes.length > 1 ? g.routes.map((r) => ({ id: r, label: tabLabel(r), icon: ROUTE_ICONS[r], to: tabTarget(r) })) : null
 })
 </script>

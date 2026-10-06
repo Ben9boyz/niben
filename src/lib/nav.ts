@@ -6,7 +6,7 @@ import { placed } from '@/composables/room/useModules'
 
 // The main tabs and the sub-tabs inside them. Every sub-tab is still its own route (and its own
 // station in the 3D room); a group just decides which tab lights up in the menu and which pills show.
-export interface NavGroup { id: string; label: string; routes: string[]; icon: string }
+export interface NavGroup { id: string; label: string; routes: string[]; icon: string; emoji?: string }
 export const GROUPS: NavGroup[] = [
   { id: 'hjem', label: 'Hjem', routes: ['hjem'], icon: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z' },
   { id: 'lytte', label: 'Lytte', routes: ['lytte'], icon: 'M9 18V5l12-2v13M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6z' },
@@ -36,7 +36,28 @@ export const TAB_LABELS: Record<string, string> = { japansk: 'Japansk', ovelse: 
 
 const data = useData()
 /** The groups of the room being shown: pages of switched-off corners are left out, and groups with nothing left disappear. */
-export const navGroups = computed<NavGroup[]>(() => GROUPS.map((g) => ({ ...g, routes: g.id === 'hobby' ? placed.value.map((m) => HOBBY + m.id) : g.routes.filter((r) => routeAllowed(r, data.profile)) })).filter((g) => g.routes.length > 0 && (g.id !== 'gangen' || rooms.list.length > 1))) // (the hall is only there when there is more than one room)
+const BUILTIN = new Set(['lare', 'laget', 'opplevd'])
+/** The groups of the room being shown: pages of switched-off corners are left out, and groups with nothing left disappear. A hobby module sits
+ *  under the tab its owner chose (Lære, Laget, Opplevd, Hobbyer – or a tab of its own: "Trening" with a swimmer for a symbol). */
+export const navGroups = computed<NavGroup[]>(() => {
+  const mods = placed.value
+  const out: NavGroup[] = GROUPS.map((g) => ({ ...g, routes: g.id === 'hobby' ? [] : g.routes.filter((r) => routeAllowed(r, data.profile)) }))
+  const custom = new Map<string, NavGroup>()
+  for (const m of mods) {
+    const grp = (m.item.grp ?? '').trim()
+    const key = HOBBY + m.id
+    const target = grp === '' ? out.find((g) => g.id === 'hobby') : BUILTIN.has(grp) ? out.find((g) => g.id === grp) : undefined
+    if (target) { target.routes.push(key); continue }
+    const id = 'c:' + grp.toLowerCase()
+    let g = custom.get(id)
+    if (!g) { g = { id, label: grp, routes: [], icon: GROUPS.find((x) => x.id === 'hobby')?.icon ?? '', emoji: m.icon }; custom.set(id, g) }
+    g.routes.push(key)
+  }
+  // a tab of one's own goes in before "Om meg" and the hall
+  const at = out.findIndex((g) => g.id === 'gangen')
+  out.splice(at < 0 ? out.length : at, 0, ...custom.values())
+  return out.filter((g) => g.routes.length > 0 && (g.id !== 'gangen' || rooms.list.length > 1)) // (the hall is only there when there is more than one room)
+})
 /** A hobby module's tab is called 'h:<id>' (the route itself is /h/<id>). */
 export const HOBBY = 'h:'
 /** The name a page has in the menu: the route's name, or 'h:<id>' for a hobby module. */
@@ -44,13 +65,14 @@ export const routeKey = (r: { name?: unknown; params?: Record<string, unknown> }
 export const tabLabel = (r: string): string => {
   if (!r.startsWith(HOBBY)) return TAB_LABELS[r] ?? r
   const m = placed.value.find((x) => x.id === r.slice(HOBBY.length))
-  return m ? `${m.kind.icon} ${m.name}` : 'Modul'
+  return m ? `${m.icon} ${m.name}` : 'Modul'
 }
 export const tabTarget = (r: string): { name: string; params?: { id: string } } => (r.startsWith(HOBBY) ? { name: 'modul', params: { id: r.slice(HOBBY.length) } } : { name: r })
 const byRoute = new Map<string, NavGroup>(GROUPS.flatMap((g) => g.routes.map((r): [string, NavGroup] => [r, g])))
-export const groupOf = (routeName: unknown): NavGroup | null => (String(routeName).startsWith(HOBBY) || routeName === 'modul' ? navGroups.value.find((g) => g.id === 'hobby') ?? GROUPS.find((g) => g.id === 'hobby') ?? null : navGroups.value.find((g) => g.routes.includes(String(routeName))) ?? byRoute.get(String(routeName)) ?? null)
+/** The group a page belongs to (`routeName` is the route's name, or 'h:<id>' for a hobby module: see routeKey). */
+export const groupOf = (routeName: unknown): NavGroup | null => navGroups.value.find((g) => g.routes.includes(String(routeName))) ?? byRoute.get(String(routeName)) ?? null
 
 // the tab you were last on inside each group – the menu takes you back there
 const last = reactive(new Map<string, string>()) // reactive: the menu links update when it changes
-export const rememberTab = (routeName: unknown): void => { const k = String(routeName); const g = k.startsWith(HOBBY) ? GROUPS.find((x) => x.id === 'hobby') : byRoute.get(k); if (g) last.set(g.id, k) }
+export const rememberTab = (routeName: unknown): void => { const g = groupOf(routeName); if (g) last.set(g.id, String(routeName)) }
 export const groupTarget = (g: NavGroup): { name: string; params?: { id: string } } => { const l = last.get(g.id); return tabTarget(l && g.routes.includes(l) ? l : g.routes[0] ?? 'hjem') }

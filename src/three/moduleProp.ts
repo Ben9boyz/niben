@@ -83,7 +83,7 @@ function shape(prop: Prop, col: THREE.Color, g: THREE.Group): number {
 
 export interface PropHandle { root: THREE.Group; dispose: () => void }
 
-export function buildModuleProp(kind: ModuleKind, title: string): PropHandle {
+export function buildModuleProp(kind: ModuleKind, title: string, icon: string = kind.icon): PropHandle {
   const root = new THREE.Group()
   const top = shape(kind.prop, new THREE.Color(kind.color), root)
   const tex = canvasTex(512, 256, (x, w, h) => {
@@ -96,7 +96,7 @@ export function buildModuleProp(kind: ModuleKind, title: string): PropHandle {
     x.textAlign = 'center'
     x.textBaseline = 'middle'
     x.font = '90px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'
-    x.fillText(kind.icon, w / 2, 86)
+    x.fillText(icon, w / 2, 86)
     x.fillStyle = '#fff'
     let size = 48
     x.font = `800 ${size}px "Inter Tight", Inter, sans-serif`

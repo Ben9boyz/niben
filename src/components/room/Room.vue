@@ -287,7 +287,7 @@ watch(() => [route.name, route.params.id], ([n]) => {
   api?.goTo(String(n || 'hjem'))
 })
 // the modules are loaded a little after the room: a page opened by its address then flies in once its place is known
-watch(() => decor.items.length, () => { if (route.name === 'modul') { api?.focusModule(String(route.params.id)); api?.goTo('modul') } })
+watch(() => [room.api, decor.items.length], () => { if (route.name === 'modul') { api?.focusModule(String(route.params.id)); api?.goTo('modul') } })
 watch(() => ({ ...room.sel }), (s) => api?.setSelection(s), { deep: true })
 
 // the room's name tag belongs to the 3D view: drop it as soon as the pointer is over the panel or

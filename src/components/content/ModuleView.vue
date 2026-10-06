@@ -10,15 +10,15 @@ import type { Field } from '@/lib/modules/catalog'
 // One hobby module, whatever the hobby: the kind says which fields an entry has and how the entries are shown
 // (cards, a log with numbers and a chart, or a checklist); this view does the rest.
 const props = defineProps<{ id: string; compact?: boolean }>()
+const draft = ref<{ at: number; e: Entry } | null>(null) // at = -1: a new one
+const kat = ref('')
 const mod = computed(() => moduleById(props.id))
 const data = computed(() => dataOf(props.id))
 watch(() => props.id, (id) => { void loadModule(id); draft.value = null; kat.value = '' }, { immediate: true })
 const mine = computed(() => canManage.value)
 
 // ── entries ──
-const draft = ref<{ at: number; e: Entry } | null>(null) // at = -1: a new one
 const katField = computed(() => mod.value?.kind.fields.find((f) => f.k === 'kat'))
-const kat = ref('')
 const items = computed(() => (data.value?.items ?? []).map((e, i) => ({ e, i })))
 const shown = computed(() => {
   const l = kat.value ? items.value.filter(({ e }) => e.kat === kat.value) : items.value
