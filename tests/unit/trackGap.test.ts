@@ -55,6 +55,21 @@ describe('the pause between two songs', () => {
     expect(trackGap.active).toBe(false)
   })
 
+  it('a song that changes with no fade first is silenced at once and still gets its gap', async () => {
+    const f = fakePlayer()
+    const gap = trackGapFor(f.player, () => 1)
+    gap.onState(f.state) // song one, playing
+    await vi.advanceTimersByTimeAsync(50)
+    f.volumes.length = 0
+    gap.onState(nextSong(f.state)) // song two begins and no fade has been made (late event)
+    expect(f.volumes.at(-1)).toBe(0)
+    expect(f.calls).toEqual(['pause'])
+    expect(trackGap.active).toBe(true)
+    await vi.advanceTimersByTimeAsync(GAP_MS + 100)
+    expect(f.calls).toEqual(['pause', 'resume'])
+    expect(f.volumes.at(-1)).toBe(1)
+  })
+
   it('does nothing when the gap is not wanted (the vinyl layer is off) or for the last song', async () => {
     const f = fakePlayer()
     setGapWanted(() => false)

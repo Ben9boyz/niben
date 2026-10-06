@@ -11,6 +11,8 @@ import { reactive } from 'vue'
 export const GAP_MS = 2500
 export const FADE_OUT_MS = 150
 export const FADE_IN_MS = 15
+/** The fade is over this long BEFORE the song ends: the player's volume takes a moment to follow, and Spotify begins the next song a hair early – it must never be heard. */
+const SAFETY_MS = 300
 
 /** True from the start of the fade-out until the next song is playing: the vinyl layer and the 3D record player treat it as "still playing". */
 export const trackGap = reactive({ active: false })
@@ -34,6 +36,8 @@ export function trackGapFor(p: SpotifyPlayer, volume: () => number) {
   let holdTimer = 0
   let guard = 0
   let run = 0 // goes up when a gap is cancelled: whatever is still running from the old one stops
+  let lastUri: string | null = null // the song that was playing before this state
+  let userAt = -1e9 // when somebody last pressed play / skip / seek here
 
   const setVol = (k: number): void => { void p.setVolume(Math.max(0, Math.min(1, volume() * k))) }
 
@@ -61,7 +65,7 @@ export function trackGapFor(p: SpotifyPlayer, volume: () => number) {
     const me = ++run
     phase = 'fading'
     trackGap.active = true
-    await ramp(1, 0, Math.min(FADE_OUT_MS, Math.max(60, remaining)), me)
+    await ramp(1, 0, Math.min(FADE_OUT_MS, Math.max(40, remaining - SAFETY_MS)), me)
     if (me !== run) return
     // normally the next song has begun by now (onState holds it); if Spotify is slow, do not leave the music silent for long
     guard = window.setTimeout(() => { if (phase === 'fading') reset(true) }, 2500)
@@ -78,22 +82,38 @@ export function trackGapFor(p: SpotifyPlayer, volume: () => number) {
       const now = await p.getCurrentState().catch(() => null) // the exact position, now
       if (!now || now.paused || phase !== 'idle') return
       const left = now.duration - now.position
-      if (left > FADE_OUT_MS + 120) { schedule(now, performance.now()); return } // (paused / sought meanwhile: look again)
+      if (left > FADE_OUT_MS + SAFETY_MS + 150) { schedule(now, performance.now()); return } // (paused / sought meanwhile: look again)
       void fadeOut(left)
-    }, Math.max(0, remaining - FADE_OUT_MS - 90))
+    }, Math.max(0, remaining - FADE_OUT_MS - SAFETY_MS - 90))
+  }
+
+  /** Starting again can fail now and then (the player is not "active" for a moment): look, and try again rather than leave the music standing still. */
+  async function ensurePlaying(since: number): Promise<void> {
+    for (let i = 0; i < 3; i++) {
+      await wait(600)
+      if (userAt > since || phase !== 'idle') return // somebody else is in charge now
+      const st = await p.getCurrentState().catch(() => null)
+      if (!st || !st.paused) return
+      await p.resume().catch(() => {})
+    }
   }
 
   async function hold(): Promise<void> {
     const me = run
     phase = 'holding'
     clearTimeout(guard)
+    setVol(0) // (already 0 when the fade made it in time – and if not, silent from here)
     void p.pause() // the next song has started (silent: the volume is 0) – hold it
     holdTimer = window.setTimeout(async () => {
       if (me !== run) return
-      await p.resume()
+      const resumedAt = performance.now()
+      await p.resume().catch(() => {})
       if (me !== run) return
       await ramp(0, 1, FADE_IN_MS, me) // a hair of fade-in against a pop
-      if (me === run) reset(true)
+      if (me === run) {
+        reset(true)
+        void ensurePlaying(resumedAt)
+      }
     }, GAP_MS)
   }
 
@@ -103,6 +123,8 @@ export function trackGapFor(p: SpotifyPlayer, volume: () => number) {
       const at = performance.now()
       if (!st) { if (phase !== 'idle') reset(true); return }
       const cur = st.track_window.current_track?.uri ?? null
+      const prev = lastUri
+      lastUri = cur
       if (phase === 'fading') {
         // the next song began (a different one) → hold it; the same song paused / sought → somebody else is in charge: back to normal
         if (cur && cur !== uri && !st.paused) void hold()
@@ -110,10 +132,21 @@ export function trackGapFor(p: SpotifyPlayer, volume: () => number) {
         return
       }
       if (phase === 'holding') return // (our own pause)
+      // the fade did not make it (the song changed with no fade first – a late event, a slow tab): silence it now and
+      // make the gap anyway, so a new song is never heard at the start before it is muted
+      if (prev && cur && cur !== prev && !st.paused && st.position < 4000 && wanted() && at - userAt > 4000) {
+        uri = prev
+        run++
+        phase = 'fading'
+        trackGap.active = true
+        setVol(0)
+        void hold()
+        return
+      }
       schedule(st, at)
     },
     /** The user pressed pause / skip / seek / play: the gap gives way. */
-    cancel(): void { if (phase !== 'idle' || trackGap.active) reset(true) },
+    cancel(): void { userAt = performance.now(); lastUri = null; if (phase !== 'idle' || trackGap.active) reset(true) },
     stop(): void { reset(true) },
   }
   current = me
