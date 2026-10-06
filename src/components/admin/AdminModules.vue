@@ -18,7 +18,7 @@ async function add(type: string) {
   busy.value = ''
   if (it) void router.push({ name: 'modul', params: { id: it.id } })
 }
-// the symbol and the tab: any emoji, and under which tab of the menu the module sits (Hobbyer, Lære, Laget, Opplevd – or a tab of one's own)
+// the symbol and the tab: whichever emoji you like, and under which tab of the menu the module sits (Hobbyer, Lære, Laget, Opplevd – or a tab of one's own)
 const EMOJIS = ['🏊', '🏃', '🚴', '🏋️', '⛰️', '🎣', '🧘', '⚽', '🎾', '⛷️', '🎬', '📺', '🎵', '🎹', '🎸', '🎨', '📷', '🍳', '☕', '🍷', '🌱', '🪴', '🐾', '♟️', '🎲', '🕹️', '✍️', '📚', '🔧', '🧶', '✈️', '⭐']
 const PRESET_TABS = [{ v: '', l: 'Hobbyer' }, { v: 'lare', l: 'Lære' }, { v: 'laget', l: 'Laget' }, { v: 'opplevd', l: 'Opplevd' }]
 const isPreset = (g: string | undefined): boolean => PRESET_TABS.some((p) => p.v === (g ?? ''))
