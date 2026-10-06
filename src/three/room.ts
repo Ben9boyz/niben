@@ -1664,7 +1664,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     /** The room's accent colour (#rrggbb) for what glows and marks things in the room; null = the standard blue. */
     setAccent(hex: string | null) { setAccent3d(hex); invalidate(1) },
     /** How far the overview camera stands (1 = standard, less = nearer) so the room fills the free part of the screen next to the panel. */
-    setHomeFit(k: number) { const v = Math.max(0.55, Math.min(1.3, k)); if (Math.abs(v - homeFit) < 0.02) return; homeFit = v; if (station === 'hjem') goTo('hjem', { duration: 0.7 }) },
+    setHomeFit(k: number) { const v = Math.max(0.5, Math.min(1.3, k)); if (Math.abs(v - homeFit) < 0.02) return; homeFit = v; if (station === 'hjem') goTo('hjem', { duration: 0.7 }) },
     setGraphics(g: GfxInput | null) { gfxIn = g; applyGfx(g) },
     /** What the picture is made of right now (for the settings window): quality class, resolution, frame rate … */
     get gfxInfo() { return { calls: drawn.calls, triangles: drawn.triangles, lights: countLights(), quality, level, pixelRatio: renderer.getPixelRatio(), fps: fpsVal, maxMsaa, maxTex, dpr: window.devicePixelRatio, gpu: spec.gpu, score: spec.score, auto: autoGfx(), software: spec.software } },

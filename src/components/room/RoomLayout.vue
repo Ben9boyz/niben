@@ -108,10 +108,10 @@ function measure() {
   if (isFocus.value || decor.editing) { room.api.setInsets({}); return }
   if (isHome.value) {
     if (mobile.value) { room.api.setHomeFit(1); room.api.setInsets({ bottom: (window.innerHeight - r.top) * 0.8 }); return }
-    // PC: the room in the middle of what the panel leaves free, to the right, as large as fits (it may reach a little behind the glass)
+    // PC: the whole room in the middle of what the panel leaves free, to the right of it, as large as fits
     const W = window.innerWidth, H = window.innerHeight
-    const L = r.right * 0.75
-    room.api.setHomeFit(Math.max(0.7, Math.min(1, (0.93 * H) / (0.9 * (W - L)))))
+    const L = r.right
+    room.api.setHomeFit(Math.max(0.6, Math.min(1.1, (0.93 * H) / (0.92 * (W - L)))))
     room.api.setInsets({ left: L })
     return
   }
@@ -249,11 +249,11 @@ watch(() => route.name, () => (collapsed.value = false))
 .dock.away { opacity: 0; transform: translateX(40px); pointer-events: none; transition: opacity 0.35s, transform 0.45s var(--ease); }
 .dock.away > :deep(*) { pointer-events: none; }
 .dock.home {
-  top: auto;
+  top: 20px;
   right: auto;
   left: calc(var(--rail) + 20px);
-  bottom: 32px;
-  width: min(880px, calc(100vw - var(--rail) - 64px)); /* wide: more of "Akkurat nå" at once */
+  bottom: 20px;
+  width: clamp(380px, 31vw, 520px); /* the whole height, and narrow: the room stands whole next to it */
 }
 
 .dock.focus {
