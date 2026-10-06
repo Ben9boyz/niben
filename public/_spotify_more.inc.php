@@ -107,7 +107,7 @@ function sp_tempo(string $id): ?array {
             if ($code !== 200 && $code !== 404) return null;
         }
         return ['bpm' => 0, 'from' => 'none'];
-    });
+    }, true);
 }
 
 function sp_audio_features(array $trackIds): ?array {

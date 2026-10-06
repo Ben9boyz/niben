@@ -119,16 +119,26 @@ function sp_img(array $images, int $want = 300): ?string {
     return $images[0]['url'] ?? null;
 }
 
-function sp_cached(string $key, int $ttl, callable $fetch) {
-    $raw = kv_get($key);
-    if ($raw) {
-        $c = json_decode($raw, true);
-        if ($c && ($c['t'] ?? 0) > time() - $ttl) return $c['d'];
+/** Keeps what `$fetch` found for `$ttl` seconds. `$shared` = public data (an album's songs, an artist, a song's tempo): kept
+ *  once for every room instead of once per room – the lookup itself still runs as the room that asked. */
+function sp_cached(string $key, int $ttl, callable $fetch, bool $shared = false) {
+    $room = kv_scope();
+    if ($shared) kv_scope(0);
+    try {
+        $raw = kv_get($key);
+        if ($raw) {
+            $c = json_decode($raw, true);
+            if ($c && ($c['t'] ?? 0) > time() - $ttl) return $c['d'];
+        }
+        kv_scope($room);
+        $d = $fetch();
+        if ($shared) kv_scope(0);
+        if ($d !== null) kv_set($key, json_encode(['t' => time(), 'd' => $d], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        elseif ($raw) return json_decode($raw, true)['d'] ?? null; // keep stale data if Spotify hiccups
+        return $d;
+    } finally {
+        kv_scope($room);
     }
-    $d = $fetch();
-    if ($d !== null) kv_set($key, json_encode(['t' => time(), 'd' => $d], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-    elseif ($raw) return json_decode($raw, true)['d'] ?? null; // keep stale data if Spotify hiccups
-    return $d;
 }
 
 function sp_albums(): ?array {
@@ -310,9 +320,9 @@ function sp_artist(string $id, string $name): ?array {
             'image' => sp_img($a['images'] ?? [], 300), 'image_large' => sp_img($a['images'] ?? [], 640),
             'url' => $a['external_urls']['spotify'] ?? null, 'albums' => $albums,
         ];
-    });
+    }, true);
     // an empty answer is not remembered – try again next time (the old code cached "no albums" for 6 hours)
-    if (is_array($res) && !empty($res['_empty'])) kv_del("artist2_{$id}");
+    if (is_array($res) && !empty($res['_empty'])) { $r = kv_scope(); kv_scope(0); kv_del("artist2_{$id}"); kv_scope($r); }
     return $res;
 }
 
@@ -338,7 +348,7 @@ function sp_tracks(string $type, string $id): array {
             $offset += count($got);
         }
         return ['tracks' => $out];
-    });
+    }, $type === 'album');
     return $data ?? ['tracks' => [], 'error' => true];
 }
 
