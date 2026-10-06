@@ -31,7 +31,7 @@ Copy `.deploy.local.example` to `.deploy.local` and fill in the FTP/database hos
 
 Anybody can ask for an account (Admin → Opprett konto: username, e-mail, password). The owner approves it under
 Admin → Brukere; only then can it log in. An approved user gets a room of their own (trips, books, guitars, recordings,
-songs, "Om meg") and manages it in their own admin panel, where they can also switch corners of the room off (Japanese,
+songs, "Om meg", a guestbook, practice calendar and "Året") and manages it in their own admin panel, where they can also switch corners of the room off (Japanese,
 Spill …) and add their own integrations under Innstillinger: Spotify (through the site's Spotify app: the owner adds each user's Spotify e-mail in the Spotify dashboard), jpdb, Steam, GitHub, Last.fm and a home town for the weather (keys stored encrypted, see `public/_users.inc.php`). The room icon in the menu switches
 between rooms; the room is kept in the cookie `niben_room` and every API request is about that room. Without a cookie the
 owner's room is shown (a logged-in user starts in their own). The owner is user 1 and still logs in with the admin

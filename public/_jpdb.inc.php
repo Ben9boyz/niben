@@ -206,7 +206,7 @@ function jp_handle(string $action, bool $post): void {
         [$s, $j] = jp_api('review', ['vid' => $vid, 'sid' => $sid, 'grade' => $grade]);
         if ($s !== 200) fail('jpdb svarte: ' . ($j['error_message'] ?? $s), 502);
         kv_del('jp_public_v2');
-        if (kv_scope() === 1) ex_practice_hit(); // a card graded today: the practice calendar
+        ex_practice_hit(); // a card graded today: the practice calendar
         // the card's new state
         [$ls, $lj] = jp_api('lookup-vocabulary', ['list' => [[$vid, $sid]], 'fields' => ['card_state', 'due_at']]);
         $info = $lj['vocabulary_info'][0] ?? null;

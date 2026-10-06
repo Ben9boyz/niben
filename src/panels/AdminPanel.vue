@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { LayoutDashboard, Plane, BookOpen, Mic, Music, Type, Box, Mail, Eye, EyeOff, LogOut, Lock, Users, SlidersHorizontal, Guitar, DoorOpen } from 'lucide-vue-next'
+import { LayoutDashboard, Plane, BookOpen, Mic, Music, Type, Box, Mail, Eye, EyeOff, LogOut, Lock, Users, SlidersHorizontal, Guitar, DoorOpen, MessageCircle } from 'lucide-vue-next'
 import { admin, account, signedIn, checkLogin, login, userLogin, registerAccount, logout, errorMessage } from '../composables/useAdmin'
 import { setRoom } from '../composables/useRooms'
 import AdminTrips from '../components/admin/AdminTrips.vue'
@@ -13,6 +13,7 @@ import AdminRoom from '../components/admin/AdminRoom.vue'
 import AdminNews from '../components/admin/AdminNews.vue'
 import AdminUsers from '../components/admin/AdminUsers.vue'
 import AdminGuitars from '../components/admin/AdminGuitars.vue'
+import AdminGuestbook from '../components/admin/AdminGuestbook.vue'
 import AdminSettings from '../components/admin/AdminSettings.vue'
 
 const OWNER_TABS = [
@@ -34,6 +35,7 @@ const USER_TABS = [
   { id: 'gitarer', label: 'Gitarer', icon: Guitar },
   { id: 'opptak', label: 'Gitaropptak', icon: Mic },
   { id: 'sanger', label: 'Sanger', icon: Music },
+  { id: 'gjestebok', label: 'Gjestebok', icon: MessageCircle },
   { id: 'innstillinger', label: 'Innstillinger', icon: SlidersHorizontal },
 ]
 const TABS = computed(() => (admin.loggedIn || account.user?.owner ? OWNER_TABS : USER_TABS))
@@ -136,6 +138,7 @@ const myRoom = () => { if (account.user) void setRoom(account.user.username) }
           <AdminRoom v-else-if="shownTab === 'rom'" key="m" />
           <AdminNews v-else-if="shownTab === 'nyhetsbrev'" key="n" />
           <AdminTexts v-else-if="shownTab === 'tekster'" key="t" />
+          <AdminGuestbook v-else-if="shownTab === 'gjestebok'" key="gb" />
           <AdminSettings v-else-if="shownTab === 'innstillinger'" key="i" />
           <AdminRecordings v-else key="o" />
         </transition>

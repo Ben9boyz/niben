@@ -367,6 +367,7 @@ function users_delete(int $id): void {
     $st->execute([$id]);
     foreach ($st->fetchAll() as $r) delete_upload($r['audio_path']);
     foreach (['trips', 'books', 'recordings', 'songs', 'guitars'] as $t) $pdo->prepare("DELETE FROM `$t` WHERE user_id = ?")->execute([$id]);
+    foreach (['guestbook', 'practice', 'plays'] as $t) { try { $pdo->prepare("DELETE FROM `$t` WHERE user_id = ?")->execute([$id]); } catch (PDOException $e) { /* not created yet */ } }
     $about = json_decode((string)(function () use ($id) { $s = kv_scope(); kv_scope($id); $v = kv_get('about'); kv_scope($s); return $v; })(), true) ?: [];
     if (!empty($about['bilde'])) delete_upload($about['bilde']);
     $pdo->prepare('DELETE FROM spotify_state WHERE k LIKE ?')->execute(['u' . $id . '\\_%']);
