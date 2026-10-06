@@ -51,6 +51,7 @@ const asList = computed(() => libView.list && small.value && !props.movable)
         :aria-label="`${it.name}${it.sub ? ` – ${it.sub}` : ''}`"
         @click="emit('pick', it)"
         @mouseenter="emit('hover', it)"
+        @pointerdown="emit('hover', it)"
       >
         <img crossorigin="anonymous" v-if="it.image" :src="it.image" alt="" loading="lazy" />
         <span v-else class="ph"><Music :size="28" /></span>

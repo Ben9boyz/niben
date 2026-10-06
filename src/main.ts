@@ -11,7 +11,8 @@ import { watch } from 'vue'
 import { startDomTranslate } from './lib/domTranslate'
 import './style.css'
 // Every page loads on demand: a panel (3D room) and a page (plain version) per route
-const lazy = (panel: () => Promise<Component>, page: AsyncComponentLoader, title: string): { component: () => Promise<Component>; meta: RouteMeta } => ({ component: panel, meta: { page: defineAsyncComponent(page), title } })
+const preloads: (() => Promise<unknown>)[] = []
+const lazy = (panel: () => Promise<Component>, page: AsyncComponentLoader, title: string): { component: () => Promise<Component>; meta: RouteMeta } => { preloads.push(panel, page as () => Promise<unknown>); return { component: panel, meta: { page: defineAsyncComponent(page), title } } }
 const routes: RouteRecordRaw[] = [
   { path: '/', name: 'hjem', ...lazy(() => import('./panels/HomePanel.vue'), () => import('./pages/HomePage.vue'), 'Hjem') },
   { path: '/lytte', name: 'lytte', ...lazy(() => import('./panels/MusicPanel.vue'), () => import('./pages/MusicPage.vue'), 'Musikk') },
@@ -51,6 +52,12 @@ createApp(App).use(router).mount('#app')
 // a corner that is switched off in this room: its page is not there (also when the address was typed in)
 const roomData = useData()
 watch([() => roomData.profile, () => router.currentRoute.value.name], () => { if (!routeAllowed(router.currentRoute.value.name, roomData.profile)) void router.replace('/') }, { deep: true })
+// when the page has settled: fetch the other pages' code quietly, one by one – so a click on a tab never waits for it
+{
+  let k = 0
+  const next = (): void => { if (k < preloads.length && !document.hidden) void preloads[k++]().catch(() => undefined).finally(() => setTimeout(next, 120)) }
+  window.addEventListener('load', () => setTimeout(next, 2500), { once: true })
+}
 startDomTranslate() // the page in the visitor's language (English unless they chose another)
 registerServiceWorker()
 

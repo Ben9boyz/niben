@@ -195,7 +195,7 @@ async function onPlay(track: Track | null = null) {
         >
           <span class="n">
             <span v-if="spotify.now?.uri === t.uri && spotify.now?.playing" class="eq"><i></i><i></i><i></i></span>
-            <template v-else><span class="num">{{ t.n || i + 1 }}</span><span class="hov"><Play :size="13" fill="currentColor" /></span></template>
+            <template v-else><span class="num">{{ kind === 'album' ? t.n || i + 1 : i + 1 }}</span><span class="hov"><Play :size="13" fill="currentColor" /></span></template>
           </span>
           <span class="t" translate="no"><b>{{ t.name }}</b>
             <small v-if="kind === 'playlist' || t.artist !== item.artist">

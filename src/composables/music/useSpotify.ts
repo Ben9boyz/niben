@@ -177,6 +177,7 @@ export async function refreshLists(force = false): Promise<void> {
       try { localStorage.removeItem(listsKey()) } catch { /* private mode */ }
     }
     spotify.error = null
+    warmTracks()
   } catch (e) {
     spotify.error = errorMessage(e)
   } finally {
@@ -230,7 +231,22 @@ let prefetchTimer = 0
 export function prefetchTracks(uri: string | null | undefined): void {
   clearTimeout(prefetchTimer)
   if (!uri || trackCache.has(uri)) return
-  prefetchTimer = window.setTimeout(() => { void fetchTracks(uri) }, 180) // only if it rests there a moment
+  prefetchTimer = window.setTimeout(() => { void fetchTracks(uri) }, 60) // only if it rests there a moment
+}
+/** Once the lists are there and the page is quiet: fetch the songs of the first records and playlists, one by one,
+ *  so that opening them is instant (they are remembered on this machine, so it only costs anything the first time). */
+let warmed = false
+function warmTracks(): void {
+  if (warmed || !spotify.connected) return
+  warmed = true
+  if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return
+  const uris = [...spotify.albums.slice(0, 12), ...spotify.playlists.slice(0, 8)].map((x) => x.uri)
+  let i = 0
+  const next = (): void => {
+    if (i >= uris.length || document.hidden) return
+    void fetchTracks(uris[i++]).finally(() => setTimeout(next, 300))
+  }
+  setTimeout(next, 3000)
 }
 const tempoCache = new Map<string, Promise<number>>()
 /** Tempo (BPM) of a song – 0 when nobody knows. Asked once per song, then remembered here (30 days; an unknown
