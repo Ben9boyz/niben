@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { tx } from '@/composables/site/useTexts'
-import BrandLogo from '@/components/ui/BrandLogo.vue'
 import NowContent from '@/components/content/NowContent.vue'
 import MadeWith from '@/components/ui/MadeWith.vue'
 import { useData } from '@/composables/site/useData'
@@ -10,7 +9,6 @@ const data = useData()
 
 <template>
   <section class="hero glass">
-    <BrandLogo class="home-logo rise" style="--i: 0" />
     <div class="eyebrow rise" style="--i: 0">{{ tx('home.eyebrow', data.site?.undertittel) }}</div>
     <h1 class="rise" style="--i: 1">{{ tx('home.hello') }} <span class="grad">{{ tx('home.name', data.site?.navn) }}</span></h1>
     <p class="lead rise" style="--i: 2">{{ tx('home.intro', data.site?.intro) }}</p>
@@ -37,5 +35,4 @@ h1 { font-size: clamp(2.1rem, 4.6vw, 3.6rem); font-weight: 800; }
   .now-wrap { margin-top: 12px; max-height: 32vh; }
   .tap { display: none; }
 }
-.home-logo { height: 54px; margin-bottom: 14px; }
 </style>
