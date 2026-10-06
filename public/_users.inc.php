@@ -268,7 +268,7 @@ function users_handle(string $action, bool $post): void {
         foreach ($rows as $r) {
             kv_scope((int)$r['id']);
             $about = json_decode((string)kv_get('about'), true) ?: [];
-            $list[] = ['username' => $r['username'], 'owner' => (int)$r['id'] === 1, 'photo' => $about['bilde'] ?? null, 'tagline' => $about['tagline'] ?? ''];
+            $list[] = ['username' => $r['username'], 'owner' => (int)$r['id'] === 1, 'photo' => $about['bilde'] ?? null, 'door' => $about['bilder']['door'] ?? null, 'tagline' => $about['tagline'] ?? ''];
         }
         kv_scope($scope);
         $cur = user_by_id($scope);

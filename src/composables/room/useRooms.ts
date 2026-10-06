@@ -18,7 +18,7 @@ import { room, clearSelection } from './useRoom'
 // server (room_set), so every request – content, Japanese, Steam … – is about that room. Switching does NOT reload the
 // page: the room flies off, everything that belonged to it is reset and fetched again for the new room, and the new
 // one flies in (the 3D scene stays loaded – it only gets new data).
-export interface RoomInfo { username: string; owner: boolean; photo: string | null; tagline: string }
+export interface RoomInfo { username: string; owner: boolean; photo: string | null; door?: string | null; tagline: string }
 export const rooms = reactive({ list: [] as RoomInfo[], current: null as string | null, loaded: false })
 
 export async function loadRooms(): Promise<void> {

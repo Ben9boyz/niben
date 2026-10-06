@@ -7,6 +7,7 @@ import { siteTexts, setTexts } from '@/composables/site/useTexts'
 import { ACCENTS, ACCENT_KEY, DEFAULT_ACCENT, accentHex, validAccent } from '@/composables/ui/useAccent'
 import { milestones, loadMilestones, setMilestones, type Milestone } from '@/composables/site/useMilestones'
 import { thumb } from '../../lib/photos'
+import ImageCropper from '@/components/ui/ImageCropper.vue'
 import type { Flash } from '../../types'
 
 // Everything about who the room belongs to, in one place: the title and intro on the front page, the photo, the
@@ -76,6 +77,45 @@ async function uploadPhoto(e: Event) {
     flash('Bildet er byttet.')
   } catch (err) { fail(err) } finally { busy.value = '' }
 }
+// ── the door in the hall and two walls: each in exactly the shape of the place it is for ──
+const IMAGE_SLOTS = [
+  { id: 'door', label: 'Døra i gangen', hint: 'Dørbladet alle ser i Gangen', aspect: 1 / 2.05, out: 640 },
+  { id: 'wall_back', label: 'Bakveggen', hint: 'Veggen bak skrivebordet og bokhyllen (8 × 3,2 m)', aspect: 8 / 3.2, out: 2048 },
+  { id: 'wall_left', label: 'Venstre vegg', hint: 'Veggen med gitarene (7 × 3,2 m)', aspect: 7 / 3.2, out: 2048 },
+] as const
+const crop = ref<{ slot: (typeof IMAGE_SLOTS)[number]; file: File } | null>(null)
+function pickImage(slot: (typeof IMAGE_SLOTS)[number], e: Event) {
+  const input = e.target as HTMLInputElement
+  const f = input.files?.[0]
+  input.value = ''
+  if (f) crop.value = { slot, file: f }
+}
+async function uploadCropped(blob: Blob) {
+  const c = crop.value
+  if (!c) return
+  crop.value = null
+  busy.value = 'img-' + c.slot.id
+  msg.value = null
+  try {
+    const fd = new FormData()
+    fd.append('slot', c.slot.id)
+    fd.append('file', blob, c.slot.id + '.jpg')
+    const r = await api<{ bilder: Record<string, string> }>('about_image', fd)
+    about.value = { ...(about.value || {}), bilder: r.bilder }
+    await reloadData()
+    flash(`${c.slot.label}: bildet er byttet.`)
+  } catch (err) { fail(err) } finally { busy.value = '' }
+}
+async function clearImage(id: string) {
+  busy.value = 'img-' + id
+  msg.value = null
+  try {
+    const r = await api<{ bilder: Record<string, string> }>('about_image_clear', { slot: id })
+    about.value = { ...(about.value || {}), bilder: r.bilder }
+    await reloadData()
+    flash('Bildet er fjernet.')
+  } catch (err) { fail(err) } finally { busy.value = '' }
+}
 async function saveAbout() {
   busy.value = 'about'
   msg.value = null
@@ -136,6 +176,26 @@ onMounted(() => { void loadAbout(); void loadMilestones(true) })
         <button v-for="a in ACCENTS" :key="a.id" type="button" class="dot" role="radio" :aria-checked="accentNow === a.hex" :class="{ on: accentNow === a.hex }" :style="{ background: a.hex }" :title="a.label" :aria-label="a.label" :disabled="busy === 'accent'" @click="setAccent(a.hex)"></button>
         <label class="dot custom" :class="{ on: !ACCENTS.some((a) => a.hex === accentNow) }" title="Egen farge"><input type="color" :value="accentNow" aria-label="Egen farge" @change="pickCustom" /><span>+</span></label>
       </div>
+    </section>
+
+    <section>
+      <h3>Døra og veggene</h3>
+      <p class="muted">Last opp hva du vil. Du velger selv hvilken del av bildet som brukes – rammen har nøyaktig formen til stedet bildet skal henge.</p>
+      <div class="imgs">
+        <div v-for="sl in IMAGE_SLOTS" :key="sl.id" class="img">
+          <div class="pv" :style="{ aspectRatio: String(sl.aspect) }">
+            <img v-if="about?.bilder?.[sl.id]" :src="about.bilder[sl.id]" alt="" />
+            <span v-else class="none">Ingen bilde</span>
+          </div>
+          <b>{{ sl.label }}</b>
+          <span class="muted">{{ sl.hint }}</span>
+          <div class="irow">
+            <label class="btn soft small up" :class="{ busy: busy === 'img-' + sl.id }"><ImageUp :size="15" />{{ about?.bilder?.[sl.id] ? 'Bytt' : 'Last opp' }}<input type="file" accept="image/*" hidden @change="pickImage(sl, $event)" /></label>
+            <button v-if="about?.bilder?.[sl.id]" type="button" class="btn soft small" :disabled="busy === 'img-' + sl.id" @click="clearImage(sl.id)"><Trash2 :size="14" />Fjern</button>
+          </div>
+        </div>
+      </div>
+      <ImageCropper v-if="crop" :file="crop.file" :aspect="crop.slot.aspect" :out-width="crop.slot.out" :title="crop.slot.label" @done="uploadCropped" @cancel="crop = null" />
     </section>
 
     <section>
@@ -223,4 +283,9 @@ textarea, input, select { width: 100%; box-sizing: border-box; }
 .msl li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .msl small { color: var(--text-3); }
 @media (max-width: 700px) { .ms { grid-template-columns: 1fr; } .lrow { grid-template-columns: 1fr auto; } .lrow input:first-child { grid-column: 1 / -1; } }
+.imgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; align-items: start; }
+.img { display: flex; flex-direction: column; gap: 4px; }
+.pv { width: 100%; max-width: 190px; border-radius: 10px; overflow: hidden; background: var(--glass-border, #0002); display: grid; place-items: center; }
+.pv img { width: 100%; height: 100%; object-fit: cover; }
+.irow { display: flex; gap: 6px; margin-top: 4px; }
 </style>

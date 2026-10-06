@@ -16,6 +16,9 @@ function q_list(): array {
     return is_array($l) && $l ? array_values($l) : q_defaults();
 }
 
+// the places a room can have its own picture: the door in the hall and two walls of the room
+const ABOUT_IMAGE_SLOTS = ['door', 'wall_back', 'wall_left'];
+
 function about_handle(string $action, bool $post): void {
     switch ($action) {
     case 'about_get': {
@@ -51,6 +54,31 @@ function about_handle(string $action, bool $post): void {
         kv_set('about', json_encode($about, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         out(['ok' => true, 'bilde' => $path]);
     }
+    case 'about_image': {
+        // a picture for the door in the hall or for a wall of the room (the page has already cropped it to the right shape)
+        if (!$post) fail('Bruk POST.', 405);
+        require_user();
+        $slot = (string)($_POST['slot'] ?? '');
+        if (!in_array($slot, ABOUT_IMAGE_SLOTS, true)) fail('Ukjent plass for bildet.');
+        [$path] = save_photo($_FILES['file'] ?? []);
+        $about = json_decode((string)kv_get('about'), true) ?: [];
+        if (!empty($about['bilder'][$slot])) delete_upload($about['bilder'][$slot]);
+        $about['bilder'][$slot] = $path;
+        kv_set('about', json_encode($about, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        out(['ok' => true, 'bilder' => $about['bilder']]);
+    }
+    case 'about_image_clear': {
+        if (!$post) fail('Bruk POST.', 405);
+        require_user();
+        $slot = (string)(body()['slot'] ?? '');
+        if (!in_array($slot, ABOUT_IMAGE_SLOTS, true)) fail('Ukjent plass for bildet.');
+        $about = json_decode((string)kv_get('about'), true) ?: [];
+        if (!empty($about['bilder'][$slot])) delete_upload($about['bilder'][$slot]);
+        unset($about['bilder'][$slot]);
+        if (empty($about['bilder'])) unset($about['bilder']);
+        kv_set('about', json_encode($about, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        out(['ok' => true, 'bilder' => $about['bilder'] ?? new stdClass()]);
+    }
     case 'about_save': {
         if (!$post) fail('Bruk POST.', 405);
         require_user();
@@ -70,6 +98,7 @@ function about_handle(string $action, bool $post): void {
             'lenker' => $links,
             'svar' => $old['svar'] ?? new stdClass(),
         ];
+        if (!empty($old['bilder'])) $about['bilder'] = $old['bilder'];
         if (array_key_exists('svar', $b)) { // answers to the shared questions: only ones that exist, short, and empty ones dropped
             $ids = array_column(q_list(), 'id');
             $svar = [];

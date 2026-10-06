@@ -92,7 +92,7 @@ export interface RoomCallbacks {
   onDecorSelect?: (id: string | null) => void
 }
 /** What the room needs to know about the site's data. */
-export interface RoomData { gitarer?: Guitar[]; boker?: Book[]; reiser?: Trip[]; prosjekter?: Project[]; om?: { bilde?: string | null }; site?: { navn?: string } }
+export interface RoomData { gitarer?: Guitar[]; boker?: Book[]; reiser?: Trip[]; prosjekter?: Project[]; om?: { bilde?: string | null; bilder?: Record<string, string> }; site?: { navn?: string } }
 /** The graphics settings as the room is told them (see useGraphics). */
 export type GfxInput = Partial<Omit<GfxValues, 'res' | 'ao'>> & { mode?: GfxMode; res?: number | 'auto'; ao?: GfxValues['ao'] | 'auto'; showFps?: boolean }
 interface Eff extends Omit<GfxValues, 'res' | 'ao'> { res: number | 'auto'; ao: GfxValues['ao'] | 'auto'; showFps: boolean; areaLights: boolean; smallLights: boolean }
@@ -233,6 +233,44 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
 
   box(8.3, 3.2, 0.15, wallMat, 0, 1.6, -3.575)                     // back
   box(0.15, 3.2, 7.15, wallMat, -4.075, 1.6, -0.075)               // left
+  // The room's own wallpaper: a picture for the back wall and one for the left (the page has cut them to the walls' shapes: 8 × 3.2 m and 7 × 3.2 m)
+  const muralMats: Record<string, THREE.MeshStandardMaterial> = {}
+  const murals: Record<string, THREE.Mesh> = {}
+  function mural(slot: string, w: number, x: number, z: number, rotY: number): void {
+    const mat = new THREE.MeshStandardMaterial({ roughness: 0.92 })
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, 3.2), mat)
+    m.position.set(x, 1.6, z)
+    m.rotation.y = rotY
+    m.visible = false
+    m.userData.noCull = true
+    scene.add(m)
+    muralMats[slot] = mat
+    murals[slot] = m
+  }
+  mural('wall_back', 8, 0, -3.497, 0)
+  mural('wall_left', 7, -3.997, 0, Math.PI / 2)
+  const muralUrls: Record<string, string | null> = {}
+  function setMurals(bilder: Record<string, string> | null | undefined): void {
+    for (const slot of Object.keys(murals)) {
+      const url = bilder?.[slot] ?? null
+      if (muralUrls[slot] === url) continue
+      muralUrls[slot] = url
+      const m = murals[slot], mat = muralMats[slot]
+      if (!m || !mat) continue
+      if (!url) { m.visible = false; mat.map?.dispose(); mat.map = null; invalidate(1); continue }
+      new THREE.TextureLoader().load(url, (tex) => {
+        if (muralUrls[slot] !== url) { tex.dispose(); return }
+        tex.colorSpace = THREE.SRGBColorSpace
+        tex.anisotropy = 4
+        mat.map?.dispose()
+        mat.map = tex
+        mat.needsUpdate = true
+        m.visible = true
+        shadowsDirty = true
+        invalidate(1)
+      })
+    }
+  }
   // right wall with a window (z 1.0..2.4, y 0.9..2.3)
   box(0.15, 3.2, 4.65, wallMat, 4.075, 1.6, -1.325)
   box(0.15, 3.2, 1.1, wallMat, 4.075, 1.6, 2.95)
@@ -1188,6 +1226,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     const visited = new Set((data.reiser ?? []).map((r) => atlasName(r.land)).filter((n): n is string => !!n))
     globeTable.setVisited(visited)
     setPortrait(data.om, data.site?.navn)
+    setMurals(data.om?.bilder)
     setSelection({})
     scheduleEnvCapture(900)
     shadowsDirty = true
@@ -1232,6 +1271,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     scene.background = new THREE.Color(t.bg)
     scene.fog = new THREE.Fog(t.bg, 26, 48)
     wallMat.color.set(t.wall)
+    for (const mm of Object.values(muralMats)) mm.color.set(t.night ? 0x8e9bb0 : 0xffffff) // (a picture on the wall gets the evening too)
     floorMat.color.set(t.floor)
     sideMat.color.set(t.night ? 0x1a2232 : 0xdfe6ef)
     hemi.intensity = t.hemi * (eff.areaLights ? 1 : 1.2)

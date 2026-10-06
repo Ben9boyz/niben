@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { canvasTex } from './textures'
 
-export interface Door { username: string; label: string; photo: string | null; owner: boolean }
+export interface Door { username: string; label: string; photo: string | null; door?: string | null; owner: boolean }
 
 // "Gangen": a curved corridor off to the side of the room with one door per room. The camera stands in the middle of the
 // arc, so every door faces it; a click on a door is a click on that room (the page flies in and switches rooms).
@@ -91,12 +91,20 @@ export function buildHall(scene: THREE.Scene, tag: <T extends THREE.Object3D>(o:
         f.position.set(x, y, 0.03)
         g.add(f)
       }
-      // two inset panels + a handle: reads as a door from across the hall
+      // two inset panels + a handle: reads as a door from across the hall (or the room's own picture on the door)
       const inset = new THREE.MeshStandardMaterial({ color: new THREE.Color(`hsl(${hue}, 45%, 31%)`), roughness: 0.6 })
-      for (const y of [0.55, 1.45]) {
-        const p = new THREE.Mesh(new THREE.BoxGeometry(WIDTH * 0.7, y < 1 ? 0.65 : 0.7, 0.02), inset)
-        p.position.set(0, y, 0.065)
-        g.add(p)
+      if (d.door) {
+        const dm = new THREE.MeshStandardMaterial({ roughness: 0.6 })
+        const art = new THREE.Mesh(new THREE.PlaneGeometry(WIDTH, HEIGHT), dm)
+        art.position.set(0, HEIGHT / 2, 0.056)
+        g.add(art)
+        loadTexture(d.door, (t) => { t.colorSpace = THREE.SRGBColorSpace; dm.map = t; dm.needsUpdate = true; texs.push(t); onChange() })
+      } else {
+        for (const y of [0.55, 1.45]) {
+          const p = new THREE.Mesh(new THREE.BoxGeometry(WIDTH * 0.7, y < 1 ? 0.65 : 0.7, 0.02), inset)
+          p.position.set(0, y, 0.065)
+          g.add(p)
+        }
       }
       const handle = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 8), new THREE.MeshStandardMaterial({ color: 0xd7b56d, metalness: 1, roughness: 0.3 }))
       handle.position.set(WIDTH * 0.36, 1.0, 0.1)
@@ -108,7 +116,7 @@ export function buildHall(scene: THREE.Scene, tag: <T extends THREE.Object3D>(o:
       const pm = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
       const portrait = new THREE.Mesh(new THREE.CircleGeometry(0.2, 32), pm)
       portrait.position.set(0, 1.62, 0.085)
-      g.add(portrait)
+      if (!d.door) g.add(portrait)
       const initial = canvasTex(128, 128, (x, w, h) => {
         x.fillStyle = tint; x.fillRect(0, 0, w, h)
         x.fillStyle = '#fff'; x.font = '800 78px "Inter Tight", Inter, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'

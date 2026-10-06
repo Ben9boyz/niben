@@ -78,7 +78,7 @@ export interface Project {
 }
 export interface AboutLink { navn: string; url: string }
 /** "Om meg": the text written in the admin page (or the placeholder in data.json). */
-export interface About { bilde?: string | null; tagline?: string; tekst?: string; lenker?: AboutLink[]; svar?: Record<string, string> }
+export interface About { bilde?: string | null; bilder?: Record<string, string>; tagline?: string; tekst?: string; lenker?: AboutLink[]; svar?: Record<string, string> }
 /** A question every room can answer (set by the owner of the site) – "Om meg" shows the ones that were answered. */
 export interface Question { id: string; text: string }
 /** Whose room this is and which corners of it are switched on. */
@@ -121,7 +121,7 @@ interface DbContent {
   books: DbBook[]
   recordings: DbRecording[]
   songs?: DbSong[]
-  about?: { bilde?: string; svar?: Record<string, string> } | null
+  about?: { bilde?: string; bilder?: Record<string, string>; svar?: Record<string, string> } | null
   texts?: Record<string, unknown>
 }
 interface Repo { name: string; description?: string; homepage?: string | null; created?: string | number | null; language?: string | null; topics: string[]; url: string; stars: number }
