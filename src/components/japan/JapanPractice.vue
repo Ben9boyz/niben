@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { errorMessage } from '../composables/useAdmin'
+import { errorMessage } from '@/composables/useAdmin'
 import PitchReading from './PitchReading.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ArrowUpRight, RotateCcw, X, Volume2 } from 'lucide-vue-next'
-import { speak, canSpeak } from '../lib/speak'
-import { targetEl, selectOf } from '../lib/dom'
-import { fetchQueue, gradeCard, GRADES, jpdbUrl, loadJapanese, newPerSession, setNewPerSession, type JpCard, type JpGrade } from '../composables/useJapanese'
+import { speak, canSpeak } from '@/lib/speak'
+import { targetEl, selectOf } from '@/lib/dom'
+import { fetchQueue, gradeCard, GRADES, jpdbUrl, loadJapanese, newPerSession, setNewPerSession, type JpCard, type JpGrade } from '@/composables/useJapanese'
 
 // Flashcard review against jpdb: word → (space) reading, pitch, meanings → grade 1–5.
 // Each grade is sent to jpdb right away. Cards you didn't remember come back at the end.

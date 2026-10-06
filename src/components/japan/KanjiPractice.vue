@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { errorMessage } from '../composables/useAdmin'
+import { errorMessage } from '@/composables/useAdmin'
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { Play, Volume2, RotateCcw, ArrowUpRight } from 'lucide-vue-next'
-import { fetchWords, stateOf } from '../composables/useJapanese'
-import { kanjiFromWords, kanjiInfo, strokes, session, gradeKanji, srsStats, type KanjiEntry, type KanjiInfo, type KanjiGrade } from '../composables/useKanji'
-import { speak, canSpeak } from '../lib/speak'
-import { targetEl } from '../lib/dom'
+import { fetchWords, stateOf } from '@/composables/useJapanese'
+import { kanjiFromWords, kanjiInfo, strokes, session, gradeKanji, srsStats, type KanjiEntry, type KanjiInfo, type KanjiGrade } from '@/composables/useKanji'
+import { speak, canSpeak } from '@/lib/speak'
+import { targetEl } from '@/lib/dom'
 
 // Kanji cards from the kanji in my own words: the kanji → (space) meaning, on/kun readings, the
 // stroke order drawn out, and my words that use it → how well did I know it. The schedule lives in

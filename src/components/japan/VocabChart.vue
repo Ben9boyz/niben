@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { jpHistory, loadJapaneseHistory, type JpSnapshot } from '../composables/useJapanese'
+import { jpHistory, loadJapaneseHistory, type JpSnapshot } from '@/composables/useJapanese'
 
 // Vocabulary over time: "Kan" (area + line) and "Lærer" (thin line) from the daily jpdb snapshots.
 loadJapaneseHistory()

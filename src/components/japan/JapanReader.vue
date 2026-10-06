@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { errorMessage } from '../composables/useAdmin'
+import { errorMessage } from '@/composables/useAdmin'
 import { ref, computed } from 'vue'
 import { ScanText, Eye, EyeOff } from 'lucide-vue-next'
-import { parseText, stateOf, type ParsedText, type JpWord, type CardState } from '../composables/useJapanese'
+import { parseText, stateOf, type ParsedText, type JpWord, type CardState } from '@/composables/useJapanese'
 import JapanWord from './JapanWord.vue'
 
 // Paste Japanese text: jpdb splits it into words. Each word is coloured by how well I know it,
