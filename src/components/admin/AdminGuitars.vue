@@ -9,7 +9,9 @@ import type { Flash } from '../../types'
 // show up in the Gitar corner; recordings are made on one of them.
 interface GuitarForm { id: string | null; name: string; brand: string; type: string; year: number | string; color: string; pickguard: string; fretboard: string; description: string }
 const data = useData()
-const guitars = computed(() => (data.gitarer || []).filter((g) => !g.modell))
+const guitars = computed(() => (data.gitarer || []).filter((g) => !g.modell || g.egen))
+const all = computed(() => data.gitarer || [])
+const isOwnFile = (g: Guitar) => !!g.modell?.startsWith('uploads/models/')
 const editing = ref<GuitarForm | null>(null)
 const msg = ref<Flash | null>(null)
 const busy = ref(false)
@@ -31,6 +33,29 @@ async function save() {
     msg.value = { ok: 'Lagret.' }
   } catch (e) { msg.value = { error: errorMessage(e) } } finally { busy.value = false }
 }
+// ── 3D models: each guitar can have a model of its own (.glb) ──
+const mbusy = ref('')
+async function uploadModel(g: Guitar, e: Event) {
+  const input = e.target as HTMLInputElement
+  const f = input.files?.[0]
+  input.value = ''
+  if (!f) return
+  mbusy.value = g.id
+  msg.value = null
+  try {
+    const fd = new FormData()
+    fd.append('id', g.id)
+    fd.append('file', f)
+    await api('decor_guitar_upload', fd)
+    await reloadData()
+    msg.value = { ok: `«${g.navn}» har fått sin egen modell.` }
+  } catch (err) { msg.value = { error: errorMessage(err) } } finally { mbusy.value = '' }
+}
+async function removeModel(g: Guitar) {
+  if (!confirm(`Fjerne den opplastede modellen til «${g.navn}»?`)) return
+  mbusy.value = g.id
+  try { await api('decor_guitar_delete', { id: g.id }); await reloadData(); msg.value = { ok: 'Modellen er fjernet.' } } catch (err) { msg.value = { error: errorMessage(err) } } finally { mbusy.value = '' }
+}
 async function remove() {
   const f = editing.value
   if (!f?.id || !confirm(`Slette «${f.name}» og opptakene på den?`)) return
@@ -50,6 +75,16 @@ async function remove() {
       <button v-for="g in guitars" :key="g.id" class="item" @click="edit(g)">
         <i class="sw" :style="{ background: g.farge }"></i><span class="meta"><b>{{ g.navn }}</b><small>{{ [g.merke, g.type, g.aar].filter(Boolean).join(' · ') || '—' }}</small></span>
       </button>
+
+      <section v-if="all.length" class="models">
+        <h4>3D-modeller</h4>
+        <p class="muted">Last opp din egen modell (.glb, maks 14 MB, én fil med alt i) til en gitar. Den settes opp etter lengden sin og vises i rommet og i Gitar-fanen. Uten egen modell brukes en enkel gitar tegnet av fargene over.</p>
+        <div v-for="g in all" :key="g.id" class="mrow">
+          <span class="mn"><b>{{ g.navn }}</b><small>{{ isOwnFile(g) ? 'Egen modell' : g.modell ? 'Innebygd modell' : 'Ingen modell' }}</small></span>
+          <label class="btn soft small up" :class="{ busy: mbusy === g.id }">{{ mbusy === g.id ? 'Laster opp …' : g.modell ? 'Bytt modell' : 'Last opp modell' }}<input type="file" accept=".glb,model/gltf-binary" hidden :disabled="!!mbusy" @change="uploadModel(g, $event)" /></label>
+          <button v-if="isOwnFile(g)" type="button" class="btn danger small" :disabled="!!mbusy" @click="removeModel(g)">Fjern</button>
+        </div>
+      </section>
     </div>
     <form v-else class="form" @submit.prevent="save">
       <button type="button" class="back" @click="editing = null"><ChevronLeft :size="16" />Tilbake</button>
@@ -76,6 +111,13 @@ async function remove() {
 </template>
 
 <style scoped>
+.models { margin-top: 22px; display: grid; gap: 8px; }
+.models h4 { margin: 0; font-size: 0.98rem; }
+.mrow { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: var(--accent-soft); }
+.mn { flex: 1; min-width: 0; display: grid; }
+.mn small { color: var(--text-3); }
+.up { cursor: pointer; }
+.up.busy { opacity: 0.6; pointer-events: none; }
 .bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .bar .btn { display: inline-flex; align-items: center; gap: 4px; }
 .muted { color: var(--text-3); font-size: 0.88rem; }

@@ -9,6 +9,57 @@ function decor_list(): array { return json_decode((string)kv_get(DECOR_KEY), tru
 function decor_store(array $l): void { kv_set(DECOR_KEY, json_encode(array_values($l), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); }
 function decor_num($v, float $min, float $max, float $def): float { return is_numeric($v) ? max($min, min($max, (float)$v)) : $def; }
 
+
+// ── Own 3D models for guitars (and figures): the same GLB rules, the files in uploads/models/ ──
+const GM_KEY = 'guitar_models';
+function gm_map(): array { $m = json_decode((string)kv_get(GM_KEY), true); return is_array($m) ? $m : []; }
+function gm_store(array $m): void { kv_set(GM_KEY, json_encode((object)$m, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); }
+/** Checks an uploaded .glb ($_FILES entry) and saves it; returns its path (relative to the site) or fails. */
+function glb_store_upload(array $f): string {
+    if (($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) fail(upload_error((int)($f['error'] ?? UPLOAD_ERR_NO_FILE)));
+    if ($f['size'] > DECOR_MAX_BYTES) fail('Modellen er for stor (maks 14 MB). Prøv å gjøre den mindre i Blender, eller bruk en enklere modell.');
+    if (strtolower(pathinfo((string)$f['name'], PATHINFO_EXTENSION)) !== 'glb') fail('Bare .glb-filer (én fil med alt i). Konverter andre formater til GLB først.');
+    $fh = @fopen($f['tmp_name'], 'rb');
+    $magic = $fh ? fread($fh, 4) : '';
+    if ($fh) fclose($fh);
+    if ($magic !== 'glTF') fail('Det ser ikke ut som en gyldig GLB-fil.');
+    $name = random_name('glb');
+    if (!move_uploaded_file($f['tmp_name'], upload_dir('models') . '/' . $name)) fail('Klarte ikke å lagre filen.', 500);
+    return 'uploads/models/' . $name;
+}
+/** The guitar has to be this room's: an account's own (in the table), or – for the owner – one from data.json. */
+function gm_check_guitar(int $uid, string $id): void {
+    if (!preg_match('~^[a-z0-9_-]{1,40}$~i', $id)) fail('Ukjent gitar.');
+    if ($uid === 1) return;
+    $st = db()->prepare('SELECT 1 FROM guitars WHERE slug = ? AND user_id = ?');
+    $st->execute([$id, $uid]);
+    if (!$st->fetchColumn()) fail('Den gitaren er ikke din.', 403);
+}
+function glb_remove(?string $file): void {
+    if ($file && str_starts_with($file, 'uploads/models/') && !str_contains($file, '..')) { $p = __DIR__ . '/' . $file; if (is_file($p)) @unlink($p); }
+}
+/**
+ * The owner's own guitars from data.json have their models as files next to the site (pacifica.glb …). Move them over to
+ * the same place as everybody's uploads – once, only copying, never deleting – so the files in the repository can go.
+ */
+function gm_adopt_builtin(): void {
+    if (kv_get('guitar_models_adopted')) return;
+    $json = json_decode((string)@file_get_contents(__DIR__ . '/data.json'), true);
+    $map = gm_map();
+    $done = true;
+    foreach ((array)($json['gitarer'] ?? []) as $g) {
+        $id = (string)($g['id'] ?? '');
+        $file = (string)($g['modell'] ?? '');
+        if ($id === '' || $file === '' || isset($map[$id])) continue;
+        $src = __DIR__ . '/' . basename($file);
+        if (!is_file($src)) { $done = false; continue; }
+        $name = random_name('glb');
+        if (@copy($src, upload_dir('models') . '/' . $name)) $map[$id] = 'uploads/models/' . $name; else $done = false;
+    }
+    gm_store($map);
+    if ($done) kv_set('guitar_models_adopted', '1');
+}
+
 function decor_handle(string $action, bool $post): void {
     switch ($action) {
     case 'decor_get':
@@ -34,6 +85,32 @@ function decor_handle(string $action, bool $post): void {
         $list[] = $item;
         decor_store($list);
         out(['ok' => true, 'item' => $item]);
+    }
+
+    case 'decor_guitar_upload': {
+        // { id (the guitar), file }: this guitar gets its own model (the old uploaded one is removed)
+        if (!$post) fail('Bruk POST.', 405);
+        $uid = require_room_owner();
+        $id = (string)($_POST['id'] ?? '');
+        gm_check_guitar($uid, $id);
+        $file = glb_store_upload($_FILES['file'] ?? []);
+        $map = gm_map();
+        glb_remove($map[$id] ?? null);
+        $map[$id] = $file;
+        gm_store($map);
+        out(['ok' => true, 'models' => (object)$map]);
+    }
+
+    case 'decor_guitar_delete': {
+        if (!$post) fail('Bruk POST.', 405);
+        $uid = require_room_owner();
+        $id = (string)(body()['id'] ?? '');
+        gm_check_guitar($uid, $id);
+        $map = gm_map();
+        glb_remove($map[$id] ?? null);
+        unset($map[$id]);
+        gm_store($map);
+        out(['ok' => true, 'models' => (object)$map]);
     }
 
     case 'decor_save': {

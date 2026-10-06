@@ -67,9 +67,16 @@ function recolorWood(texture: THREE.Texture, { top, body, region = 0.52 }: { top
  *   "tre": { "topp": "#hex", "kropp": "#hex" }       – recolour a wood texture atlas
  */
 /** The colours from data.json that this needs. */
-export interface GuitarColours { farger?: Record<string, string>; tre?: Record<string, string> }
+export interface GuitarColours { farger?: Record<string, string>; tre?: Record<string, string>; egen?: boolean }
 export function prepareGuitarModel(scene: THREE.Object3D, spec: GuitarColours = {}): THREE.Group {
   const model = scene.clone(true)
+  if (spec.egen) {
+    // somebody's own model: nobody knows which way it points. The longest side is the guitar's length: stand it upright.
+    const s0 = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3())
+    if (s0.x >= s0.y && s0.x >= s0.z) model.rotation.z = Math.PI / 2
+    else if (s0.z >= s0.y && s0.z >= s0.x) model.rotation.x = -Math.PI / 2
+    model.updateMatrixWorld(true)
+  }
   const recolored = new Map<THREE.Material, THREE.Material>()
 
   model.traverse((o) => {

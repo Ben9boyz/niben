@@ -17,6 +17,7 @@ export interface Guitar {
   beskrivelse?: string
   opptak: Recording[]
   modell?: string
+  egen?: boolean // an uploaded model of the user's own (no recolouring, turned upright by its size)
   farger?: Record<string, string>
   tre?: Record<string, string>
   kreditt?: { tekst: string; url: string }
@@ -106,6 +107,7 @@ interface DbGuitar { id: string; navn: string; merke: string | null; type: strin
 interface DbContent {
   error?: string
   guitars?: DbGuitar[]
+  guitar_models?: Record<string, string>
   profile?: Partial<RoomProfile>
   trips: DbTrip[]
   books: DbBook[]
@@ -221,6 +223,13 @@ async function load(): Promise<void> {
         }
         for (const g of db.guitars ?? []) {
           merged.gitarer = [...(merged.gitarer ?? []), { id: g.id, navn: g.navn, merke: g.merke ?? undefined, type: g.type ?? undefined, aar: g.aar ?? undefined, farge: g.farge, pickguard: g.pickguard ?? undefined, gripebrett: g.gripebrett ?? undefined, beskrivelse: g.beskrivelse ?? undefined, opptak: [] }]
+        }
+        // own 3D models (uploaded in Admin → Gitarer): they replace the file next to the site (the owner's) or give a user's guitar its model
+        for (const g of merged.gitarer ?? []) {
+          const own = db.guitar_models?.[g.id]
+          if (!own) continue
+          g.modell = own
+          if (!g.farger && !g.tre) g.egen = true // (the owner's built-in guitars keep their colour recipe)
         }
         merged.reiser = db.trips.map(mapTrip)
         merged.boker = db.books.map(mapBook)

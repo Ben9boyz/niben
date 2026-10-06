@@ -12,10 +12,11 @@ export class Client {
   cookies = new Map()
   async call(action, { body, query = '', method } = {}) {
     const headers = { 'X-Niben': '1' }
-    if (body !== undefined) headers['Content-Type'] = 'application/json'
+    const form = typeof FormData !== 'undefined' && body instanceof FormData
+    if (body !== undefined && !form) headers['Content-Type'] = 'application/json'
     const cookie = [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; ')
     if (cookie) headers.Cookie = cookie
-    const res = await fetch(`${API}?action=${action}${query}`, { method: method ?? (body === undefined ? 'GET' : 'POST'), headers, body: body === undefined ? undefined : JSON.stringify(body), redirect: 'manual' })
+    const res = await fetch(`${API}?action=${action}${query}`, { method: method ?? (body === undefined ? 'GET' : 'POST'), headers, body: body === undefined ? undefined : form ? body : JSON.stringify(body), redirect: 'manual' })
     for (const line of res.headers.getSetCookie()) {
       const [pair] = line.split(';')
       const i = pair.indexOf('=')
@@ -30,6 +31,8 @@ export class Client {
   }
   get = (action, query = '') => this.call(action, { query })
   post = (action, body = {}) => this.call(action, { body })
+  /** a file upload: fields + one file (`name` / `bytes`) */
+  upload = (action, fields, file = {}) => { const fd = new FormData(); for (const [k, v] of Object.entries(fields)) fd.append(k, v); fd.append('file', new Blob([file.bytes ?? ''], { type: 'application/octet-stream' }), file.name ?? 'model.glb'); return this.call(action, { body: fd }) }
   /** the room the server says this browser is looking at */
   roomCookie = () => this.cookies.get('niben_r')
 }

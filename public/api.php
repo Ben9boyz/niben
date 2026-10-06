@@ -395,9 +395,10 @@ try {
         $gq = $pdo->prepare('SELECT slug AS id, name AS navn, brand AS merke, type, year AS aar, color AS farge, pickguard, fretboard AS gripebrett, description AS beskrivelse FROM guitars WHERE user_id = ? ORDER BY id');
         $gq->execute([$room]);
         $roomUser = user_by_id($room);
+        if ($room === 1) { try { gm_adopt_builtin(); } catch (Throwable $e) { /* no harm: the files next to the site still work */ } }
         $payload = json_encode([
             'trips' => $trips, 'books' => $books, 'recordings' => $recs, 'songs' => songs_list($pdo), 'guitars' => $gq->fetchAll(),
-            'about' => json_decode((string)kv_get('about'), true), 'texts' => (object)(json_decode((string)kv_get('site_texts'), true) ?: []),
+            'guitar_models' => (object)gm_map(), 'about' => json_decode((string)kv_get('about'), true), 'texts' => (object)(json_decode((string)kv_get('site_texts'), true) ?: []),
             'profile' => ['username' => $roomUser['username'] ?? 'niben', 'owner' => $room === 1, 'sections' => sections_of($roomUser), 'mine' => viewing_own_room(), 'github' => gh_user()],
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         // unchanged content: the browser keeps its copy (304, no body)

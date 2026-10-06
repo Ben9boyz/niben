@@ -45,8 +45,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <transition name="swap" mode="out-in">
         <button :key="'t' + (now?.uri || 'none')" class="txt" :translate="now?.name ? 'no' : undefined" :title="now?.name ? `${now.name} – ${now.artist}` : 'Velg musikk'" @click.stop="openIt">
           <b>{{ now?.name || 'Ingenting spilles' }}<template v-if="now?.name"> – {{ now.artist }}</template></b>
-          <span v-if="now?.name" class="tm">{{ fmtClock(progressMs / 1000) }} / {{ fmtClock((now.duration_ms || 0) / 1000) }}<i class="bar"><u :style="{ width: `${pct}%` }"></u></i></span>
-          <span v-else>Trykk for å velge</span>
+          <span v-if="!now?.name">Trykk for å velge</span>
         </button>
       </transition>
       <span v-if="admin.mine" class="lk" @click.stop><LockControl tiny /></span>
@@ -103,22 +102,17 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .chev:hover { color: var(--accent); }
 .chev.on { transform: rotate(180deg); color: var(--accent); }
 .prog { position: absolute; left: 0; bottom: 0; height: 2px; background: #1db954; transition: width 1s linear; }
-/* PC: almost only text, floating in the corner – no box, no cover (the cover is on the iPod and on the record on the table), no accent
-   colour: just the text colour of the theme. Everything else is in the side panel; a tap anywhere on it opens that. */
+/* PC: just the song and the artist on a small piece of glass (readable over the 3D room) with a thin line at the bottom
+   that shows how far the song has come – no cover (that is on the iPod and the record on the table), no buttons, no times.
+   A tap anywhere on it opens the side panel, where everything else is. */
 @media (min-width: 721px) {
-  .gm.gm { width: auto; max-width: min(420px, calc(100vw - 32px)); padding: 2px 4px; gap: 6px; border: 0; border-radius: 8px; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; overflow: visible; cursor: pointer; color: var(--text); text-shadow: 0 0 10px color-mix(in srgb, var(--bg) 75%, transparent), 0 0 3px color-mix(in srgb, var(--bg) 60%, transparent); }
-  .gm .cover, .gm .lk, .gm .sk, .gm .chev, .gm > .prog { display: none; }
-  .gm .txt { flex: none; align-items: flex-end; text-align: right; max-width: 100%; }
-  .gm .txt b { font-size: 0.82rem; font-weight: 600; color: var(--text); max-width: 100%; }
-  .gm .txt span { font-size: 0.7rem; color: var(--text-2); }
-  .gm .tm { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
-  .gm .bar { display: block; width: 120px; height: 2px; border-radius: 2px; background: color-mix(in srgb, var(--text) 22%, transparent); overflow: hidden; }
-  .gm .bar u { display: block; height: 100%; background: var(--text); opacity: 0.8; transition: width 1s linear; text-decoration: none; }
-  .gm .ctl button { background: transparent; color: var(--text-2); width: 22px; height: 22px; opacity: 0; transition: opacity 0.2s; }
-  .gm:hover .ctl button, .gm:focus-within .ctl button { opacity: 1; }
-  .gm .ctl .pp { background: transparent; color: var(--text); width: 22px; height: 22px; }
-  .gm .ctl .pp:hover { background: transparent; filter: none; color: var(--text); }
-  .gm.open .txt b { opacity: 0.7; }
+  .gm.gm { width: auto; max-width: min(380px, calc(100vw - 32px)); padding: 9px 16px 11px; gap: 0; border-radius: 16px; cursor: pointer; color: var(--text); }
+  .gm .cover, .gm .lk, .gm .ctl, .gm .chev { display: none; }
+  .gm .txt { flex: none; min-width: 0; max-width: 100%; }
+  .gm .txt b { font-size: 0.84rem; font-weight: 600; color: var(--text); }
+  .gm .prog { height: 2px; background: color-mix(in srgb, var(--text) 70%, transparent); }
+  .gm::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: color-mix(in srgb, var(--text) 16%, transparent); }
+  .gm .prog { z-index: 1; }
 }
 /* the library opens right under the little player */
 .gm-drawer { top: 78px !important; bottom: auto !important; right: 16px !important; max-height: calc(100dvh - 100px); }
