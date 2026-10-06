@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Sparkles, Library, ScanEye } from 'lucide-vue-next'
-import { toggleMode } from '../composables/useMode'
-import { room } from '../composables/useRoom'
-import { spotify } from '../composables/useSpotify'
+import { toggleMode } from '@/composables/useMode'
+import { room } from '@/composables/useRoom'
+import { spotify } from '@/composables/useSpotify'
 import SegSwitch from '@/components/ui/SegSwitch.vue'
 
 // The listening corner in the room: records (the shelf / turntable) or playlists (the iPod) – and, as a small icon

@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { Play, Lock, Plus, Check, Music, CirclePlus, ListEnd } from 'lucide-vue-next'
-import { spotify, lockLeft, type SearchResults, fmtClock, play, lockNote, searchSpotify, saveAlbum, addToPlaylist, addGuest, control, followPlaylist, enqueue } from '../composables/useSpotify'
-import { room } from '../composables/useRoom'
-import { mode } from '../composables/useMode'
-import { admin, errorMessage } from '../composables/useAdmin'
-import type { Album, Playlist, Track } from '../types'
+import { spotify, lockLeft, type SearchResults, fmtClock, play, lockNote, searchSpotify, saveAlbum, addToPlaylist, addGuest, control, followPlaylist, enqueue } from '@/composables/useSpotify'
+import { room } from '@/composables/useRoom'
+import { mode } from '@/composables/useMode'
+import { admin, errorMessage } from '@/composables/useAdmin'
+import type { Album, Playlist, Track } from '@/types'
 import MusicDetail from './MusicDetail.vue'
 import AddMenu from './AddMenu.vue'
-import { startTrackDrag, endDrag } from '../composables/useDrag'
-import { showMenu, longPress } from '../composables/useContextMenu'
-import { trackMenu } from '../lib/menus'
-import { openAlbumPage, openArtistPage, albumOfTrack, firstArtist } from '../composables/useBrowse'
+import { startTrackDrag, endDrag } from '@/composables/useDrag'
+import { showMenu, longPress } from '@/composables/useContextMenu'
+import { trackMenu } from '@/lib/menus'
+import { openAlbumPage, openArtistPage, albumOfTrack, firstArtist } from '@/composables/useBrowse'
 
 // Search results. 'all' (the flat grid): my playlists, albums and songs. 'player' (the turntable):
 // only albums and songs. Songs start inside their album, so the music carries on after the song.

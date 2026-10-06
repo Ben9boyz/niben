@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Search, ListEnd, ListMusic } from 'lucide-vue-next'
-import { spotify } from '../composables/useSpotify'
-import { groups, sectionsOf, loadGroups } from '../composables/useGroups'
-import type { Playlist } from '../types'
-import { roomKey } from '../lib/room'
+import { spotify } from '@/composables/useSpotify'
+import { groups, sectionsOf, loadGroups } from '@/composables/useGroups'
+import type { Playlist } from '@/types'
+import { roomKey } from '@/lib/room'
 
 // "Add this song": play it next (the queue) at the very top, then a searchable list of my own playlists –
 // the ones used lately first. Enter adds to the first match, Esc closes.

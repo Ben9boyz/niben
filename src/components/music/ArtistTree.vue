@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { User } from 'lucide-vue-next'
-import { spotify } from '../composables/useSpotify'
-import { groups } from '../composables/useGroups'
+import { spotify } from '@/composables/useSpotify'
+import { groups } from '@/composables/useGroups'
 
 // The list on the left when the albums are grouped by artist: one row per artist with their picture
 // (the cover of their first album). Click one to show only their albums, click again for all.

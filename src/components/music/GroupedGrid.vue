@@ -4,12 +4,12 @@ import { ChevronRight, ChevronLeft } from 'lucide-vue-next'
 import CoverGrid from './CoverGrid.vue'
 import FolderIcon from '@/components/ui/FolderIcon.vue'
 import { User, Users } from 'lucide-vue-next'
-import { groups, sectionsOf, type Section, moveTo, groupOf, flatGroups, isCollapsed, toggleCollapsed, groupCover, topGroups, childrenOf, countIn, openFolder } from '../composables/useGroups'
-import { admin } from '../composables/useAdmin'
-import { drag, startItemDrag, endDrag } from '../composables/useDrag'
-import { notify } from '../composables/useSpotify'
-import { targetEl } from '../lib/dom'
-import type { Group, GridItem } from '../types'
+import { groups, sectionsOf, type Section, moveTo, groupOf, flatGroups, isCollapsed, toggleCollapsed, groupCover, topGroups, childrenOf, countIn, openFolder } from '@/composables/useGroups'
+import { admin } from '@/composables/useAdmin'
+import { drag, startItemDrag, endDrag } from '@/composables/useDrag'
+import { notify } from '@/composables/useSpotify'
+import { targetEl } from '@/lib/dom'
+import type { Group, GridItem } from '@/types'
 
 // The cover grid split into my groups (headings, in my order). With grouping off – or before the groups have
 // loaded – it is just the plain grid. In edit mode (admin) every tile has a group picker and can be dragged

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { Speaker, AlertCircle } from 'lucide-vue-next'
-import { spotify } from '../composables/useSpotify'
-import type { Notice } from '../types'
+import { spotify } from '@/composables/useSpotify'
+import type { Notice } from '@/types'
 
 // A short message from the music player: where playback ended up when the page's own player wasn't
 // reachable, or why it couldn't play. Disappears by itself.

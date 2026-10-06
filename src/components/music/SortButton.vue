@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ArrowUpDown, Check } from 'lucide-vue-next'
-import { sort, OPTIONS, type SortKind } from '../composables/useSort'
-import { targetEl } from '../lib/dom'
+import { sort, OPTIONS, type SortKind } from '@/composables/useSort'
+import { targetEl } from '@/lib/dom'
 
 // The sort button in the library: pick how albums / playlists are ordered.
 const props = withDefaults(defineProps<{ kind?: SortKind }>(), { kind: 'album' })

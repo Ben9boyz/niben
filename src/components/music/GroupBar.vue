@@ -3,11 +3,11 @@ import { ref, computed, watch } from 'vue'
 import { Layers, Pencil, Plus, ArrowUp, ArrowDown, X, Check } from 'lucide-vue-next'
 import FolderIcon from '@/components/ui/FolderIcon.vue'
 import SortButton from './SortButton.vue'
-import { groups, setGrouping, setView, saveGroups, groupCover, itemsIn, coverOfUri, uploadGroupImage } from '../composables/useGroups'
-import { admin } from '../composables/useAdmin'
-import { notify } from '../composables/useSpotify'
-import { pickedFile } from '../lib/dom'
-import type { Group } from '../types'
+import { groups, setGrouping, setView, saveGroups, groupCover, itemsIn, coverOfUri, uploadGroupImage } from '@/composables/useGroups'
+import { admin } from '@/composables/useAdmin'
+import { notify } from '@/composables/useSpotify'
+import { pickedFile } from '@/lib/dom'
+import type { Group } from '@/types'
 
 // Above the albums / playlists: a switch for grouping, and (admin) "Rediger" – moving things between groups
 // and adding / renaming / reordering / deleting the groups themselves.

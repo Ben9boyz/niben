@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { spotify } from '../composables/useSpotify'
-import { sort, sorted } from '../composables/useSort'
-import { room } from '../composables/useRoom'
+import { spotify } from '@/composables/useSpotify'
+import { sort, sorted } from '@/composables/useSort'
+import { room } from '@/composables/useRoom'
 import GroupedGrid from './GroupedGrid.vue'
 import GroupBar from './GroupBar.vue'
-import { admin } from '../composables/useAdmin'
-import { showMenu } from '../composables/useContextMenu'
-import { targetEl } from '../lib/dom'
-import type { GridItem } from '../types'
-import { playlistsMenu, promptNewPlaylist } from '../lib/menus'
+import { admin } from '@/composables/useAdmin'
+import { showMenu } from '@/composables/useContextMenu'
+import { targetEl } from '@/lib/dom'
+import type { GridItem } from '@/types'
+import { playlistsMenu, promptNewPlaylist } from '@/lib/menus'
 import { Plus } from 'lucide-vue-next'
 function emptyMenu(e: MouseEvent) { if (!admin.mine || e.defaultPrevented || targetEl(e).closest('.cell, input, button, a')) return; showMenu(e, 'Spillelister', playlistsMenu()) }
 

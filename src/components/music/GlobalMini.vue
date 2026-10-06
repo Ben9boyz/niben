@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Play, Pause, SkipBack, SkipForward, ChevronDown, Music } from 'lucide-vue-next'
-import { spotify, progressMs, control, lockLeft, fmtClock, notify, useSpotify } from '../composables/useSpotify'
-import { admin } from '../composables/useAdmin'
-import { shell } from '../composables/useShell'
+import { spotify, progressMs, control, lockLeft, fmtClock, notify, useSpotify } from '@/composables/useSpotify'
+import { admin } from '@/composables/useAdmin'
+import { shell } from '@/composables/useShell'
 import LockControl from './LockControl.vue'
 import MusicDrawer from './MusicDrawer.vue'
 

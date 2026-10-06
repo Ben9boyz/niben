@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import MusicDetail from '@/components/MusicDetail.vue'
-import ArtistPage from '@/components/ArtistPage.vue'
+import MusicDetail from '@/components/music/MusicDetail.vue'
+import ArtistPage from '@/components/music/ArtistPage.vue'
 import { peek, peekBack } from '@/composables/useBrowse'
 import { mode } from '@/composables/useMode'
 

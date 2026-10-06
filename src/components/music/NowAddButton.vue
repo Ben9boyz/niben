@@ -2,10 +2,10 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { CirclePlus } from 'lucide-vue-next'
 import AddMenu from './AddMenu.vue'
-import { spotify, enqueue, addToPlaylist, notify } from '../composables/useSpotify'
-import { admin } from '../composables/useAdmin'
-import { targetEl } from '../lib/dom'
-import type { Playlist } from '../types'
+import { spotify, enqueue, addToPlaylist, notify } from '@/composables/useSpotify'
+import { admin } from '@/composables/useAdmin'
+import { targetEl } from '@/lib/dom'
+import type { Playlist } from '@/types'
 
 // The + on the song that's playing now (admin): put it in the queue or in one of my playlists.
 const now = computed(() => spotify.now)

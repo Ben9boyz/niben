@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { ListEnd, ListMusic } from 'lucide-vue-next'
-import { spotify, enqueue, addToPlaylist, notify } from '../composables/useSpotify'
-import { groups, sectionsOf } from '../composables/useGroups'
-import { drag, endDrag } from '../composables/useDrag'
-import type { Playlist } from '../types'
+import { spotify, enqueue, addToPlaylist, notify } from '@/composables/useSpotify'
+import { groups, sectionsOf } from '@/composables/useGroups'
+import { drag, endDrag } from '@/composables/useDrag'
+import type { Playlist } from '@/types'
 
 // Drag a song and a tray slides in with the queue and my playlists (by group): drop it on one to add it.
 const over = ref<string | null>(null)

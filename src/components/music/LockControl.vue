@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { errorMessage } from '../composables/useAdmin'
+import { errorMessage } from '@/composables/useAdmin'
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Lock, LockOpen } from 'lucide-vue-next'
-import { spotify, lockLeft, fmtClock, fmtLock, setLockSeconds } from '../composables/useSpotify'
-import { targetEl } from '../lib/dom'
+import { spotify, lockLeft, fmtClock, fmtLock, setLockSeconds } from '@/composables/useSpotify'
+import { targetEl } from '@/lib/dom'
 
 // The lock length setting (admin): a pill with the length / countdown, or – `tiny` – just a small
 // round icon for the 3D views (the held record, the iPod). The menu floats above everything.

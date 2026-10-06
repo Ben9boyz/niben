@@ -8,7 +8,7 @@ import { openAlbumPage, openArtistPage, peek } from '@/composables/useBrowse'
 import { play, notify } from '@/composables/useSpotify'
 import { itemMenu, playItem } from '@/lib/menus'
 import { showMenu, longPress, type MenuPoint } from '@/composables/useContextMenu'
-import CoverGrid from '@/components/CoverGrid.vue'
+import CoverGrid from '@/components/music/CoverGrid.vue'
 import PeekView from '@/components/vinyl/PeekView.vue'
 
 // Oppdag: what I recommend (pasted Spotify links with a note) and good albums I don't have yet. Tap an album to look

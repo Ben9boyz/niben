@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { errorMessage } from '../composables/useAdmin'
+import { errorMessage } from '@/composables/useAdmin'
 import { ref, watch } from 'vue'
 import { ChevronLeft, ArrowUpRight, User } from 'lucide-vue-next'
 import CoverGrid from './CoverGrid.vue'
-import { fetchArtist, openAlbumPage, type ArtistInfo, type ArtistRef } from '../composables/useBrowse'
-import type { Album } from '../types'
-import { spotify } from '../composables/useSpotify'
+import { fetchArtist, openAlbumPage, type ArtistInfo, type ArtistRef } from '@/composables/useBrowse'
+import type { Album } from '@/types'
+import { spotify } from '@/composables/useSpotify'
 
 // An artist: picture, genres and all their albums. Tap an album to open it.
 const props = withDefaults(defineProps<{ artist: ArtistRef; backLabel?: string }>(), { backLabel: 'Tilbake' })

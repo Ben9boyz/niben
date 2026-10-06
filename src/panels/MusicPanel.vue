@@ -7,10 +7,10 @@ import { peek, peekClear } from '../composables/useBrowse'
 import PeekView from '@/components/vinyl/PeekView.vue'
 import DiscoverContent from '@/components/content/DiscoverContent.vue'
 import { Sparkles } from 'lucide-vue-next'
-import NowPlaying from '../components/NowPlaying.vue'
-import QueuePanel from '../components/QueuePanel.vue'
+import NowPlaying from '@/components/music/NowPlaying.vue'
+import QueuePanel from '@/components/music/QueuePanel.vue'
 import VinylPanel from '@/components/vinyl/VinylPanel.vue'
-import PlaylistPanel from '../components/PlaylistPanel.vue'
+import PlaylistPanel from '@/components/music/PlaylistPanel.vue'
 
 // picking a record or playlist in the room closes any album / artist page opened with "Gå til …"
 watch(() => [room.sel.musikk, room.ipod.playlist, room.musicView], () => { if (peek.stack.length) peekClear() })

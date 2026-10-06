@@ -2,8 +2,8 @@
 import { computed } from 'vue'
 import { Lock } from 'lucide-vue-next'
 import LockControl from './LockControl.vue'
-import { lockLeft, fmtClock } from '../composables/useSpotify'
-import { admin } from '../composables/useAdmin'
+import { lockLeft, fmtClock } from '@/composables/useSpotify'
+import { admin } from '@/composables/useAdmin'
 
 // The lock: the setting for me (admin), a countdown for everyone else while it's on.
 const locked = computed(() => lockLeft.value > 0)

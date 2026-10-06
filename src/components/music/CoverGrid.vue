@@ -1,13 +1,13 @@
 <script setup lang="ts" generic="T extends GridItem">
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { Music, Play, Pause } from 'lucide-vue-next'
-import { libView } from '../composables/useLibView'
-import { spotify } from '../composables/useSpotify'
-import { playItem, itemMenu } from '../lib/menus'
-import { showMenu, longPress, type MenuPoint } from '../composables/useContextMenu'
-import { admin } from '../composables/useAdmin'
-import { selectOf } from '../lib/dom'
-import type { GridItem } from '../types'
+import { libView } from '@/composables/useLibView'
+import { spotify } from '@/composables/useSpotify'
+import { playItem, itemMenu } from '@/lib/menus'
+import { showMenu, longPress, type MenuPoint } from '@/composables/useContextMenu'
+import { admin } from '@/composables/useAdmin'
+import { selectOf } from '@/lib/dom'
+import type { GridItem } from '@/types'
 
 // Grid of square covers (records and playlists). The name shows on hover.
 const props = withDefaults(defineProps<{

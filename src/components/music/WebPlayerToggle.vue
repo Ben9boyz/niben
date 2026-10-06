@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { spotify } from '../composables/useSpotify'
-import { admin } from '../composables/useAdmin'
-import { web, setEnabled, setVolume, retry } from '../composables/useWebPlayer'
-import { inputOf } from '../lib/dom'
+import { spotify } from '@/composables/useSpotify'
+import { admin } from '@/composables/useAdmin'
+import { web, setEnabled, setVolume, retry } from '@/composables/useWebPlayer'
+import { inputOf } from '@/lib/dom'
 
 // niben.no as a Spotify speaker (admin): the switch, where it plays, "connect again", and the volume.
 // `compact` leaves out the text (the player bar).

@@ -2,14 +2,14 @@
 import { Bookmark, ChevronLeft, Music, Lock, Play, Pause, ArrowUpRight, CirclePlus, ListEnd, Camera } from 'lucide-vue-next'
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import AddMenu from './AddMenu.vue'
-import { startTrackDrag, endDrag } from '../composables/useDrag'
-import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote, control, addToPlaylist, enqueue, enqueueAlbum, isSaved, toggleAlbumSaved, setPlaylistImage } from '../composables/useSpotify'
-import { admin } from '../composables/useAdmin'
-import { pickedFile, targetEl } from '../lib/dom'
-import type { Album, Playlist, Track, TrackList, Flash } from '../types'
-import { showMenu, longPress, type MenuPoint } from '../composables/useContextMenu'
-import { trackMenu } from '../lib/menus'
-import { openAlbumPage, openArtistPage, albumOfTrack, firstArtist } from '../composables/useBrowse'
+import { startTrackDrag, endDrag } from '@/composables/useDrag'
+import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote, control, addToPlaylist, enqueue, enqueueAlbum, isSaved, toggleAlbumSaved, setPlaylistImage } from '@/composables/useSpotify'
+import { admin } from '@/composables/useAdmin'
+import { pickedFile, targetEl } from '@/lib/dom'
+import type { Album, Playlist, Track, TrackList, Flash } from '@/types'
+import { showMenu, longPress, type MenuPoint } from '@/composables/useContextMenu'
+import { trackMenu } from '@/lib/menus'
+import { openAlbumPage, openArtistPage, albumOfTrack, firstArtist } from '@/composables/useBrowse'
 
 // Spotify-style page for one album or playlist: big cover, colour from the cover, tracks.
 type Item = Partial<Album> & Partial<Playlist> & { uri: string; name: string } // an album or a playlist
