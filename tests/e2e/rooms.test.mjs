@@ -1,10 +1,11 @@
-import { test, before, after } from 'node:test'
+import { test, before, after, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { launch, openPage, cookie, ownerClient, makeUser, mockSpotify, db, clearLimits } from './helpers.mjs'
+import { launch, openPage, closePages, cookie, ownerClient, makeUser, mockSpotify, db, clearLimits } from './helpers.mjs'
 
 let browser
 before(async () => { browser = await launch() })
 after(async () => { await browser?.close() })
+afterEach(closePages)
 
 test('switching rooms does not reload the page, and the new room shows its own things', async () => {
   const owner = await ownerClient()

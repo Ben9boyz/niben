@@ -1,16 +1,19 @@
-import { test, before, after } from 'node:test'
+import { test, before, after, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { launch, openPage, ownerClient, makeUser, mockSpotify, db } from './helpers.mjs'
+import { launch, openPage, closePages, ownerClient, makeUser, mockSpotify, db } from './helpers.mjs'
 
 let browser
 before(async () => { browser = await launch() })
 after(async () => { await browser?.close() })
+afterEach(closePages)
 
 // A scene that draws nothing gives a flat picture, which a PNG squeezes to a few kilobytes; a room with a cabinet, a
 // desk and light does not.
 const scene = async (page) => {
-  await page.addStyleTag({ content: '.dock, .nav-wrap, .mtop, .loader { display: none !important }' }) // (just the 3D scene)
-  return page.screenshot()
+  const hide = await page.addStyleTag({ content: '.dock, .nav-wrap, .mtop, .loader { display: none !important }' }) // (just the 3D scene)
+  const png = await page.screenshot()
+  await hide.evaluate((el) => el.remove())
+  return png
 }
 const looksDrawn = async (page) => (await scene(page)).length > 40000
 

@@ -13,4 +13,4 @@ NIBEN_API="$NIBEN_API_TARGET" npx vite --port "$VITE_PORT" --host 127.0.0.1 --st
 VITE_PID=$!
 for _ in $(seq 1 100); do curl -s -o /dev/null "http://127.0.0.1:$VITE_PORT/" && break; sleep 0.2; done
 export NIBEN_API="$NIBEN_API_TARGET/api.php" NIBEN_APP="http://127.0.0.1:$VITE_PORT"
-node --test --test-concurrency=1 tests/e2e/*.test.mjs
+node --test --test-concurrency=1 ${NIBEN_E2E_ARGS:-} tests/e2e/*.test.mjs

@@ -1317,6 +1317,24 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     get lyttePose() { return lyttePose },
     /** (dev/testing) what the pointer would hit at a screen position */
     pickAt(x: number, y: number) { setNdc({ clientX: x, clientY: y }); const h = hitInfo(); return h ? { kind: h.kind, index: h.index, station: h.station, obj: h.object.name || h.object.type, parent: h.object.parent?.name || h.object.parent?.type } : null },
+    /** (dev/testing) every object in the scene: where it is, whether it shows, how big it is – to compare before / after a refactor */
+    dumpScene() {
+      const r3 = (n: number): number => Math.round(n * 1000) / 1000
+      const out: [string, number, number, number, number, number, number, number, string][] = []
+      scene.updateMatrixWorld(true)
+      const p = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3()
+      scene.traverse((o) => {
+        o.matrixWorld.decompose(p, q, sc)
+        const mesh = o as THREE.Mesh
+        const verts = mesh.geometry?.attributes?.position?.count ?? 0
+        const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
+        const colour = mat && 'color' in mat && mat.color instanceof THREE.Color ? mat.color.getHexString() : ''
+        const path: string[] = []
+        for (let n: THREE.Object3D | null = o; n && n !== scene; n = n.parent) path.unshift(n.name || n.type)
+        out.push([path.join('/'), r3(p.x), r3(p.y), r3(p.z), r3(sc.x), r3(sc.y), r3(sc.z), o.visible ? verts : -verts - 1, colour])
+      })
+      return out
+    },
     setData,
     setSelection,
     setTheme,
