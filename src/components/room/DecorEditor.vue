@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RotateCcw, RotateCw, Minus, Plus, ArrowUp, ArrowDown, Eye, EyeOff, Trash2, Check, Upload, Move } from 'lucide-vue-next'
-import { decor, uploadDecor, removeDecor, changed } from '../composables/useDecor'
-import { room } from '../composables/useRoom'
-import { admin } from '../composables/useAdmin'
-import { pickedFile } from '../lib/dom'
-import type { DecorItem } from '../composables/useDecor'
+import { decor, uploadDecor, removeDecor, changed } from '@/composables/useDecor'
+import { room } from '@/composables/useRoom'
+import { admin } from '@/composables/useAdmin'
+import { pickedFile } from '@/lib/dom'
+import type { DecorItem } from '@/composables/useDecor'
 
 // "Rediger rommet": drag a model on the floor to move it. The buttons turn it, resize it, lift it, hide it or delete it.
 const sel = computed(() => decor.items.find((i) => i.id === decor.selected) || null)

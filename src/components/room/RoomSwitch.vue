@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { DoorOpen, Check } from 'lucide-vue-next'
-import { rooms, loadRooms, setRoom } from '../composables/useRooms'
-import { thumb } from '../lib/photos'
-import { targetEl } from '../lib/dom'
+import { rooms, loadRooms, setRoom } from '@/composables/useRooms'
+import { thumb } from '@/lib/photos'
+import { targetEl } from '@/lib/dom'
 
 // The room icon: appears when there is more than one room. Pick another room and the whole room is loaded: its trips,
 // books, guitars … (and nothing of mine).

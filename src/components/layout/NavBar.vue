@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SettingsMenu from './SettingsMenu.vue'
-import RoomSwitch from '@/components/RoomSwitch.vue'
+import RoomSwitch from '@/components/room/RoomSwitch.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, type ComponentPublicInstance } from 'vue'
 import { navGroups, groupOf, groupTarget } from '@/lib/nav'
 import { useRoute, useRouter } from 'vue-router'
