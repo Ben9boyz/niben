@@ -29,6 +29,9 @@ Copy `.deploy.local.example` to `.deploy.local` and fill in the FTP/database hos
 
 ## Several users
 
+Mail: new-account notices go to `admin_email` in `_config.php` (or the e-mail on the owner's account); users get mail when approved and for "Glemt passord?" (reset link, valid 1 h). Set `mail_log` in `_config.php` to a file path to write mails there instead of sending them (testing).
+
+
 Anybody can ask for an account (Admin → Opprett konto: username, e-mail, password). The owner approves it under
 Admin → Brukere; only then can it log in. An approved user gets a room of their own (trips, books, guitars, recordings,
 songs, "Om meg", a guestbook, practice calendar and "Året") and manages it in their own admin panel, where they can also switch corners of the room off (Japanese,

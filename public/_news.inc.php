@@ -15,6 +15,10 @@ function nw_base(): string {
 function nw_esc(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 
 function nw_mail(string $to, string $subject, string $text, string $unsubUrl = ''): bool {
+    global $config;
+    if (!empty($config['mail_log'])) { // (testing: write the mail to a file instead of sending it)
+        return (bool)@file_put_contents((string)$config['mail_log'], "TO: $to\nSUBJECT: $subject\n$text\n---\n", FILE_APPEND);
+    }
     $from = 'noreply@' . nw_host();
     $b = 'nb' . bin2hex(random_bytes(8));
     $footer = $unsubUrl !== '' ? "\n\n—\nMeld deg av: " . $unsubUrl : '';

@@ -100,6 +100,7 @@ const setView = (v: string) => { if (viewMode.value !== v) toggleMode() }
             <p v-if="lgErr" class="lge" role="alert">{{ lgErr }}</p>
             <button class="go" :disabled="lgBusy || !lgPass">{{ lgBusy ? 'Logger inn …' : 'Logg inn' }}</button>
             <router-link to="/admin" class="reg" @click="close"><UserPlus :size="13" aria-hidden="true" />Ingen konto? Opprett en</router-link>
+            <router-link :to="{ path: '/admin', query: { forgot: '1' } }" class="reg" @click="close">Glemt passord?</router-link>
           </form>
         </template>
 

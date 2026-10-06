@@ -120,6 +120,27 @@ function viewing_own_room(): bool {
     return $s > 0 && $s === kv_scope();
 }
 
+// ── mail ──
+/** Where the owner's notices go: `admin_email` in _config.php, else the e-mail saved on the owner's account. */
+function owner_email(): string {
+    global $config;
+    $e = trim((string)($config['admin_email'] ?? ''));
+    if ($e === '') { $u = user_by_id(1); $e = trim((string)($u['email'] ?? '')); }
+    return filter_var($e, FILTER_VALIDATE_EMAIL) ? $e : '';
+}
+function user_mail(string $to, string $subject, string $text): void {
+    try { if ($to !== '' && function_exists('nw_mail')) nw_mail($to, $subject, $text); } catch (Throwable $e) { error_log('niben mail: ' . $e->getMessage()); }
+}
+function site_url(): string { return function_exists('nw_base') ? preg_replace('~/[^/]*$~', '', nw_base() . '/x') : ''; }
+function password_ok(int $uid, string $pw): bool {
+    global $config;
+    if ($pw === '') return false;
+    if ($uid === 1 && !empty($config['admin_hash']) && password_verify($pw, (string)$config['admin_hash'])) return true;
+    $st = db()->prepare('SELECT pass_hash FROM users WHERE id = ?');
+    $st->execute([$uid]);
+    return password_verify($pw, (string)$st->fetchColumn());
+}
+
 // ── sections ──────────────────────────────────────────────
 function sections_of(?array $u): array {
     $isOwner = $u && (int)$u['id'] === 1;
@@ -191,6 +212,7 @@ function users_handle(string $action, bool $post): void {
         foreach ($dup->fetchAll() as $r) fail($r['username'] === $name ? 'Brukernavnet er tatt.' : 'Den e-postadressen har allerede en konto.');
         db()->prepare("INSERT INTO users (username, email, pass_hash, status, created) VALUES (?, ?, ?, 'pending', ?)")
             ->execute([$name, $email, password_hash($pw, PASSWORD_DEFAULT), time()]);
+        user_mail(owner_email(), 'Ny konto venter på godkjenning: ' . $name, "Hei!\n\n$name ($email) har bedt om en konto.\n\nGodkjenn eller avslå den under Admin → Brukere:\n" . site_url() . "/#/admin");
         out(['ok' => true, 'pending' => true]);
     }
 
@@ -311,6 +333,71 @@ function users_handle(string $action, bool $post): void {
         ]);
     }
 
+    case 'user_forgot': {
+        if (!$post) fail('Bruk POST.', 405);
+        if (($_SERVER['HTTP_X_NIBEN'] ?? '') !== '1') fail('Ugyldig forespørsel.', 403);
+        users_ready();
+        rl_or_fail('fp:' . client_ip(), 5, 3600, 'For mange forsøk. Prøv igjen senere.');
+        $who = strtolower(trim((string)(body()['who'] ?? '')));
+        if ($who !== '') {
+            db()->exec('CREATE TABLE IF NOT EXISTS pw_resets (user_id INT UNSIGNED NOT NULL, token_hash CHAR(64) NOT NULL, expires INT UNSIGNED NOT NULL, PRIMARY KEY (token_hash), KEY (user_id)) ENGINE=InnoDB');
+            $st = db()->prepare("SELECT id, username, email FROM users WHERE id > 1 AND status = 'approved' AND (username = ? OR email = ?) LIMIT 1");
+            $st->execute([$who, $who]);
+            if ($u = $st->fetch()) {
+                $tok = bin2hex(random_bytes(20));
+                db()->prepare('DELETE FROM pw_resets WHERE user_id = ? OR expires < ?')->execute([$u['id'], time()]);
+                db()->prepare('INSERT INTO pw_resets (user_id, token_hash, expires) VALUES (?, ?, ?)')->execute([$u['id'], hash('sha256', $tok), time() + 3600]);
+                user_mail((string)$u['email'], 'Nytt passord', "Hei " . $u['username'] . "!\n\nTrykk på lenka for å velge et nytt passord (gjelder i én time):\n" . site_url() . '/#/admin?reset=' . $tok . "\n\nHvis det ikke var du som ba om det, kan du ignorere denne e-posten.");
+            }
+        }
+        out(['ok' => true]); // (the same answer whether the account exists or not)
+    }
+
+    case 'user_reset': {
+        if (!$post) fail('Bruk POST.', 405);
+        if (($_SERVER['HTTP_X_NIBEN'] ?? '') !== '1') fail('Ugyldig forespørsel.', 403);
+        users_ready();
+        rl_or_fail('rp:' . client_ip(), 10, 3600, 'For mange forsøk. Prøv igjen senere.');
+        $b = body();
+        $tok = (string)($b['token'] ?? ''); $pw = (string)($b['password'] ?? '');
+        if (strlen($pw) < 8 || strlen($pw) > 200) fail('Passordet må være minst 8 tegn.');
+        if (!preg_match('~^[a-f0-9]{40}$~', $tok)) fail('Lenka er ugyldig eller utløpt. Be om en ny.', 400);
+        try {
+            $st = db()->prepare('SELECT user_id FROM pw_resets WHERE token_hash = ? AND expires > ?');
+            $st->execute([hash('sha256', $tok), time()]);
+            $uid = (int)$st->fetchColumn();
+        } catch (PDOException $e) { $uid = 0; }
+        if ($uid < 2) fail('Lenka er ugyldig eller utløpt. Be om en ny.', 400);
+        db()->prepare('UPDATE users SET pass_hash = ? WHERE id = ?')->execute([password_hash($pw, PASSWORD_DEFAULT), $uid]);
+        db()->prepare('DELETE FROM pw_resets WHERE user_id = ?')->execute([$uid]);
+        out(['ok' => true]);
+    }
+
+    case 'me_email': {
+        if (!$post) fail('Bruk POST.', 405);
+        $uid = require_user();
+        $b = body();
+        $email = strtolower(trim((string)($b['email'] ?? '')));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 190) fail('Det ser ikke ut som en e-postadresse.');
+        if (!password_ok($uid, (string)($b['password'] ?? ''))) { usleep(400000); fail('Passordet stemmer ikke.', 401); }
+        $dup = db()->prepare('SELECT COUNT(*) FROM users WHERE email = ? AND id <> ?');
+        $dup->execute([$email, $uid]);
+        if ((int)$dup->fetchColumn()) fail('Den e-postadressen har allerede en konto.');
+        db()->prepare('UPDATE users SET email = ? WHERE id = ?')->execute([$email, $uid]);
+        out(['ok' => true, 'email' => $email]);
+    }
+
+    case 'me_delete': {
+        if (!$post) fail('Bruk POST.', 405);
+        $uid = require_user();
+        if ($uid === 1) fail('Hovedrommet kan ikke slettes her.', 400);
+        if (!password_ok($uid, (string)(body()['password'] ?? ''))) { usleep(400000); fail('Passordet stemmer ikke.', 401); }
+        users_delete($uid);
+        $_SESSION = [];
+        setcookie('niben_room', '', ['expires' => time() - 3600, 'path' => '/']);
+        out(['ok' => true]);
+    }
+
     case 'me_password': {
         if (!$post) fail('Bruk POST.', 405);
         $uid = require_user();
@@ -348,7 +435,10 @@ function users_handle(string $action, bool $post): void {
         $do = (string)($b['do'] ?? '');
         if ($id < 2) fail('Den kontoen kan ikke endres her.');
         $u = user_by_id($id) ?? fail('Fant ikke brukeren.', 404);
-        if ($do === 'approve' || $do === 'enable') db()->prepare("UPDATE users SET status = 'approved' WHERE id = ?")->execute([$id]);
+        if ($do === 'approve' || $do === 'enable') {
+            db()->prepare("UPDATE users SET status = 'approved' WHERE id = ?")->execute([$id]);
+            if ($u['status'] !== 'approved') user_mail((string)$u['email'], 'Kontoen din er godkjent', "Hei " . $u['username'] . "!\n\nKontoen din er godkjent. Du kan logge inn nå:\n" . site_url() . "/#/admin\n\nDet er ditt eget rom – styr det fra Admin.");
+        }
         elseif ($do === 'disable') db()->prepare("UPDATE users SET status = 'disabled' WHERE id = ?")->execute([$id]);
         elseif ($do === 'delete') users_delete($id);
         else fail('Ukjent valg.');

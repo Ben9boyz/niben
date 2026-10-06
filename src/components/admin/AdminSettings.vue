@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Check, KeyRound, ExternalLink, Music2, MapPin, Plug } from 'lucide-vue-next'
+import { Check, KeyRound, ExternalLink, Music2, MapPin, Plug, Download, Mail, Trash2, Lock } from 'lucide-vue-next'
 import { api, errorMessage, account } from '../../composables/useAdmin'
 import { reloadData, type SectionId } from '../../composables/useData'
 import type { Flash } from '../../types'
 
+// One component, three admin tabs: `rommet` (which corners it shows), `tilkoblinger` (Spotify, Steam, jpdb … the
+// services it fetches from) and `konto` (e-mail, password, backup, deleting the account).
+const props = defineProps<{ part: 'rommet' | 'tilkoblinger' | 'konto' }>()
 // What this room shows, and the keys it needs: switch corners off (they disappear from the room and the menu), and add
 // your own API keys for the things that fetch from other services (jpdb for Japanese, Steam for the gaming corner).
 interface Settings {
@@ -33,6 +36,9 @@ const busy = ref(false)
 const jpdbKey = ref('')
 const steamId = ref('')
 const steamKey = ref('')
+const newEmail = ref('')
+const emailPw = ref('')
+const delPw = ref('')
 const ghUser = ref('')
 const lastfm = ref('')
 const place = ref<{ name: string } | null>(null)
@@ -96,6 +102,36 @@ async function clearPlace() {
   try { await api('home_set', { clear: true }); place.value = null; msg.value = { ok: 'Bostedet er fjernet.' } } catch (e) { msg.value = { error: errorMessage(e) } } finally { busy.value = false }
 }
 const clearJpdb = () => post({ jpdb_key: '' }, 'jpdb-nøkkelen er fjernet.')
+async function changeEmail() {
+  busy.value = true
+  msg.value = null
+  try {
+    await api('me_email', { email: newEmail.value, password: emailPw.value })
+    newEmail.value = ''; emailPw.value = ''
+    await load()
+    msg.value = { ok: 'E-postadressen er byttet.' }
+  } catch (e) { msg.value = { error: errorMessage(e) } } finally { busy.value = false }
+}
+async function backup() {
+  busy.value = true
+  msg.value = null
+  try {
+    const r = await fetch('api.php?action=admin_backup', { headers: { 'X-Niben': '1' }, credentials: 'same-origin' })
+    if (!r.ok) throw new Error('Klarte ikke å lage sikkerhetskopien.')
+    const url = URL.createObjectURL(await r.blob())
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `niben-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (e) { msg.value = { error: errorMessage(e) } } finally { busy.value = false }
+}
+async function deleteAccount() {
+  if (!window.confirm('Slette kontoen og alt i rommet ditt for godt?')) return
+  busy.value = true
+  msg.value = null
+  try { await api('me_delete', { password: delPw.value }); location.href = location.pathname } catch (e) { msg.value = { error: errorMessage(e) } } finally { busy.value = false }
+}
 async function changePw() {
   busy.value = true
   msg.value = null
@@ -108,7 +144,7 @@ async function changePw() {
     <p v-if="msg?.ok" class="notice ok">{{ msg.ok }}</p>
     <p v-if="msg?.error" class="notice error">{{ msg.error }}</p>
 
-    <section>
+    <section v-if="part === 'rommet'">
       <h3>Hva vises i rommet ditt</h3>
       <p class="muted">Skru av det du ikke vil ha. Det forsvinner fra rommet, fra menyen og fra adressene.</p>
       <button v-for="x in SECTIONS" :key="x.id" class="row" :class="{ off: s.locked.includes(x.id) }" role="switch" :aria-checked="s.sections[x.id]" :disabled="busy || s.locked.includes(x.id)" @click="toggle(x.id)">
@@ -116,7 +152,7 @@ async function changePw() {
       </button>
     </section>
 
-    <section>
+    <section v-if="part === 'tilkoblinger'">
       <h3><KeyRound :size="16" /> API-nøkler</h3>
       <p class="muted">Nøklene brukes bare til å hente det som vises i rommet ditt. De lagres kryptert og sendes aldri tilbake til nettleseren.</p>
       <form class="keys" @submit.prevent="saveKeys">
@@ -140,7 +176,7 @@ async function changePw() {
     </section>
 
 
-    <section>
+    <section v-if="part === 'tilkoblinger'">
       <h3><Music2 :size="16" /> Spotify</h3>
       <p class="muted">Kobler platespilleren, hylla og spillelistene i rommet ditt til din egen Spotify-konto. Bare du kan styre musikken – de som besøker rommet ser bare hva som spilles. Styring og avspilling i nettleseren krever Spotify Premium.</p>
       <p class="status">
@@ -152,7 +188,7 @@ async function changePw() {
       <p v-else-if="!s.keys.spotify_app" class="muted">Spotify er ikke satt opp på denne siden ennå.</p>
     </section>
 
-    <section>
+    <section v-if="part === 'tilkoblinger'">
       <h3><MapPin :size="16" /> Bosted</h3>
       <p class="muted">Rommet kan regne når det regner der du bor, og bli mørkt om natta. Bare stedsnavnet og været vises – aldri koordinater.</p>
       <p class="status"><span class="pill" :class="place ? 'ok' : 'off'">{{ place ? place.name : 'Ikke satt' }}</span><button v-if="place" class="btn soft small" :disabled="busy" @click="clearPlace">Fjern</button></p>
@@ -160,7 +196,7 @@ async function changePw() {
       <ul v-if="placeHits.length" class="hits"><li v-for="h in placeHits" :key="h.lat + ',' + h.lon"><button :disabled="busy" @click="setPlace(h)"><b>{{ h.name }}</b><small>{{ [h.region, h.country].filter(Boolean).join(', ') }}</small></button></li></ul>
     </section>
 
-    <section>
+    <section v-if="part === 'tilkoblinger'">
       <h3><KeyRound :size="16" /> Flere kilder</h3>
       <form class="keys" @submit.prevent="saveGithub">
         <label class="field">
@@ -183,14 +219,39 @@ async function changePw() {
       </form>
     </section>
 
-    <section v-if="!s.user.owner">
-      <h3>Passord</h3>
+    <section v-if="part === 'konto'">
+      <h3><Mail :size="16" /> E-post</h3>
+      <p class="muted">{{ s.user.owner ? 'Hit sendes beskjed når noen ber om en konto.' : 'Brukes til beskjed om kontoen din og hvis du glemmer passordet.' }} Nå: <b>{{ s.email || 'ikke satt' }}</b></p>
+      <form class="keys" @submit.prevent="changeEmail">
+        <label class="field"><span>Ny e-postadresse</span><input v-model="newEmail" type="email" autocomplete="email" required maxlength="190" /></label>
+        <label class="field"><span>Passord (for å bekrefte)</span><input v-model="emailPw" type="password" autocomplete="current-password" required /></label>
+        <button class="btn soft" :disabled="busy">Bytt e-post</button>
+      </form>
+    </section>
+
+    <section v-if="part === 'konto' && !s.user.owner">
+      <h3><Lock :size="16" /> Passord</h3>
       <form class="keys" @submit.prevent="changePw">
         <label class="field"><span>Gammelt passord</span><input v-model="oldPw" type="password" autocomplete="current-password" required /></label>
         <label class="field"><span>Nytt passord (minst 8 tegn)</span><input v-model="newPw" type="password" autocomplete="new-password" minlength="8" required /></label>
         <button class="btn soft" :disabled="busy">Bytt passord</button>
       </form>
       <p class="muted">Du er logget inn som <b>{{ account.user?.username }}</b> ({{ s.email }}).</p>
+    </section>
+
+    <section v-if="part === 'konto'">
+      <h3><Download :size="16" /> Sikkerhetskopi</h3>
+      <p class="muted">Last ned alt innholdet i rommet ditt (reiser, bøker, opptak, sanger, gitarer, gjestebok og innstillinger) som én fil. Bildene og lydfilene ligger på serveren og er ikke med. Nøklene dine er aldri med.</p>
+      <button class="btn soft" :disabled="busy" @click="backup"><Download :size="15" />Last ned sikkerhetskopi</button>
+    </section>
+
+    <section v-if="part === 'konto' && !s.user.owner" class="danger">
+      <h3><Trash2 :size="16" /> Slett kontoen</h3>
+      <p class="muted">Sletter rommet ditt for godt: alt innhold, bilder og lydfiler. Det kan ikke angres – ta en sikkerhetskopi først.</p>
+      <form class="keys" @submit.prevent="deleteAccount">
+        <label class="field"><span>Skriv passordet for å slette</span><input v-model="delPw" type="password" autocomplete="current-password" required /></label>
+        <button class="btn danger" :disabled="busy">Slett kontoen og rommet</button>
+      </form>
     </section>
   </div>
   <p v-else class="muted">Henter innstillinger …</p>
@@ -210,6 +271,9 @@ h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 1
 .tg.on { background: var(--accent); }
 .tg.on::after { transform: translateX(16px); }
 .keys { display: grid; gap: 12px; max-width: 480px; }
+.keys textarea { width: 100%; box-sizing: border-box; resize: vertical; }
+.danger h3 { color: #e0705f; }
+.btn.danger { background: #c8493a; color: #fff; justify-self: start; }
 .keys .btn { justify-self: start; display: inline-flex; align-items: center; gap: 6px; }
 .field small { color: var(--text-3); font-weight: 500; }
 .field small a, .steps a { color: var(--accent); display: inline-flex; align-items: center; gap: 2px; }

@@ -106,6 +106,14 @@ export async function registerAccount(username: string, email: string, password:
   await api('user_register', { username, email, password, website })
 }
 
+/** Mails a link for choosing a new password (the answer is the same whether the account exists or not). */
+export async function forgotPassword(who: string): Promise<void> {
+  await api('user_forgot', { who })
+}
+export async function resetPassword(token: string, password: string): Promise<void> {
+  await api('user_reset', { token, password })
+}
+
 export async function logout(): Promise<void> {
   try { await api('logout', {}) } catch { /* already out */ }
   admin.loggedIn = false

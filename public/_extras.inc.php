@@ -164,13 +164,15 @@ function ex_handle(string $action, bool $post): void {
         out(sp_cached('wrapped_' . $y, is_admin() ? 60 : 1800, fn() => ex_wrapped($y)) ?? ['year' => $y]);
     }
     case 'admin_backup': {
-        require_admin();
+        $uid = require_room_owner();
         $pdo = db();
-        $dump = ['made' => date('c'), 'about' => 'niben.no – innholdet (reiser, bilder-referanser, bøker, opptak, sanger) + innstillinger. Bildene og lydfilene selv ligger i uploads/ og må lastes ned for seg.'];
-        foreach (['trips', 'trip_photos', 'books', 'recordings', 'songs', 'guestbook', 'practice'] as $t) {
-            try { $dump['tables'][$t] = $pdo->query("SELECT * FROM `$t`")->fetchAll(); } catch (Throwable $e) { $dump['tables'][$t] = []; }
+        $dump = ['made' => date('c'), 'room' => (user_by_id($uid)['username'] ?? ''), 'about' => 'Innholdet i rommet ditt (reiser, bøker, opptak, sanger, gitarer, gjestebok) + innstillinger. Bildene og lydfilene selv ligger i uploads/ og er ikke med.'];
+        foreach (['trips', 'books', 'recordings', 'songs', 'guitars', 'guestbook', 'practice'] as $t) {
+            try { $q = $pdo->prepare("SELECT * FROM `$t` WHERE user_id = ?"); $q->execute([$uid]); $dump['tables'][$t] = $q->fetchAll(); } catch (Throwable $e) { $dump['tables'][$t] = []; }
         }
-        foreach (['about', 'milestones', 'home_place', 'st_best_friend', 'lock_seconds', 'st_snaps', 'jp_snaps'] as $k) $dump['settings'][$k] = kv_get($k);
+        try { $q = $pdo->prepare('SELECT * FROM trip_photos WHERE trip_id IN (SELECT id FROM trips WHERE user_id = ?)'); $q->execute([$uid]); $dump['tables']['trip_photos'] = $q->fetchAll(); } catch (Throwable $e) { $dump['tables']['trip_photos'] = []; }
+        foreach (['about', 'site_texts', 'milestones', 'home_place', 'st_best_friend', 'lock_seconds', 'st_snaps', 'jp_snaps', 'groups', 'discover_picks'] as $k) $dump['settings'][$k] = kv_get($k);
+        $dump['settings']['sections'] = sections_of(user_by_id($uid));
         header('Content-Disposition: attachment; filename="niben-backup-' . date('Y-m-d') . '.json"');
         out($dump);
     }
