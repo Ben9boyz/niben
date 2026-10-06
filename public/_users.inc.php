@@ -120,6 +120,13 @@ function viewing_own_room(): bool {
     return $s > 0 && $s === kv_scope();
 }
 
+/** A cookie the page itself can read (the room's id, nothing secret) so browser-side caches are kept per room. */
+function room_cookie(int $id): void {
+    $_COOKIE['niben_r'] = (string)$id;
+    if (PHP_SAPI === 'cli') return;
+    setcookie('niben_r', (string)$id, ['expires' => time() + 365 * 86400, 'path' => '/', 'samesite' => 'Lax', 'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off']);
+}
+
 // ── mail ──
 /** Where the owner's notices go: `admin_email` in _config.php, else the e-mail saved on the owner's account. */
 function owner_email(): string {
@@ -248,6 +255,7 @@ function users_handle(string $action, bool $post): void {
         $pdo->prepare('UPDATE users SET last_login = ? WHERE id = ?')->execute([time(), $id]);
         if ($id === 1) vi_mark_me();
         setcookie('niben_room', '', ['expires' => time() - 3600, 'path' => '/']); // logged in: your own room first
+        room_cookie($id);
         out(['ok' => true, 'user' => ['id' => $id, 'username' => $u['username'], 'owner' => $id === 1]]);
     }
 
@@ -275,6 +283,7 @@ function users_handle(string $action, bool $post): void {
         $u = $name !== '' ? user_by_name($name) : null;
         if (!$u || $u['status'] !== 'approved') fail('Fant ikke det rommet.', 404);
         setcookie('niben_room', $u['username'], ['expires' => time() + 30 * 86400, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax', 'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off']);
+        room_cookie((int)$u['id']);
         out(['ok' => true, 'username' => $u['username']]);
     }
 
@@ -395,6 +404,7 @@ function users_handle(string $action, bool $post): void {
         users_delete($uid);
         $_SESSION = [];
         setcookie('niben_room', '', ['expires' => time() - 3600, 'path' => '/']);
+        room_cookie(1);
         out(['ok' => true]);
     }
 

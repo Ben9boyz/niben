@@ -3,6 +3,7 @@ import type { Album, Notice, NowPlaying, PlayOrigin, Playlist, Result, Track, Tr
 import { api, ApiError, errorMessage } from './useAdmin'
 import { pget, pset, pdel } from '../lib/pcache'
 import { CUSTOM_QUEUE, addSongs, addCollection, startQueueDriver, releaseSent, myQueue } from './useQueue'
+import { roomKey } from '../lib/room'
 
 // Shared Spotify state: what's saved, what's playing, and the 10-minute switch lock.
 export const spotify = reactive({
@@ -22,11 +23,12 @@ export const spotify = reactive({
   tick: Date.now(), // updates every second for countdowns
   error: null as string | null,
   startedHere: 0, // time of the last successful play() from this page
-  origin: ((): PlayOrigin | null => { try { return JSON.parse(localStorage.getItem('niben-play-origin') || 'null') as PlayOrigin | null } catch { return null } })(), // what I last started from this site – decides turntable or iPod
+  origin: ((): PlayOrigin | null => { try { return JSON.parse(localStorage.getItem(roomKey('niben-play-origin')) || 'null') as PlayOrigin | null } catch { return null } })(), // what I last started from this site – decides turntable or iPod
 })
 
 /** What the server answers on spotify_now / spotify_public. */
 interface PublicReply {
+  room?: number
   configured?: boolean
   connected?: boolean
   now?: NowPlaying | null
@@ -37,7 +39,7 @@ interface PublicReply {
   lock_seconds?: number
   server_time?: number
 }
-interface SavedLists { at?: number; sig?: string; albums?: Album[]; playlists?: Playlist[] }
+interface SavedLists { at?: number; room?: string; sig?: string; albums?: Album[]; playlists?: Playlist[] }
 
 let subscribers = 0
 let pollTimer = 0
@@ -47,11 +49,13 @@ let fetchedAt = 0
 // The album/playlist lists are big and rarely change – and when I change them from here the page updates them
 // itself. So keep them on this machine and only ask the server again once a day (or on "Oppdater fra Spotify").
 // "Now playing" + the lock are tiny and polled often.
-const LISTS_KEY = 'niben-spotify-lists-v2'
+const LISTS_KEY = roomKey('niben-spotify-lists-v2')
 const LISTS_MAX_AGE = 24 * 60 * 60 * 1000
 let listsAt = 0
 let listsSig = ''
 let nowSig = ''
+let cachedRoom = '' // the room the saved lists came from (as the server told us)
+let roomSeen = ''
 
 function hydrate(): void {
   try {
@@ -64,6 +68,7 @@ function hydrate(): void {
       spotify.loaded = true
       listsAt = c.at ?? 0
       listsSig = c.sig ?? ''
+      cachedRoom = c.room ?? ''
     }
   } catch { /* nothing saved */ }
 }
@@ -101,6 +106,17 @@ export function setLocalNow(n: NowPlaying | null): void {
 }
 
 function applyNow(j: PublicReply): void {
+  // the lists kept on this machine belong to the room they came from – another room (a session that ended, a cookie
+  // that changed) starts from nothing
+  if (j.room != null && cachedRoom && String(j.room) !== cachedRoom) {
+    spotify.albums = []
+    spotify.playlists = []
+    listsAt = 0
+    listsSig = ''
+    cachedRoom = ''
+    try { localStorage.removeItem(LISTS_KEY) } catch { /* private mode */ }
+  }
+  if (j.room != null) roomSeen = String(j.room)
   spotify.configured = !!j.configured
   spotify.connected = !!j.connected
   if (j.server_time) spotify.offset = j.server_time - Date.now() / 1000
@@ -140,7 +156,7 @@ export async function refreshLists(force = false): Promise<void> {
         spotify.playlists = j.playlists ?? []
       }
       listsAt = Date.now()
-      try { localStorage.setItem(LISTS_KEY, JSON.stringify({ at: listsAt, sig, albums: spotify.albums, playlists: spotify.playlists })) } catch {}
+      try { localStorage.setItem(LISTS_KEY, JSON.stringify({ at: listsAt, sig, room: roomSeen, albums: spotify.albums, playlists: spotify.playlists })) } catch {}
     } else {
       spotify.albums = []
       spotify.playlists = []
@@ -360,7 +376,7 @@ export async function play(uri: string, track: string | null = null, opts: { fro
     spotify.lockUntil = r.lock_until
     spotify.startedHere = Date.now()
     spotify.origin = { uri, from: opts.from || null, t: Date.now() }
-    try { localStorage.setItem('niben-play-origin', JSON.stringify(spotify.origin)) } catch { /* private mode */ }
+    try { localStorage.setItem(roomKey('niben-play-origin'), JSON.stringify(spotify.origin)) } catch { /* private mode */ }
     if (r.server_time) spotify.offset = r.server_time - Date.now() / 1000
     if (r.device_name) notify(`Spiller på «${r.device_name}» – fant ikke spilleren på siden.`)
     setTimeout(refreshNow, 1500) // give Spotify a moment before asking what's playing
@@ -528,7 +544,7 @@ async function act<T extends object = Record<string, never>>(action: string, bod
 }
 /** Remembers the lists on this machine (see hydrate). */
 function saveLists(): void {
-  try { localStorage.setItem(LISTS_KEY, JSON.stringify({ at: listsAt, sig: listsSig, albums: spotify.albums, playlists: spotify.playlists })) } catch { /* private mode / full */ }
+  try { localStorage.setItem(LISTS_KEY, JSON.stringify({ at: listsAt, sig: listsSig, room: roomSeen, albums: spotify.albums, playlists: spotify.playlists })) } catch { /* private mode / full */ }
 }
 /** Up next in Spotify's queue. */
 export async function fetchQueue(): Promise<Track[]> {

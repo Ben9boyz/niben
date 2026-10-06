@@ -132,7 +132,7 @@ function nw_handle(string $action, bool $post): void {
     }
     case 'feed': {
         // Atom feed of the guitar recordings (for a feed reader)
-        $rows = db()->query('SELECT id, guitar, title, recorded_on, youtube, audio_path, notes, created_at FROM recordings ORDER BY COALESCE(recorded_on, created_at) DESC, id DESC LIMIT 25')->fetchAll();
+        $rows = db()->query('SELECT id, guitar, title, recorded_on, youtube, audio_path, notes, created_at FROM recordings WHERE user_id = ' . kv_scope() . ' ORDER BY COALESCE(recorded_on, created_at) DESC, id DESC LIMIT 25')->fetchAll();
         $base = preg_replace('~/[^/]*$~', '', nw_base()) ?: nw_base();
         $site = rtrim(nw_base(), '/');
         header('Content-Type: application/atom+xml; charset=utf-8');

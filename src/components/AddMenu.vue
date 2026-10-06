@@ -4,13 +4,14 @@ import { Search, ListEnd, ListMusic } from 'lucide-vue-next'
 import { spotify } from '../composables/useSpotify'
 import { groups, sectionsOf, loadGroups } from '../composables/useGroups'
 import type { Playlist } from '../types'
+import { roomKey } from '../lib/room'
 
 // "Add this song": play it next (the queue) at the very top, then a searchable list of my own playlists –
 // the ones used lately first. Enter adds to the first match, Esc closes.
 const props = withDefaults(defineProps<{ exclude?: string /* the playlist we're looking at */ }>(), { exclude: '' })
 const emit = defineEmits<{ queue: []; pick: [playlist: Playlist]; close: [] }>()
 
-const RECENT_KEY = 'niben-recent-playlists'
+const RECENT_KEY = roomKey('niben-recent-playlists')
 const q = ref('')
 const input = ref<HTMLInputElement | null>(null)
 const recentUris = ref<string[]>([])

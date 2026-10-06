@@ -252,6 +252,7 @@ require_once __DIR__ . '/_guard.inc.php';
 require_once __DIR__ . '/_spotify.inc.php';
 require_once __DIR__ . '/_users.inc.php';
 kv_scope(room_resolve()); // the room this request is about (the owner's unless a cookie / a logged-in user says otherwise)
+if (($_COOKIE['niben_r'] ?? '') !== (string)kv_scope()) room_cookie(kv_scope());
 guard_request($action);
 require_once __DIR__ . '/_spotify_more.inc.php';
 require_once __DIR__ . '/_jpdb.inc.php';
@@ -436,6 +437,7 @@ try {
         session_regenerate_id(true);
         $_SESSION['admin'] = true;
         $_SESSION['uid'] = 1;
+        room_cookie(1);
         $_SESSION['expires'] = time() + 60 * 60 * 8;
         vi_mark_me(); // I'm not a visitor
         out(['admin' => true]);
@@ -446,6 +448,7 @@ try {
         $_SESSION = [];
         session_destroy();
         setcookie('niben_room', '', ['expires' => time() - 3600, 'path' => '/']); // back to my room
+        room_cookie(1);
         out(['admin' => false]);
 
     // ── Trips ──

@@ -4,22 +4,23 @@ import { api, errorMessage } from './useAdmin'
 import { spotify } from './useSpotify'
 import { room } from './useRoom'
 import { pget, pset } from '../lib/pcache'
+import { roomKey } from '../lib/room'
 
 // My groups ("Jobb og fokus", "Trening" …) for albums and playlists. They live on the server (the same on every
 // device); the on/off switch for grouping is per browser. New things get a guessed group, marked as guessed
 // until I move or confirm them.
-const KEY = 'niben-grouping'
+const KEY = roomKey('niben-grouping')
 function readOn(): boolean {
   try { return localStorage.getItem(KEY) !== 'off' } catch { return true }
 }
 
-const COLLAPSED_KEY = 'niben-groups-collapsed'
+const COLLAPSED_KEY = roomKey('niben-groups-collapsed')
 function readCollapsed(): Record<string, boolean> {
   try { return JSON.parse(localStorage.getItem(COLLAPSED_KEY) || '{}') as Record<string, boolean> } catch { return {} }
 }
 const phone = typeof window !== 'undefined' ? window.matchMedia('(max-width: 820px)') : { matches: false }
 
-const VIEW_KEY = 'niben-grouping-view'
+const VIEW_KEY = roomKey('niben-grouping-view')
 export type GroupView = 'artist' | 'lister' | 'mapper'
 function readView(): GroupView {
   try { const v = localStorage.getItem(VIEW_KEY); return v === 'lister' || v === 'mapper' ? v : 'artist' } catch { return 'artist' }

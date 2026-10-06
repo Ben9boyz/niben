@@ -406,8 +406,9 @@ function sp_handle(string $action, bool $post): void {
     switch ($action) {
     case 'spotify_public': {
         $connected = (bool)kv_get('refresh_token');
-        if (!$connected) out(['configured' => true, 'connected' => false]);
+        if (!$connected) out(['room' => kv_scope(), 'configured' => true, 'connected' => false]);
         out([
+            'room' => kv_scope(),
             'configured' => true,
             'connected' => true,
             'now' => sp_now(),
@@ -421,9 +422,9 @@ function sp_handle(string $action, bool $post): void {
 
     case 'spotify_now': {
         // tiny response for frequent polling – the album/playlist lists are fetched rarely
-        if (!kv_get('refresh_token')) out(['configured' => true, 'connected' => false]);
+        if (!kv_get('refresh_token')) out(['room' => kv_scope(), 'configured' => true, 'connected' => false]);
         $__now = sp_now();
-        out(['configured' => true, 'connected' => true, 'now' => $__now, 'recent' => sp_note_recent($__now), 'lock_until' => sp_lock_until(), 'lock_seconds' => sp_lock_seconds(), 'server_time' => time()]);
+        out(['room' => kv_scope(), 'configured' => true, 'connected' => true, 'now' => $__now, 'recent' => sp_note_recent($__now), 'lock_until' => sp_lock_until(), 'lock_seconds' => sp_lock_seconds(), 'server_time' => time()]);
     }
 
     case 'spotify_tracks': {

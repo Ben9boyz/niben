@@ -2,6 +2,7 @@ import { reactive, watch } from 'vue'
 import type { QueueItem, Result, Track } from '../types'
 import { api, admin } from './useAdmin'
 import { spotify, progressMs, notify, fetchTracks, findAlbum, playDevice } from './useSpotify'
+import { roomKey } from '../lib/room'
 
 // My own queue. Spotify's queue can only be added to – songs can't be moved or taken away – so the list lives HERE
 // (on the server, the same on every device) and Spotify only ever holds ONE song of it: the next one, sent in the last
@@ -19,7 +20,7 @@ export const myQueue = reactive({
 })
 
 const LEAD_MS = 15000 // send the next song this long before the current one ends
-const SENT_KEY = 'niben-queue-sent'
+const SENT_KEY = roomKey('niben-queue-sent')
 if (CUSTOM_QUEUE) { try { myQueue.sent = JSON.parse(sessionStorage.getItem(SENT_KEY) || 'null') as SentSong | null } catch { /* private mode */ } }
 const keepSent = (): void => { try { sessionStorage.setItem(SENT_KEY, JSON.stringify(myQueue.sent)) } catch { /* private mode */ } }
 

@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
 import { api } from './useAdmin'
+import { roomKey } from '../lib/room'
 
 // Japanese corner (jpdb.io via the server): public statistics + word of the day, and for the admin
 // a review queue where each grade goes straight to jpdb.
@@ -69,7 +70,7 @@ export async function loadJapaneseHistory(): Promise<void> {
 export const ANIME_READY = 80
 
 // ── practice (admin) ──
-const NEW_KEY = 'niben-jp-new'
+const NEW_KEY = roomKey('niben-jp-new')
 export function newPerSession(): number {
   try { const v = parseInt(localStorage.getItem(NEW_KEY) ?? '', 10); return Number.isFinite(v) ? v : 10 } catch { return 10 }
 }
