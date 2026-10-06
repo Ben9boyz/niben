@@ -15,8 +15,7 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": false,
     "types": ["vite/client"],
-    "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] }
+    "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src/**/*.ts", "src/**/*.vue", "env.d.ts"],
   "exclude": ["src/sw"]
