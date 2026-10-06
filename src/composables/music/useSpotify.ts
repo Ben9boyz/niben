@@ -240,11 +240,11 @@ function warmTracks(): void {
   if (warmed || !spotify.connected) return
   warmed = true
   if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return
-  const uris = [...spotify.albums.slice(0, 12), ...spotify.playlists.slice(0, 8)].map((x) => x.uri)
+  const uris = [...spotify.albums.slice(0, 8), ...spotify.playlists.slice(0, 4)].map((x) => x.uri) // (few: Spotify limits how often it may be asked)
   let i = 0
   const next = (): void => {
     if (i >= uris.length || document.hidden) return
-    void fetchTracks(uris[i++]).finally(() => setTimeout(next, 300))
+    void fetchTracks(uris[i++]).then((t) => { if (!t.error) setTimeout(next, 1200) }) // (stops at the first error)
   }
   setTimeout(next, 3000)
 }

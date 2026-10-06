@@ -1,6 +1,6 @@
 import { reactive } from 'vue'
 import { api, checkLogin, admin } from '@/composables/site/useAdmin'
-import { reloadData, useData } from '@/composables/site/useData'
+import { reloadData, useData, stashRoom } from '@/composables/site/useData'
 import { spotify, resetSpotify, refreshLists, refreshNow } from '@/composables/music/useSpotify'
 import { groups, resetGroups, loadGroups } from '@/composables/music/useGroups'
 import { discover, resetDiscover, loadDiscover } from '@/composables/music/useDiscover'
@@ -36,13 +36,13 @@ let switching = false
 let queued: string | null = null // a room asked for while one is still on its way: it comes next
 
 /** Forget the room we leave and fetch what the new one needs – only the parts that were in use. */
-async function swapRoomState(): Promise<void> {
+async function swapRoomState(to: string): Promise<void> {
   const used = { groups: groups.loaded, discover: discover.loaded, milestones: milestones.loaded, jp: jp.loaded, steam: steam.loaded, decor: decor.loaded, live: live.loaded, queue: myQueue.loaded, lists: spotify.loaded }
   resetSpotify(); resetGroups(); resetDiscover(); resetMilestones(); resetJapanese(); resetSteam(); resetDecor(); resetLive(); resetQueue(); resetDaily(); peekClear()
   clearSelection(); room.shelfQ = ''; room.peekIndex = 0 // (no record held up from the other room)
-  await Promise.all([
-    checkLogin(), // (is the new room mine?) – at the same time as the rest, not before it
-    reloadData(),
+  // only what the room itself needs to show waits (who is logged in, the content – at once if I have seen the room before);
+  // everything else fills in by itself when it arrives
+  const later = [
     loadRooms(),
     used.lists ? Promise.all([refreshLists(true), refreshNow()]) : undefined,
     used.groups ? loadGroups(true) : undefined,
@@ -54,6 +54,11 @@ async function swapRoomState(): Promise<void> {
     used.live ? loadLive() : undefined,
     used.queue ? loadMyQueue() : undefined,
     loadDaily(true),
+  ]
+  for (const p of later) void p?.catch(() => undefined)
+  await Promise.all([
+    checkLogin(), // (is the new room mine?)
+    reloadData(to),
   ])
 }
 
@@ -61,11 +66,12 @@ export async function setRoom(username: string): Promise<void> {
   if (switching) { queued = username; return }
   if (username === rooms.current) return
   switching = true
+  stashRoom(rooms.current ?? '')
   const root = document.documentElement
   root.dataset.roomfx = 'out' // the room flies off (style.css)
   try {
     await Promise.all([api('room_set', { username }), wait(320)])
-    await swapRoomState()
+    await swapRoomState(username)
     // stay in the corner you are in – only a corner this room does not have (or the admin of somebody else's room) sends you home
     const here = location.hash.replace(/^#\/?/, '').split(/[/?]/)[0]
     if (here && ((useData().profile.sections as Record<string, boolean | undefined>)?.[here] === false || (here === 'admin' && !admin.mine))) location.hash = '#/'

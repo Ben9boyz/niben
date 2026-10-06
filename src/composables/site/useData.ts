@@ -201,7 +201,20 @@ function mergeRepos(projects: Project[], repos: Repo[]): Project[] {
   })
 }
 
-async function load(): Promise<void> {
+/** What the server says about a room, kept per room for the visit: switching back is instant, and what is fresh is fetched behind it. */
+const contentCache = new Map<string, DbContent>()
+async function fetchContent(): Promise<DbContent | null> {
+  try {
+    const r = await fetch('api.php?action=content', { cache: 'no-cache' })
+    if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
+      const db = (await r.json()) as DbContent
+      if (!db.error) return db
+    }
+  } catch { /* no API (local dev without mock, or server not set up yet): keep data.json content */ }
+  return null
+}
+async function fetchBase(): Promise<void> {
+  if (base) return // (the site's own file is the same in every room – fetched once)
   try {
     const r = await fetch('data.json', { cache: 'no-cache' })
     if (!r.ok) throw new Error(`HTTP ${r.status}`)
@@ -210,53 +223,50 @@ async function load(): Promise<void> {
     state.error = e instanceof Error ? e.message : String(e)
     base ??= {}
   }
-  const merged: BaseData = structuredClone(base)
-
-  try {
-    const r = await fetch('api.php?action=content', { cache: 'no-cache' })
-    if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
-      const db = (await r.json()) as DbContent
-      if (!db.error) {
-        const profile: RoomProfile = { ...state.profile, ...db.profile, sections: { ...state.profile.sections, ...(db.profile?.sections ?? {}) } }
-        state.profile = profile
-        // somebody else's room: none of my guitars, projects or texts – only what they made themselves
-        if (!profile.owner) {
-          merged.gitarer = []
-          merged.prosjekter = []
-          merged.site = { navn: profile.username }
-          merged.om = {}
-        }
-        for (const g of db.guitars ?? []) {
-          merged.gitarer = [...(merged.gitarer ?? []), { id: g.id, navn: g.navn, merke: g.merke ?? undefined, type: g.type ?? undefined, aar: g.aar ?? undefined, farge: g.farge, pickguard: g.pickguard ?? undefined, gripebrett: g.gripebrett ?? undefined, beskrivelse: g.beskrivelse ?? undefined, opptak: [] }]
-        }
-        // own 3D models (uploaded in Admin → Gitarer): they replace the file next to the site (the owner's) or give a user's guitar its model
-        for (const g of merged.gitarer ?? []) {
-          const own = db.guitar_models?.[g.id]
-          if (!own) continue
-          g.modell = own
-          if (!g.farger && !g.tre) g.egen = true // (the owner's built-in guitars keep their colour recipe)
-        }
-        merged.figurer = db.figures ?? []
-        merged.reiser = db.trips.map(mapTrip)
-        merged.boker = db.books.map(mapBook)
-        for (const g of merged.gitarer ?? []) {
-          g.opptak = db.recordings.filter((x) => x.guitar === g.id).map(mapRecording)
-        }
-        merged.sanger = (db.songs ?? []).map((x): Song => ({
-          id: x.id, tittel: x.title, artist: x.artist, akkorder: x.chords,
-          bpm: numOrNull(x.bpm), slag: numOrNull(x.beats), capo: numOrNull(x.capo),
-          ug: x.ug_url, notat: x.notes, ark: x.sheet, ovrer: !!Number(x.practising), slagmonster: x.strum || null,
-        }))
-        // my own photo and text from the about page (uploaded, not in the repo)
-        if (db.about) merged.om = { ...(merged.om ?? {}), ...db.about }
-        setTexts(db.texts)
-        state.fromDb = true
-      }
+}
+/** Put the room's data on the page: data.json + what the server says (null = no server). */
+let lastDb: DbContent | null = null // what is on the page now
+/** Remember the room on screen under this name, before leaving it (coming back is then instant). */
+export function stashRoom(key: string): void { if (key && lastDb) contentCache.set(key, lastDb) }
+function assemble(db: DbContent | null): void {
+  lastDb = db
+  const merged: BaseData = structuredClone(base ?? {})
+  if (db) {
+    const profile: RoomProfile = { ...state.profile, ...db.profile, sections: { ...state.profile.sections, ...(db.profile?.sections ?? {}) } }
+    state.profile = profile
+    // somebody else's room: none of my guitars, projects or texts – only what they made themselves
+    if (!profile.owner) {
+      merged.gitarer = []
+      merged.prosjekter = []
+      merged.site = { navn: profile.username }
+      merged.om = {}
     }
-  } catch {
-    // no API (local dev without mock, or server not set up yet): keep data.json content
+    for (const g of db.guitars ?? []) {
+      merged.gitarer = [...(merged.gitarer ?? []), { id: g.id, navn: g.navn, merke: g.merke ?? undefined, type: g.type ?? undefined, aar: g.aar ?? undefined, farge: g.farge, pickguard: g.pickguard ?? undefined, gripebrett: g.gripebrett ?? undefined, beskrivelse: g.beskrivelse ?? undefined, opptak: [] }]
+    }
+    // own 3D models (uploaded in Admin → Gitarer): they replace the file next to the site (the owner's) or give a user's guitar its model
+    for (const g of merged.gitarer ?? []) {
+      const own = db.guitar_models?.[g.id]
+      if (!own) continue
+      g.modell = own
+      if (!g.farger && !g.tre) g.egen = true // (the owner's built-in guitars keep their colour recipe)
+    }
+    merged.figurer = db.figures ?? []
+    merged.reiser = db.trips.map(mapTrip)
+    merged.boker = db.books.map(mapBook)
+    for (const g of merged.gitarer ?? []) {
+      g.opptak = db.recordings.filter((x) => x.guitar === g.id).map(mapRecording)
+    }
+    merged.sanger = (db.songs ?? []).map((x): Song => ({
+      id: x.id, tittel: x.title, artist: x.artist, akkorder: x.chords,
+      bpm: numOrNull(x.bpm), slag: numOrNull(x.beats), capo: numOrNull(x.capo),
+      ug: x.ug_url, notat: x.notes, ark: x.sheet, ovrer: !!Number(x.practising), slagmonster: x.strum || null,
+    }))
+    // my own photo and text from the about page (uploaded, not in the repo)
+    if (db.about) merged.om = { ...(merged.om ?? {}), ...db.about }
+    setTexts(db.texts)
+    state.fromDb = true
   }
-
   const handWritten = merged.prosjekter ?? []
   merged.prosjekter = [] // filled from GitHub below
   const hasRepos = state.profile.owner || !!state.profile.github
@@ -277,6 +287,21 @@ async function load(): Promise<void> {
     .finally(() => { state.projectsLoading = false })
 }
 
+
+async function load(roomKey = ''): Promise<void> {
+  const cached = roomKey ? contentCache.get(roomKey) : undefined
+  const fresh = fetchContent()
+  await fetchBase()
+  if (cached) { // visited before: show it at once, then bring in what changed
+    assemble(cached)
+    void fresh.then((db) => { if (db && JSON.stringify(db) !== JSON.stringify(cached)) { contentCache.set(roomKey, db); assemble(db) } })
+    return
+  }
+  const db = await fresh
+  if (db && roomKey) contentCache.set(roomKey, db)
+  assemble(db)
+}
+
 let promise: Promise<void> | null = null
 export function useData(): SiteData {
   promise ??= load()
@@ -284,7 +309,7 @@ export function useData(): SiteData {
 }
 
 /** Reload after the admin has changed something. */
-export function reloadData(): Promise<void> {
-  promise = load()
+export function reloadData(roomKey = ''): Promise<void> {
+  promise = load(roomKey)
   return promise
 }

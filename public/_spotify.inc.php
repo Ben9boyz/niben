@@ -814,6 +814,8 @@ function sp_handle(string $action, bool $post): void {
         if (!sp_has_scope('playlist-modify-private')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
         // "add items to playlist": the newer /items path first (reading uses it too), the old /tracks path as a fallback
         [$s, $j] = sp_api('POST', '/playlists/' . $m[1] . '/items', ['uris' => [$track]]);
+        if ($s === 429) { sleep(2); [$s, $j] = sp_api('POST', '/playlists/' . $m[1] . '/items', ['uris' => [$track]]); } // "slow down": wait a moment, once
+        if ($s === 429) out(['error' => 'Spotify ber oss vente litt (for mange forespørsler). Prøv igjen om et par sekunder.', 'code' => 'rate'], 429);
         if ($s >= 400 && $s !== 401) {
             [$s2, $j2] = sp_api('POST', '/playlists/' . $m[1] . '/tracks', ['uris' => [$track]]);
             if ($s2 < 300) [$s, $j] = [$s2, $j2];
