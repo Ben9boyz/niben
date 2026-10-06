@@ -33,6 +33,7 @@ interface PublicReply {
   room?: number
   lib?: string // a fingerprint of the library: when it changes, something was added / removed in Spotify
   denied?: boolean
+  diag?: { albums: number; albums_msg: string | null; playlists: number; playlists_msg: string | null; albums_total: number | null; playlists_total: number | null; scopes: string } | null
   spotify_status?: number | null // the status Spotify last answered no with (429 = too many requests), if just now
   configured?: boolean
   connected?: boolean
@@ -184,6 +185,11 @@ export async function refreshLists(force = false): Promise<void> {
       try { localStorage.removeItem(listsKey()) } catch { /* private mode */ }
     }
     spotify.error = null
+    if (j.diag) { // empty shelf: say what Spotify answers
+      const d = j.diag
+      spotify.error = `Biblioteket er tomt. Spotify svarer ${d.albums}${d.albums_msg ? ` «${d.albums_msg}»` : ''} på album og ${d.playlists}${d.playlists_msg ? ` «${d.playlists_msg}»` : ''} på spillelister`
+        + (d.albums === 200 ? ` (${d.albums_total ?? 0} album, ${d.playlists_total ?? 0} spillelister på kontoen).` : '.')
+    }
   } catch (e) {
     spotify.error = errorMessage(e)
   } finally {

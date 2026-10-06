@@ -486,6 +486,14 @@ function sp_handle(string $action, bool $post): void {
         $connected = (bool)kv_get('refresh_token');
         if (!$connected) out(['room' => kv_scope(), 'configured' => true, 'connected' => false]);
         $__albums = sp_albums() ?? []; // (first: it finds out whether Spotify lets this account in)
+        $__playlists = sp_playlists() ?? [];
+        $diag = null; // the owner with an empty shelf: ask Spotify why, so the page can say it
+        if (!$__albums && !$__playlists && viewing_own_room()) {
+            [$d1, $j1] = sp_api('GET', '/me/albums?limit=1');
+            [$d2, $j2] = sp_api('GET', '/me/playlists?limit=1');
+            $diag = ['albums' => $d1, 'albums_msg' => $j1['error']['message'] ?? null, 'playlists' => $d2, 'playlists_msg' => $j2['error']['message'] ?? null,
+                     'albums_total' => $j1['total'] ?? null, 'playlists_total' => $j2['total'] ?? null, 'scopes' => (string)kv_get('scopes')];
+        }
         out([
             'room' => kv_scope(),
             'configured' => true,
@@ -495,7 +503,8 @@ function sp_handle(string $action, bool $post): void {
             'lib' => sp_library_stamp(),
             'now' => sp_now(),
             'albums' => $__albums,
-            'playlists' => sp_playlists() ?? [],
+            'playlists' => $__playlists,
+            'diag' => $diag,
             'lock_until' => sp_lock_until(),
             'lock_seconds' => sp_lock_seconds(),
             'server_time' => time(),
