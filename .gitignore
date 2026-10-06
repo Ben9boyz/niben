@@ -26,3 +26,9 @@ public/_translate.php
 
 # desktop app: compiled TypeScript
 desktop/out/
+
+# built upload bundle (made by hand / by CI – never committed)
+niben-upload.zip
+dist/
+node_modules/
+test-results/

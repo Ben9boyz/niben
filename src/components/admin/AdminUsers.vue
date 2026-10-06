@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Check, Ban, Trash2, RotateCcw, Users } from 'lucide-vue-next'
-import { api, errorMessage } from '../../composables/useAdmin'
+import { api, errorMessage } from '@/composables/site/useAdmin'
 
 // The owner's list of accounts: approve the ones that ask, switch one off, or remove it (with everything it made).
 interface AccountRow {
@@ -32,6 +32,7 @@ const LABEL = { pending: 'Venter', approved: 'Aktiv', disabled: 'Avslått' }
 <template>
   <div>
     <p class="muted"><Users :size="14" /> {{ users.length - 1 }} kontoer<template v-if="pending"> · <b>{{ pending }} venter på godkjenning</b></template>. Nye kontoer kan ikke logge inn før du har godkjent dem.</p>
+    <p class="muted">Skal en bruker kunne koble til Spotify? Legg da til navnet og Spotify-e-posten hennes i <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">Spotify-dashboardet</a> (appen din → User Management). Uten det slipper Spotify henne inn, men hylla hennes blir tom.</p>
     <p v-if="err" class="notice error">{{ err }}</p>
     <ul class="list">
       <li v-for="u in users" :key="u.id" :class="u.status">

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { tx } from '../composables/useTexts'
+import { tx } from '@/composables/site/useTexts'
 import { ref } from 'vue'
 import { ArrowUpRight, BookOpenText } from 'lucide-vue-next'
-import RepoBrowser from '../components/RepoBrowser.vue'
-import { useData, type Project } from '../composables/useData'
+import RepoBrowser from '@/components/content/RepoBrowser.vue'
+import { useData, type Project } from '@/composables/site/useData'
 const data = useData()
 // a project on my GitHub can be read right here (RepoBrowser)
 const repoOf = (p: Project | undefined) => (/github\.com\/Ben9boyz\/([\w.-]+)/i.exec(p?.kode || '') || [])[1] || null

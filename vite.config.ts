@@ -27,6 +27,7 @@ function serviceWorker(): Plugin {
 const realApi = process.env.NIBEN_API
 
 export default defineConfig({
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } }, // '@/composables/…' from anywhere
   // CSS is bundled into the JS file: the web host's FTP server rejects our .css uploads
   plugins: [vue(), cssInjectedByJs(), serviceWorker(), ...(realApi ? [] : [mockApi()])],
   server: realApi ? { proxy: { '/api.php': realApi, '/thumb.php': realApi, '/uploads': realApi } } : {},

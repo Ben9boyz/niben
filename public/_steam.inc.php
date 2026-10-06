@@ -137,7 +137,7 @@ function st_app(int $appid): array {
             'year' => substr((string)($x['release_date']['date'] ?? ''), -4),
             'score' => $x['metacritic']['score'] ?? null,
         ];
-    });
+    }, true);
     return $d ?? ['genres' => []];
 }
 

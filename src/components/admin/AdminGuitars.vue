@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { Plus, ChevronLeft } from 'lucide-vue-next'
-import { api, errorMessage } from '../../composables/useAdmin'
-import { useData, reloadData, type Guitar } from '../../composables/useData'
+import { api, errorMessage } from '@/composables/site/useAdmin'
+import { useData, reloadData, type Guitar } from '@/composables/site/useData'
 import type { Flash } from '../../types'
 
 // The user's own guitars (the owner's are in data.json, with 3D models). They are drawn from the colours chosen here and

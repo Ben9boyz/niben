@@ -49,18 +49,28 @@ function kv_key(string $k): string {
     $p = 'u' . $u . '_';
     return strlen($p . $k) <= 40 ? $p . $k : $p . substr(md5($k), 0, 40 - strlen($p)); // (the column is 40 characters)
 }
+/** Runs a statement on the key/value table – making the table first if this is a database that has never seen it. */
+function kv_q(string $sql, array $args): PDOStatement {
+    try {
+        $st = db()->prepare($sql);
+        $st->execute($args);
+    } catch (PDOException $e) {
+        if (($e->errorInfo[0] ?? '') !== '42S02') throw $e; // (anything but "no such table")
+        sp_schema();
+        $st = db()->prepare($sql);
+        $st->execute($args);
+    }
+    return $st;
+}
 function kv_get(string $k): ?string {
-    $st = db()->prepare('SELECT v FROM spotify_state WHERE k=?');
-    $st->execute([kv_key($k)]);
-    $v = $st->fetchColumn();
+    $v = kv_q('SELECT v FROM spotify_state WHERE k=?', [kv_key($k)])->fetchColumn();
     return $v === false ? null : $v;
 }
 function kv_set(string $k, ?string $v): void {
-    db()->prepare('INSERT INTO spotify_state (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v = VALUES(v)')->execute([kv_key($k), $v]);
+    kv_q('INSERT INTO spotify_state (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v = VALUES(v)', [kv_key($k), $v]);
 }
 function kv_del(string ...$keys): void {
-    $st = db()->prepare('DELETE FROM spotify_state WHERE k=?');
-    foreach ($keys as $k) $st->execute([kv_key($k)]);
+    foreach ($keys as $k) kv_q('DELETE FROM spotify_state WHERE k=?', [kv_key($k)]);
 }
 
 require_once __DIR__ . '/_net.inc.php'; // http_req()
@@ -119,24 +129,69 @@ function sp_img(array $images, int $want = 300): ?string {
     return $images[0]['url'] ?? null;
 }
 
-function sp_cached(string $key, int $ttl, callable $fetch) {
-    $raw = kv_get($key);
-    if ($raw) {
-        $c = json_decode($raw, true);
-        if ($c && ($c['t'] ?? 0) > time() - $ttl) return $c['d'];
+/** Keeps what `$fetch` found for `$ttl` seconds. `$shared` = public data (an album's songs, an artist, a song's tempo): kept
+ *  once for every room instead of once per room – the lookup itself still runs as the room that asked. */
+function sp_cached(string $key, int $ttl, callable $fetch, bool $shared = false) {
+    $room = kv_scope();
+    if ($shared) kv_scope(0);
+    try {
+        $raw = kv_get($key);
+        if ($raw) {
+            $c = json_decode($raw, true);
+            if ($c && ($c['t'] ?? 0) > time() - $ttl) return $c['d'];
+        }
+        kv_scope($room);
+        $d = $fetch();
+        if ($shared) kv_scope(0);
+        $partial = is_array($d) && !empty($d['partial']); // (an incomplete list is shown, but not kept)
+        if ($d !== null && !$partial) kv_set($key, json_encode(['t' => time(), 'd' => $d], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        elseif ($raw && !$partial) return json_decode($raw, true)['d'] ?? null; // keep stale data if Spotify hiccups
+        return $d;
+    } finally {
+        kv_scope($room);
     }
-    $d = $fetch();
-    if ($d !== null) kv_set($key, json_encode(['t' => time(), 'd' => $d], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-    elseif ($raw) return json_decode($raw, true)['d'] ?? null; // keep stale data if Spotify hiccups
-    return $d;
+}
+
+/** Spotify refuses an account the app's owner has not added under "User Management" (an app in development mode): the
+ *  login works, every question afterwards is a 403. Remembered, so the room can say so instead of showing an empty shelf. */
+function sp_denied(): bool { return (int)kv_get('sp_denied') > time() - 600; }
+
+/** A small fingerprint of the library (how many albums / playlists, and which is newest), from two tiny calls that are
+ *  themselves kept for 45 s. When it changes, something was added or removed in Spotify – the lists are fetched again
+ *  at once instead of waiting for the half hour they are normally kept. '' = could not tell. */
+function sp_library_stamp(): string {
+    global $config;
+    $r = sp_cached('probe_lib', (int)($config['probe_ttl'] ?? 45), function () { // (probe_ttl: for the tests)
+        $one = function (string $path, string $field) {
+            [$s, $j] = sp_api('GET', $path);
+            return $s === 200 ? ((int)($j['total'] ?? 0)) . ':' . (string)($field === 'album' ? ($j['items'][0]['album']['id'] ?? '') : ($j['items'][0]['id'] ?? '')) : null;
+        };
+        $a = $one('/me/albums?limit=1', 'album');
+        $p = $one('/me/playlists?limit=1', 'playlist');
+        return $a === null || $p === null ? null : ['s' => $a . '|' . $p];
+    });
+    return is_array($r) ? (string)$r['s'] : '';
+}
+function sp_sync_library(): void {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    $stamp = sp_library_stamp();
+    if ($stamp === '' || kv_get('lib_stamp') === $stamp) return;
+    kv_del('cache_albums_v4', 'cache_playlists_v3');
+    kv_set('lib_stamp', $stamp);
 }
 
 function sp_albums(): ?array {
+    if (sp_denied()) return [];
+    sp_sync_library();
     return sp_cached('cache_albums_v4', 1800, function () {
         $out = [];
         for ($offset = 0; $offset < 1000; $offset += 50) {
             [$s, $j] = sp_api('GET', '/me/albums?limit=50&offset=' . $offset);
+            if ($s === 403 && $offset === 0) { kv_set('sp_denied', (string)time()); return null; }
             if ($s !== 200) return $out ?: null;
+            if ($offset === 0 && kv_get('sp_denied') !== null) kv_del('sp_denied');
             foreach ($j['items'] ?? [] as $it) {
                 $a = $it['album'] ?? null;
                 if (!$a) continue;
@@ -162,6 +217,7 @@ function sp_albums(): ?array {
 }
 
 function sp_playlists(): ?array {
+    sp_sync_library();
     return sp_cached('cache_playlists_v3', 1800, function () {
         $out = [];
         [$ms, $me] = sp_api('GET', '/me');
@@ -310,9 +366,9 @@ function sp_artist(string $id, string $name): ?array {
             'image' => sp_img($a['images'] ?? [], 300), 'image_large' => sp_img($a['images'] ?? [], 640),
             'url' => $a['external_urls']['spotify'] ?? null, 'albums' => $albums,
         ];
-    });
+    }, true);
     // an empty answer is not remembered – try again next time (the old code cached "no albums" for 6 hours)
-    if (is_array($res) && !empty($res['_empty'])) kv_del("artist2_{$id}");
+    if (is_array($res) && !empty($res['_empty'])) { $r = kv_scope(); kv_scope(0); kv_del("artist2_{$id}"); kv_scope($r); }
     return $res;
 }
 
@@ -320,25 +376,35 @@ function sp_artist(string $id, string $name): ?array {
 function sp_tracks(string $type, string $id): array {
     $data = sp_cached("tracks5_{$type}_{$id}", 21600, function () use ($type, $id) {
         $out = [];
-        // read page after page; the next page starts after what we actually GOT (if Spotify hands out fewer than the
-        // 50 we ask for, jumping 50 ahead would skip songs – the cause of albums with only their first few songs)
-        for ($offset = 0, $guard = 0; $offset < 1000 && $guard < 60; $guard++) {
+        $total = null;
+        $empty = 0;
+        // read page after page until the album / playlist says it has no more (`total`), not only until `next` runs out:
+        // the next page starts after what we actually GOT (Spotify may hand out fewer than the 50 we ask for), and a page
+        // that comes back empty or broken is skipped once or twice rather than ending the list there
+        for ($offset = 0, $guard = 0; $offset < 2000 && $guard < 120; $guard++) {
             $path = $type === 'album'
-                ? "/albums/{$id}/tracks?limit=50&offset={$offset}"
+                ? "/albums/{$id}/tracks?limit=50&offset={$offset}&market=from_token"
                 : "/playlists/{$id}/items?limit=50&offset={$offset}";
             [$s, $j] = sp_api('GET', $path);
-            if ($s === 403 || $s === 404) return ['hidden' => true, 'tracks' => []];
-            if ($s !== 200) return $out ? ['tracks' => $out] : null;
+            if (($s === 403 || $s === 404) && $offset === 0) return ['hidden' => true, 'tracks' => []];
+            if ($s !== 200) {
+                if ($out && ++$empty <= 2) { usleep(300000); continue; } // a hiccup in the middle: try the same page again
+                return $out ? ['tracks' => $out, 'partial' => true] : null;
+            }
+            if ($total === null && isset($j['total'])) $total = (int)$j['total'];
             $got = $j['items'] ?? [];
             foreach ($got as $it) {
                 $t = $type === 'album' ? $it : ($it['item'] ?? $it['track'] ?? null);
                 if ($t && !empty($t['uri'])) $out[] = sp_track($t);
             }
-            if (empty($j['next']) || !$got) break;
-            $offset += count($got);
+            $offset += count($got) ?: 0;
+            if (!$got) { if (++$empty > 2 || $total === null || $offset >= $total) break; $offset += 50; continue; }
+            if ($total !== null ? $offset >= $total : empty($j['next'])) break;
         }
-        return ['tracks' => $out];
-    });
+        $res = ['tracks' => $out];
+        if ($total !== null) $res['total'] = $total;
+        return $res;
+    }, $type === 'album');
     return $data ?? ['tracks' => [], 'error' => true];
 }
 
@@ -406,12 +472,16 @@ function sp_handle(string $action, bool $post): void {
     switch ($action) {
     case 'spotify_public': {
         $connected = (bool)kv_get('refresh_token');
-        if (!$connected) out(['configured' => true, 'connected' => false]);
+        if (!$connected) out(['room' => kv_scope(), 'configured' => true, 'connected' => false]);
+        $__albums = sp_albums() ?? []; // (first: it finds out whether Spotify lets this account in)
         out([
+            'room' => kv_scope(),
             'configured' => true,
             'connected' => true,
+            'denied' => sp_denied(),
+            'lib' => sp_library_stamp(),
             'now' => sp_now(),
-            'albums' => sp_albums() ?? [],
+            'albums' => $__albums,
             'playlists' => sp_playlists() ?? [],
             'lock_until' => sp_lock_until(),
             'lock_seconds' => sp_lock_seconds(),
@@ -421,9 +491,9 @@ function sp_handle(string $action, bool $post): void {
 
     case 'spotify_now': {
         // tiny response for frequent polling – the album/playlist lists are fetched rarely
-        if (!kv_get('refresh_token')) out(['configured' => true, 'connected' => false]);
+        if (!kv_get('refresh_token')) out(['room' => kv_scope(), 'configured' => true, 'connected' => false]);
         $__now = sp_now();
-        out(['configured' => true, 'connected' => true, 'now' => $__now, 'recent' => sp_note_recent($__now), 'lock_until' => sp_lock_until(), 'lock_seconds' => sp_lock_seconds(), 'server_time' => time()]);
+        out(['room' => kv_scope(), 'denied' => sp_denied(), 'lib' => sp_library_stamp(), 'configured' => true, 'connected' => true, 'now' => $__now, 'recent' => sp_note_recent($__now), 'lock_until' => sp_lock_until(), 'lock_seconds' => sp_lock_seconds(), 'server_time' => time()]);
     }
 
     case 'spotify_tracks': {
@@ -487,7 +557,7 @@ function sp_handle(string $action, bool $post): void {
                 'code' => (string)$_GET['code'],
                 'redirect_uri' => sp_redirect_uri(),
             ]);
-            if ($ok) kv_del('cache_albums_v3', 'cache_playlists_v3', 'cache_now');
+            if ($ok) kv_del('cache_albums_v3', 'cache_albums_v4', 'cache_playlists_v3', 'cache_playlists_v4', 'cache_now', 'sp_denied');
         }
         header('Location: /#/lytte?spotify=' . ($ok ? 'ok' : 'feil'), true, 302);
         exit;
@@ -496,14 +566,14 @@ function sp_handle(string $action, bool $post): void {
     case 'spotify_disconnect': {
         if (!$post) fail('Bruk POST.', 405);
         require_room_owner();
-        kv_del('refresh_token', 'scopes', 'access_token', 'access_expires', 'cache_albums_v3', 'cache_playlists_v3', 'cache_now');
+        kv_del('refresh_token', 'scopes', 'access_token', 'access_expires', 'cache_albums_v3', 'cache_playlists_v3', 'cache_now', 'sp_denied');
         out(['connected' => false]);
     }
 
     case 'spotify_refresh': {
         if (!$post) fail('Bruk POST.', 405);
         require_room_owner();
-        kv_del('cache_albums_v3', 'cache_playlists_v3', 'cache_now');
+        kv_del('cache_albums_v3', 'cache_albums_v4', 'cache_playlists_v3', 'cache_playlists_v4', 'cache_now', 'sp_denied');
         out(['ok' => true]);
     }
 
@@ -550,7 +620,7 @@ function sp_handle(string $action, bool $post): void {
         if ($s === 404 && $op === 'pause') out(['ok' => true]); // nothing playing – already paused
         if ($s === 404) out(['error' => 'Ingen Spotify-enhet spiller nå.', 'code' => 'no_device'], 409);
         if ($s >= 300) fail('Spotify svarte med feil (' . $s . ').', 502);
-        kv_del('cache_now');
+        kv_del('cache_now', 'cache_queue4');
         out(['ok' => true]);
     }
 
@@ -837,7 +907,7 @@ function sp_handle(string $action, bool $post): void {
         kv_set('lock_until', (string)$until);
         kv_set('lock_started', (string)time());
         kv_set('lock_album', $isAlbum ? $uri : ''); // an album: the lock goes off when it has been heard to the end
-        kv_del('cache_now');
+        kv_del('cache_now', 'cache_queue4');
         out(['ok' => true, 'lock_until' => $until, 'server_time' => time(), 'device_name' => $usedName]);
     }
     }

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Download, Users, Gamepad2, Languages, Globe2, BookOpen, Plane, Mic, Trash2 } from 'lucide-vue-next'
-import { api, errorMessage } from '../../composables/useAdmin'
+import { api, errorMessage } from '@/composables/site/useAdmin'
 import { byCode } from '../../lib/languages'
-import { pwa, install, desktopApp } from '../../composables/usePwa'
+import { pwa, install, desktopApp } from '@/composables/ui/usePwa'
 
 // The first admin tab: what is connected and how things are set up, in plain words – with the buttons to fix it.
 const emit = defineEmits<{ goto: [tab: string] }>()

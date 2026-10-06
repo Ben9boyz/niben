@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { tx } from '../composables/useTexts'
-import JapanContent from '../components/JapanContent.vue'
+import { tx } from '@/composables/site/useTexts'
+import JapanContent from '@/components/japan/JapanContent.vue'
 </script>
 
 <template>

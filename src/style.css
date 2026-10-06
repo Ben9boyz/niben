@@ -524,3 +524,14 @@ html.calm *, html.calm *::before, html.calm *::after { animation: none !importan
 html.calm .blob { display: none; }
 html.calm .glass, html.calm .card, html.calm [class*="glow"] { box-shadow: none !important; }
 html.calm .live, html.calm .tag.live { box-shadow: none !important; }
+
+/* ── switching rooms: the room flies off to the left, the next one flies in from the right (useRooms.ts) ──
+   (the individual properties translate / scale / rotate, so the elements' own transforms are left alone) */
+html[data-roomfx] canvas, html[data-roomfx] main, html[data-roomfx] .dock { will-change: translate, scale, rotate, opacity, filter; }
+html[data-roomfx='out'] canvas, html[data-roomfx='out'] main, html[data-roomfx='out'] .dock { transition: translate 0.43s cubic-bezier(0.55, 0, 0.9, 0.4), scale 0.43s cubic-bezier(0.55, 0, 0.9, 0.4), rotate 0.43s ease-in, opacity 0.4s ease-in, filter 0.4s ease-in; translate: -34vw 0; scale: 1.18; rotate: -1.5deg; opacity: 0; filter: blur(14px); }
+html[data-roomfx='pre'] canvas, html[data-roomfx='pre'] main, html[data-roomfx='pre'] .dock { transition: none; translate: 34vw 0; scale: 0.86; rotate: 1.5deg; opacity: 0; filter: blur(14px); }
+html[data-roomfx='in'] canvas, html[data-roomfx='in'] main, html[data-roomfx='in'] .dock { transition: translate 0.65s cubic-bezier(0.2, 0.9, 0.2, 1), scale 0.65s cubic-bezier(0.2, 0.9, 0.2, 1), rotate 0.65s ease-out, opacity 0.5s ease-out, filter 0.5s ease-out; translate: none; scale: none; rotate: none; opacity: 1; filter: none; }
+@media (prefers-reduced-motion: reduce) {
+  html[data-roomfx='out'] canvas, html[data-roomfx='out'] main, html[data-roomfx='out'] .dock,
+  html[data-roomfx='pre'] canvas, html[data-roomfx='pre'] main, html[data-roomfx='pre'] .dock { translate: none; scale: none; rotate: none; filter: none; }
+}

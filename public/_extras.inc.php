@@ -77,6 +77,7 @@ function ex_snap(string $key, array $v): void {
 
 // ── the year ──
 function ex_wrapped(int $year): array {
+    users_ready(); // (the trips / books tables it reads, on a database that has never seen them)
     ex_tables();
     $pdo = db();
     $from = strtotime("$year-01-01 00:00:00"); $to = strtotime(($year + 1) . '-01-01 00:00:00');

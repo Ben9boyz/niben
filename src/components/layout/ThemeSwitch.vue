@@ -1,0 +1,85 @@
+<script setup lang="ts">
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { Sun, Moon, Radio, Check } from 'lucide-vue-next'
+import { useTheme, type ThemeChoice } from '@/composables/ui/useTheme'
+import { targetEl } from '@/lib/dom'
+import type { Component } from 'vue'
+import { calm, setCalm } from '@/composables/ui/useCalm'
+import { Wind } from 'lucide-vue-next'
+
+// Light / dark: a button with a small menu – "Live" (day and night where I live), "Lys" and "Mørk".
+const { theme, mode, setMode, live } = useTheme()
+const open = ref(false)
+const root = ref<HTMLElement | null>(null)
+const menuEl = ref<HTMLElement | null>(null)
+const pos = ref<Record<string, string>>({})
+async function toggleMenu() {
+  open.value = !open.value
+  if (!open.value) return
+  // the button sits in the rail at the left (phones too): the menu opens beside it, bottom edges lined up, and is
+  // kept inside the screen – measured after it has been drawn so it never floats off somewhere
+  const r = root.value?.getBoundingClientRect()
+  if (!r) return
+  pos.value = { left: `${r.right + 10}px`, top: `${Math.max(8, r.bottom - 300)}px`, visibility: 'hidden' }
+  await nextTick()
+  const h = menuEl.value?.offsetHeight || 260, w = menuEl.value?.offsetWidth || 250
+  const left = Math.max(8, Math.min(r.right + 10, innerWidth - w - 8))
+  const top = Math.max(8, Math.min(r.bottom - h, innerHeight - h - 8))
+  pos.value = { left: `${left}px`, top: `${top}px` }
+}
+const choices = computed((): [ThemeChoice, string, Component, string][] => [
+  ...(live.configured ? [['live', live.name ? `Live – ${live.name}` : 'Live', Radio, 'Lys om dagen, mørkt om natten der jeg bor'] as [ThemeChoice, string, Component, string]] : []),
+  ['light', 'Lys', Sun, ''],
+  ['dark', 'Mørk', Moon, ''],
+])
+const onDoc = (e: Event) => { if (open.value && !root.value?.contains(targetEl(e)) && !menuEl.value?.contains(targetEl(e))) open.value = false }
+const close = () => { open.value = false }
+const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') open.value = false }
+onMounted(() => { document.addEventListener('pointerdown', onDoc); window.addEventListener('keydown', onKey); window.addEventListener('resize', close) })
+onBeforeUnmount(() => { document.removeEventListener('pointerdown', onDoc); window.removeEventListener('keydown', onKey); window.removeEventListener('resize', close) })
+function pick(id: ThemeChoice) { setMode(id); open.value = false }
+</script>
+
+<template>
+  <button ref="root" class="theme glass" :aria-label="theme === 'dark' ? 'Tema: mørkt' : 'Tema: lyst'" :aria-expanded="open" @click="toggleMenu">
+    <transition name="spin" mode="out-in">
+      <Sun v-if="theme === 'dark'" key="s" :size="20" />
+      <Moon v-else key="m" :size="20" />
+    </transition>
+    <i v-if="mode === 'live'" class="dot" title="Live"></i>
+    <teleport to="body">
+      <transition name="fade">
+        <div v-if="open" ref="menuEl" class="tsmenu glass" role="menu" translate="no" :style="pos" @click.stop>
+          <button v-for="c in choices" :key="c[0]" role="menuitemradio" :aria-checked="mode === c[0]" :class="{ on: mode === c[0] }" @click="pick(c[0])">
+            <component :is="c[2]" :size="16" aria-hidden="true" /><span class="l"><b>{{ c[1] }}</b><small v-if="c[3]">{{ c[3] }}</small></span><Check v-if="mode === c[0]" :size="14" aria-hidden="true" />
+          </button>
+          <hr />
+          <button class="calmrow" role="menuitemcheckbox" :aria-checked="calm" @click="setCalm(!calm)">
+            <Wind :size="16" aria-hidden="true" /><span class="l"><b>Rolig modus</b><small>Ingen animasjon, glød eller bevegelse</small></span><i class="tg" :class="{ on: calm }" aria-hidden="true"></i>
+          </button>
+        </div>
+      </transition>
+    </teleport>
+  </button>
+</template>
+
+<style scoped>
+.dot { position: absolute; right: 8px; top: 8px; width: 8px; height: 8px; border-radius: 50%; background: #1db954; box-shadow: 0 0 0 2px var(--bg); }
+</style>
+<style>
+.tsmenu { position: fixed; z-index: 85; width: 250px; padding: 6px; border-radius: 16px; background: var(--bg); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3); display: grid; gap: 2px; }
+.tsmenu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--text); text-align: left; cursor: pointer; font-family: var(--font); }
+.tsmenu button:hover { background: var(--accent-soft); }
+.tsmenu button.on { color: var(--accent); background: var(--accent-soft); }
+.tsmenu svg { flex: none; }
+.tsmenu hr { margin: 4px 8px; border: 0; border-top: 1px solid var(--glass-border); }
+.tsmenu button:focus { outline: none; }
+.tsmenu button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tsmenu .tg { position: relative; flex: none; width: 34px; height: 20px; border-radius: 999px; background: var(--glass-border); transition: background 0.2s; }
+.tsmenu .tg::after { content: ''; position: absolute; left: 3px; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: transform 0.2s; }
+.tsmenu .tg.on { background: var(--accent); }
+.tsmenu .tg.on::after { transform: translateX(14px); }
+.tsmenu .l { flex: 1; display: grid; min-width: 0; }
+.tsmenu .l b { font-weight: 600; font-size: 0.88rem; }
+.tsmenu .l small { font-size: 0.72rem; color: var(--text-3); line-height: 1.25; }
+</style>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AboutContent from '../components/AboutContent.vue'
+import AboutContent from '@/components/content/AboutContent.vue'
 </script>
 
 <template>

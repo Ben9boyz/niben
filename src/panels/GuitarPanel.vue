@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { tx } from '../composables/useTexts'
-import RecordingList from '../components/RecordingList.vue'
-import NewsletterSignup from '../components/NewsletterSignup.vue'
+import { tx } from '@/composables/site/useTexts'
+import RecordingList from '@/components/guitar/RecordingList.vue'
+import NewsletterSignup from '@/components/content/NewsletterSignup.vue'
 import { Guitar, Music2, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { computed } from 'vue'
-import { useData } from '../composables/useData'
-import { room } from '../composables/useRoom'
+import { useData } from '@/composables/site/useData'
+import { room } from '@/composables/room/useRoom'
 
 const data = useData()
 const list = computed(() => data.gitarer || [])

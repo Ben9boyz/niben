@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Check, Trash2, MessageCircle } from 'lucide-vue-next'
-import { api, errorMessage } from '../../composables/useAdmin'
+import { api, errorMessage } from '@/composables/site/useAdmin'
 
 // Greetings written in this room's guestbook wait here until they are approved.
 interface Entry { id: number; name: string; msg: string; t: number; status: string }

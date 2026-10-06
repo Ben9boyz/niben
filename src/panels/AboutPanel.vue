@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { tx } from '../composables/useTexts'
-import AboutContent from '../components/AboutContent.vue'
+import { tx } from '@/composables/site/useTexts'
+import AboutContent from '@/components/content/AboutContent.vue'
 </script>
 
 <template>

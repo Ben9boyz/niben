@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useData } from '../composables/useData'
+import { useData } from '@/composables/site/useData'
 import { LayoutDashboard, Plane, BookOpen, Mic, Music, Type, Box, Mail, Eye, EyeOff, LogOut, Lock, Users, SlidersHorizontal, Guitar, DoorOpen, MessageCircle, UserRound, Plug, KeyRound, Disc3 } from 'lucide-vue-next'
-import { admin, account, signedIn, checkLogin, login, userLogin, registerAccount, forgotPassword, resetPassword, logout, errorMessage } from '../composables/useAdmin'
-import { setRoom } from '../composables/useRooms'
+import { admin, account, signedIn, checkLogin, login, userLogin, registerAccount, forgotPassword, resetPassword, logout, errorMessage } from '@/composables/site/useAdmin'
+import { setRoom } from '@/composables/room/useRooms'
 import AdminTrips from '../components/admin/AdminTrips.vue'
 import AdminBooks from '../components/admin/AdminBooks.vue'
 import AdminRecordings from '../components/admin/AdminRecordings.vue'

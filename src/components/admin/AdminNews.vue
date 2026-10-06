@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Send, Trash2, MailCheck } from 'lucide-vue-next'
-import { api, errorMessage } from '../../composables/useAdmin'
-import { useData } from '../../composables/useData'
+import { api, errorMessage } from '@/composables/site/useAdmin'
+import { useData } from '@/composables/site/useData'
 import type { Flash } from '../../types'
 
 // Newsletter: who is signed up, and a small composer. Pick a recording to fill in the mail, test it on yourself, send.

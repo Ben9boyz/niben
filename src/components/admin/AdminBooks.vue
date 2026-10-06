@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ChevronLeft, Star } from 'lucide-vue-next'
 import { ref, reactive, computed, watch } from 'vue'
-import { useData, reloadData, type Book } from '../../composables/useData'
-import { api, errorMessage } from '../../composables/useAdmin'
+import { useData, reloadData, type Book } from '@/composables/site/useData'
+import { api, errorMessage } from '@/composables/site/useAdmin'
 import type { Flash } from '../../types'
 
 const data = useData()

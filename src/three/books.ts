@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { Book } from '../composables/useData'
+import type { Book } from '@/composables/site/useData'
 import { canvasTex, wrapText, hash, shade, luminance } from './textures'
 
 const SPINE_COLORS = ['#1f4e8c', '#2b8cff', '#0f2a4a', '#6aa9e9', '#24476b', '#8bb8e8', '#13355e', '#3d6fa8', '#e4eef8', '#0b3d6b', '#b9d7f2']

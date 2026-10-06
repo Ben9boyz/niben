@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { Search, Save, RotateCcw } from 'lucide-vue-next'
-import { api, errorMessage } from '../../composables/useAdmin'
-import { siteTexts, setTexts } from '../../composables/useTexts'
+import { api, errorMessage } from '@/composables/site/useAdmin'
+import { siteTexts, setTexts } from '@/composables/site/useTexts'
 import { TEXT_GROUPS, TEXT_DEFAULTS } from '../../lib/textDefs'
 import type { Flash } from '../../types'
 

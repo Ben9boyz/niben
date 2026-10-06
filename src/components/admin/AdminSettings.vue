@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { Check, KeyRound, ExternalLink, Music2, MapPin, Plug, Download, Mail, Trash2, Lock } from 'lucide-vue-next'
-import { api, errorMessage, account } from '../../composables/useAdmin'
-import { reloadData, type SectionId } from '../../composables/useData'
+import { api, errorMessage, account } from '@/composables/site/useAdmin'
+import { reloadData, type SectionId } from '@/composables/site/useData'
 import type { Flash } from '../../types'
 
 // One component, three admin tabs: `rommet` (which corners it shows), `tilkoblinger` (Spotify, Steam, jpdb … the
@@ -16,7 +16,7 @@ interface Settings {
   sections: Record<SectionId, boolean>
   locked: SectionId[]
   keys: { jpdb: boolean; steam_id: string | null; steam_key: boolean; github_user: string | null; lastfm: boolean; spotify_app: 'site' | null }
-  spotify: { connected: boolean; redirect: string }
+  spotify: { connected: boolean; denied: boolean; redirect: string }
 }
 interface PlaceHit { name: string; region: string; country: string; lat: number; lon: number }
 const SECTIONS: { id: SectionId; label: string; hint: string }[] = [
@@ -184,6 +184,7 @@ async function changePw() {
         <a v-if="s.keys.spotify_app" class="btn primary small" href="api.php?action=spotify_login"><Plug :size="14" />{{ s.spotify.connected ? 'Koble til på nytt' : 'Koble til Spotify' }}</a>
         <button v-if="s.spotify.connected" class="btn soft small" :disabled="busy" @click="disconnectSpotify">Koble fra</button>
       </p>
+      <p v-if="s.spotify.connected && s.spotify.denied" class="notice error">Spotify slipper ikke denne kontoen inn ennå, så hylla blir tom. Be eieren av siden legge til e-posten du bruker på Spotify (Spotify-dashboardet → appen → User Management). Når det er gjort, trykk «Koble til på nytt».</p>
       <p v-if="s.keys.spotify_app && !s.spotify.connected" class="muted">Spotify slipper bare inn kontoer som eieren av siden har lagt til. Be eieren legge til navnet og e-posten du bruker på Spotify, og trykk så «Koble til».</p>
       <p v-else-if="!s.keys.spotify_app" class="muted">Spotify er ikke satt opp på denne siden ennå.</p>
     </section>

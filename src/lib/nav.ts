@@ -1,5 +1,5 @@
 import { computed, reactive } from 'vue'
-import { useData } from '../composables/useData'
+import { useData } from '@/composables/site/useData'
 import { routeAllowed } from './sections'
 
 // The main tabs and the sub-tabs inside them. Every sub-tab is still its own route (and its own

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { Check, ImageUp, Plus, X, Trash2, Trophy } from 'lucide-vue-next'
-import { api, errorMessage, shrinkImage, account } from '../../composables/useAdmin'
-import { reloadData, type About, type AboutLink } from '../../composables/useData'
-import { siteTexts, setTexts } from '../../composables/useTexts'
-import { milestones, loadMilestones, setMilestones, type Milestone } from '../../composables/useMilestones'
+import { api, errorMessage, shrinkImage, account } from '@/composables/site/useAdmin'
+import { reloadData, type About, type AboutLink } from '@/composables/site/useData'
+import { siteTexts, setTexts } from '@/composables/site/useTexts'
+import { milestones, loadMilestones, setMilestones, type Milestone } from '@/composables/site/useMilestones'
 import { thumb } from '../../lib/photos'
 import type { Flash } from '../../types'
 

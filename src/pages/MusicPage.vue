@@ -2,25 +2,25 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import { Disc3, ListMusic, Library, Search, X, Sparkles } from 'lucide-vue-next'
-import { room } from '../composables/useRoom'
-import { spotify, useSpotify } from '../composables/useSpotify'
-import { shell } from '../composables/useShell'
-import NowPlaying from '../components/NowPlaying.vue'
-import VinylPanel from '../components/VinylPanel.vue'
-import PlaylistPanel from '../components/PlaylistPanel.vue'
-import SpotifySearch from '../components/SpotifySearch.vue'
-import MiniNowPlaying from '../components/MiniNowPlaying.vue'
-import SegSwitch from '../components/SegSwitch.vue'
-import FolderTree from '../components/FolderTree.vue'
-import ArtistTree from '../components/ArtistTree.vue'
-import AllPanel from '../components/AllPanel.vue'
-const DiscoverContent = defineAsyncComponent(() => import('../components/DiscoverContent.vue'))
-import QueuePanel from '../components/QueuePanel.vue'
-import { loadGroups, groups, select } from '../composables/useGroups'
-import { peek, peekBack, peekClear } from '../composables/useBrowse'
-import MusicDetail from '../components/MusicDetail.vue'
-import ArtistPage from '../components/ArtistPage.vue'
-import MobileMusicBar from '../components/MobileMusicBar.vue'
+import { room } from '@/composables/room/useRoom'
+import { spotify, useSpotify } from '@/composables/music/useSpotify'
+import { shell } from '@/composables/ui/useShell'
+import NowPlaying from '@/components/music/NowPlaying.vue'
+import VinylPanel from '@/components/vinyl/VinylPanel.vue'
+import PlaylistPanel from '@/components/music/PlaylistPanel.vue'
+import SpotifySearch from '@/components/music/SpotifySearch.vue'
+import MiniNowPlaying from '@/components/music/MiniNowPlaying.vue'
+import SegSwitch from '@/components/ui/SegSwitch.vue'
+import FolderTree from '@/components/music/FolderTree.vue'
+import ArtistTree from '@/components/music/ArtistTree.vue'
+import AllPanel from '@/components/music/AllPanel.vue'
+const DiscoverContent = defineAsyncComponent(() => import('@/components/content/DiscoverContent.vue'))
+import QueuePanel from '@/components/music/QueuePanel.vue'
+import { loadGroups, groups, select } from '@/composables/music/useGroups'
+import { peek, peekBack, peekClear } from '@/composables/music/useBrowse'
+import MusicDetail from '@/components/music/MusicDetail.vue'
+import ArtistPage from '@/components/music/ArtistPage.vue'
+import MobileMusicBar from '@/components/music/MobileMusicBar.vue'
 
 // Plain version, laid out like Spotify: the library on the left, search + the grid in the middle, what's
 // playing on the right. Phones: the search and the Album/Spillelister switch stay at the top while the grid
@@ -80,6 +80,7 @@ function show(view: 'vinyl' | 'ipod') {
 
 <template>
   <div class="cpage music" :class="{ app: shell === 'player', phone }">
+    <p v-if="spotify.denied" class="denied" role="alert">Spotify slipper ikke denne kontoen inn ennå, så hylla er tom. Eieren av siden må legge til e-posten din i Spotify-dashboardet – prøv deretter «Koble til på nytt» under Admin → Tilkoblinger.</p>
     <!-- phones: like Spotify – the library or the search fills the screen; the player + the two tabs sit together at the bottom -->
     <div v-if="phone" class="mobile">
       <main class="m-main">
@@ -199,6 +200,7 @@ function show(view: 'vinyl' | 'ipod') {
 </template>
 
 <style scoped>
+.denied { margin: 0 0 10px; padding: 10px 14px; border-radius: 14px; background: color-mix(in srgb, #e0705f 18%, transparent); color: var(--text); font-size: 0.88rem; }
 .music { width: min(1680px, 100%); padding-top: 20px; }
 /* PC: the page is exactly one screen tall – nothing to scroll except inside the cards, so nothing jumps */
 @media (min-width: 821px) { .music { padding-bottom: 20px; } }
