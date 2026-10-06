@@ -127,3 +127,9 @@ export function sessionLen(unix: number | null | undefined): string {
 }
 export const fmtDate = (unix: number | null | undefined): string => (unix ? new Date(unix * 1000).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
 export const fmtYears = (unix: number | null | undefined): string => (unix ? `${Math.max(1, Math.round((Date.now() / 1000 - unix) / 31557600))} år` : '')
+
+/** Another room: its own Steam profile. */
+export function resetSteam(): void {
+  Object.assign(steam, { loaded: false, configured: false, error: null, profile: null, library: null, live: null, friends: null })
+  loading = null
+}

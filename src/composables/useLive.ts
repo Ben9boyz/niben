@@ -72,3 +72,8 @@ export const liveDay = computed<boolean>(() => {
 /** The weather to show: only when it is set up. */
 export const weather = computed<Weather | null>(() => (live.configured ? { kind: live.kind, cloud: live.cloud, wind: live.wind, day: liveDay.value } : null))
 void tickTimer
+
+/** Another room: its own home town (weather, day and night). */
+export function resetLive(): void {
+  Object.assign(live, { loaded: false, configured: false, name: '', kind: 'clear', temp: null, cloud: 0, wind: 0, isDay: true, sunrise: [], sunset: [] })
+}

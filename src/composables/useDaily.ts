@@ -32,3 +32,8 @@ export const dailyAlbum = computed<Album | null>(() => {
 })
 /** One of the Last.fm suggestions for today (an album I don't have yet), or null. */
 export const dailyRec = computed<DailyRec | null>(() => pick.rec)
+
+/** Another room: its own daily pick. */
+export function resetDaily(): void {
+  Object.assign(pick, { day: '', uri: null, rec: null, loaded: false })
+}

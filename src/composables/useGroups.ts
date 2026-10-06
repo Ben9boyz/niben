@@ -9,21 +9,21 @@ import { roomKey } from '../lib/room'
 // My groups ("Jobb og fokus", "Trening" …) for albums and playlists. They live on the server (the same on every
 // device); the on/off switch for grouping is per browser. New things get a guessed group, marked as guessed
 // until I move or confirm them.
-const KEY = roomKey('niben-grouping')
+const onKey = (): string => roomKey('niben-grouping')
 function readOn(): boolean {
-  try { return localStorage.getItem(KEY) !== 'off' } catch { return true }
+  try { return localStorage.getItem(onKey()) !== 'off' } catch { return true }
 }
 
-const COLLAPSED_KEY = roomKey('niben-groups-collapsed')
+const collapsedKey = (): string => roomKey('niben-groups-collapsed')
 function readCollapsed(): Record<string, boolean> {
-  try { return JSON.parse(localStorage.getItem(COLLAPSED_KEY) || '{}') as Record<string, boolean> } catch { return {} }
+  try { return JSON.parse(localStorage.getItem(collapsedKey()) || '{}') as Record<string, boolean> } catch { return {} }
 }
 const phone = typeof window !== 'undefined' ? window.matchMedia('(max-width: 820px)') : { matches: false }
 
-const VIEW_KEY = roomKey('niben-grouping-view')
+const viewKey = (): string => roomKey('niben-grouping-view')
 export type GroupView = 'artist' | 'lister' | 'mapper'
 function readView(): GroupView {
-  try { const v = localStorage.getItem(VIEW_KEY); return v === 'lister' || v === 'mapper' ? v : 'artist' } catch { return 'artist' }
+  try { const v = localStorage.getItem(viewKey()); return v === 'lister' || v === 'mapper' ? v : 'artist' } catch { return 'artist' }
 }
 
 export const groups = reactive({
@@ -52,12 +52,12 @@ export function setView(v: GroupView): void {
   groups.view = v
   groups.sel = null
   groups.artist = null
-  try { localStorage.setItem(VIEW_KEY, v) } catch { /* private mode */ }
+  try { localStorage.setItem(viewKey(), v) } catch { /* private mode */ }
 }
 
 export function setGrouping(on: boolean): void {
   groups.on = on
-  try { localStorage.setItem(KEY, on ? 'on' : 'off') } catch { /* private mode */ }
+  try { localStorage.setItem(onKey(), on ? 'on' : 'off') } catch { /* private mode */ }
 }
 
 function apply(j: GroupsReply | null | undefined): void {
@@ -68,7 +68,7 @@ function apply(j: GroupsReply | null | undefined): void {
   groups.why = j.why ?? {}
   groups.audio = j.audio ?? null
   groups.loaded = true
-  void pset('groups', j) // so the next visit starts from this (see loadGroups)
+  void pset(roomKey('groups'), j) // so the next visit starts from this (see loadGroups)
 }
 
 let loading: Promise<void> | null = null
@@ -77,7 +77,7 @@ export function loadGroups(force = false): Promise<void> {
   // the groups are changed from here (and saved + cached at once), so ask the server again only every 6 hours
   loading = (async () => {
     if (!force) {
-      const saved = await pget<GroupsReply>('groups', 6 * 3600000)
+      const saved = await pget<GroupsReply>(roomKey('groups'), 6 * 3600000)
       if (saved?.groups) { apply(saved); return }
     }
     try {
@@ -113,7 +113,7 @@ export function isCollapsed(id: string, index = 0): boolean {
 }
 export function toggleCollapsed(id: string, index = 0): void {
   groups.collapsed = { ...groups.collapsed, [id]: !isCollapsed(id, index) }
-  try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(groups.collapsed)) } catch { /* private mode */ }
+  try { localStorage.setItem(collapsedKey(), JSON.stringify(groups.collapsed)) } catch { /* private mode */ }
 }
 export function select(id: string): void { groups.sel = groups.sel === id ? null : id }
 export function openFolder(id: string | null): void { groups.sel = id }
@@ -203,3 +203,9 @@ export const shelfAlbums = computed<Album[]>(() => {
   if (!groups.on || !groups.loaded || groups.view === 'artist') return byArtist
   return sectionsOf(byArtist, false, true).flatMap((s) => s.items)
 })
+
+/** Another room: its own folders, and this machine's view settings for that room. */
+export function resetGroups(): void {
+  Object.assign(groups, { loaded: false, list: [], sel: null, collapsed: readCollapsed(), treeOpen: {}, assign: {}, auto: [], why: {}, audio: null, on: readOn(), artist: null, view: readView(), editing: false })
+  loading = null
+}

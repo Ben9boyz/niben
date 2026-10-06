@@ -20,9 +20,9 @@ export const myQueue = reactive({
 })
 
 const LEAD_MS = 15000 // send the next song this long before the current one ends
-const SENT_KEY = roomKey('niben-queue-sent')
-if (CUSTOM_QUEUE) { try { myQueue.sent = JSON.parse(sessionStorage.getItem(SENT_KEY) || 'null') as SentSong | null } catch { /* private mode */ } }
-const keepSent = (): void => { try { sessionStorage.setItem(SENT_KEY, JSON.stringify(myQueue.sent)) } catch { /* private mode */ } }
+const sentKey = (): string => roomKey('niben-queue-sent')
+if (CUSTOM_QUEUE) { try { myQueue.sent = JSON.parse(sessionStorage.getItem(sentKey()) || 'null') as SentSong | null } catch { /* private mode */ } }
+const keepSent = (): void => { try { sessionStorage.setItem(sentKey(), JSON.stringify(myQueue.sent)) } catch { /* private mode */ } }
 
 let saveT = 0
 let backoff = 0
@@ -174,3 +174,11 @@ export function startQueueDriver(): void {
 }
 
 watch(() => admin.mine, (v) => { if (v) startQueueDriver(); else { myQueue.items = []; myQueue.sent = null } }, { immediate: false })
+
+/** Another room: its own queue. */
+export function resetQueue(): void {
+  myQueue.items = []
+  myQueue.loaded = false
+  myQueue.sent = null
+  if (CUSTOM_QUEUE) { try { myQueue.sent = JSON.parse(sessionStorage.getItem(sentKey()) || 'null') as SentSong | null } catch { /* private mode */ } }
+}

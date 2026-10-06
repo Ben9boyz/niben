@@ -70,12 +70,12 @@ export async function loadJapaneseHistory(): Promise<void> {
 export const ANIME_READY = 80
 
 // ── practice (admin) ──
-const NEW_KEY = roomKey('niben-jp-new')
+const newKey = (): string => roomKey('niben-jp-new')
 export function newPerSession(): number {
-  try { const v = parseInt(localStorage.getItem(NEW_KEY) ?? '', 10); return Number.isFinite(v) ? v : 10 } catch { return 10 }
+  try { const v = parseInt(localStorage.getItem(newKey()) ?? '', 10); return Number.isFinite(v) ? v : 10 } catch { return 10 }
 }
 export function setNewPerSession(n: number): void {
-  try { localStorage.setItem(NEW_KEY, String(n)) } catch { /* private mode */ }
+  try { localStorage.setItem(newKey(), String(n)) } catch { /* private mode */ }
 }
 
 /** Due cards (oldest first) followed by some new ones. */
@@ -164,4 +164,12 @@ export async function deckAction(op: string, extra: Record<string, unknown> = {}
   const r = await api('jpdb_deck', { op, ...extra })
   wordsCache = null
   return r
+}
+
+/** Another room: its own words, decks and history. */
+export function resetJapanese(): void {
+  Object.assign(jp, { loaded: false, configured: false, error: null, decks: [], anime: [], count: { due: 0, learning: 0, known: 0, new: 0 }, word: null })
+  Object.assign(jpHistory, { loaded: false, points: [] })
+  loading = null
+  wordsCache = null
 }

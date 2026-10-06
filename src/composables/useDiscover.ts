@@ -45,3 +45,8 @@ export const delPick = (uri: string) => run('del', async () => { await api('disc
 export const hideRec = (uri: string) => run('hide', async () => { await api('discover_hide', { uri }); discover.recs = discover.recs.filter((p) => p.uri !== uri) })
 export const saveKey = (key: string) => run('key', async () => { const r = await api<{ hasKey: boolean }>('discover_key', { key }); discover.hasKey = r.hasKey })
 export const refreshRecs = () => run('refresh', async () => { const r = await api<{ recs?: Pick[]; at?: number }>('discover_refresh', {}); discover.recs = r.recs ?? []; discover.at = r.at ?? 0 })
+
+/** Another room: its own picks and suggestions. */
+export function resetDiscover(): void {
+  Object.assign(discover, { loaded: false, picks: [], recs: [], at: 0, hasKey: false, busy: '', error: '' })
+}

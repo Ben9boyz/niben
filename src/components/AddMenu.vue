@@ -11,13 +11,13 @@ import { roomKey } from '../lib/room'
 const props = withDefaults(defineProps<{ exclude?: string /* the playlist we're looking at */ }>(), { exclude: '' })
 const emit = defineEmits<{ queue: []; pick: [playlist: Playlist]; close: [] }>()
 
-const RECENT_KEY = roomKey('niben-recent-playlists')
+const recentKey = (): string => roomKey('niben-recent-playlists')
 const q = ref('')
 const input = ref<HTMLInputElement | null>(null)
 const recentUris = ref<string[]>([])
 onMounted(() => {
   loadGroups()
-  try { recentUris.value = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') as string[] } catch {}
+  try { recentUris.value = JSON.parse(localStorage.getItem(recentKey()) || '[]') as string[] } catch {}
   input.value?.focus({ preventScroll: true })
 })
 
@@ -30,7 +30,7 @@ const sections = computed(() => (groups.on && groups.loaded && !needle.value ? s
 const first = computed(() => (needle.value ? rest.value[0] : null))
 
 function pick(p: Playlist) {
-  try { localStorage.setItem(RECENT_KEY, JSON.stringify([p.uri, ...recentUris.value.filter((u) => u !== p.uri)].slice(0, 8))) } catch {}
+  try { localStorage.setItem(recentKey(), JSON.stringify([p.uri, ...recentUris.value.filter((u) => u !== p.uri)].slice(0, 8))) } catch {}
   emit('pick', p)
 }
 </script>

@@ -23,3 +23,10 @@ export function loadMilestones(force = false): Promise<void> {
   return loading
 }
 export const setMilestones = (items: Milestone[] | null | undefined): void => { milestones.items = items ?? [] }
+
+/** Another room: its own milestones. */
+export function resetMilestones(): void {
+  milestones.items = []
+  milestones.loaded = false
+  loading = null
+}

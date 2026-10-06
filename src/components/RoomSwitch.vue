@@ -40,7 +40,7 @@ onBeforeUnmount(() => { document.removeEventListener('pointerdown', onDoc); wind
       <transition name="fade">
         <div v-if="open" ref="menuEl" class="smenu glass" role="menu" translate="no" :style="pos" @click.stop>
           <div class="grp first"><span class="cap">Rom</span></div>
-          <button v-for="r in rooms.list" :key="r.username" class="row" role="menuitem" @click="r.username === rooms.current ? close() : setRoom(r.username)">
+          <button v-for="r in rooms.list" :key="r.username" class="row" role="menuitem" @click="close(); if (r.username !== rooms.current) void setRoom(r.username)">
             <img v-if="r.photo" class="av" :src="thumb(r.photo, 400)" alt="" crossorigin="anonymous" /><span v-else class="av ph">{{ r.username.slice(0, 1).toUpperCase() }}</span>
             <span class="l"><b>{{ r.username }}<small v-if="r.owner"> · hovedrommet</small></b><small v-if="r.tagline">{{ r.tagline }}</small></span>
             <Check v-if="r.username === rooms.current" :size="16" aria-hidden="true" />

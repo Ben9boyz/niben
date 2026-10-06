@@ -51,7 +51,7 @@ let fetchedAt = 0
 // The album/playlist lists are big and rarely change – and when I change them from here the page updates them
 // itself. So keep them on this machine and only ask the server again once a day (or on "Oppdater fra Spotify").
 // "Now playing" + the lock are tiny and polled often.
-const LISTS_KEY = roomKey('niben-spotify-lists-v2')
+const listsKey = (): string => roomKey('niben-spotify-lists-v2')
 const LISTS_MAX_AGE = 24 * 60 * 60 * 1000
 let listsAt = 0
 let listsSig = ''
@@ -61,7 +61,7 @@ let roomSeen = ''
 
 function hydrate(): void {
   try {
-    const c = JSON.parse(localStorage.getItem(LISTS_KEY) || 'null') as SavedLists | null
+    const c = JSON.parse(localStorage.getItem(listsKey()) || 'null') as SavedLists | null
     if (c?.albums) {
       spotify.albums = c.albums
       spotify.playlists = c.playlists ?? []
@@ -116,7 +116,7 @@ function applyNow(j: PublicReply): void {
     listsAt = 0
     listsSig = ''
     cachedRoom = ''
-    try { localStorage.removeItem(LISTS_KEY) } catch { /* private mode */ }
+    try { localStorage.removeItem(listsKey()) } catch { /* private mode */ }
   }
   if (j.room != null) roomSeen = String(j.room)
   spotify.configured = !!j.configured
@@ -159,11 +159,11 @@ export async function refreshLists(force = false): Promise<void> {
         spotify.playlists = j.playlists ?? []
       }
       listsAt = Date.now()
-      try { localStorage.setItem(LISTS_KEY, JSON.stringify({ at: listsAt, sig, room: roomSeen, albums: spotify.albums, playlists: spotify.playlists })) } catch {}
+      try { localStorage.setItem(listsKey(), JSON.stringify({ at: listsAt, sig, room: roomSeen, albums: spotify.albums, playlists: spotify.playlists })) } catch {}
     } else {
       spotify.albums = []
       spotify.playlists = []
-      try { localStorage.removeItem(LISTS_KEY) } catch { /* private mode */ }
+      try { localStorage.removeItem(listsKey()) } catch { /* private mode */ }
     }
     spotify.error = null
   } catch (e) {
@@ -547,7 +547,7 @@ async function act<T extends object = Record<string, never>>(action: string, bod
 }
 /** Remembers the lists on this machine (see hydrate). */
 function saveLists(): void {
-  try { localStorage.setItem(LISTS_KEY, JSON.stringify({ at: listsAt, sig: listsSig, room: roomSeen, albums: spotify.albums, playlists: spotify.playlists })) } catch { /* private mode / full */ }
+  try { localStorage.setItem(listsKey(), JSON.stringify({ at: listsAt, sig: listsSig, room: roomSeen, albums: spotify.albums, playlists: spotify.playlists })) } catch { /* private mode / full */ }
 }
 /** Up next in Spotify's queue. */
 export async function fetchQueue(): Promise<Track[]> {
@@ -646,4 +646,17 @@ export async function setLiked(uri: string, on: boolean): Promise<ActResult> {
   if (r.ok) likedCache.set(uri, { t: Date.now(), v: !!on })
   if (r.ok) notify(on ? 'Lagret i «Likte sanger».' : 'Fjernet fra «Likte sanger».')
   return r
+}
+
+/** Another room: forget everything about the last one (its library, what played, the lock) and start from what this
+ *  machine has saved for the new room. The caller then asks the server (refreshLists / refreshNow). */
+export function resetSpotify(): void {
+  Object.assign(spotify, {
+    notice: null, loaded: false, configured: false, connected: false, denied: false, now: null, albums: [], guests: [], playlists: [], recent: [],
+    queueV: 0, lockUntil: 0, lockSeconds: 600, offset: 0, error: null, startedHere: 0,
+    origin: ((): PlayOrigin | null => { try { return JSON.parse(localStorage.getItem(roomKey('niben-play-origin')) || 'null') as PlayOrigin | null } catch { return null } })(),
+  })
+  listsAt = 0; listsSig = ''; nowSig = ''; cachedRoom = ''; roomSeen = ''; localUntil = 0
+  trackCache.clear(); tempoCache.clear(); searchCache.clear(); likedCache.clear()
+  hydrate()
 }

@@ -60,3 +60,8 @@ export async function removeDecor(id: string): Promise<void> {
   decor.busy = 'del'
   try { await api('decor_delete', { id }); decor.items = decor.items.filter((i) => i.id !== id); if (decor.selected === id) decor.selected = null } catch (e) { decor.error = errorMessage(e) } finally { decor.busy = '' }
 }
+
+/** Another room: its own models. */
+export function resetDecor(): void {
+  Object.assign(decor, { items: [], loaded: false, editing: false, selected: null, busy: '', error: '', saved: true })
+}
