@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit && tsc -p tsconfig.sw.json && tsc -p tsconfig.node.json && tsc -p desktop/tsconfig.json",
     "check:any": "! grep -rnE '(: |as |<|[|] )any\\b|any\\[\\]' src server vite.config.ts desktop/src --include=*.ts --include=*.vue",
-    "check": "npm run typecheck && npm run check:any"
+    "check": "npm run typecheck && npm run check:any",
+    "zip": "bash scripts/make-upload-zip.sh"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
