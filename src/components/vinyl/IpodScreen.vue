@@ -208,7 +208,7 @@ onBeforeUnmount(() => {
 @keyframes on { from { filter: brightness(0.2); } }
 header {
   display: grid;
-  grid-template-columns: calc(var(--u) * 16) minmax(0, 1fr) calc(var(--u) * 24);
+  grid-template-columns: calc(var(--u) * 16) minmax(0, 1fr) calc(var(--u) * 34); /* room for shuffle, play and the X */
   padding: 0 calc(var(--u) * 1.5);
   align-items: center;
   height: calc(var(--u) * 13);
@@ -221,7 +221,8 @@ header {
 header span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .np { display: grid; place-items: center; border: 0; background: none; cursor: pointer; color: #9aa; font-size: 0.8em; padding: 0; height: 100%; }
 .np.on { color: #1db954; }
-.rt { display: grid; grid-template-columns: 1fr 1fr; height: 100%; }
+.rt { display: flex; align-items: center; justify-content: flex-end; height: 100%; overflow: visible !important; }
+.rt .np { width: calc(var(--u) * 11); flex: none; }
 .np.px:hover { color: #d24b4b; }
 .back {
   display: grid;
