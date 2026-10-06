@@ -100,7 +100,7 @@ interface HitInfo { object: THREE.Object3D; kind?: string; index?: number; stati
 interface Flight { from: Pose3; to: Pose3; t: number; dur: number; lift: number }
 interface Pose3 { pos: THREE.Vector3; target: THREE.Vector3 }
 interface GuitarEntry { holder: THREE.Group; model: THREE.Object3D; hook: THREE.Mesh; home: THREE.Vector3; vel: THREE.Vector3; rot: number; strum: number }
-type LyttePose = 'top' | 'shelf' | 'ipod' | 'deck'
+type LyttePose = 'top' | 'topipod' | 'shelf' | 'ipod' | 'deck'
 
 export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerState, onDecorChange, onDecorSelect }: RoomCallbacks = {}) {
   let reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -649,12 +649,18 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     zoomTarget = 1 // the zoom is for the globe only
     desk.setScreenMode(station === 'gaming' ? 'gaming' : 'code')
     let to: Pose3 | null = null
-    if (station === 'lytte' && lyttePose === 'ipod') {
+    if (station === 'lytte' && (lyttePose === 'ipod' || lyttePose === 'topipod')) {
       // the iPod stays on its stand: the camera comes to it (the lens on a narrow screen pushes the camera back by distK, so start nearer)
       const v = listening.ipodView(camera.fov, camera.aspect)
-      to = { pos: v.target.clone().add(v.pos.sub(v.target).divideScalar(distK)), target: v.target }
+      const near = { pos: v.target.clone().add(v.pos.sub(v.target).divideScalar(distK)), target: v.target }
+      if (lyttePose === 'ipod') to = near
+      else {
+        // "Spiller nå" while a playlist plays on the iPod: the table as before, but turned and moved towards the iPod so it is a main part of the picture
+        const top = { pos: new THREE.Vector3(...LYTTE_TOP.pos), target: new THREE.Vector3(...LYTTE_TOP.target) }
+        to = { pos: top.pos.lerp(near.pos, 0.55), target: top.target.lerp(near.target, 0.7) }
+      }
     } else {
-      const s: Pose | null | undefined = station === 'lytte' && lyttePose ? { shelf: LYTTE_SHELF, top: LYTTE_TOP, deck: LYTTE_DECK }[lyttePose as Exclude<LyttePose, 'ipod'>] : STATIONS[station]
+      const s: Pose | null | undefined = station === 'lytte' && lyttePose ? { shelf: LYTTE_SHELF, top: LYTTE_TOP, deck: LYTTE_DECK }[lyttePose as 'shelf' | 'top' | 'deck'] : STATIONS[station]
       if (!s) return
       to = { pos: new THREE.Vector3(...s.pos), target: new THREE.Vector3(...s.target) }
     }
@@ -1319,7 +1325,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     camera.fov = w / h < 0.8 ? 62 : w / h < 1.2 ? 52 : 42
     distK = w / h < 0.8 ? 1.3 : 1
     camera.updateProjectionMatrix()
-    if (station === 'lytte' && lyttePose === 'ipod') goTo('lytte', { instant: true }) // (the iPod fills the same share of a new shape)
+    if (station === 'lytte' && (lyttePose === 'ipod' || lyttePose === 'topipod')) goTo('lytte', { instant: true }) // (the iPod fills the same share of a new shape)
     invalidate(0.3)
   }
   const ro = new ResizeObserver(resize)
@@ -1450,8 +1456,8 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     if (firstFrame) { camera.position.copy(wantPos); firstFrame = false }
     let active = !!flight || performance.now() < renderUntil || Math.abs(zoomTarget - zoom) > 0.0005
     if (camera.position.distanceToSquared(wantPos) > 1e-8 || lookAt.distanceToSquared(camTarget) > 1e-8) active = true
-    camera.position.lerp(wantPos, Math.min(1, dt * 4))
-    lookAt.lerp(camTarget, Math.min(1, dt * 6))
+    camera.position.lerp(wantPos, Math.min(1, dt * 12)) // (follows the flight closely: a long, soft tail made short moves feel slow)
+    lookAt.lerp(camTarget, Math.min(1, dt * 14))
     if (flight) lookAt.copy(camTarget)
     camera.lookAt(lookAt)
 
@@ -1576,7 +1582,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       // where the camera looks in the listening corner
       if (pose !== lyttePose) {
         lyttePose = pose
-        if (station === 'lytte') goTo('lytte', { duration: 1.3 })
+        if (station === 'lytte') goTo('lytte', { duration: 0.95 })
       }
     },
     /** The tonearm's angle: 0 = needle on the record, 0.45 = resting. */

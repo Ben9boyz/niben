@@ -78,10 +78,8 @@ async function open(row: Row | undefined) {
     const current = row.kind === 'track' ? now.value?.uri === row.item.uri : now.value?.context === pl.uri
     if (current) { wheel('toggle'); return }
     if (locked.value) { toast.value = `Låst – hør ferdig (${fmtClock(lockLeft.value)})`; setTimeout(() => (toast.value = ''), 2600); return }
-    toast.value = 'Starter …'
     const r = await play(pl.uri, row.kind === 'track' ? row.item.uri : null)
-    toast.value = r.ok ? `Spiller${lockNote()}` : r.error ?? ''
-    setTimeout(() => (toast.value = ''), 2600)
+    if (!r.ok) { toast.value = r.error ?? ''; setTimeout(() => (toast.value = ''), 2600) } // (only trouble is told – no "Starter …" / "Spiller")
     if (r.ok) setTimeout(() => (view.value = 'now'), 900)
   }
 }
@@ -93,8 +91,7 @@ async function wheel(op: 'shuffle' | 'toggle' | 'previous' | 'next') {
   const r = op === 'shuffle'
     ? await setShuffle(!spotify.now?.shuffle)
     : await control(op === 'toggle' ? (spotify.now?.playing ? 'pause' : 'resume') : op)
-  toast.value = !r.ok ? r.error ?? '' : op === 'shuffle' ? (spotify.now?.shuffle ? 'Shuffle på' : 'Shuffle av') : ''
-  if (toast.value) setTimeout(() => (toast.value = ''), 2200)
+  if (!r.ok) { toast.value = r.error ?? ''; setTimeout(() => (toast.value = ''), 2200) } // (the shuffle icon in the header tells if it is on)
 }
 
 /** Close the iPod: the camera goes back to the turntable (the iPod stays on its stand). */
@@ -137,8 +134,9 @@ onBeforeUnmount(() => {
   <div v-if="rect" class="ipod" :style="{ left: `${rect.x}px`, top: `${rect.y}px`, width: `${rect.w}px`, height: `${rect.h}px`, '--u': `${rect.h / 100}px` }">
     <header>
       <button class="back" @click="back" :aria-label="view === 'menu' ? 'Lukk iPoden' : 'Tilbake'"><ChevronLeft width="1em" height="1em" /></button>
-      <span><Shuffle v-if="now?.shuffle" width="0.75em" height="0.75em" class="shf" />{{ title }}</span>
+      <span>{{ title }}</span>
       <span class="rt">
+        <span v-if="now?.shuffle" class="shf" role="img" aria-label="Shuffle er på" title="Shuffle er på"><Shuffle width="1em" height="1em" /></span>
         <button class="np" :class="{ on: now?.playing }" @click="view = 'now'" aria-label="Spilles nå"><Play width="1em" height="1em" fill="currentColor" /></button>
         <button class="np px" @click="leave" aria-label="Lukk iPoden" title="Lukk iPoden"><X width="1em" height="1em" /></button>
       </span>
@@ -299,5 +297,5 @@ header span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   cursor: pointer;
 }
 .putdown:hover { color: var(--accent); }
-.shf { margin-right: 0.3em; vertical-align: -0.05em; color: #2b7ff0; }
+.shf { display: inline-grid; place-items: center; margin-right: 0.35em; color: #2b7ff0; }
 </style>

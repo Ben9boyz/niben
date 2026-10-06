@@ -8,6 +8,7 @@ import { admin, checkLogin } from '@/composables/site/useAdmin'
 import BrandLogo from '@/components/ui/BrandLogo.vue'
 import { Menu, X } from 'lucide-vue-next'
 import { targetEl } from '@/lib/dom'
+import { mode, toggleMode } from '@/composables/ui/useMode'
 
 const route = useRoute()
 const router = useRouter()
@@ -144,6 +145,8 @@ onBeforeUnmount(() => {
   <!-- phones: the whole menu sits behind the logo (tap it); the settings cog is in the other corner -->
   <div v-if="isPhone" class="mbar" aria-hidden="true"></div>
   <button v-if="isPhone" class="mlogo glass" :aria-expanded="navOpen" aria-label="Meny" @click="navOpen = !navOpen" @dblclick.prevent="toAdmin" @pointerdown="pressStart" @pointerup="pressEnd" @pointerleave="pressEnd"><X v-if="navOpen" :size="24" aria-hidden="true" /><Menu v-else :size="24" aria-hidden="true" /></button>
+  <!-- phones, 3D: the way to the plain (2D) version, right in the bar -->
+  <button v-if="isPhone && mode === 'rom'" class="m2d" aria-label="Bytt til 2D-versjonen" title="Bytt til 2D-versjonen" @click="toggleMode">2D</button>
   <RoomSwitch v-if="isPhone" />
   <SettingsMenu v-if="isPhone" />
 </template>
@@ -348,6 +351,11 @@ onBeforeUnmount(() => {
 </style>
 
 <style>
+/* phones: the 2D button sits flat in the bar, next to the menu */
+@media (max-width: 720px) {
+  html body .m2d { position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 58px; z-index: 42; height: 42px; min-width: 42px; padding: 0 10px; border: 0; background: transparent; color: var(--text-2); font: 700 0.8rem var(--font); cursor: pointer; touch-action: manipulation; }
+  html body .m2d:active { color: var(--accent); }
+}
 /* phones: logo and cog sit flat in the bar (no pills of their own) */
 @media (max-width: 720px) {
   html body .mlogo.mlogo, html body .sm.sm { background: transparent; box-shadow: none; border: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }

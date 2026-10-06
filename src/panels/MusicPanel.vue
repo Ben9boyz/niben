@@ -24,11 +24,11 @@ const showNow = computed(() => !(phone && mode.value === 'rom' && !spotify.now?.
     <div class="panel-body">
       <MusicTabs v-if="mode === 'rom'" class="tabs-top" />
       <div v-if="showNow" class="np-sticky"><NowPlaying /></div>
-      <QueuePanel v-if="spotify.now?.name" collapsible :flat="room.musicView.startsWith('ipod')" />
+      <QueuePanel v-if="spotify.now?.name" collapsible :flat="room.listTab === 'ipod'" />
       <transition name="fade" mode="out-in">
         <PeekView v-if="peek.stack.length" key="peek" />
         <DiscoverContent v-else-if="room.discover" key="d" />
-        <PlaylistPanel v-else-if="room.musicView.startsWith('ipod')" key="p" />
+        <PlaylistPanel v-else-if="room.listTab === 'ipod'" key="p" />
         <VinylPanel v-else key="v" />
       </transition>
     </div>

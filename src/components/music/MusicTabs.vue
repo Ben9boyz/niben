@@ -6,13 +6,15 @@ import { spotify } from '@/composables/music/useSpotify'
 
 // The three lists of the listening corner, as tabs at the top of the side panel (the PC) and of the full-screen library
 // (phones): Album (the records) · Spillelister (the iPod) · Oppdag (my picks and suggestions). A tab only decides what the
-// panel shows – except Spillelister, which is also where the camera goes (the iPod on its stand), as before.
-const tab = computed(() => (room.discover ? 'discover' : room.musicView.startsWith('ipod') ? 'ipod' : 'vinyl'))
+// panel shows – except Album, which also takes the camera down to the record shelf.
+const tab = computed(() => (room.discover ? 'discover' : room.listTab))
+const pc = window.matchMedia('(min-width: 901px)')
 function pick(t: 'vinyl' | 'ipod' | 'discover') {
   if (t === 'discover') { room.discover = true; room.sel.musikk = null; return }
   room.discover = false
-  if (t === 'ipod') { room.musicView = 'ipod'; room.sel.musikk = null; room.deckView = false; room.shelfView = false }
-  else if (room.musicView.startsWith('ipod')) room.musicView = 'vinyl'
+  room.listTab = t
+  // Spillelister is only the list. Album takes the camera down to the record shelf (on a PC; on a phone the sheet is what you look at)
+  if (t === 'vinyl' && pc.matches) { room.musicView = 'vinyl'; room.sel.musikk = null; room.deckView = false; room.shelfView = true }
 }
 </script>
 

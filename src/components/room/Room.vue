@@ -214,13 +214,13 @@ watch(() => room.shelfView, (on) => {
 watch(() => [room.shelfView && shelfAlbums.value[room.peekIndex]?.uri, room.sel.musikk?.uri], (uris) => {
   for (const uri of uris) if (uri) fetchTracks(uri)
 })
-watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room.shelfView, room.deckView, room.recordFlipped, room.peekIndex, shelfAlbums.value], () => {
+watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room.shelfView, room.deckView, room.recordFlipped, room.peekIndex, shelfAlbums.value, playOn.value === 'ipod' && !!spotify.now?.playing], () => {
   const here = route.name === 'lytte'
   api?.setMusicView({
     // the picked record is held up to the camera – not in the overhead view, where it lies by the turntable
     selected: here && room.musicView !== 'spiller' && room.sel.musikk?.kind === 'album' ? room.sel.musikk.uri : null,
     // "Album": the camera stays by the turntable · "Spillelister": at the iPod on its stand (it never leaves the stand)
-    pose: !here ? null : room.musicView.startsWith('ipod') ? 'ipod' : room.shelfView ? 'shelf' : room.deckView ? 'deck' : 'top',
+    pose: !here ? null : room.musicView.startsWith('ipod') ? 'ipod' : room.shelfView ? 'shelf' : room.deckView ? 'deck' : playOn.value === 'ipod' && spotify.now?.playing ? 'topipod' : 'top',
     deck: here && room.deckView && !room.shelfView && !room.musicView.startsWith('ipod'),
     flip: room.recordFlipped,
   })
@@ -231,12 +231,14 @@ watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room
 // the camera goes to the player the music belongs to: the turntable for an album, the iPod for a playlist or a found
 // song (or what I've forced in the settings) – whenever a song begins, and after a while without anybody touching
 // anything. The panel slides away on the PC so the player is the whole picture.
-function focusPlayer(target?: 'ipod' | 'vinyl' | null) {
+// Both go to "Spiller nå": the table seen from a little above (with the iPod more in the picture when a playlist plays). The
+// side panel stays where it is, and the iPod / the record shelf are one click away.
+function focusPlayer(_target?: 'ipod' | 'vinyl' | null) {
   if (route.name !== 'lytte') return
-  room.musicView = (target || playOn.value) === 'ipod' ? 'ipod' : 'spiller'
+  room.musicView = 'spiller'
   room.shelfView = false
+  room.deckView = false
   room.recordFlipped = false
-  if (window.matchMedia('(min-width: 901px)').matches) room.panelHidden = true
 }
 // the iPod fills the stage on a PC: the side panel slides away (a button in the corner brings it back)
 watch(() => room.musicView, (v) => { if (v === 'ipod' && window.matchMedia('(min-width: 901px)').matches) room.panelHidden = true })

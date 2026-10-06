@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { Disc3, Library, Smartphone, ScanEye, BookOpen } from 'lucide-vue-next'
-import { toggleMode } from '@/composables/ui/useMode'
 import { room } from '@/composables/room/useRoom'
 import { spotify } from '@/composables/music/useSpotify'
 import { playOn } from '@/composables/music/usePlayOn'
@@ -19,7 +18,7 @@ watch(recordPlays, (v) => { if (!v && room.deckView) room.deckView = false })
 function goNow() {
   room.discover = false
   room.shelfView = false; room.deckView = false; room.sel.musikk = null
-  room.musicView = 'vinyl'
+  room.musicView = 'spiller'
 }
 function goShelf() {
   if (room.shelfView) { goNow(); return }
@@ -50,7 +49,6 @@ function goDeck() {
     <transition name="deck">
       <button v-if="recordPlays" class="deck glass" :class="{ on: room.deckView }" :aria-pressed="room.deckView" title="Se platespilleren ovenfra" aria-label="Se platespilleren ovenfra" @click="goDeck"><ScanEye :size="18" aria-hidden="true" /></button>
     </transition>
-    <button class="to2d glass" title="Bytt til hele 2D-versjonen" aria-label="Bytt til 2D-versjonen" @click="toggleMode">2D</button>
     <!-- phones -->
     <button class="lib glass" aria-label="Åpne biblioteket" @click="emit('pick')"><BookOpen :size="18" aria-hidden="true" /></button>
   </div>
@@ -64,8 +62,8 @@ function goDeck() {
 .cam button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: 600 0.9rem var(--font); cursor: pointer; white-space: nowrap; transition: background 0.25s, color 0.25s; }
 .cam button:hover { color: var(--text); }
 .cam button.on { background: var(--glass-strong); color: var(--accent); box-shadow: inset 0 1px 0 var(--glass-hi); }
-.deck, .to2d { display: grid; place-items: center; height: 46px; min-width: 46px; padding: 0 14px; border: 0; border-radius: 999px; color: var(--text-2); font: 700 0.8rem var(--font); cursor: pointer; transition: color 0.2s, transform 0.3s var(--spring); }
-.deck:hover, .to2d:hover { color: var(--accent); transform: scale(1.05); }
+.deck { display: grid; place-items: center; height: 46px; min-width: 46px; padding: 0 14px; border: 0; border-radius: 999px; color: var(--text-2); font: 700 0.8rem var(--font); cursor: pointer; transition: color 0.2s, transform 0.3s var(--spring); }
+.deck:hover { color: var(--accent); transform: scale(1.05); }
 .deck { padding: 0; width: 46px; }
 .deck.on { color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 .deck-enter-active, .deck-leave-active { transition: opacity 0.25s, transform 0.3s var(--spring); }
@@ -74,9 +72,8 @@ function goDeck() {
 /* phones in the 3D corner: the library button and 2D in the corner – the camera buttons are in the bar at the bottom */
 @media (max-width: 900px) {
   html.listen-phone .cam, html.listen-phone .deck { display: none; }
-  html.listen-phone .msw { top: calc(8px + env(safe-area-inset-top)); left: 8px; gap: 6px; animation: none; }
+  html.listen-phone .msw { animation: none; }
   html.listen-phone .lib { order: -1; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 999px; color: var(--text-2); cursor: pointer; touch-action: manipulation; }
-  html.listen-phone .to2d { height: 40px; min-width: 40px; padding: 0 10px; font-size: 0.74rem; touch-action: manipulation; }
 }
-@media (max-width: 720px) { .msw { top: calc(10px + env(safe-area-inset-top)); left: 62px; } }
+@media (max-width: 720px) { .msw { top: calc(10px + env(safe-area-inset-top)); left: 108px; } }
 </style>

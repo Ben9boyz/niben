@@ -180,8 +180,6 @@ watch(() => route.name, () => (collapsed.value = false))
   <RoamControls />
   <MusicSwitch v-if="isMusic && room.ready" @pick="collapsed = false" />
   <ListenDock v-if="listenPhone && room.ready && collapsed && !decor.editing" />
-  <!-- phones, 3D listening corner: the way out (the menu is hidden here) -->
-  <button v-if="listenPhone && room.ready && !decor.editing" class="lexit glass" aria-label="Ut av lyttehjørnet" @click="router.push('/')"><X :size="18" /></button>
   <GlobalMini :show="miniOn && !room.roam" @panel="setHidden(false)" />
   <TourCard v-if="room.ready" />
 
@@ -408,8 +406,7 @@ watch(() => route.name, () => (collapsed.value = false))
    (the menu, the settings cog, the mini player, the panel button and the room's own record buttons are all out of the way –
    the plain version has everything, and the "2D" button next to the switch goes there) */
 
-.lexit { position: fixed; z-index: 37; top: calc(8px + env(safe-area-inset-top)); right: 8px; width: 40px; height: 40px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 999px; color: var(--text); cursor: pointer; touch-action: manipulation; }
-html.listen-phone .mbar, html.listen-phone .mlogo, html.listen-phone .nav, html.listen-phone body .sm.sm, html.listen-phone .open-fab,
+html.listen-phone .open-fab,
 html.listen-phone .rplay, html.listen-phone .rflip, html.listen-phone .rclose, html.listen-phone .shelfbar { display: none !important; }
 </style>
 
