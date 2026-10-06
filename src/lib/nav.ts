@@ -1,4 +1,6 @@
-import { reactive } from 'vue'
+import { computed, reactive } from 'vue'
+import { useData } from '../composables/useData'
+import { routeAllowed } from './sections'
 
 // The main tabs and the sub-tabs inside them. Every sub-tab is still its own route (and its own
 // station in the 3D room); a group just decides which tab lights up in the menu and which pills show.
@@ -27,10 +29,13 @@ export const ROUTE_ICONS: Record<string, string> = {
 /** Names of the sub-tabs (only groups with more than one route show them). */
 export const TAB_LABELS: Record<string, string> = { japansk: 'Japansk', ovelse: 'Gitar-øving', gitar: 'Gitarer', kode: 'Prosjekter', reiser: 'Reiser', boker: 'Bøker', gaming: 'Spill', aaret: 'Året' }
 
+const data = useData()
+/** The groups of the room being shown: pages of switched-off corners are left out, and groups with nothing left disappear. */
+export const navGroups = computed<NavGroup[]>(() => GROUPS.map((g) => ({ ...g, routes: g.routes.filter((r) => routeAllowed(r, data.profile)) })).filter((g) => g.routes.length > 0))
 const byRoute = new Map<string, NavGroup>(GROUPS.flatMap((g) => g.routes.map((r): [string, NavGroup] => [r, g])))
-export const groupOf = (routeName: unknown): NavGroup | null => byRoute.get(String(routeName)) ?? null
+export const groupOf = (routeName: unknown): NavGroup | null => navGroups.value.find((g) => g.routes.includes(String(routeName))) ?? byRoute.get(String(routeName)) ?? null
 
 // the tab you were last on inside each group – the menu takes you back there
 const last = reactive(new Map<string, string>()) // reactive: the menu links update when it changes
 export const rememberTab = (routeName: unknown): void => { const g = byRoute.get(String(routeName)); if (g) last.set(g.id, String(routeName)) }
-export const groupTarget = (g: NavGroup): { name: string } => ({ name: last.get(g.id) ?? g.routes[0] })
+export const groupTarget = (g: NavGroup): { name: string } => { const l = last.get(g.id); return { name: l && g.routes.includes(l) ? l : g.routes[0] ?? 'hjem' } }

@@ -135,6 +135,8 @@ onMounted(loadDecor)
 watch(() => [room.api, JSON.stringify(decor.items)], () => room.api?.setDecor(decor.items), { immediate: true })
 watch(() => [room.api, decor.editing], () => room.api?.setDecorEdit(decor.editing), { immediate: true })
 watch(() => [jp.word, room.api], () => room.api?.setJapanWord(jp.word), { immediate: true })
+// corners this room's owner has switched off are not built at all
+watch(() => [room.api, JSON.stringify(data.profile.sections)], () => room.api?.setSections(data.profile.sections), { immediate: true })
 // the monitor in the gaming corner shows Steam
 loadSteam()
 watch(() => [steam.profile, steam.library, room.api], () => room.api?.setSteam({ profile: steam.profile, library: steam.library }), { immediate: true })

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
-import { LayoutDashboard, Plane, BookOpen, Mic, Music, Type, Box, Mail, Eye, EyeOff, LogOut, Lock } from 'lucide-vue-next'
-import { admin, checkLogin, login, logout, errorMessage } from '../composables/useAdmin'
+import { ref, computed, watch, onMounted } from 'vue'
+import { LayoutDashboard, Plane, BookOpen, Mic, Music, Type, Box, Mail, Eye, EyeOff, LogOut, Lock, Users, SlidersHorizontal, Guitar, DoorOpen } from 'lucide-vue-next'
+import { admin, account, signedIn, checkLogin, login, userLogin, registerAccount, logout, errorMessage } from '../composables/useAdmin'
+import { setRoom } from '../composables/useRooms'
 import AdminTrips from '../components/admin/AdminTrips.vue'
 import AdminBooks from '../components/admin/AdminBooks.vue'
 import AdminRecordings from '../components/admin/AdminRecordings.vue'
@@ -10,9 +11,13 @@ import AdminOverview from '../components/admin/AdminOverview.vue'
 import AdminTexts from '../components/admin/AdminTexts.vue'
 import AdminRoom from '../components/admin/AdminRoom.vue'
 import AdminNews from '../components/admin/AdminNews.vue'
+import AdminUsers from '../components/admin/AdminUsers.vue'
+import AdminGuitars from '../components/admin/AdminGuitars.vue'
+import AdminSettings from '../components/admin/AdminSettings.vue'
 
-const TABS = [
+const OWNER_TABS = [
   { id: 'oversikt', label: 'Oversikt', icon: LayoutDashboard },
+  { id: 'brukere', label: 'Brukere', icon: Users },
   { id: 'reiser', label: 'Reiser', icon: Plane },
   { id: 'boker', label: 'Bøker', icon: BookOpen },
   { id: 'opptak', label: 'Gitaropptak', icon: Mic },
@@ -20,14 +25,31 @@ const TABS = [
   { id: 'rom', label: 'Rom', icon: Box },
   { id: 'nyhetsbrev', label: 'Nyhetsbrev', icon: Mail },
   { id: 'tekster', label: 'Tekster', icon: Type },
+  { id: 'innstillinger', label: 'Innstillinger', icon: SlidersHorizontal },
 ]
+// a user manages their own room: their trips, books, guitars, recordings and songs – and what the room shows
+const USER_TABS = [
+  { id: 'reiser', label: 'Reiser', icon: Plane },
+  { id: 'boker', label: 'Bøker', icon: BookOpen },
+  { id: 'gitarer', label: 'Gitarer', icon: Guitar },
+  { id: 'opptak', label: 'Gitaropptak', icon: Mic },
+  { id: 'sanger', label: 'Sanger', icon: Music },
+  { id: 'innstillinger', label: 'Innstillinger', icon: SlidersHorizontal },
+]
+const TABS = computed(() => (admin.loggedIn || account.user?.owner ? OWNER_TABS : USER_TABS))
 const KEY = 'niben-admin-tab'
 const saved = (() => { try { return localStorage.getItem(KEY) } catch { return null } })()
-const tab = ref(TABS.find((t) => t.id === saved)?.id ?? 'oversikt') // remembers where I was
+const tab = ref(saved ?? 'reiser') // remembers where I was
+const shownTab = computed(() => TABS.value.find((t) => t.id === tab.value)?.id ?? TABS.value[0]?.id ?? 'reiser')
 watch(tab, (v) => { try { localStorage.setItem(KEY, v) } catch {} })
 const show = ref(false)
+const mode = ref<'login' | 'register'>('login')
+const username = ref('')
+const email = ref('')
 const password = ref('')
+const website = ref('') // hidden: only robots fill it in
 const error = ref('')
+const done = ref('')
 const busy = ref(false)
 
 onMounted(checkLogin)
@@ -36,7 +58,15 @@ async function submit() {
   error.value = ''
   busy.value = true
   try {
-    await login(password.value)
+    if (mode.value === 'register') {
+      await registerAccount(username.value, email.value, password.value, website.value)
+      done.value = 'Takk! Kontoen din er opprettet og venter på godkjenning. Du kan logge inn så snart den er godkjent.'
+      mode.value = 'login'
+    } else if (username.value.trim()) {
+      await userLogin(username.value, password.value)
+    } else {
+      await login(password.value) // (the owner: just the admin password)
+    }
     password.value = ''
   } catch (e) {
     error.value = errorMessage(e)
@@ -44,49 +74,69 @@ async function submit() {
     busy.value = false
   }
 }
+const myRoom = () => { if (account.user) void setRoom(account.user.username) }
 </script>
 
 <template>
   <section class="admin glass">
     <header class="head">
       <div>
-        <div class="eyebrow">Admin</div>
-        <h2>{{ admin.loggedIn ? 'Styr siden din' : 'Logg inn' }}</h2>
+        <div class="eyebrow">{{ account.user && !account.user.owner ? account.user.username : 'Admin' }}</div>
+        <h2>{{ signedIn ? 'Styr rommet ditt' : mode === 'register' ? 'Opprett konto' : 'Logg inn' }}</h2>
       </div>
-      <button v-if="admin.loggedIn" class="btn small out" @click="logout"><LogOut :size="14" />Logg ut</button>
+      <button v-if="signedIn" class="btn small out" @click="logout"><LogOut :size="14" />Logg ut</button>
     </header>
 
     <div v-if="!admin.checked" class="center muted">Sjekker innlogging …</div>
 
-    <form v-else-if="!admin.loggedIn" class="login" @submit.prevent="submit">
-      <p class="muted">Bare du ser dette. Logg inn for å legge inn innhold og styre musikken.</p>
+    <form v-else-if="!signedIn" class="login" @submit.prevent="submit">
+      <div class="modes" role="tablist" aria-label="Konto">
+        <button type="button" role="tab" :aria-selected="mode === 'login'" :class="{ on: mode === 'login' }" @click="mode = 'login'; error = ''">Logg inn</button>
+        <button type="button" role="tab" :aria-selected="mode === 'register'" :class="{ on: mode === 'register' }" @click="mode = 'register'; error = ''; done = ''">Opprett konto</button>
+      </div>
+      <p v-if="mode === 'login'" class="muted">Logg inn for å styre rommet ditt: reiser, bøker, gitarer og mer.</p>
+      <p v-else class="muted">Lag en konto og få et eget rom. Kontoen må godkjenne før du kan logge inn.</p>
+      <p v-if="done" class="notice ok">{{ done }}</p>
       <label class="field">
-        <span>Passord</span>
+        <span>{{ mode === 'login' ? 'Brukernavn eller e-post' : 'Brukernavn' }} <small v-if="mode === 'login'">(la stå tomt hvis du bare har admin-passordet)</small></span>
+        <input v-model="username" autocomplete="username" autocapitalize="none" spellcheck="false" :required="mode === 'register'" maxlength="190" />
+      </label>
+      <label v-if="mode === 'register'" class="field"><span>E-post</span><input v-model="email" type="email" autocomplete="email" required maxlength="190" /></label>
+      <label class="field">
+        <span>Passord <small v-if="mode === 'register'">(minst 8 tegn)</small></span>
         <span class="pw">
           <Lock :size="16" aria-hidden="true" />
-          <input v-model="password" :type="show ? 'text' : 'password'" autocomplete="current-password" autofocus required />
+          <input v-model="password" :type="show ? 'text' : 'password'" :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" :minlength="mode === 'register' ? 8 : undefined" required />
           <button type="button" class="eye" :aria-label="show ? 'Skjul passordet' : 'Vis passordet'" @click="show = !show"><EyeOff v-if="show" :size="16" /><Eye v-else :size="16" /></button>
         </span>
       </label>
+      <input v-model="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
       <p v-if="error" class="notice error">{{ error }}</p>
-      <button class="btn primary" :disabled="busy || !password">{{ busy ? 'Logger inn …' : 'Logg inn' }}</button>
+      <button class="btn primary" :disabled="busy || !password">{{ busy ? 'Vent litt …' : mode === 'login' ? 'Logg inn' : 'Opprett konto' }}</button>
     </form>
 
     <template v-else>
-      <nav class="tabs" role="tablist" aria-label="Admin">
-        <button v-for="t in TABS" :key="t.id" role="tab" :aria-selected="tab === t.id" :class="{ on: tab === t.id }" @click="tab = t.id">
+      <div v-if="!account.mine" class="notice away">
+        <span>Du ser et annet rom akkurat nå. Gå til ditt eget for å redigere.</span>
+        <button class="btn primary small" @click="myRoom"><DoorOpen :size="14" />Til mitt rom</button>
+      </div>
+      <nav v-else class="tabs" role="tablist" aria-label="Admin">
+        <button v-for="t in TABS" :key="t.id" role="tab" :aria-selected="shownTab === t.id" :class="{ on: shownTab === t.id }" @click="tab = t.id">
           <component :is="t.icon" :size="16" aria-hidden="true" /><span>{{ t.label }}</span>
         </button>
       </nav>
-      <div class="body">
+      <div v-if="account.mine" class="body">
         <transition name="fade" mode="out-in">
-          <AdminOverview v-if="tab === 'oversikt'" key="v" @goto="tab = $event" />
-          <AdminTrips v-else-if="tab === 'reiser'" key="r" />
-          <AdminBooks v-else-if="tab === 'boker'" key="b" />
-          <AdminSongs v-else-if="tab === 'sanger'" key="s" />
-          <AdminRoom v-else-if="tab === 'rom'" key="m" />
-          <AdminNews v-else-if="tab === 'nyhetsbrev'" key="n" />
-          <AdminTexts v-else-if="tab === 'tekster'" key="t" />
+          <AdminOverview v-if="shownTab === 'oversikt'" key="v" @goto="tab = $event" />
+          <AdminUsers v-else-if="shownTab === 'brukere'" key="u" />
+          <AdminTrips v-else-if="shownTab === 'reiser'" key="r" />
+          <AdminBooks v-else-if="shownTab === 'boker'" key="b" />
+          <AdminGuitars v-else-if="shownTab === 'gitarer'" key="g" />
+          <AdminSongs v-else-if="shownTab === 'sanger'" key="s" />
+          <AdminRoom v-else-if="shownTab === 'rom'" key="m" />
+          <AdminNews v-else-if="shownTab === 'nyhetsbrev'" key="n" />
+          <AdminTexts v-else-if="shownTab === 'tekster'" key="t" />
+          <AdminSettings v-else-if="shownTab === 'innstillinger'" key="i" />
           <AdminRecordings v-else key="o" />
         </transition>
       </div>
@@ -110,6 +160,12 @@ async function submit() {
 .center { padding: 40px; text-align: center; }
 .muted { color: var(--text-3); }
 .login { display: grid; gap: 14px; padding: 8px 24px 26px; max-width: 420px; }
+.modes { display: flex; gap: 4px; padding: 3px; border-radius: 12px; background: var(--glass-strong); }
+.modes button { flex: 1; padding: 9px 6px; border: 0; border-radius: 9px; background: transparent; color: var(--text-2); font-weight: 600; cursor: pointer; }
+.modes button.on { background: var(--bg); color: var(--accent); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14); }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.away { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 24px 20px; }
+.away .btn { display: inline-flex; align-items: center; gap: 6px; }
 .out { display: inline-flex; align-items: center; gap: 6px; }
 .pw { display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid var(--glass-border); border-radius: 12px; background: var(--glass-strong); color: var(--text-3); }
 .pw:focus-within { border-color: var(--accent); }

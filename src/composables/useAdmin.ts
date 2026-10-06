@@ -1,7 +1,15 @@
-import { reactive } from 'vue'
+import { computed, reactive } from 'vue'
 import { reloadData } from './useData'
 
+/** `loggedIn` = I (the owner) am logged in – what the music / site-wide admin buttons hinge on. */
 export const admin = reactive({ checked: false, loggedIn: false })
+export interface AccountUser { id: number; username: string; owner: boolean }
+/** Any logged-in account (me or a user), and whether the room on screen is theirs. */
+export const account = reactive({ user: null as AccountUser | null, mine: false })
+/** Logged in with some account. */
+export const signedIn = computed(() => admin.loggedIn || !!account.user)
+/** Allowed to change what is in this room: logged in AND it is my own room. */
+export const canManage = computed(() => account.mine)
 
 /** An error from api.php: the server's message, its `code` (e.g. 'device_missing') and the HTTP status. */
 export class ApiError extends Error {
@@ -63,8 +71,10 @@ export const errorMessage = (e: unknown): string => (e instanceof Error ? e.mess
 
 export async function checkLogin(): Promise<void> {
   try {
-    const r = await api<{ admin: boolean }>('me')
+    const r = await api<{ admin: boolean; user?: AccountUser | null; room?: { mine: boolean } }>('me')
     admin.loggedIn = !!r.admin
+    account.user = r.user ?? null
+    account.mine = !!r.room?.mine
     if (r.admin) { try { localStorage.setItem('niben-me', '1') } catch { /* private mode */ } }
   } catch {
     admin.loggedIn = false
@@ -76,13 +86,27 @@ export async function login(password: string): Promise<void> {
   await api('login', { password })
   admin.loggedIn = true
   try { localStorage.setItem('niben-me', '1') } catch { /* private mode */ } // this browser is me: not counted as a visitor
+  await checkLogin()
   refreshSongs()
+}
+
+/** Username (or e-mail) + password. The room changes with the account, so the page starts over. */
+export async function userLogin(username: string, password: string): Promise<void> {
+  const r = await api<{ user: AccountUser }>('user_login', { username, password })
+  if (r.user.owner) { try { localStorage.setItem('niben-me', '1') } catch { /* private mode */ } }
+  location.reload()
+}
+
+/** Ask for an account – the owner has to approve it before it can log in. */
+export async function registerAccount(username: string, email: string, password: string, website = ''): Promise<void> {
+  await api('user_register', { username, email, password, website })
 }
 
 export async function logout(): Promise<void> {
   try { await api('logout', {}) } catch { /* already out */ }
   admin.loggedIn = false
-  refreshSongs()
+  account.user = null
+  location.reload() // (back to my room)
 }
 
 // chord sheets are only sent to a logged-in admin, so reload the data when that changes

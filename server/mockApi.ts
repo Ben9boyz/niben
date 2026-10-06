@@ -134,6 +134,8 @@ export function mockApi(): Plugin {
         }
 
         switch (action) {
+          case 'rooms':
+            return send(res, 200, { rooms: [{ username: 'niben', owner: true, photo: null, tagline: '' }], current: 'niben' })
           case 'content':
             return send(res, 200, {
               trips: db.trips.map((t): Row => ({ ...t, photos: db.photos.filter((p) => p.trip_id === t.id) }))
@@ -164,7 +166,7 @@ export function mockApi(): Plugin {
           case 'limits':
             return send(res, 200, { upload_max_filesize: '64M', post_max_size: '64M', max_execution_time: '30', uploads_writable: true })
           case 'me':
-            return send(res, 200, { admin: loggedIn })
+            return send(res, 200, { admin: loggedIn, user: loggedIn ? { id: 1, username: 'niben', owner: true } : null, room: { id: 1, mine: loggedIn } })
           case 'login':
             if (b.password !== 'utvikling') return send(res, 401, { error: 'Feil passord.' })
             loggedIn = true

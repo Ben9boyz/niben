@@ -5,7 +5,7 @@ import PitchReading from './PitchReading.vue'
 import { ref, computed, watch, nextTick, type Component } from 'vue'
 import { GraduationCap, ArrowUpRight, Tv, Check, LayoutDashboard, ScanText, BookA } from 'lucide-vue-next'
 import { jp, loadJapanese, jpdbUrl, ANIME_READY } from '../composables/useJapanese'
-import { admin, checkLogin } from '../composables/useAdmin'
+import { admin, checkLogin, canManage } from '../composables/useAdmin'
 import { room } from '../composables/useRoom'
 import JapanPractice from './JapanPractice.vue'
 import JapanReader from './JapanReader.vue'
@@ -34,7 +34,7 @@ phoneMq.addEventListener('change', () => { phone.value = phoneMq.matches })
 const practicing = computed({ get: () => room.jpPractice, set: (v: boolean) => (room.jpPractice = v) })
 const total = computed(() => jp.count.due + jp.count.learning + jp.count.known + jp.count.new)
 const word = computed(() => jp.word)
-watch(() => admin.loggedIn, (on) => { if (!on) practicing.value = false })
+watch(() => canManage, (on) => { if (!on) practicing.value = false })
 
 // anime: the shows in the decks; enough coverage = ready to watch. A DVD clicked in the room is
 // highlighted here (and the other way round).
@@ -50,7 +50,7 @@ watch(() => room.jpAnime, async (i) => {
 
 <template>
   <div class="jpc">
-    <JapanPractice v-if="practicing && admin.loggedIn" @close="practicing = false" />
+    <JapanPractice v-if="practicing && canManage" @close="practicing = false" />
 
     <template v-else>
       <div v-if="jp.loaded && !jp.configured" class="empty">jpdb er ikke koblet til ennå.</div>
@@ -77,7 +77,7 @@ watch(() => room.jpAnime, async (i) => {
         </article>
 
         <!-- practice -->
-        <button v-if="admin.loggedIn" class="start" @click="practicing = true">
+        <button v-if="canManage" class="start" @click="practicing = true">
           <GraduationCap :size="20" />
           <span><b>Øv nå</b><small>{{ jp.count.due }} til repetisjon · nye ord etter det</small></span>
         </button>

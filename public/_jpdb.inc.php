@@ -5,12 +5,19 @@
 // Uses http_req / sp_cached / kv_del from _spotify.inc.php.
 
 function jp_config(): ?array {
-    static $c = false;
-    if ($c === false) {
-        $f = __DIR__ . '/_jpdb.php';
-        $c = is_file($f) ? require $f : null;
+    static $c = [];
+    $room = kv_scope();
+    if (!array_key_exists($room, $c)) {
+        if ($room === 1) {
+            $f = __DIR__ . '/_jpdb.php';
+            $c[$room] = is_file($f) ? require $f : null;
+        } else {
+            // another user's room: their own key, saved in their settings (never mine)
+            $k = room_secrets()['jpdb_key'] ?? null;
+            $c[$room] = $k ? ['api_key' => $k] : null;
+        }
     }
-    return $c;
+    return $c[$room];
 }
 
 /** Calls the jpdb API. Returns [status, decoded body]. */
@@ -176,7 +183,7 @@ function jp_handle(string $action, bool $post): void {
     case 'jpdb_queue': {
         // review queue for the admin: due cards (oldest first), then up to `new` new cards
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $newLimit = max(0, min(50, (int)(body()['new'] ?? 10)));
         $all = jp_all_cards();
         if (!$all) fail('Fikk ikke kontakt med jpdb.', 502);
@@ -189,7 +196,7 @@ function jp_handle(string $action, bool $post): void {
     case 'jpdb_review': {
         // grade one card on jpdb
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $b = body();
         $grade = (string)($b['grade'] ?? '');
         if (!in_array($grade, ['nothing', 'something', 'hard', 'okay', 'easy'], true)) fail('Ugyldig vurdering.');
@@ -199,7 +206,7 @@ function jp_handle(string $action, bool $post): void {
         [$s, $j] = jp_api('review', ['vid' => $vid, 'sid' => $sid, 'grade' => $grade]);
         if ($s !== 200) fail('jpdb svarte: ' . ($j['error_message'] ?? $s), 502);
         kv_del('jp_public_v2');
-        ex_practice_hit(); // a card graded today: the practice calendar
+        if (kv_scope() === 1) ex_practice_hit(); // a card graded today: the practice calendar
         // the card's new state
         [$ls, $lj] = jp_api('lookup-vocabulary', ['list' => [[$vid, $sid]], 'fields' => ['card_state', 'due_at']]);
         $info = $lj['vocabulary_info'][0] ?? null;
@@ -210,9 +217,9 @@ function jp_handle(string $action, bool $post): void {
         // a Japanese text split into words, each with reading, meanings, pitch and my card state
         if (!$post) fail('Bruk POST.', 405);
         $text = trim((string)(body()['text'] ?? ''));
-        $max = is_admin() ? 6000 : 800; // visitors try it on a short text
+        $max = viewing_own_room() ? 6000 : 800; // visitors try it on a short text
         // every new text costs a call to jpdb on my key: visitors get a handful, and all of them together a few hundred an hour
-        if (!is_admin()) {
+        if (!viewing_own_room()) {
             rl_or_fail('jpparse:' . client_ip(), 20, 600, 'Du har lest mange tekster nå – prøv igjen om litt.');
             rl_or_fail('jpparse:all', 300, 3600, 'Tekstleseren er mye brukt akkurat nå – prøv igjen senere.');
         }
@@ -263,7 +270,7 @@ function jp_handle(string $action, bool $post): void {
         // what jpdb lets me do with one word (admin): take it out of a deck, mark it as known forever,
         // ignore it (blacklist), or give its card my own example sentence
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $b = body();
         $vid = (int)($b['vid'] ?? 0);
         $sid = (int)($b['sid'] ?? 0);
@@ -293,7 +300,7 @@ function jp_handle(string $action, bool $post): void {
     case 'jpdb_deck': {
         // my own decks (admin): make one, rename, empty or delete it
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $b = body();
         $op = (string)($b['op'] ?? '');
         $id = (int)($b['id'] ?? 0);
@@ -311,7 +318,7 @@ function jp_handle(string $action, bool $post): void {
     case 'jpdb_add': {
         // put a word into one of my own decks (or a new "niben.no" deck)
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        require_room_owner();
         $b = body();
         $vid = (int)($b['vid'] ?? 0);
         $sid = (int)($b['sid'] ?? 0);

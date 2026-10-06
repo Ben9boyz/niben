@@ -33,18 +33,30 @@ function sp_schema(): void {
         PRIMARY KEY (k)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
 }
+// Every room has its own settings: with several users the keys are prefixed "u<id>_" (the owner, id 1, keeps the plain keys, so
+// nothing already saved moves). kv_scope() says whose room this request is about (see _users.inc.php).
+function kv_scope(?int $uid = null): int {
+    if ($uid !== null) $GLOBALS['kv_uid'] = $uid;
+    return (int)($GLOBALS['kv_uid'] ?? 1);
+}
+function kv_key(string $k): string {
+    $u = kv_scope();
+    if ($u === 1) return $k;
+    $p = 'u' . $u . '_';
+    return strlen($p . $k) <= 40 ? $p . $k : $p . substr(md5($k), 0, 40 - strlen($p)); // (the column is 40 characters)
+}
 function kv_get(string $k): ?string {
     $st = db()->prepare('SELECT v FROM spotify_state WHERE k=?');
-    $st->execute([$k]);
+    $st->execute([kv_key($k)]);
     $v = $st->fetchColumn();
     return $v === false ? null : $v;
 }
 function kv_set(string $k, ?string $v): void {
-    db()->prepare('INSERT INTO spotify_state (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v = VALUES(v)')->execute([$k, $v]);
+    db()->prepare('INSERT INTO spotify_state (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v = VALUES(v)')->execute([kv_key($k), $v]);
 }
 function kv_del(string ...$keys): void {
     $st = db()->prepare('DELETE FROM spotify_state WHERE k=?');
-    foreach ($keys as $k) $st->execute([$k]);
+    foreach ($keys as $k) $st->execute([kv_key($k)]);
 }
 
 require_once __DIR__ . '/_net.inc.php'; // http_req()

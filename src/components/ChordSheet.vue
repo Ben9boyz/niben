@@ -7,7 +7,7 @@ import { parseSheet, transposeChord, parseProgression, findChord } from '../lib/
 import { playSong, type SongOptions } from '../lib/strum'
 import type { Song } from '../composables/useData'
 import type { SheetSection } from '../lib/chords'
-import { admin, api, errorMessage } from '../composables/useAdmin'
+import { admin, api, errorMessage, canManage } from '../composables/useAdmin'
 import { reloadData } from '../composables/useData'
 
 // My chord sheet for a song, like on Ultimate Guitar: transpose, text size, auto-scroll – plus the
@@ -138,7 +138,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf))
         <b>Slagmønster</b>
         <label class="bpc">Slag per akkord <input v-model.number="beatsPerChord" type="number" min="1" max="16" /></label>
         <label class="fol"><input v-model="follow" type="checkbox" /> Følg med i arket</label>
-        <button v-if="admin.loggedIn" class="save" @click="savePattern"><Save :size="13" />Lagre på sangen</button>
+        <button v-if="canManage" class="save" @click="savePattern"><Save :size="13" />Lagre på sangen</button>
         <small v-if="saveMsg" class="msg">{{ saveMsg }}</small>
       </div>
       <StrumEditor v-model="pattern" :active="playing ? now.slot : -1" />

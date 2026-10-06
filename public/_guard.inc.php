@@ -35,6 +35,6 @@ function rl_or_fail(string $key, int $limit, int $seconds, string $msg = 'For ma
 
 // every API request: at most 240 a minute per IP (the site itself needs far fewer)
 function guard_request(string $action): void {
-    if (is_admin()) return;
+    if (is_admin() || session_uid() > 0) return;
     rl_or_fail('ip:' . client_ip(), 240, 60);
 }

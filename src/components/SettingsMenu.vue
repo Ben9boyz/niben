@@ -8,7 +8,7 @@ import { useTheme, type ThemeChoice } from '../composables/useTheme'
 import { calm, setCalm } from '../composables/useCalm'
 import { mode as viewMode, toggleMode } from '../composables/useMode'
 import { shortcuts } from '../composables/useShortcuts'
-import { admin } from '../composables/useAdmin'
+import { signedIn } from '../composables/useAdmin'
 import { useData } from '../composables/useData'
 import { gfxUi } from '../composables/useGraphics'
 import { vinyl, setVinyl, setVinylLevel, setVinylMech, setVinylWow } from '../composables/useVinylNoise'
@@ -66,8 +66,8 @@ const setView = (v: string) => { if (viewMode.value !== v) toggleMode() }
 </script>
 
 <template>
-  <button ref="root" class="sm glass" :class="{ on: open, me: admin.loggedIn }" :title="admin.loggedIn ? 'Meg og innstillinger' : 'Innstillinger'" :aria-label="admin.loggedIn ? 'Meg og innstillinger' : 'Innstillinger'" :aria-expanded="open" @click="toggle">
-    <template v-if="admin.loggedIn">
+  <button ref="root" class="sm glass" :class="{ on: open, me: signedIn }" :title="signedIn ? 'Meg og innstillinger' : 'Innstillinger'" :aria-label="signedIn ? 'Meg og innstillinger' : 'Innstillinger'" :aria-expanded="open" @click="toggle">
+    <template v-if="signedIn">
       <img v-if="photo" :src="photo" alt="" crossorigin="anonymous" />
       <Settings v-else :size="19" aria-hidden="true" />
       <i class="dot" aria-hidden="true"></i>
@@ -77,7 +77,7 @@ const setView = (v: string) => { if (viewMode.value !== v) toggleMode() }
   <teleport to="body">
     <transition name="fade">
       <div v-if="open" ref="menuEl" class="smenu glass" role="menu" translate="no" :style="pos" @click.stop>
-        <router-link v-if="admin.loggedIn" to="/admin" class="row" role="menuitem" @click="close"><ShieldCheck :size="16" aria-hidden="true" /><span class="l"><b>Admin</b><small>Styr siden din</small></span></router-link>
+        <router-link v-if="signedIn" to="/admin" class="row" role="menuitem" @click="close"><ShieldCheck :size="16" aria-hidden="true" /><span class="l"><b>Admin</b><small>Styr siden din</small></span></router-link>
 
         <div class="grp">
           <span class="cap">Visning</span>

@@ -5,6 +5,9 @@ import App from './App.vue'
 import { registerServiceWorker } from './composables/usePwa'
 import { shell, enterPlayer } from './composables/useShell'
 import { rememberTab } from './lib/nav'
+import { routeAllowed } from './lib/sections'
+import { useData } from './composables/useData'
+import { watch } from 'vue'
 import { startDomTranslate } from './lib/domTranslate'
 import './style.css'
 // Every page loads on demand: a panel (3D room) and a page (plain version) per route
@@ -44,6 +47,9 @@ router.afterEach((to) => {
 })
 
 createApp(App).use(router).mount('#app')
+// a corner that is switched off in this room: its page is not there (also when the address was typed in)
+const roomData = useData()
+watch([() => roomData.profile, () => router.currentRoute.value.name], () => { if (!routeAllowed(router.currentRoute.value.name, roomData.profile)) void router.replace('/') }, { deep: true })
 startDomTranslate() // the page in the visitor's language (English unless they chose another)
 registerServiceWorker()
 

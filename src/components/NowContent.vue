@@ -4,7 +4,7 @@ import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { Music, BookOpen, Languages, Guitar, Gamepad2, Plane, ArrowRight, Radio, PartyPopper, Mic, Tv, Trophy, Disc3 } from 'lucide-vue-next'
 import { milestones, loadMilestones } from '../composables/useMilestones'
 import { useRouter } from 'vue-router'
-import { useData } from '../composables/useData'
+import { useData, type SectionId } from '../composables/useData'
 import { useSpotify } from '../composables/useSpotify'
 import { steam, watchSteam, headerImg, fmtHours } from '../composables/useSteam'
 import { jp, loadJapanese } from '../composables/useJapanese'
@@ -20,6 +20,7 @@ import type { Component } from 'vue'
 // travel. Everything comes from the places that already hold it, so there is nothing extra to keep up.
 const router = useRouter()
 const data = useData()
+const on = (id: SectionId) => data.profile.sections[id] !== false
 const spotify = useSpotify()
 let stopSteam: (() => void) | undefined
 onMounted(() => { stopSteam = watchSteam(); loadJapanese(); loadMilestones() })
@@ -107,7 +108,7 @@ const inDays = (t: Trip) => {
     </section>
 
     <!-- listening -->
-    <section class="card">
+    <section v-if="on('lytte')" class="card">
       <h3><Music :size="15" />{{ tx('now.listen') }}</h3>
       <router-link v-if="track" to="/lytte" class="row">
         <img v-if="track.image" :src="track.image" alt="" class="art" />
@@ -118,7 +119,7 @@ const inDays = (t: Trip) => {
     </section>
 
     <!-- the record of the day -->
-    <section v-if="dailyAlbum" class="card">
+    <section v-if="dailyAlbum && on('lytte')" class="card">
       <h3><Disc3 :size="15" />{{ tx('now.daily') }}</h3>
       <button class="row daily" @click="openDaily">
         <img v-if="dailyAlbum.thumb || dailyAlbum.image" :src="dailyAlbum.thumb || dailyAlbum.image || undefined" alt="" class="art" crossorigin="anonymous" />
@@ -134,7 +135,7 @@ const inDays = (t: Trip) => {
     </section>
 
     <!-- book -->
-    <section class="card">
+    <section v-if="on('boker')" class="card">
       <h3><BookOpen :size="15" />{{ tx('now.read') }}</h3>
       <router-link v-for="b in reading" :key="b.id" to="/boker" class="row">
         <img v-if="b.omslag" :src="b.omslag" alt="" class="art book" />
@@ -144,7 +145,7 @@ const inDays = (t: Trip) => {
     </section>
 
     <!-- Japanese -->
-    <section class="card">
+    <section v-if="on('japansk')" class="card">
       <h3><Languages :size="15" />{{ tx('now.jp') }}</h3>
       <router-link v-if="anime" to="/japansk" class="row">
         <img v-if="anime.cover" :src="anime.cover" alt="" class="art book" />
@@ -159,7 +160,7 @@ const inDays = (t: Trip) => {
     </section>
 
     <!-- guitar -->
-    <section class="card">
+    <section v-if="on('gitar') || on('ovelse')" class="card">
       <h3><Guitar :size="15" />{{ tx('now.guitar') }}</h3>
       <div v-for="s in songs" :key="s.id" class="song">
         <span class="txt"><b>{{ s.tittel }}</b><small>{{ s.artist }}<template v-if="s.capo"> · capo {{ s.capo }}</template></small></span>
@@ -170,7 +171,7 @@ const inDays = (t: Trip) => {
     </section>
 
     <!-- games -->
-    <section class="card wide">
+    <section v-if="on('gaming')" class="card wide">
       <h3><Gamepad2 :size="15" />{{ tx('now.games') }}</h3>
       <router-link v-if="playing || lastGame" to="/gaming" class="row">
         <img :src="headerImg((playing || lastGame)?.appid ?? 0)" alt="" class="art wideimg" />
@@ -185,7 +186,7 @@ const inDays = (t: Trip) => {
     </section>
 
     <!-- travel -->
-    <section class="card wide">
+    <section v-if="on('reiser')" class="card wide">
       <h3><Plane :size="15" />Reiser</h3>
       <div class="trips">
         <router-link to="/reiser" class="trip">

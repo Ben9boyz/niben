@@ -109,10 +109,12 @@ function ex_wrapped(int $year): array {
 function ex_handle(string $action, bool $post): void {
     switch ($action) {
     case 'guestbook_list': {
+        if (kv_scope() !== 1) out(['items' => []]); // the guestbook belongs to the main room
         ex_tables();
         out(['items' => db()->query("SELECT id, name, msg, t FROM guestbook WHERE status = 'approved' ORDER BY t DESC LIMIT 80")->fetchAll()]);
     }
     case 'guestbook_add': {
+        if (kv_scope() !== 1) fail('Gjesteboka finnes bare i hovedrommet.', 400);
         if (!$post || ($_SERVER['HTTP_X_NIBEN'] ?? '') !== '1') fail('Ugyldig forespørsel.', 400);
         $b = json_decode((string)file_get_contents('php://input'), true) ?: [];
         if (!empty($b['website'])) out(['ok' => true]); // a bot filled the hidden field: pretend it worked
@@ -141,10 +143,11 @@ function ex_handle(string $action, bool $post): void {
         else fail('Ukjent valg.');
         out(['ok' => true]);
     }
-    case 'practice_calendar': out(ex_practice());
+    case 'practice_calendar': out(kv_scope() !== 1 ? ['days' => (object)[], 'streak' => 0, 'best' => 0, 'total' => 0, 'active' => 0] : ex_practice());
     case 'wrapped': {
         $y = (int)($_GET['year'] ?? date('Y'));
         if ($y < 2000 || $y > (int)date('Y')) $y = (int)date('Y');
+        if (kv_scope() !== 1) out(['year' => $y]); // the year in music / games is the main room's (for now)
         ex_sync_plays();
         out(sp_cached('wrapped_' . $y, is_admin() ? 60 : 1800, fn() => ex_wrapped($y)) ?? ['year' => $y]);
     }

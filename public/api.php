@@ -115,10 +115,12 @@ session_start();
 function is_admin(): bool {
     return !empty($_SESSION['admin']) && ($_SESSION['expires'] ?? 0) > time();
 }
+/** The owner (me) only. Whatever room is being shown, the settings it touches are the owner's own. */
 function require_admin(): void {
     if (!is_admin()) fail('Du må logge inn.', 401);
     if (($_SERVER['HTTP_X_NIBEN'] ?? '') !== '1') fail('Ugyldig forespørsel.', 403);
     $_SESSION['expires'] = time() + 60 * 60 * 8; // sliding 8 h
+    kv_scope(1);
 }
 function client_ip(): string { return substr((string)($_SERVER['REMOTE_ADDR'] ?? '0'), 0, 45); }
 
@@ -247,8 +249,10 @@ if ($method !== 'GET' && $method !== 'POST') fail('Metode ikke tillatt.', 405);
 $post = $method === 'POST';
 
 require_once __DIR__ . '/_guard.inc.php';
-guard_request($action);
 require_once __DIR__ . '/_spotify.inc.php';
+require_once __DIR__ . '/_users.inc.php';
+kv_scope(room_resolve()); // the room this request is about (the owner's unless a cookie / a logged-in user says otherwise)
+guard_request($action);
 require_once __DIR__ . '/_spotify_more.inc.php';
 require_once __DIR__ . '/_jpdb.inc.php';
 require_once __DIR__ . '/_songs.inc.php';
@@ -266,6 +270,8 @@ require_once __DIR__ . '/_decor.inc.php';
 require_once __DIR__ . '/_news.inc.php';
 
 try {
+    if (in_array($action, ['user_register', 'user_login', 'rooms', 'room_set', 'me_settings', 'me_password', 'admin_users', 'admin_user_set'], true)) { users_handle($action, $post); fail('Ukjent handling.', 404); }
+    if (in_array($action, ['guitar_save', 'guitar_delete'], true)) { users_ready(); guitars_handle($action, $post); fail('Ukjent handling.', 404); }
     if (str_starts_with($action, 'spotify_')) {
         sp_more_handle($action, $post);
         sp_handle($action, $post);
@@ -356,25 +362,43 @@ try {
     case 'content': {
         try { site_ensure_htaccess(); } catch (Throwable $e) { error_log('niben htaccess: ' . $e->getMessage()); }
         $pdo = db();
+        $room = kv_scope(); // whose room this is (1 = mine)
         try {
-            $trips = $pdo->query('SELECT id, country, place, title, year, date_from, date_to, body FROM trips ORDER BY COALESCE(date_from, MAKEDATE(year, 1)) DESC, id DESC')->fetchAll();
+            users_ready();
+            $tq = $pdo->prepare('SELECT id, country, place, title, year, date_from, date_to, body FROM trips WHERE user_id = ? ORDER BY COALESCE(date_from, MAKEDATE(year, 1)) DESC, id DESC');
+            $tq->execute([$room]);
+            $trips = $tq->fetchAll();
         } catch (PDOException $e) {
             out(['trips' => [], 'books' => [], 'recordings' => [], 'songs' => [], 'empty' => true]); // tables not created yet
         }
-        $photos = $pdo->query('SELECT id, trip_id, path, caption, width, height FROM trip_photos ORDER BY sort, id')->fetchAll();
+        $pq = $pdo->prepare('SELECT p.id, p.trip_id, p.path, p.caption, p.width, p.height FROM trip_photos p JOIN trips t ON t.id = p.trip_id WHERE t.user_id = ? ORDER BY p.sort, p.id');
+        $pq->execute([$room]);
+        $photos = $pq->fetchAll();
         $byTrip = [];
         foreach ($photos as $p) $byTrip[$p['trip_id']][] = $p;
         foreach ($trips as &$t) $t['photos'] = $byTrip[$t['id']] ?? [];
         unset($t);
         $bookCols = 'id, title, author, isbn, ol_key, cover_url, published_year, pages, read_on, rating, thoughts, quote';
-        $bookOrder = ' FROM books ORDER BY COALESCE(read_on, created_at) DESC, id DESC';
+        $bookOrder = ' FROM books WHERE user_id = ? ORDER BY COALESCE(read_on, created_at) DESC, id DESC';
         try {
-            $books = $pdo->query('SELECT ' . $bookCols . ', reading' . $bookOrder)->fetchAll();
+            $bq = $pdo->prepare('SELECT ' . $bookCols . ', reading' . $bookOrder);
+            $bq->execute([$room]);
         } catch (PDOException $e) {
-            $books = $pdo->query('SELECT ' . $bookCols . $bookOrder)->fetchAll(); // "reading" column not added yet
+            $bq = $pdo->prepare('SELECT ' . $bookCols . $bookOrder); // "reading" column not added yet
+            $bq->execute([$room]);
         }
-        $recs = $pdo->query('SELECT id, guitar, title, recorded_on, youtube, audio_path, notes FROM recordings ORDER BY COALESCE(recorded_on, created_at) DESC, id DESC')->fetchAll();
-        $payload = json_encode(['trips' => $trips, 'books' => $books, 'recordings' => $recs, 'songs' => songs_list($pdo), 'about' => json_decode((string)kv_get('about'), true), 'texts' => (object)(json_decode((string)kv_get('site_texts'), true) ?: [])], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $books = $bq->fetchAll();
+        $rq = $pdo->prepare('SELECT id, guitar, title, recorded_on, youtube, audio_path, notes FROM recordings WHERE user_id = ? ORDER BY COALESCE(recorded_on, created_at) DESC, id DESC');
+        $rq->execute([$room]);
+        $recs = $rq->fetchAll();
+        $gq = $pdo->prepare('SELECT slug AS id, name AS navn, brand AS merke, type, year AS aar, color AS farge, pickguard, fretboard AS gripebrett, description AS beskrivelse FROM guitars WHERE user_id = ? ORDER BY id');
+        $gq->execute([$room]);
+        $roomUser = user_by_id($room);
+        $payload = json_encode([
+            'trips' => $trips, 'books' => $books, 'recordings' => $recs, 'songs' => songs_list($pdo), 'guitars' => $gq->fetchAll(),
+            'about' => json_decode((string)kv_get('about'), true), 'texts' => (object)(json_decode((string)kv_get('site_texts'), true) ?: []),
+            'profile' => ['username' => $roomUser['username'] ?? 'niben', 'owner' => $room === 1, 'sections' => sections_of($roomUser), 'mine' => viewing_own_room()],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         // unchanged content: the browser keeps its copy (304, no body)
         $etag = '"' . md5($payload) . '"';
         header('ETag: ' . $etag);
@@ -389,7 +413,10 @@ try {
 
     case 'me':
         if (is_admin() && empty($_COOKIE['niben_me'])) vi_mark_me(); // logged in from before the counter existed: that's me too
-        out(['admin' => is_admin()]);
+        $uid = session_uid();
+        $me = null;
+        if ($uid > 0) { try { $u = user_by_id($uid); if ($u && $u['status'] === 'approved') $me = user_public($u); } catch (Throwable $e) { /* no table yet */ } }
+        out(['admin' => is_admin(), 'user' => $me, 'room' => ['id' => kv_scope(), 'mine' => $uid > 0 && $uid === kv_scope()]]);
 
     case 'login': {
         if (!$post) fail('Bruk POST.', 405);
@@ -417,12 +444,13 @@ try {
         if (!$post) fail('Bruk POST.', 405);
         $_SESSION = [];
         session_destroy();
+        setcookie('niben_room', '', ['expires' => time() - 3600, 'path' => '/']); // back to my room
         out(['admin' => false]);
 
     // ── Trips ──
     case 'trip_save': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        $uid = require_user();
         $b = body();
         $country = str_or_null($b['country'] ?? null, 80) ?? fail('Velg et land.');
         $title = str_or_null($b['title'] ?? null, 200) ?? fail('Skriv en tittel.');
@@ -438,10 +466,11 @@ try {
         if ($vals[3] === null && $vals[4] !== null) $vals[3] = (int)substr($vals[4], 0, 4);
         $id = int_or_null($b['id'] ?? null, 1, PHP_INT_MAX);
         if ($id) {
-            $st = db()->prepare('UPDATE trips SET country=?, place=?, title=?, year=?, date_from=?, date_to=?, body=? WHERE id=?');
-            $st->execute([...$vals, $id]);
+            $st = db()->prepare('UPDATE trips SET country=?, place=?, title=?, year=?, date_from=?, date_to=?, body=? WHERE id=? AND user_id=?');
+            $st->execute([...$vals, $id, $uid]);
+            if (!$st->rowCount()) { $own = db()->prepare('SELECT 1 FROM trips WHERE id=? AND user_id=?'); $own->execute([$id, $uid]); if (!$own->fetchColumn()) fail('Den reisen er ikke din.', 403); }
         } else {
-            db()->prepare('INSERT INTO trips (country, place, title, year, date_from, date_to, body) VALUES (?,?,?,?,?,?,?)')->execute($vals);
+            db()->prepare('INSERT INTO trips (country, place, title, year, date_from, date_to, body, user_id) VALUES (?,?,?,?,?,?,?,?)')->execute([...$vals, $uid]);
             $id = (int)db()->lastInsertId();
         }
         // caption / order updates for existing photos
@@ -457,21 +486,21 @@ try {
 
     case 'trip_delete': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        $uid = require_user();
         $id = int_or_null(body()['id'] ?? null, 1, PHP_INT_MAX) ?? fail('Mangler id.');
-        $st = db()->prepare('SELECT path FROM trip_photos WHERE trip_id=?');
-        $st->execute([$id]);
+        $st = db()->prepare('SELECT p.path FROM trip_photos p JOIN trips t ON t.id = p.trip_id WHERE p.trip_id=? AND t.user_id=?');
+        $st->execute([$id, $uid]);
         foreach ($st->fetchAll() as $p) delete_upload($p['path']);
-        db()->prepare('DELETE FROM trips WHERE id=?')->execute([$id]);
+        db()->prepare('DELETE FROM trips WHERE id=? AND user_id=?')->execute([$id, $uid]);
         out(['ok' => true]);
     }
 
     case 'photo_upload': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        $uid = require_user();
         $tripId = int_or_null($_POST['trip_id'] ?? null, 1, PHP_INT_MAX) ?? fail('Mangler reise.');
-        $exists = db()->prepare('SELECT 1 FROM trips WHERE id=?');
-        $exists->execute([$tripId]);
+        $exists = db()->prepare('SELECT 1 FROM trips WHERE id=? AND user_id=?');
+        $exists->execute([$tripId, $uid]);
         if (!$exists->fetchColumn()) fail('Reisen finnes ikke.', 404);
         [$path, $w, $h] = save_photo($_FILES['file'] ?? []);
         $sort = db()->prepare('SELECT COALESCE(MAX(sort), -1) + 1 FROM trip_photos WHERE trip_id=?');
@@ -483,11 +512,13 @@ try {
 
     case 'photo_delete': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        $uid = require_user();
         $id = int_or_null(body()['id'] ?? null, 1, PHP_INT_MAX) ?? fail('Mangler id.');
-        $st = db()->prepare('SELECT path FROM trip_photos WHERE id=?');
-        $st->execute([$id]);
-        delete_upload($st->fetchColumn() ?: null);
+        $st = db()->prepare('SELECT p.path FROM trip_photos p JOIN trips t ON t.id = p.trip_id WHERE p.id=? AND t.user_id=?');
+        $st->execute([$id, $uid]);
+        $path = $st->fetchColumn();
+        if (!$path) fail('Det bildet er ikke ditt.', 403);
+        delete_upload($path);
         db()->prepare('DELETE FROM trip_photos WHERE id=?')->execute([$id]);
         out(['ok' => true]);
     }
@@ -495,7 +526,7 @@ try {
     // ── Books ──
     case 'book_save': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        $uid = require_user();
         $b = body();
         $vals = [
             str_or_null($b['title'] ?? null, 255) ?? fail('Boka mangler tittel.'),
@@ -514,11 +545,12 @@ try {
         try { db()->exec('ALTER TABLE books ADD COLUMN reading TINYINT(1) NOT NULL DEFAULT 0'); } catch (PDOException $e) { /* already there */ }
         $id = int_or_null($b['id'] ?? null, 1, PHP_INT_MAX);
         if ($id) {
-            db()->prepare('UPDATE books SET title=?, author=?, isbn=?, ol_key=?, cover_url=?, published_year=?, pages=?, read_on=?, rating=?, thoughts=?, quote=?, reading=? WHERE id=?')
-                ->execute([...$vals, $id]);
+            $st = db()->prepare('UPDATE books SET title=?, author=?, isbn=?, ol_key=?, cover_url=?, published_year=?, pages=?, read_on=?, rating=?, thoughts=?, quote=?, reading=? WHERE id=? AND user_id=?');
+            $st->execute([...$vals, $id, $uid]);
+            if (!$st->rowCount()) { $own = db()->prepare('SELECT 1 FROM books WHERE id=? AND user_id=?'); $own->execute([$id, $uid]); if (!$own->fetchColumn()) fail('Den boka er ikke din.', 403); }
         } else {
-            db()->prepare('INSERT INTO books (title, author, isbn, ol_key, cover_url, published_year, pages, read_on, rating, thoughts, quote, reading) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
-                ->execute($vals);
+            db()->prepare('INSERT INTO books (title, author, isbn, ol_key, cover_url, published_year, pages, read_on, rating, thoughts, quote, reading, user_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
+                ->execute([...$vals, $uid]);
             $id = (int)db()->lastInsertId();
         }
         // finished (a date, and not "reading"): a milestone – once per book
@@ -528,34 +560,41 @@ try {
 
     case 'book_delete': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        $uid = require_user();
         $id = int_or_null(body()['id'] ?? null, 1, PHP_INT_MAX) ?? fail('Mangler id.');
-        db()->prepare('DELETE FROM books WHERE id=?')->execute([$id]);
+        db()->prepare('DELETE FROM books WHERE id=? AND user_id=?')->execute([$id, $uid]);
         out(['ok' => true]);
     }
 
     // ── Recordings ──
     case 'recording_save': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        $uid = require_user();
         $b = body();
         $guitar = str_or_null($b['guitar'] ?? null, 60) ?? fail('Velg gitar.');
         if (!preg_match('~^[a-z0-9_-]+$~', $guitar)) fail('Ugyldig gitar.');
+        if ($uid !== 1) { // (my own guitars are in data.json; everybody else's are in the database)
+            $g = db()->prepare('SELECT 1 FROM guitars WHERE slug=? AND user_id=?');
+            $g->execute([$guitar, $uid]);
+            if (!$g->fetchColumn()) fail('Velg en av gitarene dine (legg til en under Gitarer først).');
+        }
         $title = str_or_null($b['title'] ?? null, 200) ?? fail('Skriv en tittel.');
         $yt = youtube_id($b['youtube'] ?? null);
         $audio = !empty($_FILES['file']) && ($_FILES['file']['error'] ?? 4) !== UPLOAD_ERR_NO_FILE ? save_audio($_FILES['file']) : null;
         $id = int_or_null($b['id'] ?? null, 1, PHP_INT_MAX);
         if ($id) {
-            $old = db()->prepare('SELECT audio_path FROM recordings WHERE id=?');
-            $old->execute([$id]);
-            $oldPath = $old->fetchColumn() ?: null;
+            $old = db()->prepare('SELECT audio_path FROM recordings WHERE id=? AND user_id=?');
+            $old->execute([$id, $uid]);
+            $row = $old->fetch();
+            if (!$row) fail('Det opptaket er ikke ditt.', 403);
+            $oldPath = $row['audio_path'] ?: null;
             if ($audio) delete_upload($oldPath);
-            db()->prepare('UPDATE recordings SET guitar=?, title=?, recorded_on=?, youtube=?, audio_path=?, notes=? WHERE id=?')
-                ->execute([$guitar, $title, date_or_null($b['recorded_on'] ?? null), $yt, $audio ?? $oldPath, str_or_null($b['notes'] ?? null, 5000), $id]);
+            db()->prepare('UPDATE recordings SET guitar=?, title=?, recorded_on=?, youtube=?, audio_path=?, notes=? WHERE id=? AND user_id=?')
+                ->execute([$guitar, $title, date_or_null($b['recorded_on'] ?? null), $yt, $audio ?? $oldPath, str_or_null($b['notes'] ?? null, 5000), $id, $uid]);
         } else {
             if (!$yt && !$audio) fail('Legg til en lydfil eller en YouTube-lenke.');
-            db()->prepare('INSERT INTO recordings (guitar, title, recorded_on, youtube, audio_path, notes) VALUES (?,?,?,?,?,?)')
-                ->execute([$guitar, $title, date_or_null($b['recorded_on'] ?? null), $yt, $audio, str_or_null($b['notes'] ?? null, 5000)]);
+            db()->prepare('INSERT INTO recordings (guitar, title, recorded_on, youtube, audio_path, notes, user_id) VALUES (?,?,?,?,?,?,?)')
+                ->execute([$guitar, $title, date_or_null($b['recorded_on'] ?? null), $yt, $audio, str_or_null($b['notes'] ?? null, 5000), $uid]);
             $id = (int)db()->lastInsertId();
             // (the milestone is added when the list is read, from the recording's date – see ms_trips)
         }
@@ -564,12 +603,12 @@ try {
 
     case 'recording_delete': {
         if (!$post) fail('Bruk POST.', 405);
-        require_admin();
+        $uid = require_user();
         $id = int_or_null(body()['id'] ?? null, 1, PHP_INT_MAX) ?? fail('Mangler id.');
-        $st = db()->prepare('SELECT audio_path FROM recordings WHERE id=?');
-        $st->execute([$id]);
+        $st = db()->prepare('SELECT audio_path FROM recordings WHERE id=? AND user_id=?');
+        $st->execute([$id, $uid]);
         delete_upload($st->fetchColumn() ?: null);
-        db()->prepare('DELETE FROM recordings WHERE id=?')->execute([$id]);
+        db()->prepare('DELETE FROM recordings WHERE id=? AND user_id=?')->execute([$id, $uid]);
         out(['ok' => true]);
     }
 
