@@ -59,8 +59,7 @@ const LYTTE_TOP: Pose = { pos: [2.55, 1.7, -0.2], target: [3.72, 0.75, -0.12] }
 // from straight above: the turntable's buttons and the tonearm can be pressed
 const LYTTE_DECK: Pose = { pos: [3.47, 1.5, -0.28], target: [3.71, 0.88, -0.28] }
 const LYTTE_SHELF: Pose = { pos: [1.9, 0.95, 0.1], target: [3.6, 0.45, 0.1] }
-// (close up, so what's on the iPod's little screen can be read when it stands there)
-const LYTTE_IPOD: Pose = { pos: [3.14, 1.17, 0.138], target: [3.59, 0.97, 0.098] } // (30 % closer than before; aimed at the iPod's screen and wheel, not its base)
+// (the iPod pose is worked out from the iPod itself and the shape of the screen: see listening.ipodView)
 
 export const STATION_LABELS: Record<string, string> = { gaming: 'Gaming', japansk: 'Japansk', lytte: 'Lytteplassen', ovelse: 'Øvingstimer', gitar: 'Gitarer', boker: 'Bokhylla', kode: 'Prosjekter', reiser: 'Reiser', om: 'Om meg' }
 
@@ -613,9 +612,16 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     station = STATIONS[name] ? name : 'hjem'
     zoomTarget = 1 // the zoom is for the globe only
     desk.setScreenMode(station === 'gaming' ? 'gaming' : 'code')
-    const s: Pose | null | undefined = station === 'lytte' && lyttePose ? { ipod: LYTTE_IPOD, shelf: LYTTE_SHELF, top: LYTTE_TOP, deck: LYTTE_DECK }[lyttePose] : STATIONS[station]
-    if (!s) return
-    const to: Pose3 = { pos: new THREE.Vector3(...s.pos), target: new THREE.Vector3(...s.target) }
+    let to: Pose3 | null = null
+    if (station === 'lytte' && lyttePose === 'ipod') {
+      // the iPod stays on its stand: the camera comes to it (the lens on a narrow screen pushes the camera back by distK, so start nearer)
+      const v = listening.ipodView(camera.fov, camera.aspect)
+      to = { pos: v.target.clone().add(v.pos.sub(v.target).divideScalar(distK)), target: v.target }
+    } else {
+      const s: Pose | null | undefined = station === 'lytte' && lyttePose ? { shelf: LYTTE_SHELF, top: LYTTE_TOP, deck: LYTTE_DECK }[lyttePose as Exclude<LyttePose, 'ipod'>] : STATIONS[station]
+      if (!s) return
+      to = { pos: new THREE.Vector3(...s.pos), target: new THREE.Vector3(...s.target) }
+    }
     if (instant || reduced) {
       camPos.copy(to.pos)
       camTarget.copy(to.target)
@@ -1118,6 +1124,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     camera.fov = w / h < 0.8 ? 62 : w / h < 1.2 ? 52 : 42
     distK = w / h < 0.8 ? 1.3 : 1
     camera.updateProjectionMatrix()
+    if (station === 'lytte' && lyttePose === 'ipod') goTo('lytte', { instant: true }) // (the iPod fills the same share of a new shape)
     invalidate(0.3)
   }
   const ro = new ResizeObserver(resize)
@@ -1341,12 +1348,11 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     setInsets,
     strum(i: number) { if (guitars[i]) { guitars[i].strum = 1; invalidate(1) } },
     setTimerInterval(v: number) { timerInterval = v },
-    setMusicView({ selected = null, ipod = false, big = false, pose = null, flip = false, peek = null, deck = false }: { selected?: string | null; ipod?: boolean; big?: boolean; pose?: LyttePose | null; flip?: boolean; peek?: string | null; deck?: boolean } = {}) {
+    setMusicView({ selected = null, pose = null, flip = false, peek = null, deck = false }: { selected?: string | null; pose?: LyttePose | null; flip?: boolean; peek?: string | null; deck?: boolean } = {}) {
       invalidate(1)
       listening.setSelected(selected)
       listening.setPeek(peek)
       listening.setFlip(flip)
-      listening.setHoldIpod(ipod, big)
       listening.setDeck(deck)
       // where the camera looks in the listening corner
       if (pose !== lyttePose) {
@@ -1356,9 +1362,10 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     },
     /** The tonearm's angle: 0 = needle on the record, 0.45 = resting. */
     tonearmAngle: (): number => listening.tonearmAngle(),
-    /** iPod screen rectangle in viewport CSS px (for the HTML overlay), or null when not held. */
+    /** The iPod screen's rectangle in viewport CSS px (for the HTML overlay), or null when the camera is not at the iPod. */
+    pressIpod() { listening.pressIpod(); invalidate(0.4) },
     ipodScreenRect() {
-      if (!listening.isHoldingIpod()) return null
+      if (!(station === 'lytte' && lyttePose === 'ipod')) return null
       const r = renderer.domElement.getBoundingClientRect()
       const s = listening.ipodScreenRect(camera, r.width, r.height)
       return { x: r.left + s.x, y: r.top + s.y, w: s.w, h: s.h }

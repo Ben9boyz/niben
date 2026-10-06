@@ -88,6 +88,7 @@ async function open(row: Row | undefined) {
 
 // the click wheel: shuffle (top), previous / next track, play / pause (bottom)
 async function wheel(op: 'shuffle' | 'toggle' | 'previous' | 'next') {
+  room.api?.pressIpod()
   if (!admin.mine) { toast.value = 'Logg inn for å styre musikken'; setTimeout(() => (toast.value = ''), 2200); return }
   const r = op === 'shuffle'
     ? await setShuffle(!spotify.now?.shuffle)
@@ -96,11 +97,14 @@ async function wheel(op: 'shuffle' | 'toggle' | 'previous' | 'next') {
   if (toast.value) setTimeout(() => (toast.value = ''), 2200)
 }
 
+/** Close the iPod: the camera goes back to the turntable (the iPod stays on its stand). */
+function leave() { room.musicView = 'vinyl' }
+
 function back() {
   if (view.value === 'menu') {
     // inside a folder: up one level (to its parent folder, or the top); at the top: put the iPod down
     if (groups.on && groups.sel && !room.ipod.q.trim()) { const par = groups.list.find((g) => g.id === groups.sel)?.parent; groups.sel = par || null; active.value = 0 }
-    else room.musicView = 'ipodDock'
+    else leave()
   } else { view.value = 'menu'; active.value = 0 }
 }
 
@@ -132,11 +136,11 @@ onBeforeUnmount(() => {
 <template>
   <div v-if="rect" class="ipod" :style="{ left: `${rect.x}px`, top: `${rect.y}px`, width: `${rect.w}px`, height: `${rect.h}px`, '--u': `${rect.h / 100}px` }">
     <header>
-      <button class="back" @click="back" :aria-label="view === 'menu' ? 'Legg fra deg iPoden' : 'Tilbake'"><ChevronLeft width="1em" height="1em" /></button>
+      <button class="back" @click="back" :aria-label="view === 'menu' ? 'Lukk iPoden' : 'Tilbake'"><ChevronLeft width="1em" height="1em" /></button>
       <span><Shuffle v-if="now?.shuffle" width="0.75em" height="0.75em" class="shf" />{{ title }}</span>
       <span class="rt">
         <button class="np" :class="{ on: now?.playing }" @click="view = 'now'" aria-label="Spilles nå"><Play width="1em" height="1em" fill="currentColor" /></button>
-        <button class="np px" @click="room.musicView = 'ipodDock'" aria-label="Legg fra deg iPoden" title="Legg fra deg iPoden"><X width="1em" height="1em" /></button>
+        <button class="np px" @click="leave" aria-label="Lukk iPoden" title="Lukk iPoden"><X width="1em" height="1em" /></button>
       </span>
     </header>
 
@@ -183,7 +187,7 @@ onBeforeUnmount(() => {
     <button class="w-prev" aria-label="Forrige låt" title="Forrige låt" @click="wheel('previous')"></button>
     <button class="w-next" aria-label="Neste låt" title="Neste låt" @click="wheel('next')"></button>
     <button class="w-play" :aria-label="spotify.now?.playing ? 'Pause' : 'Spill'" :title="spotify.now?.playing ? 'Pause' : 'Spill'" @click="wheel('toggle')"></button>
-    <button class="w-center" aria-label="Velg" @click="open(rows[active])"></button>
+    <button class="w-center" aria-label="Velg" @click="room.api?.pressIpod(); open(rows[active])"></button>
   </div>
 
 </template>

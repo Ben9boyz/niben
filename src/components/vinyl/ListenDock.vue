@@ -20,8 +20,8 @@ const say = (t: string) => { toast.value = t; setTimeout(() => (toast.value = ''
 const held = computed(() => (room.sel.musikk?.kind === 'album' ? findAlbum(room.sel.musikk.uri) : null))
 const shelfCount = computed(() => Math.min(shelfAlbums.value.length, 150))
 const peeked = computed(() => (room.shelfView && !room.sel.musikk ? shelfAlbums.value[room.peekIndex] : null))
-const ipodHeld = computed(() => room.musicView === 'ipod')
-const state = computed(() => (held.value ? 'held' : room.shelfView ? 'shelf' : ipodHeld.value ? 'ipod' : room.deckView ? 'deck' : 'base'))
+const atIpod = computed(() => room.musicView === 'ipod')
+const state = computed(() => (held.value ? 'held' : room.shelfView ? 'shelf' : atIpod.value ? 'ipod' : room.deckView ? 'deck' : 'base'))
 
 const locked = computed(() => lockLeft.value > 0)
 const isOn = computed(() => !!held.value && spotify.now?.context === held.value.uri && !!spotify.now?.name)
@@ -30,10 +30,9 @@ const playing = computed(() => !!spotify.now?.playing)
 
 // ── navigating ──
 const toShelf = () => { room.deckView = false; room.musicView = 'vinyl'; room.sel.musikk = null; room.shelfView = true }
-const toTurntable = () => { room.sel.musikk = null; room.shelfView = false; room.deckView = false; if (room.musicView === 'ipod') room.musicView = 'ipodDock' }
+const toTurntable = () => { room.sel.musikk = null; room.shelfView = false; room.deckView = false; if (room.musicView === 'ipod') room.musicView = 'vinyl' }
 const toDeck = () => { room.shelfView = false; room.sel.musikk = null; room.musicView = 'vinyl'; room.deckView = true }
 const toIpod = () => { room.deckView = false; room.shelfView = false; room.sel.musikk = null; room.musicView = 'ipod' }
-const putIpodDown = () => { room.musicView = 'ipodDock' }
 const putBack = () => { room.sel.musikk = null; room.shelfView = false; room.recordFlipped = false } // (phones: back up to the turntable)
 const flip = () => { room.recordFlipped = !room.recordFlipped }
 function browse(d: number) {
@@ -128,9 +127,8 @@ function more(e: MouseEvent) {
         <button class="b go compact" :disabled="!peeked" aria-label="Ta ut platen" @click="takeOut"><ArrowUpFromLine :size="20" /><span>Ta ut</span></button>
       </template>
 
-      <!-- the iPod in hand -->
+      <!-- at the iPod (it is closed with the X on its screen) -->
       <template v-else-if="state === 'ipod'">
-        <button class="b" aria-label="Legg fra deg iPoden" @click="putIpodDown"><Undo2 :size="20" /><span>Legg fra deg</span></button>
         <button class="b" aria-label="Til platene" @click="toShelf"><Library :size="20" /><span>Hylla</span></button>
       </template>
 

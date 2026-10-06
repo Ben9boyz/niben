@@ -88,11 +88,8 @@ await shoot('4-playing')
 await page.evaluate(() => window.__room.setMusicView({ deck: true }))
 await shoot('5-deck-view')
 
-await page.evaluate(() => window.__room.setMusicView({ ipod: true }))
-await shoot('6-ipod-held')
-
-await page.evaluate(() => window.__room.setMusicView({ ipod: true, big: true }))
-await shoot('7-ipod-big')
+await page.evaluate(() => window.__room.setMusicView({ pose: 'ipod' }))
+await shoot('6-ipod')
 
 await page.evaluate((u) => window.__room.setMusicView({ peek: u }), album(6))
 await shoot('8-peek')

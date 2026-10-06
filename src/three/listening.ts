@@ -47,7 +47,7 @@ export function buildListeningCorner() {
   const stack = buildStack(kit)
   const { stackGroup, setStack, stackSlot, setNext } = stack
   const { fairyMat, shadeMat } = buildWall(kit)
-  const { ipod, ipodHome, body, stand, screen, screenCtx, screenTex, updateSound, W, H, SW, SH } = buildIpod(kit)
+  const { ipod, ipodHome, body, stand, screen, screenCtx, screenTex, updateSound, halo, W, H, SW, SH } = buildIpod(kit)
   const { animateLife } = buildLiving(kit, { plantLeaves })
 
   // ── Records ──
@@ -361,9 +361,8 @@ export function buildListeningCorner() {
   let playingUri: string | null = null
   let peekUri: string | null = null // browsing the shelf: this record is pulled out, cover to the front
   let playing = false
-  let holdIpod = false
+  let press = 0 // 0..1: the iPod dips a hair when a wheel button is pressed
   let flipSel = false // the held-up record shows its back (the track list)
-  let ipodBig = false // panel hidden: hold it bigger
   let nowKey = ''
   let screenNow: NowPlaying | null = null
   let screenArt: HTMLImageElement | null = null // the cover, loaded for the screen
@@ -481,7 +480,7 @@ export function buildListeningCorner() {
     arm.rotation.y = armAngle
     // the iPod's progress bar moves on once a second while something plays
     if (screenNow?.playing && performance.now() - screenDrawn > 1000) redrawScreen()
-    if (updateSound(dt, t, camera, !!screenNow?.playing && !holdIpod && !calm)) moving = true
+    if (updateSound(dt, t, camera, !!screenNow?.playing && !calm)) moving = true
     if (updateDeck(dt, t)) moving = true
 
     // the disc travels: out of the sleeve, in an arc, down onto the platter
@@ -584,36 +583,13 @@ export function buildListeningCorner() {
     // a sleeve from the stack that has been picked up is not in the stack meanwhile
     for (const m of stackGroup.children) m.visible = !loose.has(stack.items()[m.userData.index]?.uri)
 
-    // iPod: on its stand, or held in front of the camera
-    if (holdIpod) {
-      // distance chosen so the whole iPod (click wheel included) fills ~64 % of the view height,
-      // nudged up a little to leave room for the "put down" button underneath
-      const tanH = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)
-      // it should nearly fill the screen – and on a phone (narrow, tall view) almost all of it, like using a real iPod
-      const phone = camera.aspect < 0.9
-      const hf = phone ? 0.84 : ipodBig ? 0.9 : 0.72
-      const wf = phone ? 0.94 : ipodBig ? 0.7 : 0.5
-      const fitH = H / (hf * 2 * tanH)
-      const fitW = W / (wf * 2 * tanH * camera.aspect)
-      const dist = Math.max(fitH, fitW)
-      tmpV.copy(camera.position).addScaledVector(camFwd, dist).addScaledVector(camUp, (phone ? 0.02 : ipodBig ? 0.01 : -0.03) * dist * tanH * 2)
-      targetPos.copy(group.worldToLocal(tmpV))
-      ipod.position.lerp(targetPos, Math.min(1, dt * 7))
-      tmpQ.copy(camera.quaternion).premultiply(groupQ)
-      ipod.quaternion.slerp(tmpQ, Math.min(1, dt * 7))
-      body.rotation.x += (0 - body.rotation.x) * Math.min(1, dt * 7)
-      body.position.y += (-0.0 - body.position.y) * Math.min(1, dt * 7)
-      stand.visible = false
-      if (ipod.position.distanceTo(targetPos) > 0.0005 || ipod.quaternion.angleTo(tmpQ) > 0.002) moving = true
-    } else {
-      ipod.position.lerp(ipodHome.pos, Math.min(1, dt * 6))
-      tmpQ.setFromEuler(new THREE.Euler(0, ipodHome.rotY, 0))
-      ipod.quaternion.slerp(tmpQ, Math.min(1, dt * 6))
-      body.rotation.x += (-0.18 - body.rotation.x) * Math.min(1, dt * 6)
-      body.position.y += (0.105 - body.position.y) * Math.min(1, dt * 6)
-      stand.visible = ipod.position.distanceTo(ipodHome.pos) < 0.02
-      if (ipod.position.distanceTo(ipodHome.pos) > 0.002) moving = true
-    }
+    // iPod: it never leaves its stand – a press on the wheel makes it dip a hair
+    press = Math.max(0, press - dt * 7)
+    halo.material.opacity += ((screenNow?.playing ? 0.2 : 0.09) - halo.material.opacity) * Math.min(1, dt * 2) // (the lit screen glows more while it plays)
+    if (Math.abs((screenNow?.playing ? 0.2 : 0.09) - halo.material.opacity) > 0.004) moving = true
+    body.rotation.x = -0.18 + press * 0.014
+    body.position.y = 0.105 - press * 0.0015
+    if (press > 0) moving = true
     return moving
   }
 
@@ -632,6 +608,24 @@ export function buildListeningCorner() {
       minY = Math.min(minY, y); maxY = Math.max(maxY, y)
     }
     return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+  }
+
+  /** Where the camera stands to use the iPod on its stand: straight in front of its screen (so the HTML overlay lines up with it),
+   *  at a distance that makes the iPod fill ~70 % of the view height (a phone: ~85 % and nearly all of the width). World coordinates. */
+  const ipodC = new THREE.Vector3(), ipodN = new THREE.Vector3(), ipodUp = new THREE.Vector3(), ipodQ = new THREE.Quaternion()
+  function ipodView(fovDeg: number, aspect: number): { pos: THREE.Vector3; target: THREE.Vector3 } {
+    group.updateWorldMatrix(true, true)
+    screen.getWorldPosition(ipodC)
+    screen.getWorldQuaternion(ipodQ)
+    ipodN.set(0, 0, 1).applyQuaternion(ipodQ) // out of the glass
+    ipodUp.set(0, 1, 0).applyQuaternion(ipodQ)
+    const target = ipodC.clone().addScaledVector(ipodUp, -screen.position.y) // the middle of the whole iPod (the screen sits above it)
+    const tanH = Math.tan(THREE.MathUtils.degToRad(fovDeg) / 2)
+    const phone = aspect < 0.9
+    const hf = phone ? 0.85 : 0.7
+    const wf = phone ? 0.94 : 0.5
+    const dist = Math.max(H / (hf * 2 * tanH), W / (wf * 2 * tanH * aspect))
+    return { pos: target.clone().addScaledVector(ipodN, dist), target }
   }
 
   /** The iPod screen's rectangle on screen (CSS px relative to the canvas), for the HTML overlay. */
@@ -659,7 +653,6 @@ export function buildListeningCorner() {
     setPeek(uri: string | null) { peekUri = uri },
     setFilter(list: string[] | null | undefined) { filterSet = list?.length ? new Set(list) : null },
     setDeck(v: boolean) { turntable.setDeck(!!v) },
-    setHoldIpod(v: boolean, big = false) { holdIpod = v; ipodBig = big },
     setFlip(v: boolean) { flipSel = v },
     setCalm(v: boolean) { calm = !!v },
     setDaily(uri: string | null | undefined) { dailyUri = uri ?? null },
@@ -667,7 +660,9 @@ export function buildListeningCorner() {
     setNext,
     setTempo(bpm: number | string | null | undefined) { tempo = Number(bpm) || 0 },
     isSpinning: () => playing || spin > 0.02,
-    isHoldingIpod: () => holdIpod,
+    /** A wheel button was pressed: the iPod dips a hair. */
+    pressIpod() { press = 1 },
+    ipodView,
     /** 0 = the needle is on the record, 0.45 = the tonearm rests (the vinyl sounds are timed to it). */
     tonearmAngle: () => armAngle,
     ipodScreenRect,

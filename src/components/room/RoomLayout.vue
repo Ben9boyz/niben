@@ -41,8 +41,8 @@ const isExpanded = computed(() => {
   }
 })
 const isMusic = computed(() => route.name === 'lytte')
-// holding the iPod: the panel steps aside so the iPod has the stage
-const holdingIpod = computed(() => isMusic.value && room.musicView === 'ipod')
+// at the iPod: the panel steps aside so the iPod has the stage
+const usingIpod = computed(() => isMusic.value && room.musicView === 'ipod')
 const mobile = ref(window.matchMedia('(max-width: 900px)').matches)
 const collapsed = ref(false)
 // desktop: the side panel can be slid away so the 3D view (e.g. the held iPod) gets the whole screen.
@@ -76,7 +76,7 @@ function setHidden(v: boolean) {
   try { localStorage.setItem(HIDE_KEY, JSON.stringify([...set])) } catch {}
 }
 // phones: picking up the iPod slides the sheet away so the iPod fills the screen (the arrow brings the panel back)
-watch(holdingIpod, (v) => { if (v && mobile.value) collapsed.value = true })
+watch(usingIpod, (v) => { if (v && mobile.value) collapsed.value = true })
 // phones, the listening corner: the record player is the stage. The library (Album / Spillelister) is a sheet you pull up
 // with the switch at the top – and picking a record puts the sheet away so the record comes forward
 watch(() => route.name, (n) => { if (mobile.value && n === 'lytte') collapsed.value = true }, { immediate: true })
@@ -130,7 +130,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', measure)
   mq.removeEventListener('change', onMq)
 })
-watch(() => [route.name, room.api, collapsed.value, isExpanded.value, holdingIpod.value, hidden.value, decor.editing], () => nextTick(() => setTimeout(measure, 30)))
+watch(() => [route.name, room.api, collapsed.value, isExpanded.value, usingIpod.value, hidden.value, decor.editing], () => nextTick(() => setTimeout(measure, 30)))
 // the panel animates its width – keep the camera offset in sync while it does
 watch(isExpanded, () => [150, 350, 600].forEach((t) => setTimeout(measure, t)))
 watch(() => route.name, () => (collapsed.value = false))
@@ -149,7 +149,7 @@ watch(() => route.name, () => (collapsed.value = false))
   <LeaderLine :active="route.name === 'reiser' && !!room.sel.land" />
   <!-- the other groups' sub-tabs: same look and spot as the music switch -->
   <SubTabs v-if="!isHome && !isMusic && room.ready" floating />
-  <IpodScreen v-if="holdingIpod" />
+  <IpodScreen v-if="usingIpod" />
   <RecordOverlay v-if="isMusic && room.musicView === 'vinyl'" />
 
   <transition name="fade">

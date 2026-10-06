@@ -5,7 +5,7 @@ import type { createRoom } from '@/three/room'
 type RoomApi = ReturnType<typeof createRoom>
 
 // Shared UI ↔ 3D state: what is selected in the room and what the pointer is over.
-export type MusicView = 'vinyl' | 'spiller' | 'ipod' | 'ipodDock'
+export type MusicView = 'vinyl' | 'spiller' | 'ipod'
 export type PracticeTab = 'timer' | 'akkorder' | 'stemmer' | 'metronom'
 export type ChordMode = 'bytte' | 'progresjon' | 'sanger' | 'grep'
 export type IpodView = 'menu' | 'playlist' | 'queue' | 'now' | string
@@ -26,7 +26,7 @@ export const room = reactive({
     musikk: null as MusicSelection | null,
   },
   hover: null as RoomHover | null,
-  musicView: 'vinyl' as MusicView, // listening station: 'vinyl' | 'spiller' (record on, turntable view) | 'ipod' (in hand) | 'ipodDock' (playlist on, iPod on its stand)
+  musicView: 'vinyl' as MusicView, // listening station: 'vinyl' | 'spiller' (record on, turntable view) | 'ipod' (the camera is at the iPod on its stand and its screen can be used)
   // what the iPod shows – shared with the panel so the two mirror each other
   ipod: { view: 'menu' as IpodView, playlist: null as Playlist | null, active: 0, q: '' }, // q: the search text, shared by the panel and the iPod screen
   discover: false, // listening corner: the "Oppdag" view (picks + suggestions) is open instead of albums / playlists

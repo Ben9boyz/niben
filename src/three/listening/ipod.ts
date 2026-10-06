@@ -117,5 +117,18 @@ export function buildIpod(kit: Kit) {
   wheelText.position.set(0, -H * 0.2, D / 2 + 0.001)
   ipodFallback.add(wheelText)
 
-  return { ipod, ipodHome, body, stand, screen, screenCtx, screenTex, updateSound, W, H, SW, SH }
+  // a soft glow around the lit screen (additive, so it costs no light): brighter while the iPod plays
+  const haloTex = canvasTex(128, 128, (x, w, h) => {
+    const g = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2)
+    g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.45, 'rgba(255,255,255,0.35)'); g.addColorStop(1, 'rgba(255,255,255,0)')
+    x.fillStyle = '#000'; x.fillRect(0, 0, w, h)
+    x.fillStyle = g; x.fillRect(0, 0, w, h)
+  })
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, color: 0x9fd0ff, transparent: true, blending: THREE.AdditiveBlending, opacity: 0.1, depthWrite: false, toneMapped: false }))
+  halo.position.set(0.0003, 0.0547, 0.0185)
+  halo.scale.setScalar(0.21)
+  halo.raycast = () => {} // decoration: never in the way of a click
+  body.add(halo)
+
+  return { ipod, ipodHome, body, stand, screen, screenCtx, screenTex, updateSound, halo, W, H, SW, SH }
 }

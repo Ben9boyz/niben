@@ -20,7 +20,7 @@ const view = computed({
   set: (v) => {
     emit('pick') // phones: the library sheet slides up
     room.discover = false
-    if (v === 'ipod') { room.musicView = 'ipodDock'; room.sel.musikk = null } else room.musicView = 'vinyl'
+    if (v === 'ipod') { room.musicView = 'ipod'; room.sel.musikk = null } else room.musicView = 'vinyl'
   },
 })
 // PC: look at the record shelf / at the turntable from above (the same views as the phone's bottom bar)

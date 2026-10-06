@@ -76,7 +76,7 @@ function onPick(p: PickEvent) {
     // the sideboard itself: go down to the shelf and browse
     if (!room.shelfView) { room.musicView = 'vinyl'; room.sel.musikk = null; room.shelfView = true }
   } else if (p.kind === 'anime') room.jpAnime = room.jpAnime === p.index ? -1 : p.index ?? -1
-  else if (p.kind === 'ipod') room.musicView = 'ipod'
+  else if (p.kind === 'ipod') { room.deckView = false; room.shelfView = false; room.sel.musikk = null; room.musicView = 'ipod' }
   else if (p.kind === 'screen') {
     const n = data.prosjekter?.length || 0
     if (n) room.sel.prosjekt = (room.sel.prosjekt + 1) % n
@@ -214,10 +214,7 @@ watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room
   api?.setMusicView({
     // the picked record is held up to the camera – not in the overhead view, where it lies by the turntable
     selected: here && room.musicView !== 'spiller' && room.sel.musikk?.kind === 'album' ? room.sel.musikk.uri : null,
-    ipod: here && room.musicView === 'ipod',
-    big: room.panelHidden || window.matchMedia('(max-width: 900px)').matches, // no panel (or a phone): the held iPod fills the screen
-    // "Album": the camera stays by the turntable · "Spillelister": by the iPod on its stand
-    // (picking something lifts the iPod up in front of the camera)
+    // "Album": the camera stays by the turntable · "Spillelister": at the iPod on its stand (it never leaves the stand)
     pose: !here ? null : room.musicView.startsWith('ipod') ? 'ipod' : room.shelfView ? 'shelf' : room.deckView ? 'deck' : 'top',
     deck: here && room.deckView && !room.shelfView && !room.musicView.startsWith('ipod'),
     flip: room.recordFlipped,
@@ -226,23 +223,24 @@ watch(() => [route.name, room.sel.musikk, room.musicView, room.panelHidden, room
 })
 // started from this page: the side panel slides away and the camera settles on what's playing –
 // a record goes onto the turntable ('spiller' = turntable camera, record not held up), a playlist
-// puts the iPod back on its stand and the camera looks at it ('ipodDock'). Picking another record
-// holds that one up; picking up the iPod (click it / the tab) takes it in hand again.
+// goes to the iPod on its stand ('ipod'; it never leaves the stand). Picking another record holds that one up.
 // the camera goes to the player the music belongs to: the turntable for an album, the iPod for a playlist or a found
 // song (or what I've forced in the settings) – whenever a song begins, and after a while without anybody touching
 // anything. The panel slides away on the PC so the player is the whole picture.
 function focusPlayer(target?: 'ipod' | 'vinyl' | null) {
   if (route.name !== 'lytte') return
-  room.musicView = (target || playOn.value) === 'ipod' ? 'ipodDock' : 'spiller'
+  room.musicView = (target || playOn.value) === 'ipod' ? 'ipod' : 'spiller'
   room.shelfView = false
   room.recordFlipped = false
   if (window.matchMedia('(min-width: 901px)').matches) room.panelHidden = true
 }
+// the iPod fills the stage on a PC: the side panel slides away (a button in the corner brings it back)
+watch(() => room.musicView, (v) => { if (v === 'ipod' && window.matchMedia('(min-width: 901px)').matches) room.panelHidden = true })
 watch(() => spotify.startedHere, () => focusPlayer(targetFor(spotify.origin?.uri, spotify.origin?.from)))
 // a new song began (the next one in line, or started on another device): to the right player – unless I'm holding something
 watch(() => spotify.now?.uri, (uri, old) => {
   if (!uri || uri === old || !spotify.now?.playing) return
-  const holding = room.musicView === 'ipod' || (room.musicView === 'vinyl' && (room.sel.musikk || room.shelfView))
+  const holding = room.musicView === 'vinyl' && (room.sel.musikk || room.shelfView)
   if (!holding) focusPlayer()
 })
 let lastTouch = Date.now()
@@ -254,7 +252,7 @@ onMounted(() => {
   for (const e of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart']) window.addEventListener(e, touched, { passive: true })
   idleTimer = setInterval(() => {
     if (route.name !== 'lytte' || !spotify.now?.playing || Date.now() - lastTouch < 45000) return
-    if (room.musicView !== 'spiller' && room.musicView !== 'ipodDock') focusPlayer()
+    if (room.musicView !== 'spiller' && room.musicView !== 'ipod') focusPlayer()
   }, 5000)
 })
 onBeforeUnmount(() => { clearInterval(idleTimer); window.removeEventListener('keydown', onDeckKey); for (const e of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart']) window.removeEventListener(e, touched) })

@@ -32,7 +32,6 @@ const cursorUri = computed(() => { const r = ipodRows.value[room.ipod.active]; r
 // right-click in the empty space: a new playlist
 function emptyMenu(e: MouseEvent) { if (!admin.mine || e.defaultPrevented || targetEl(e).closest('.cell, input, button, a')) return; showMenu(e, 'Spillelister', playlistsMenu()) }
 function open(it: GridItem) {
-  if (room.musicView === 'ipodDock') room.musicView = 'ipod' // lift the iPod up
   room.ipod.playlist = spotify.playlists.find((p) => p.uri === it.uri) ?? null
   room.ipod.view = 'playlist'
   room.ipod.active = 0
