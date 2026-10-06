@@ -21,7 +21,7 @@ export async function openPage(browser, { mode = 'enkel', width = 1200, height =
   const page = await ctx.newPage()
   page.setDefaultTimeout(15000)
   page.errors = []
-  page.on('pageerror', (e) => page.errors.push(e.message.slice(0, 200)))
+  page.on('pageerror', (e) => { if (!/No supported keysystem/.test(e.message)) page.errors.push(e.message.slice(0, 200)) }) // (no Widevine in CI: Spotify's web player cannot start its DRM)
   page.on('console', (m) => {
     const t = m.text()
     if (/Vue warn/.test(t) || (m.type() === 'error' && !/Failed to load resource|ERR_|net::|No supported keysystem/.test(t))) page.errors.push(t.slice(0, 200)) // (the fake server has no internet: failed requests are expected; a Chromium without Widevine – CI – cannot do the DRM of Spotify's web player)
