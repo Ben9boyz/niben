@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { tick as metronomeTick } from '../lib/strum'
+import { tick as metronomeTick } from '@/lib/strum'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Play, Square, ArrowUpRight, Search, Trophy, ArrowLeftRight, BookOpen } from 'lucide-vue-next'
 import ChordDiagram from './ChordDiagram.vue'
 import SegSwitch from '@/components/ui/SegSwitch.vue'
 import ChordSheet from './ChordSheet.vue'
-import { CHORDS, GROUPS, PAIRS, parseProgression, findChord } from '../lib/chords'
-import { targetEl } from '../lib/dom'
-import { useData, type Song } from '../composables/useData'
-import { room, type ChordMode } from '../composables/useRoom'
+import { CHORDS, GROUPS, PAIRS, parseProgression, findChord } from '@/lib/chords'
+import { targetEl } from '@/lib/dom'
+import { useData, type Song } from '@/composables/useData'
+import { room, type ChordMode } from '@/composables/useRoom'
 
 // Chord practice in the practice corner: one-minute changes, a progression with a metronome,
 // my songs (with links to Ultimate Guitar) and a chord library.

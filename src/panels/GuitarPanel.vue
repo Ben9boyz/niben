@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { tx } from '../composables/useTexts'
-import RecordingList from '../components/RecordingList.vue'
+import RecordingList from '@/components/guitar/RecordingList.vue'
 import NewsletterSignup from '../components/NewsletterSignup.vue'
 import { Guitar, Music2, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { computed } from 'vue'

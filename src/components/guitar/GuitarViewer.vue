@@ -4,9 +4,9 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import { buildGuitar } from '../three/guitar'
-import { prepareGuitarModel } from '../three/guitarModel'
-import type { Guitar } from '../composables/useData'
+import { buildGuitar } from '@/three/guitar'
+import { prepareGuitarModel } from '@/three/guitarModel'
+import type { Guitar } from '@/composables/useData'
 
 // A single guitar on a turntable – used by the plain (non-3D-room) version of the site.
 const props = withDefaults(defineProps<{ guitar?: Guitar | null }>(), { guitar: null })

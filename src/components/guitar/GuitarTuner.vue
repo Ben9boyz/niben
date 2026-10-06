@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount } from 'vue'
 import { Mic, MicOff, Volume2 } from 'lucide-vue-next'
-import { newAudioContext } from '../lib/audio'
+import { newAudioContext } from '@/lib/audio'
 
 // A tuner for the guitar: listens through the microphone, finds the pitch (autocorrelation) and shows which string it is
 // closest to and how many cents off. The tuning can be changed (standard, half a step down, a whole step down, Drop D, DADGAD …)

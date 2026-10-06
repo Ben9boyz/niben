@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Play, ChevronDown } from 'lucide-vue-next'
-import type { Recording } from '../composables/useData'
+import type { Recording } from '@/composables/useData'
 
 // A guitar's recordings. YouTube videos show as a thumbnail until clicked (a dozen embedded
 // players made the page heavy and very long); long lists fold after the first few.

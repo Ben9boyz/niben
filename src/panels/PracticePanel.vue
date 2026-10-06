@@ -2,9 +2,9 @@
 import { computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { timer, timerState, formatTime, toggle, reset, setIntervalSeconds, setSound } from '../composables/useTimer'
 import { room } from '../composables/useRoom'
-import ChordPractice from '../components/ChordPractice.vue'
-import GuitarTuner from '../components/GuitarTuner.vue'
-import Metronome from '../components/Metronome.vue'
+import ChordPractice from '@/components/guitar/ChordPractice.vue'
+import GuitarTuner from '@/components/guitar/GuitarTuner.vue'
+import Metronome from '@/components/guitar/Metronome.vue'
 import SegSwitch from '@/components/ui/SegSwitch.vue'
 import { targetEl, inputOf } from '../lib/dom'
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { findChord } from '../lib/chords'
+import { findChord } from '@/lib/chords'
 
 // A chord box: six strings, the frets, dots with finger numbers, barres, x / o above the nut.
 const props = withDefaults(defineProps<{ name: string; size?: number /* width in px */; showName?: boolean }>(), { size: 120, showName: true })

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { PATTERNS } from '../lib/strum'
+import { PATTERNS } from '@/lib/strum'
 
 // The strumming pattern for one bar: tap a slot to cycle down → up → muted → nothing, or pick a common
 // pattern. `active` lights up the slot being played.

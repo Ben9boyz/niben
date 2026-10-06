@@ -5,8 +5,8 @@ import { useData, reloadData, type Song } from '../../composables/useData'
 import { api, errorMessage } from '../../composables/useAdmin'
 import { parseProgression, findChord, importSheet } from '../../lib/chords'
 import type { Flash } from '../../types'
-import ChordDiagram from '../ChordDiagram.vue'
-import StrumEditor from '../StrumEditor.vue'
+import ChordDiagram from '@/components/guitar/ChordDiagram.vue'
+import StrumEditor from '@/components/guitar/StrumEditor.vue'
 
 // Songs to practise in the practice corner: chords, tempo, capo and a link to Ultimate Guitar.
 const data = useData()

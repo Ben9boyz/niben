@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Play, Pause } from 'lucide-vue-next'
-import { newAudioContext } from '../lib/audio'
-import { targetEl, inputOf } from '../lib/dom'
+import { newAudioContext } from '@/lib/audio'
+import { targetEl, inputOf } from '@/lib/dom'
 
 // A metronome (Web Audio with look-ahead scheduling, so it doesn't drift): tempo, beats per bar (the first one is accented),
 // tap tempo, and a speed trainer that adds a few BPM every few bars up to a goal – for practising something slowly until it's clean.

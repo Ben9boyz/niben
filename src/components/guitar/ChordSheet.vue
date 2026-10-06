@@ -3,12 +3,12 @@ import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue'
 import { ChevronLeft, Minus, Plus, Play, Pause, ArrowUpRight, Timer, Guitar, Save } from 'lucide-vue-next'
 import ChordDiagram from './ChordDiagram.vue'
 import StrumEditor from './StrumEditor.vue'
-import { parseSheet, transposeChord, parseProgression, findChord } from '../lib/chords'
-import { playSong, type SongOptions } from '../lib/strum'
-import type { Song } from '../composables/useData'
-import type { SheetSection } from '../lib/chords'
-import { admin, api, errorMessage, canManage } from '../composables/useAdmin'
-import { reloadData } from '../composables/useData'
+import { parseSheet, transposeChord, parseProgression, findChord } from '@/lib/chords'
+import { playSong, type SongOptions } from '@/lib/strum'
+import type { Song } from '@/composables/useData'
+import type { SheetSection } from '@/lib/chords'
+import { admin, api, errorMessage, canManage } from '@/composables/useAdmin'
+import { reloadData } from '@/composables/useData'
 
 // My chord sheet for a song, like on Ultimate Guitar: transpose, text size, auto-scroll – plus the
 // strumming pattern, hearing it strummed through the chords (the chord being played lights up in the
