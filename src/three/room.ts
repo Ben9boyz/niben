@@ -110,6 +110,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   const coarse = window.matchMedia('(pointer: coarse)').matches
   const inApp = !!window.nibenApp
   const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' })
+  renderer.info.autoReset = false // (the counters are reset by hand once a frame, so they add up over all the passes)
   // What is this running on? Look at the graphics chip, the CPU cores, the memory and the screen, and pick a
   // starting quality; while it runs, the frame time moves it up or down (see "Adaptive quality" below).
   const spec = (() => {
@@ -123,7 +124,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     const mem = navigator.deviceMemory || 0 // GB (Chromium only)
     const software = /swiftshader|llvmpipe|software|basic render|softpipe/.test(gpu)
     const strongGpu = /apple m\d|rtx|gtx 1[06]|gtx 9|radeon rx|radeon pro|arc a|nvidia|geforce|apple gpu/.test(gpu) && !/mali|adreno|powervr/.test(gpu)
-    const weakGpu = /intel.*(hd|uhd|iris plus)|mali-[gt][1-6]\d\b|adreno \(?[1-5]\d\d\b|powervr|sgx|vivante|llvmpipe/.test(gpu)
+    const weakGpu = /intel(?!.*arc).*(hd|uhd|iris|xe)|mali-[gt][1-6]\d\b|adreno \(?[1-5]\d\d\b|powervr|sgx|vivante|llvmpipe/.test(gpu)
     // a score from 0 (very weak) to 10
     let score = 5
     if (strongGpu) score += 3
