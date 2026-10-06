@@ -10,7 +10,9 @@ export function fitText(x: CanvasRenderingContext2D, text: string | null | undef
 export function drawIpodScreen(ctx: CanvasRenderingContext2D, w: number, h: number, now: NowPlaying | null, art: HTMLImageElement | null, progressMs: number): void {
   const x = ctx
   const u = h / 100
-  x.fillStyle = '#eef3f8'
+  const bg = x.createLinearGradient(0, 0, 0, h)
+  bg.addColorStop(0, '#f4f7fb'); bg.addColorStop(1, '#e3e9f0') // (the same ground as the iPod you use)
+  x.fillStyle = bg
   x.fillRect(0, 0, w, h)
   // header bar
   const tb = x.createLinearGradient(0, 0, 0, 13 * u)
@@ -24,19 +26,23 @@ export function drawIpodScreen(ctx: CanvasRenderingContext2D, w: number, h: numb
   x.font = `700 ${6.4 * u}px Inter, -apple-system, sans-serif`
   x.textAlign = 'center'
   x.textBaseline = 'middle'
-  x.fillText(now?.name ? (now.playing ? 'Spilles nå' : 'Pause') : 'iPod', w / 2, 6.8 * u)
+  x.fillText(now?.name ? 'Spilles nå' : 'iPod', w / 2, 6.8 * u)
+  // the same buttons as on the iPod you use: back at the left, and shuffle · play · close at the right
+  const hy = 6.8 * u
+  x.lineCap = x.lineJoin = 'round'
+  x.strokeStyle = '#2b7ff0'; x.lineWidth = 1.2 * u
+  x.beginPath(); x.moveTo(10.5 * u, hy - 2.8 * u); x.lineTo(7.5 * u, hy); x.lineTo(10.5 * u, hy + 2.8 * u); x.stroke() // ‹
+  x.strokeStyle = '#9aa'; x.lineWidth = 1 * u
+  const cx = w - 7 * u
+  x.beginPath(); x.moveTo(cx - 1.9 * u, hy - 1.9 * u); x.lineTo(cx + 1.9 * u, hy + 1.9 * u); x.moveTo(cx + 1.9 * u, hy - 1.9 * u); x.lineTo(cx - 1.9 * u, hy + 1.9 * u); x.stroke() // ✕
+  const px = w - 18 * u
+  x.fillStyle = now?.playing ? '#1db954' : '#9aa'
+  x.beginPath(); x.moveTo(px - 1.7 * u, hy - 2.5 * u); x.lineTo(px - 1.7 * u, hy + 2.5 * u); x.lineTo(px + 2.6 * u, hy); x.closePath(); x.fill() // ▶
   if (now?.shuffle) {
-    // small shuffle mark at the left of the header
-    x.strokeStyle = '#2b7ff0'
-    x.lineWidth = 0.9 * u
-    x.lineCap = 'round'
-    const sx = 5 * u, sy = 6.8 * u, d = 2.2 * u
-    x.beginPath(); x.moveTo(sx, sy - d); x.bezierCurveTo(sx + 2.5 * u, sy - d, sx + 2.5 * u, sy + d, sx + 5 * u, sy + d); x.stroke()
-    x.beginPath(); x.moveTo(sx, sy + d); x.bezierCurveTo(sx + 2.5 * u, sy + d, sx + 2.5 * u, sy - d, sx + 5 * u, sy - d); x.stroke()
-  }
-  if (now?.playing) {
-    x.fillStyle = '#1db954'
-    x.beginPath(); x.moveTo(w - 9 * u, 4.3 * u); x.lineTo(w - 9 * u, 9.3 * u); x.lineTo(w - 4.8 * u, 6.8 * u); x.fill()
+    x.strokeStyle = '#2b7ff0'; x.lineWidth = 0.9 * u
+    const sx = w - 29.5 * u, d = 2.2 * u
+    x.beginPath(); x.moveTo(sx, hy - d); x.bezierCurveTo(sx + 2.5 * u, hy - d, sx + 2.5 * u, hy + d, sx + 5 * u, hy + d); x.stroke()
+    x.beginPath(); x.moveTo(sx, hy + d); x.bezierCurveTo(sx + 2.5 * u, hy + d, sx + 2.5 * u, hy - d, sx + 5 * u, hy - d); x.stroke()
   }
   if (!now?.name) {
     x.font = `600 ${6.4 * u}px Inter, -apple-system, sans-serif`

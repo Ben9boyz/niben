@@ -111,6 +111,8 @@ function sp_api(string $method, string $path, ?array $body = null): array {
         $headers = ['Authorization: Bearer ' . $tok];
         if ($body !== null) $headers[] = 'Content-Type: application/json';
         [$status, $res] = http_req($method, 'https://api.spotify.com/v1' . $path, $headers, $body !== null ? json_encode($body) : null);
+        // "slow down" (429) on something I changed (like, add to a list …): wait a moment and try once more – reads are never held up
+        if ($status === 429 && $method !== 'GET') { sleep(2); [$status, $res] = http_req($method, 'https://api.spotify.com/v1' . $path, $headers, $body !== null ? json_encode($body) : null); }
         if ($status !== 401) return [$status, $res === '' ? null : json_decode($res, true)];
     }
     return [401, null];
@@ -696,6 +698,7 @@ function sp_handle(string $action, bool $post): void {
         if (!sp_has_scope('user-library-modify')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
         // Spotify's "save albums" endpoint; the newer library endpoint as a fallback
         [$s, $j] = sp_api('PUT', '/me/albums?ids=' . $m[1]);
+        if ($s === 429) out(['error' => 'Spotify ber oss vente litt (for mange forespørsler). Prøv igjen om et par sekunder.', 'code' => 'rate'], 429);
         if ($s >= 400 && $s !== 401) [$s, $j] = sp_api('PUT', '/me/library?uris=' . rawurlencode($uri));
         if ($s === 401) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
         if ($s === 403) fail('Spotify sa nei til å lagre albumet (' . ($j['error']['message'] ?? '403') . ').', 403);
@@ -712,6 +715,7 @@ function sp_handle(string $action, bool $post): void {
         if (!preg_match('~^spotify:album:([A-Za-z0-9]{10,40})$~', $uri, $m)) fail('Ugyldig album.');
         if (!sp_has_scope('user-library-modify')) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
         [$s, $j] = sp_api('DELETE', '/me/albums?ids=' . $m[1]);
+        if ($s === 429) out(['error' => 'Spotify ber oss vente litt (for mange forespørsler). Prøv igjen om et par sekunder.', 'code' => 'rate'], 429);
         if ($s >= 400 && $s !== 401) [$s, $j] = sp_api('DELETE', '/me/library?uris=' . rawurlencode($uri));
         if ($s === 401) out(['error' => SP_RECONNECT, 'code' => 'scope'], 403);
         if ($s >= 300) fail('Spotify svarte med feil (' . $s . ').', 502);

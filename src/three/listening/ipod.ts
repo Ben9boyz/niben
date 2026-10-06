@@ -28,7 +28,21 @@ export function buildIpod(kit: Kit) {
   body.add(ipodFallback)
   add(new RoundedBoxGeometry(W, H, D, 4, 0.008), new THREE.MeshPhysicalMaterial({ color: 0xe2e4e8, roughness: 0.18, clearcoat: 1, metalness: 0.05 }), 0, 0, 0, ipodFallback)
   glbLoader().load('models/ipod.glb', (g) => {
-    g.scene.traverse((o) => { if (o instanceof THREE.Mesh) { o.castShadow = o.receiveShadow = true } })
+    g.scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return
+      o.castShadow = o.receiveShadow = true
+      // Safari (Mac and iPhone) draws a model with too many textures per material as a black box – a material that is also
+      // lit by several shadowing lights runs out of the 16 texture units a shader may use there. So: the colour map and the
+      // normal map stay; the baked light / occlusion / metal-rough maps give way to plain numbers; the glass has no texture.
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+        if (!(m instanceof THREE.MeshStandardMaterial)) continue
+        if (m.transparent) { m.map = null; m.color.set(0xffffff); m.opacity = Math.min(m.opacity, 0.16); m.depthWrite = false }
+        else { m.emissive.set(0xffffff); m.emissiveIntensity = m.emissiveMap ? 0.22 : 0 }
+        m.emissiveMap = null; m.aoMap = null; m.metalnessMap = null; m.roughnessMap = null
+        m.metalness = m.transparent ? 0 : 0.35; m.roughness = m.transparent ? 0.1 : 0.32
+        m.needsUpdate = true
+      }
+    })
     body.add(g.scene)
     ipodFallback.visible = false
     kit.markDirty()

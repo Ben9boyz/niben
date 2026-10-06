@@ -1,19 +1,24 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick } from 'vue'
 import { Disc3, ListMusic, Sparkles } from 'lucide-vue-next'
 import { room } from '@/composables/room/useRoom'
 import { spotify } from '@/composables/music/useSpotify'
 
 // The three lists of the listening corner, as tabs at the top of the side panel (the PC) and of the full-screen library
 // (phones): Album (the records) · Spillelister (the iPod) · Oppdag (my picks and suggestions). A tab only decides what the
-// panel shows – except Album, which also takes the camera down to the record shelf.
+// panel shows – except Album, which also takes the camera down to the record shelf, and Spillelister, which takes it to the iPod.
 const tab = computed(() => (room.discover ? 'discover' : room.listTab))
 const pc = window.matchMedia('(min-width: 901px)')
 function pick(t: 'vinyl' | 'ipod' | 'discover') {
   if (t === 'discover') { room.discover = true; room.sel.musikk = null; return }
   room.discover = false
   room.listTab = t
-  // Spillelister is only the list. Album takes the camera down to the record shelf (on a PC; on a phone the sheet is what you look at)
+  // Spillelister takes the camera to the iPod (the panel stays where it is). Album takes the camera down to the record shelf (on a PC; on a phone the sheet is what you look at)
+  if (t === 'ipod' && pc.matches) {
+    room.deckView = false; room.shelfView = false; room.sel.musikk = null; room.ipod.playlist = null; room.ipod.view = 'menu'
+    room.musicView = 'ipod'
+    void nextTick(() => { room.panelHidden = false }) // (the iPod otherwise slides the panel away – here the panel is what was just used)
+  }
   if (t === 'vinyl' && pc.matches) { room.musicView = 'vinyl'; room.sel.musikk = null; room.deckView = false; room.shelfView = true }
 }
 </script>

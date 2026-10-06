@@ -170,6 +170,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   const fancy = inApp
   const maxMsaa = renderer.capabilities.maxSamples || 4
   const maxTex = renderer.capabilities.maxTextureSize || 4096
+  const webkitFewUnits = (renderer.capabilities.maxTextures || 16) <= 16 && /^((?!chrome|chromium|android|crios|fxios|edg).)*(safari|applewebkit)/i.test(navigator.userAgent) && /(Mac|iPhone|iPad)/.test(navigator.userAgent)
   // what "Auto" means for this device (the user's own choices override any of these)
   const autoGfx = (): Eff => ({
     res: 'auto', fps: quality === 'low' ? 30 : 0, // (a weak machine moves at 30 fps at most – it rests the rest of the time)
@@ -1289,6 +1290,10 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     eff.showFps = !!g?.showFps // the frame counter works in Auto too
     // your own (or a preset's) choices decide how light the lighting is: no glow and little smoothing = the lean lighting (no area lights, no tiny point lights)
     if (g && g.mode === 'custom') { const lean = eff.bloom === 'off' && eff.msaa <= 2; eff.areaLights = !lean; eff.smallLights = !lean }
+    // Safari (Mac and iPhone): a shader may use 16 textures there, and the shadows plus the area lights' lookup tables use them
+    // up – the materials with several textures of their own (the iPod, the turntable) then come out as plain black boxes.
+    // So no area lights there (the window's light is replaced by the soft one) whatever the settings say.
+    if (webkitFewUnits) eff.areaLights = false
     const n = eff
     // picture sharpness: smoothing of the edges (MSAA) – the render targets are rebuilt with the new sample count
     if (n.msaa !== prev.msaa) {
