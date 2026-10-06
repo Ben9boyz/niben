@@ -2,12 +2,12 @@
 import SettingsMenu from './SettingsMenu.vue'
 import ViewSwitch from './ViewSwitch.vue'
 import ProfileMenu from './ProfileMenu.vue'
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, type ComponentPublicInstance } from 'vue'
-import { navGroups, groupOf, groupTarget } from '@/lib/nav'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, type Component, type ComponentPublicInstance } from 'vue'
+import { navGroups, groupOf, groupTarget, TAB_LABELS, ROUTE_ICONS } from '@/lib/nav'
 import { useRoute, useRouter } from 'vue-router'
 import { admin, checkLogin } from '@/composables/site/useAdmin'
 import BrandLogo from '@/components/ui/BrandLogo.vue'
-import { Menu, X, Footprints } from 'lucide-vue-next'
+import { Menu, X, Footprints, Disc3, Library, Smartphone } from 'lucide-vue-next'
 import { room } from '@/composables/room/useRoom'
 import { targetEl } from '@/lib/dom'
 import { mode } from '@/composables/ui/useMode'
@@ -26,7 +26,7 @@ function pressEnd() { clearTimeout(pressTimer) }
 
 // the menu shows the main tabs; the sub-tabs are pills inside the page (SubTabs). A tab opens the
 // sub-tab you were last on.
-const links = computed(() => navGroups.value.map((g) => ({ name: g.id, label: g.label, icon: g.icon, to: groupTarget(g) })))
+const links = computed(() => navGroups.value.map((g) => ({ name: g.id, label: g.label, icon: g.icon, to: groupTarget(g), routes: g.routes })))
 const activeGroup = computed(() => groupOf(route.name)?.id)
 // phones (plain version): a top bar with the page's name – the group (its sub-tabs sit just below)
 const barTitle = computed(() => (route.name === 'hjem' ? '' : route.name === 'admin' ? 'Admin' : groupOf(route.name)?.label || route.meta?.title || ''))
@@ -79,6 +79,69 @@ function onScroll() {
   else if (y < lastY - 6 || y < 40) setHidden(false)
   lastY = y
 }
+// ── The sub-tabs pop out of the main tab (desktop, where there is a pointer to hover with) ──
+// Hover "Lære" and Japansk / Gitar-øving fan out beside it; pick one and the pills fly up to where the sub-tabs sit on the page.
+const canHover = window.matchMedia('(hover: hover) and (min-width: 721px)')
+interface FlyItem { id: string; label: string; icon?: string | Component; view?: 'now' | 'shelf' | 'ipod' }
+const fly = ref<{ name: string; top: number; left: number; items: FlyItem[] } | null>(null)
+// what pops out of a tab: the sub-tabs of its group – and for Lytte (one page) the three ways to look at the corner
+const LYTTE_VIEWS: FlyItem[] = [{ id: 'now', label: 'Spiller nå', icon: Disc3, view: 'now' }, { id: 'shelf', label: 'Hylle', icon: Library, view: 'shelf' }, { id: 'ipod', label: 'iPod', icon: Smartphone, view: 'ipod' }]
+function flyItems(name: string, routes: string[]): FlyItem[] {
+  if (name === 'lytte') return mode.value === 'rom' ? LYTTE_VIEWS : []
+  return routes.length > 1 ? routes.map((r) => ({ id: r, label: TAB_LABELS[r] ?? r, icon: ROUTE_ICONS[r] })) : []
+}
+const flyEl = ref<HTMLElement | null>(null)
+let flyTimer: ReturnType<typeof setTimeout> | undefined
+function openFly(name: string, routes: string[], e: Event) {
+  clearTimeout(flyTimer)
+  const items = flyItems(name, routes)
+  if (!canHover.matches || !items.length) { fly.value = null; return }
+  const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  fly.value = { name, top: r.top + r.height / 2, left: r.right + 10, items }
+}
+const closeFlySoon = () => { clearTimeout(flyTimer); flyTimer = setTimeout(() => (fly.value = null), 260) }
+const keepFly = () => clearTimeout(flyTimer)
+const raf = () => new Promise<void>((res) => requestAnimationFrame(() => res()))
+function lookAtCorner(v: NonNullable<FlyItem['view']>) {
+  room.discover = false; room.deckView = false; room.sel.musikk = null
+  room.shelfView = v === 'shelf'
+  room.musicView = v === 'ipod' ? 'ipod' : v === 'shelf' ? 'vinyl' : 'spiller'
+}
+async function pickFly(it: FlyItem) {
+  const root = flyEl.value
+  const isView = !!it.view
+  const go = async () => { await router.push(isView ? { name: 'lytte' } : { name: it.id }).catch(() => undefined); if (it.view) { await nextTick(); lookAtCorner(it.view) } }
+  if (!root) { void go(); return }
+  const pills = [...root.querySelectorAll<HTMLElement>('button.fp')]
+  const from = pills.map((p) => p.getBoundingClientRect())
+  const clones = pills.map((p, i) => {
+    const c = p.cloneNode(true) as HTMLElement
+    c.classList.add('fp-fly')
+    Object.assign(c.style, { position: 'fixed', margin: '0', left: `${from[i].left}px`, top: `${from[i].top}px`, width: `${from[i].width}px`, height: `${from[i].height}px`, animation: 'none', zIndex: '60', pointerEvents: 'none', transformOrigin: '0 0' })
+    document.body.appendChild(c)
+    return c
+  })
+  clearTimeout(flyTimer)
+  fly.value = null
+  document.documentElement.classList.add('flying') // (the real sub-tab pill waits, still, until the pills have landed)
+  await go()
+  await nextTick(); await raf(); await raf()
+  const targets = [...document.querySelectorAll<HTMLElement>(isView ? '.msw .cam button' : '[aria-label="Underfaner"] [role="tab"]')]
+  const done = () => { clones.forEach((c) => c.remove()); document.documentElement.classList.remove('flying') }
+  if (targets.length !== clones.length) return done()
+  const anims = clones.map((c, i) => {
+    const t = targets[i].getBoundingClientRect()
+    const dx = t.left - from[i].left, dy = t.top - from[i].top
+    const sx = t.width / from[i].width, sy = t.height / from[i].height
+    return c.animate(
+      [{ transform: 'translate(0, 0) scale(1, 1)', opacity: 1 }, { transform: `translate(${dx * 0.55}px, ${dy * 0.55 - 26}px) scale(${(1 + sx) / 2}, ${(1 + sy) / 2}) rotate(${i % 2 ? 4 : -4}deg)`, opacity: 1, offset: 0.55 }, { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`, opacity: 0.9 }],
+      { duration: 640, delay: i * 70, easing: 'cubic-bezier(0.3, 0.7, 0.3, 1)', fill: 'both' },
+    ).finished
+  })
+  await Promise.all(anims).catch(() => undefined)
+  done()
+}
+
 onMounted(() => {
   nextTick(place)
   document.fonts?.ready.then(place)
@@ -135,6 +198,9 @@ onBeforeUnmount(() => {
         class="item"
         :class="{ active: activeGroup === l.name }"
         :ref="(el) => setItem(i, el)"
+        @mouseenter="openFly(l.name, l.routes, $event)"
+        @mouseleave="closeFlySoon"
+        @focus="openFly(l.name, l.routes, $event)"
       >
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path :d="l.icon" /></svg>
         <span class="label">{{ l.label }}</span>
@@ -153,6 +219,15 @@ onBeforeUnmount(() => {
     <ViewSwitch v-if="!isPhone" />
     <SettingsMenu v-if="!isPhone" />
   </header>
+  <teleport to="body">
+    <div v-if="fly" ref="flyEl" class="fly" :style="{ top: `${fly.top}px`, left: `${fly.left}px` }" @mouseenter="keepFly" @mouseleave="closeFlySoon">
+      <button v-for="(it, i) in fly.items" :key="it.id" class="fp glass" :style="{ '--i': i }" @click="pickFly(it)">
+        <svg v-if="typeof it.icon === 'string'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="it.icon" /></svg>
+        <component :is="it.icon" v-else-if="it.icon" :size="16" aria-hidden="true" />
+        {{ it.label }}
+      </button>
+    </div>
+  </teleport>
   <!-- phones: the whole menu sits behind the logo (tap it); the settings cog is in the other corner -->
   <div v-if="isPhone" class="mbar" aria-hidden="true"></div>
   <button v-if="isPhone" class="mlogo glass" :aria-expanded="navOpen" aria-label="Meny" @click="navOpen = !navOpen" @dblclick.prevent="toAdmin" @pointerdown="pressStart" @pointerup="pressEnd" @pointerleave="pressEnd"><X v-if="navOpen" :size="24" aria-hidden="true" /><Menu v-else :size="24" aria-hidden="true" /></button>
@@ -357,6 +432,18 @@ button.item { border: 0; background: transparent; font-family: inherit; cursor: 
   .item.active { background: var(--accent-soft); }
 }
 @media (min-width: 721px) { .mlogo { display: none; } }
+</style>
+
+<style>
+/* the sub-tabs fan out of the main tab */
+.fly { position: fixed; z-index: 44; transform: translateY(-50%); display: flex; gap: 8px; padding-left: 4px; }
+.fly::before { content: ''; position: absolute; left: -14px; top: -14px; bottom: -14px; width: 18px; } /* (a bridge: the pointer can cross the gap from the tab) */
+.fp { display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 16px; border: 0; border-radius: 999px; color: var(--text); font: 700 0.88rem var(--font); white-space: nowrap; cursor: pointer; transform-origin: -30px 50%; animation: fpOut 0.55s var(--spring) both; animation-delay: calc(var(--i) * 70ms); transition: color 0.2s, scale 0.25s var(--spring); }
+.fp:hover { color: var(--accent); scale: 1.06; }
+.fp svg { color: var(--accent); }
+@keyframes fpOut { from { opacity: 0; transform: translateX(-46px) scale(0.35) rotate(-14deg); } 60% { opacity: 1; } }
+html.flying [aria-label="Underfaner"], html.flying .msw .cam { opacity: 0; animation: none; }
+@media (prefers-reduced-motion: reduce) { .fp { animation: none; } }
 </style>
 
 <style>

@@ -1084,7 +1084,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   // ── Free roam: walk around in the room ──
   // WASD / arrows to walk (Shift to hurry), drag to look around; on a phone the joystick (RoamControls) walks and a drag looks.
   // Eye height 1.6 m; the walls and the furniture on the floor stop you. The camera goes back to its station when you leave.
-  const roam = { on: false, x: 0.5, z: 2.7, yaw: 0, pitch: -0.05, mx: 0, mz: 0, crouch: false, duck: 0, keys: new Set<string>(), drag: null as { x: number; y: number; id: number } | null }
+  const roam = { on: false, x: 0.5, z: 2.7, yaw: 0, pitch: -0.05, mx: 0, mz: 0, crouch: false, duck: 0, ease: 1, fromPos: new THREE.Vector3(), fromLook: new THREE.Vector3(), keys: new Set<string>(), drag: null as { x: number; y: number; id: number } | null }
   const ROOM_BOX = { x0: -3.7, x1: 3.7, z0: -3.25, z1: 3.3 }
   const EYE = 1.6, EYE_LOW = 0.85, RADIUS = 0.28 // (C: crouch – the eyes go down to 85 cm, and you walk slower)
   let roamBoxes: THREE.Box3[] = []
@@ -1128,12 +1128,19 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     const eye = EYE + (EYE_LOW - EYE) * roam.duck
     camera.position.set(roam.x, eye + Math.sin(simT * 7) * (moved ? 0.012 : 0), roam.z)
     const cp = Math.cos(roam.pitch)
-    camera.lookAt(roam.x - Math.sin(roam.yaw) * cp, eye + Math.sin(roam.pitch), roam.z - Math.cos(roam.yaw) * cp)
+    tmp.set(roam.x - Math.sin(roam.yaw) * cp, eye + Math.sin(roam.pitch), roam.z - Math.cos(roam.yaw) * cp)
+    if (roam.ease < 1) { // coming back to walking: the camera glides from where it was to where you stood
+      roam.ease = Math.min(1, roam.ease + dt / 0.7)
+      const k = easeInOut(roam.ease)
+      camera.position.lerpVectors(roam.fromPos, camera.position, k)
+      tmp.lerpVectors(roam.fromLook, tmp, k)
+    }
+    camera.lookAt(tmp)
     lookAt.set(roam.x - Math.sin(roam.yaw), eye, roam.z - Math.cos(roam.yaw)) // (so the lerp back to a station starts from here)
     // …and any flight to a station starts from where you stand now (not from where the camera was before you began walking)
     camTarget.copy(lookAt)
     camPos.copy(camTarget).addScaledVector(tmp2.subVectors(camera.position, camTarget), 1 / distK)
-    return moved || ducking
+    return moved || ducking || roam.ease < 1
   }
   const roamKeys = (down: boolean) => (e: KeyboardEvent): void => {
     if (!roam.on || ['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement | null)?.tagName ?? '')) return
@@ -1687,10 +1694,10 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     get gfxInfo() { return { calls: drawn.calls, triangles: drawn.triangles, lights: countLights(), quality, level, pixelRatio: renderer.getPixelRatio(), fps: fpsVal, maxMsaa, maxTex, dpr: window.devicePixelRatio, gpu: spec.gpu, score: spec.score, auto: autoGfx(), software: spec.software } },
     /** A full-screen panel covers the room (or not): nothing is drawn while it does. */
     /** Free roam on / off: walk around in the room (the camera leaves its station; `goTo` brings it back). */
-    setRoam(on: boolean) {
+    setRoam(on: boolean, pose?: { x: number; z: number; yaw: number; pitch: number } | null) {
       if (on === roam.on) return
       roam.on = on
-      roam.keys.clear(); roam.mx = roam.mz = 0; roam.drag = null; roam.crouch = false; roam.duck = 0
+      roam.keys.clear(); roam.mx = roam.mz = 0; roam.drag = null; roam.crouch = false; roam.duck = 0; roam.ease = 1
       if (on) {
         updateCull(true) // (everything shows while walking – and then the furniture is there to be collided with)
         buildRoamBoxes()
@@ -1700,6 +1707,10 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
         if (blocked(roam.x, roam.z) || Math.abs(camera.position.x) > 4.2 || camera.position.z > 8) { roam.x = 0.5; roam.z = 2.7 }
         const d = tmp.subVectors(lookAt, camera.position)
         roam.yaw = Math.atan2(-d.x, -d.z); roam.pitch = -0.05
+        if (pose) { // back to where you stood before you looked at something: the camera glides there
+          roam.x = pose.x; roam.z = pose.z; roam.yaw = pose.yaw; roam.pitch = pose.pitch
+          roam.ease = 0; roam.fromPos.copy(camera.position); roam.fromLook.copy(lookAt)
+        }
         zoomTarget = 1
         camera.fov = 68 // a natural view for walking (the stations use a narrow lens, which looks odd up close)
         camera.updateProjectionMatrix()
@@ -1707,6 +1718,8 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       } else { resize(); goTo(station); invalidate(1) } // (resize puts the station lens back)
     },
     /** The joystick on a phone: x right / left, z back / forward, both −1 … 1. */
+    /** Where you stand and look right now (to come back to it). */
+    roamPose() { return { x: roam.x, z: roam.z, yaw: roam.yaw, pitch: roam.pitch } },
     /** Crouch on / off (the button on a phone; C on a keyboard). */
     roamCrouch(on: boolean) { roam.crouch = on; invalidate(0.5) },
     roamMove(x: number, z: number) { roam.mx = x; roam.mz = z; invalidate(0.4) },

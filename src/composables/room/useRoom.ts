@@ -31,6 +31,8 @@ export const room = reactive({
   // what the iPod shows – shared with the panel so the two mirror each other
   ipod: { view: 'menu' as IpodView, playlist: null as Playlist | null, active: 0, q: '' }, // q: the search text, shared by the panel and the iPod screen
   roam: false, // free roam: walking around in the room
+  roamBackPath: '', // the page the click took me to
+  roamBack: null as { x: number; z: number; yaw: number; pitch: number } | null, // where I stood when a click in free roam took me to a station – "out" goes back there
   listTab: 'vinyl' as 'vinyl' | 'ipod', // what the side panel lists (records or playlists) – the camera is a separate thing
   discover: false, // listening corner: the "Oppdag" view (picks + suggestions) is open instead of albums / playlists
   panelHidden: false,

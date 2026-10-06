@@ -67,5 +67,12 @@ test('free roam: a click on the iPod in the listening corner goes there and pick
   await page.evaluate(() => window.__room.fastForward(3))
   await page.locator('.ipod').waitFor({ timeout: 20000 }) // its screen is up: the iPod is in use
   assert.ok(await page.evaluate(() => !document.body.innerText.includes('W A S D')), 'walking has ended')
+  // …and out of the iPod you are walking again, where you stood
+  const before = await page.evaluate(() => window.__room.roamPose())
+  await page.getByRole('button', { name: 'Lukk iPoden' }).first().dispatchEvent('click')
+  await page.waitForFunction(() => document.body.innerText.includes('W A S D'), null, { timeout: 15000 })
+  await page.evaluate(() => window.__room.fastForward(2))
+  const after = await page.evaluate(() => window.__room.roamPose())
+  assert.ok(Math.hypot(after.x - before.x, after.z - before.z) < 0.01, 'the same spot')
   assert.deepEqual(page.errors, [])
 })

@@ -422,15 +422,17 @@ export async function play(uri: string, track: string | null = null, opts: { fro
       r = await send()
     } catch (e) {
       const code = e instanceof ApiError ? e.code : undefined
-      if (code === 'device_missing' && playDevice.reconnect) {
-        // Spotify can't see the page's player: re-register it and try again …
-        const id = await playDevice.reconnect()
+      if (code === 'device_missing') {
+        // Spotify can't see the page's player (it dropped out after a while): re-register it and try again …
+        const id = playDevice.reconnect ? await playDevice.reconnect() : null
         if (id) body.device = id
+        else { delete body.device; body.fallback = true } // (no player on the page to bring back: any of my devices will do)
         try {
           r = await send()
         } catch (e2) {
           if (!(e2 instanceof ApiError) || e2.code !== 'device_missing') throw e2
           // … and if it still can't, play on another of my devices
+          delete body.device
           body.fallback = true
           r = await send()
         }

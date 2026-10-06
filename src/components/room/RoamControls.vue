@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import { X, ArrowDownToLine } from 'lucide-vue-next'
+import { X, ArrowDownToLine, Footprints } from 'lucide-vue-next'
 import { room } from '@/composables/room/useRoom'
 import { mode } from '@/composables/ui/useMode'
 
@@ -11,11 +11,19 @@ const route = useRoute()
 const canRoam = computed(() => mode.value === 'rom' && room.ready && route.name !== 'admin')
 const touch = window.matchMedia('(pointer: coarse)').matches
 const toggle = () => { room.roam = !room.roam }
-const onKey = (e: KeyboardEvent) => { if (room.roam && e.key === 'Escape') { room.roam = false; e.preventDefault() } }
+// a click in free roam took me to a station: "out" (the button, Esc with nothing held up, closing the iPod) walks on from where I stood
+const canGoBack = computed(() => !room.roam && !!room.roamBack && mode.value === 'rom')
+const goBack = () => { if (room.roamBack) room.roam = true }
+const holding = () => !!room.sel.musikk || room.musicView === 'ipod' || room.deckView || room.shelfView
+const onKey = (e: KeyboardEvent) => {
+  if (room.roam && e.key === 'Escape') { room.roam = false; e.preventDefault(); return }
+  if (canGoBack.value && e.key === 'Escape' && !holding() && !(e.target as HTMLElement | null)?.closest('input, textarea')) { goBack(); e.preventDefault() }
+}
+watch(() => room.musicView, (v, was) => { if (was === 'ipod' && v !== 'ipod' && canGoBack.value) goBack() })
 window.addEventListener('keydown', onKey)
 onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); room.roam = false })
-watch(() => route.fullPath, () => { room.roam = false })
-watch(canRoam, (v) => { if (!v) room.roam = false })
+watch(() => route.fullPath, () => { room.roam = false; if (route.path !== room.roamBackPath) room.roamBack = null })
+watch(canRoam, (v) => { if (!v) { room.roam = false; room.roamBack = null } })
 
 // crouch (phones: a button that toggles; keyboards use C, held)
 const low = ref(false)
@@ -41,6 +49,7 @@ function up(e: PointerEvent) { if (e.pointerId !== id) return; id = -1; knob.val
 </script>
 
 <template>
+  <button v-if="canGoBack" class="roam-exit glass back" aria-label="Tilbake til å gå rundt (Esc)" title="Tilbake til å gå rundt (Esc)" @click="goBack"><Footprints :size="18" aria-hidden="true" />Gå videre</button>
   <template v-if="room.roam">
     <div v-if="!touch" class="roam-hint glass" role="status">
       <span><b>W A S D</b> eller piltaster for å gå · <b>Shift</b> for å skynde deg · <b>C</b> for å huke deg · dra med musa for å se deg rundt</span>

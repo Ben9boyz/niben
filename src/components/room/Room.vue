@@ -40,6 +40,8 @@ function onPick(p: PickEvent) {
   if (p.kind === 'station') {
     const to = ROUTES[p.station]
     const then = p.then // a click while walking around: first there, then what the click meant (the iPod in your hand, the record out of the shelf …)
+    room.roamBack = room.roam && room.api ? room.api.roamPose() : null // ("out" of the station goes back to walking, right where I stood)
+    room.roamBackPath = room.roamBack ? to ?? '' : ''
     room.roam = false
     if (!to) return
     const go = router.currentRoute.value.path === to ? Promise.resolve() : router.push(to)
@@ -155,7 +157,7 @@ watch(() => [room.api, accentHex.value], () => room.api?.setAccent(accentHex.val
 // the figures on the shelf (Admin → Figurer); in the owner's room the built-in set stays until there are own ones
 watch(() => [room.api, JSON.stringify(data.figurer), data.profile.owner], () => room.api?.setFigures(data.figurer.map((f) => ({ id: f.id, file: f.file, name: f.name })), !!data.profile.owner), { immediate: true })
 // free roam: walking around in the room
-watch(() => [room.api, room.roam], () => room.api?.setRoam(room.roam), { immediate: true })
+watch(() => [room.api, room.roam], () => { room.api?.setRoam(room.roam, room.roam ? room.roamBack : null); if (room.roam) room.roamBack = null }, { immediate: true })
 watch(theme, (t) => api?.setTheme(t))
 watch(() => weather.value?.kind, () => api?.setWeather(weather.value))
 watch(calm, (v) => api?.setCalm(v))
