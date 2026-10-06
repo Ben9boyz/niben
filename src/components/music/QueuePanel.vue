@@ -173,18 +173,18 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
               <ChevronRight :size="15" class="chev" :class="{ on: open.has('s' + i) }" aria-hidden="true" />
             </div>
             <div v-else class="gh single" :class="{ hop: canHop }" :role="canHop ? 'button' : undefined" :tabindex="canHop ? 0 : undefined" :title="canHop ? 'Hopp hit' : undefined" @click="hop(g.tracks[0].idx, g.tracks[0].t.name, g.tracks[0].t.uri)" @keydown.enter="hop(g.tracks[0].idx, g.tracks[0].t.name, g.tracks[0].t.uri)">
-              <img v-if="g.tracks[0].t.img || g.image" crossorigin="anonymous" :src="g.tracks[0].t.img || g.image || undefined" alt="" /><span v-else class="ph"><Music :size="13" /></span>
+              <span class="hopb"><img v-if="g.tracks[0].t.img || g.image" crossorigin="anonymous" :src="g.tracks[0].t.img || g.image || undefined" alt="" /><span v-else class="ph"><Music :size="13" /></span><Play v-if="canHop" :size="14" fill="currentColor" class="hopi" /></span>
               <span class="t" translate="no"><b>{{ g.tracks[0].t.name }}</b><small><a v-if="g.tracks[0].t.artist" class="lnk" href="#" title="Åpne artisten" @click.stop.prevent="openArtistOf(g.tracks[0].t)">{{ g.tracks[0].t.artist }}</a></small></span>
               <small class="d">{{ fmtClock((g.tracks[0].t.ms ?? 0) / 1000) }}</small>
             </div>
             <ol v-if="isAlbum(g) && open.has('s' + i)" class="songs">
-              <li v-for="(x, j) in g.tracks" :key="x.t.uri + j" :class="{ hop: canHop }" :title="canHop ? 'Hopp hit' : undefined" @click="hop(x.idx, x.t.name, x.t.uri)"><span class="n">{{ j + 1 }}</span><span class="t" translate="no"><b>{{ x.t.name }}</b></span><small class="d">{{ fmtClock((x.t.ms ?? 0) / 1000) }}</small></li>
+              <li v-for="(x, j) in g.tracks" :key="x.t.uri + j" :class="{ hop: canHop }" :title="canHop ? 'Hopp hit' : undefined" @click="hop(x.idx, x.t.name, x.t.uri)"><span class="n"><span class="num">{{ j + 1 }}</span><Play v-if="canHop" :size="12" fill="currentColor" class="hopn" /></span><span class="t" translate="no"><b>{{ x.t.name }}</b></span><small class="d">{{ fmtClock((x.t.ms ?? 0) / 1000) }}</small></li>
             </ol>
           </li>
         </ol>
         <ol v-else>
           <li v-for="(t, i) in spotQueue.slice(0, 12)" :key="t.uri + i" :class="{ hop: canHop }" :title="canHop ? 'Hopp hit' : undefined" @click="hop(i, t.name, t.uri)">
-            <img v-if="t.img" crossorigin="anonymous" :src="t.img" alt="" /><span v-else class="ph"><Music :size="13" /></span>
+            <span class="hopb"><img v-if="t.img" crossorigin="anonymous" :src="t.img" alt="" /><span v-else class="ph"><Music :size="13" /></span><Play v-if="canHop" :size="14" fill="currentColor" class="hopi" /></span>
             <span class="t" translate="no"><b>{{ t.name }}</b><small><a v-if="t.artist" class="lnk" href="#" title="Åpne artisten" @click.stop.prevent="openArtistOf(t)">{{ t.artist }}</a></small></span>
             <small class="d">{{ fmtClock((t.ms ?? 0) / 1000) }}</small>
           </li>
@@ -200,7 +200,13 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
 .hopb { position: relative; flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; background: transparent; cursor: pointer; overflow: hidden; }
 .hopb img, .hopb .ph { grid-area: 1 / 1; }
 .hopb .hopi { grid-area: 1 / 1; z-index: 1; color: #fff; opacity: 0; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6)); transition: opacity 0.15s; }
-.hopb:hover .hopi, .hopb:focus-visible .hopi { opacity: 1; }
+.hopb:hover .hopi, .hopb:focus-visible .hopi, .gh.hop:hover .hopi, li.hop:hover .hopi { opacity: 1; }
+span.hopb { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; overflow: hidden; position: relative; }
+.songs .n { position: relative; display: inline-grid; place-items: center; }
+.songs .n > * { grid-area: 1 / 1; }
+.songs .hopn { opacity: 0; color: var(--accent); transition: opacity 0.15s; }
+.songs li.hop:hover .hopn { opacity: 1; }
+.songs li.hop:hover .num { opacity: 0; }
 .qp { display: grid; gap: 8px; padding: 12px; border-radius: 18px; background: var(--glass-strong); border: 1px solid var(--glass-border); min-width: 0; }
 .qp.armed { border-style: dashed; border-color: #1db954; }
 .qp.over { background: color-mix(in srgb, #1db954 14%, var(--glass-strong)); }
