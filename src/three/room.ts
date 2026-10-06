@@ -1572,7 +1572,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     get gfxInfo() { return { calls: drawn.calls, triangles: drawn.triangles, lights: countLights(), quality, level, pixelRatio: renderer.getPixelRatio(), fps: fpsVal, maxMsaa, maxTex, dpr: window.devicePixelRatio, gpu: spec.gpu, score: spec.score, auto: autoGfx(), software: spec.software } },
     /** A full-screen panel covers the room (or not): nothing is drawn while it does. */
     setCovered(v: boolean) { covered = !!v; if (!covered) invalidate(1) },
-    get debug() { return { station, camPos: camPos.toArray(), cam: camera.position.toArray(), flight: !!flight } },
+    get debug() { return { station, camPos: camPos.toArray(), cam: camera.position.toArray(), flight: !!flight, spinning: listening.isSpinning(), covered, warming, groupVisible: listening.group.visible } },
     // test helper: draw calls / triangles of one plain render (no post-processing)
     stats() {
       renderer.info.autoReset = false
