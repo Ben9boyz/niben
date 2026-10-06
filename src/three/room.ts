@@ -80,7 +80,7 @@ const THEMES: Record<ThemeName, Theme> = {
 const easeInOut = (k: number): number => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2)
 
 /** What a click in the room reports to the page. */
-export interface PickEvent { station: string; kind: string; index?: number; name?: string; uri?: string; album?: StackEntry }
+export interface PickEvent { station: string; kind: string; index?: number; name?: string; uri?: string; album?: StackEntry; then?: PickEvent /* a click from free roam: go to the station, then do this */ }
 export interface RoomCallbacks {
   onPick?: (p: PickEvent) => void
   onHover?: (h: RoomHover | null) => void
@@ -887,24 +887,27 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     setNdc(e)
     const info = hitInfo()
     if (!info) { onPick?.({ station, kind: 'empty' }); return }
-    if (info.station !== station) { onPick?.({ station: info.station ?? '', kind: 'station' }); return }
+    // walking around: a click flies to that station and then does what the click meant (picks the iPod up, takes the record out …)
+    if (roam.on || info.station !== station) { onPick?.({ station: info.station ?? '', kind: 'station', then: roam.on ? pickOf(info, info.station ?? '') : undefined }); return }
+    if (info.kind === 'guitar' && info.index === selGuitar) { const gt = guitars[info.index ?? -1]; if (gt) gt.strum = 1 }
+    onPick?.(pickOf(info, station))
+  }
+  /** The page's name for what was clicked. */
+  function pickOf(info: HitInfo, st: string): PickEvent {
     const gIndex = info.index ?? -1
-    if (info.kind === 'guitar') {
-      const gt = guitars[gIndex]
-      if (gIndex === selGuitar && gt) gt.strum = 1
-      onPick?.({ station, kind: 'guitar', index: info.index })
-    } else if (info.kind === 'book') onPick?.({ station, kind: 'book', index: info.index })
-    else if (info.station === 'reiser' && info.country) onPick?.({ station, kind: 'country', name: info.country })
-    else if (info.kind === 'screen') onPick?.({ station, kind: 'screen' })
-    else if (info.station === 'ovelse') onPick?.({ station, kind: 'clock' })
-    else if (info.kind === 'album') onPick?.({ station, kind: 'album', uri: music.albums[gIndex]?.uri })
-    else if (info.kind === 'anime') onPick?.({ station, kind: 'anime', index: info.index })
-    else if (info.kind === 'ipod') onPick?.({ station, kind: 'ipod' })
-    else if (info.kind === 'turntable') onPick?.({ station, kind: 'turntable' })
-    else if (info.kind?.startsWith('tt-')) onPick?.({ station, kind: info.kind })
-    else if (info.kind === 'stack') onPick?.({ station, kind: 'stackrecord', album: stack[gIndex] })
-    else if (info.kind === 'shelf') onPick?.({ station, kind: 'shelf' })
-    else onPick?.({ station, kind: 'object' })
+    if (info.kind === 'guitar') return { station: st, kind: 'guitar', index: info.index }
+    if (info.kind === 'book') return { station: st, kind: 'book', index: info.index }
+    if (info.station === 'reiser' && info.country) return { station: st, kind: 'country', name: info.country }
+    if (info.kind === 'screen') return { station: st, kind: 'screen' }
+    if (info.station === 'ovelse') return { station: st, kind: 'clock' }
+    if (info.kind === 'album') return { station: st, kind: 'album', uri: music.albums[gIndex]?.uri }
+    if (info.kind === 'anime') return { station: st, kind: 'anime', index: info.index }
+    if (info.kind === 'ipod') return { station: st, kind: 'ipod' }
+    if (info.kind === 'turntable') return { station: st, kind: 'turntable' }
+    if (info.kind?.startsWith('tt-')) return { station: st, kind: info.kind }
+    if (info.kind === 'stack') return { station: st, kind: 'stackrecord', album: stack[gIndex] }
+    if (info.kind === 'shelf') return { station: st, kind: 'shelf' }
+    return { station: st, kind: 'object' }
   }
   function onLeave(): void {
     pointer.inside = false
@@ -1081,9 +1084,9 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   // ── Free roam: walk around in the room ──
   // WASD / arrows to walk (Shift to hurry), drag to look around; on a phone the joystick (RoamControls) walks and a drag looks.
   // Eye height 1.6 m; the walls and the furniture on the floor stop you. The camera goes back to its station when you leave.
-  const roam = { on: false, x: 0.5, z: 2.7, yaw: 0, pitch: -0.05, mx: 0, mz: 0, keys: new Set<string>(), drag: null as { x: number; y: number; id: number } | null }
+  const roam = { on: false, x: 0.5, z: 2.7, yaw: 0, pitch: -0.05, mx: 0, mz: 0, crouch: false, duck: 0, keys: new Set<string>(), drag: null as { x: number; y: number; id: number } | null }
   const ROOM_BOX = { x0: -3.7, x1: 3.7, z0: -3.25, z1: 3.3 }
-  const EYE = 1.6, RADIUS = 0.28
+  const EYE = 1.6, EYE_LOW = 0.85, RADIUS = 0.28 // (C: crouch – the eyes go down to 85 cm, and you walk slower)
   let roamBoxes: THREE.Box3[] = []
   function buildRoamBoxes(): void {
     roamBoxes = []
@@ -1111,7 +1114,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     let moved = false
     if (len > 0.01) {
       if (len > 1) { ix /= len; iz /= len }
-      const speed = (k.has('shift') ? 3.2 : 1.6) * dt
+      const speed = (k.has('shift') && !roam.crouch ? 3.2 : roam.crouch ? 0.9 : 1.6) * dt
       const fx = -Math.sin(roam.yaw), fz = -Math.cos(roam.yaw)
       const rx = Math.cos(roam.yaw), rz = -Math.sin(roam.yaw)
       const dx = (rx * ix - fx * iz) * speed, dz = (rz * ix - fz * iz) * speed
@@ -1119,19 +1122,23 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       if (!blocked(roam.x, roam.z + dz)) roam.z += dz
       moved = true
     }
-    camera.position.set(roam.x, EYE + Math.sin(simT * 7) * (moved ? 0.012 : 0), roam.z)
+    const want = k.has('c') || roam.crouch ? 1 : 0
+    const ducking = Math.abs(want - roam.duck) > 0.002
+    roam.duck += (want - roam.duck) * Math.min(1, dt * 9) // (eases down and up)
+    const eye = EYE + (EYE_LOW - EYE) * roam.duck
+    camera.position.set(roam.x, eye + Math.sin(simT * 7) * (moved ? 0.012 : 0), roam.z)
     const cp = Math.cos(roam.pitch)
-    camera.lookAt(roam.x - Math.sin(roam.yaw) * cp, EYE + Math.sin(roam.pitch), roam.z - Math.cos(roam.yaw) * cp)
-    lookAt.set(roam.x - Math.sin(roam.yaw), EYE, roam.z - Math.cos(roam.yaw)) // (so the lerp back to a station starts from here)
+    camera.lookAt(roam.x - Math.sin(roam.yaw) * cp, eye + Math.sin(roam.pitch), roam.z - Math.cos(roam.yaw) * cp)
+    lookAt.set(roam.x - Math.sin(roam.yaw), eye, roam.z - Math.cos(roam.yaw)) // (so the lerp back to a station starts from here)
     // …and any flight to a station starts from where you stand now (not from where the camera was before you began walking)
     camTarget.copy(lookAt)
     camPos.copy(camTarget).addScaledVector(tmp2.subVectors(camera.position, camTarget), 1 / distK)
-    return moved
+    return moved || ducking
   }
   const roamKeys = (down: boolean) => (e: KeyboardEvent): void => {
     if (!roam.on || ['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement | null)?.tagName ?? '')) return
     const key = e.key.toLowerCase()
-    if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift'].includes(key)) return
+    if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', 'c'].includes(key)) return
     if (e.metaKey || e.ctrlKey || e.altKey) return
     if (down) roam.keys.add(key); else roam.keys.delete(key)
     if (key.startsWith('arrow')) e.preventDefault()
@@ -1683,7 +1690,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     setRoam(on: boolean) {
       if (on === roam.on) return
       roam.on = on
-      roam.keys.clear(); roam.mx = roam.mz = 0; roam.drag = null
+      roam.keys.clear(); roam.mx = roam.mz = 0; roam.drag = null; roam.crouch = false; roam.duck = 0
       if (on) {
         updateCull(true) // (everything shows while walking – and then the furniture is there to be collided with)
         buildRoamBoxes()
@@ -1700,9 +1707,20 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       } else { resize(); goTo(station); invalidate(1) } // (resize puts the station lens back)
     },
     /** The joystick on a phone: x right / left, z back / forward, both −1 … 1. */
+    /** Crouch on / off (the button on a phone; C on a keyboard). */
+    roamCrouch(on: boolean) { roam.crouch = on; invalidate(0.5) },
     roamMove(x: number, z: number) { roam.mx = x; roam.mz = z; invalidate(0.4) },
     roamLook(dx: number, dy: number) { roam.yaw -= dx * 0.0042; roam.pitch = Math.max(-1.2, Math.min(1.2, roam.pitch - dy * 0.0042)); invalidate(0.3) },
     setCovered(v: boolean) { covered = !!v; if (!covered) invalidate(1) },
+    /** Where on the screen a clickable thing of this kind is now (for the tests). */
+    screenOf(kind: string): [number, number] | null {
+      let hit: THREE.Object3D | null = null
+      scene.traverse((o) => { if (!hit && o.userData.kind === kind) hit = o })
+      if (!hit) return null
+      const b = new THREE.Box3().setFromObject(hit as THREE.Object3D).getCenter(new THREE.Vector3()).project(camera)
+      const r = renderer.domElement.getBoundingClientRect()
+      return [r.left + ((b.x + 1) / 2) * r.width, r.top + ((1 - b.y) / 2) * r.height]
+    },
     get debug() { return { station, camPos: camPos.toArray(), cam: camera.position.toArray(), flight: !!flight, spinning: listening.isSpinning(), covered, warming, groupVisible: listening.group.visible, figures: figures.shown(), builtinFigures: figures.builtinShown() } },
     // test helper: draw calls / triangles of one plain render (no post-processing)
     stats() {

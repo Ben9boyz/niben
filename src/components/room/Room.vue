@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createRoom, type PickEvent } from '@/three/room'
 import { room, clearSelection } from '@/composables/room/useRoom'
@@ -37,7 +37,15 @@ let api: ReturnType<typeof createRoom> | undefined
 const ROUTES: Record<string, string> = { hjem: '/', japansk: '/japansk', gaming: '/gaming', lytte: '/lytte', ovelse: '/ovelse', gitar: '/gitar', figurer: '/figurer', boker: '/boker', reiser: '/reiser', kode: '/kode', om: '/om' }
 
 function onPick(p: PickEvent) {
-  if (p.kind === 'station') { const to = ROUTES[p.station]; if (to) router.push(to); return }
+  if (p.kind === 'station') {
+    const to = ROUTES[p.station]
+    const then = p.then // a click while walking around: first there, then what the click meant (the iPod in your hand, the record out of the shelf …)
+    room.roam = false
+    if (!to) return
+    const go = router.currentRoute.value.path === to ? Promise.resolve() : router.push(to)
+    if (then) void go.then(() => nextTick()).then(() => onPick(then))
+    return
+  }
   if (p.kind === 'stackrecord') {
     if (!p.album) return
     // a record from the stack: pick it up like one from the shelf (an album I don't have gets a guest record)

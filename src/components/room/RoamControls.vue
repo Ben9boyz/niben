@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import { X } from 'lucide-vue-next'
+import { X, ArrowDownToLine } from 'lucide-vue-next'
 import { room } from '@/composables/room/useRoom'
 import { mode } from '@/composables/ui/useMode'
 
@@ -16,6 +16,11 @@ window.addEventListener('keydown', onKey)
 onBeforeUnmount(() => { window.removeEventListener('keydown', onKey); room.roam = false })
 watch(() => route.fullPath, () => { room.roam = false })
 watch(canRoam, (v) => { if (!v) room.roam = false })
+
+// crouch (phones: a button that toggles; keyboards use C, held)
+const low = ref(false)
+function crouch() { low.value = !low.value; room.api?.roamCrouch(low.value) }
+watch(() => room.roam, () => { low.value = false })
 
 // the joystick (phones)
 const stick = ref<HTMLElement | null>(null)
@@ -38,9 +43,10 @@ function up(e: PointerEvent) { if (e.pointerId !== id) return; id = -1; knob.val
 <template>
   <template v-if="room.roam">
     <div v-if="!touch" class="roam-hint glass" role="status">
-      <span><b>W A S D</b> eller piltaster for å gå · <b>Shift</b> for å skynde deg · dra med musa for å se deg rundt</span>
+      <span><b>W A S D</b> eller piltaster for å gå · <b>Shift</b> for å skynde deg · <b>C</b> for å huke deg · dra med musa for å se deg rundt</span>
     </div>
     <button class="roam-exit glass" aria-label="Slutt å gå rundt (Esc)" title="Slutt å gå rundt (Esc)" @click="toggle"><X :size="18" aria-hidden="true" />Ut</button>
+    <button v-if="touch" class="crouch glass" :class="{ on: low }" :aria-pressed="low" aria-label="Huk deg" @click="crouch"><ArrowDownToLine :size="20" aria-hidden="true" /></button>
     <div v-if="touch" ref="stick" class="stick glass" @pointerdown.prevent="down" @pointermove="move" @pointerup="up" @pointercancel="up">
       <i class="knob" :style="{ transform: `translate(${knob.x}px, ${knob.y}px)` }"></i>
     </div>
@@ -52,6 +58,8 @@ function up(e: PointerEvent) { if (e.pointerId !== id) return; id = -1; knob.val
 .roam-hint b { color: var(--text); }
 .roam-exit { position: fixed; z-index: 41; top: 18px; right: 18px; display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 16px 0 12px; border: 0; border-radius: 999px; color: var(--text); font: 700 0.86rem var(--font); cursor: pointer; }
 .stick { position: fixed; z-index: 41; left: 22px; bottom: calc(80px + env(safe-area-inset-bottom)); width: 120px; height: 120px; border-radius: 50%; touch-action: none; display: grid; place-items: center; }
+.crouch { position: fixed; z-index: 41; right: 22px; bottom: calc(100px + env(safe-area-inset-bottom)); display: grid; place-items: center; width: 56px; height: 56px; border: 0; border-radius: 50%; color: var(--text); cursor: pointer; touch-action: manipulation; }
+.crouch.on { color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
 .knob { width: 52px; height: 52px; border-radius: 50%; background: var(--accent-soft); box-shadow: 0 0 0 2px var(--accent) inset; }
 @media (max-width: 720px) {
   .roam-hint { bottom: calc(16px + env(safe-area-inset-bottom)); }
