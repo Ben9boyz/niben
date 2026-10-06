@@ -133,8 +133,9 @@ function sp_cached(string $key, int $ttl, callable $fetch, bool $shared = false)
         kv_scope($room);
         $d = $fetch();
         if ($shared) kv_scope(0);
-        if ($d !== null) kv_set($key, json_encode(['t' => time(), 'd' => $d], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-        elseif ($raw) return json_decode($raw, true)['d'] ?? null; // keep stale data if Spotify hiccups
+        $partial = is_array($d) && !empty($d['partial']); // (an incomplete list is shown, but not kept)
+        if ($d !== null && !$partial) kv_set($key, json_encode(['t' => time(), 'd' => $d], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        elseif ($raw && !$partial) return json_decode($raw, true)['d'] ?? null; // keep stale data if Spotify hiccups
         return $d;
     } finally {
         kv_scope($room);
@@ -364,24 +365,34 @@ function sp_artist(string $id, string $name): ?array {
 function sp_tracks(string $type, string $id): array {
     $data = sp_cached("tracks5_{$type}_{$id}", 21600, function () use ($type, $id) {
         $out = [];
-        // read page after page; the next page starts after what we actually GOT (if Spotify hands out fewer than the
-        // 50 we ask for, jumping 50 ahead would skip songs – the cause of albums with only their first few songs)
-        for ($offset = 0, $guard = 0; $offset < 1000 && $guard < 60; $guard++) {
+        $total = null;
+        $empty = 0;
+        // read page after page until the album / playlist says it has no more (`total`), not only until `next` runs out:
+        // the next page starts after what we actually GOT (Spotify may hand out fewer than the 50 we ask for), and a page
+        // that comes back empty or broken is skipped once or twice rather than ending the list there
+        for ($offset = 0, $guard = 0; $offset < 2000 && $guard < 120; $guard++) {
             $path = $type === 'album'
-                ? "/albums/{$id}/tracks?limit=50&offset={$offset}"
+                ? "/albums/{$id}/tracks?limit=50&offset={$offset}&market=from_token"
                 : "/playlists/{$id}/items?limit=50&offset={$offset}";
             [$s, $j] = sp_api('GET', $path);
-            if ($s === 403 || $s === 404) return ['hidden' => true, 'tracks' => []];
-            if ($s !== 200) return $out ? ['tracks' => $out] : null;
+            if (($s === 403 || $s === 404) && $offset === 0) return ['hidden' => true, 'tracks' => []];
+            if ($s !== 200) {
+                if ($out && ++$empty <= 2) { usleep(300000); continue; } // a hiccup in the middle: try the same page again
+                return $out ? ['tracks' => $out, 'partial' => true] : null;
+            }
+            if ($total === null && isset($j['total'])) $total = (int)$j['total'];
             $got = $j['items'] ?? [];
             foreach ($got as $it) {
                 $t = $type === 'album' ? $it : ($it['item'] ?? $it['track'] ?? null);
                 if ($t && !empty($t['uri'])) $out[] = sp_track($t);
             }
-            if (empty($j['next']) || !$got) break;
-            $offset += count($got);
+            $offset += count($got) ?: 0;
+            if (!$got) { if (++$empty > 2 || $total === null || $offset >= $total) break; $offset += 50; continue; }
+            if ($total !== null ? $offset >= $total : empty($j['next'])) break;
         }
-        return ['tracks' => $out];
+        $res = ['tracks' => $out];
+        if ($total !== null) $res['total'] = $total;
+        return $res;
     }, $type === 'album');
     return $data ?? ['tracks' => [], 'error' => true];
 }
