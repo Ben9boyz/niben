@@ -49,18 +49,28 @@ function kv_key(string $k): string {
     $p = 'u' . $u . '_';
     return strlen($p . $k) <= 40 ? $p . $k : $p . substr(md5($k), 0, 40 - strlen($p)); // (the column is 40 characters)
 }
+/** Runs a statement on the key/value table – making the table first if this is a database that has never seen it. */
+function kv_q(string $sql, array $args): PDOStatement {
+    try {
+        $st = db()->prepare($sql);
+        $st->execute($args);
+    } catch (PDOException $e) {
+        if (($e->errorInfo[0] ?? '') !== '42S02') throw $e; // (anything but "no such table")
+        sp_schema();
+        $st = db()->prepare($sql);
+        $st->execute($args);
+    }
+    return $st;
+}
 function kv_get(string $k): ?string {
-    $st = db()->prepare('SELECT v FROM spotify_state WHERE k=?');
-    $st->execute([kv_key($k)]);
-    $v = $st->fetchColumn();
+    $v = kv_q('SELECT v FROM spotify_state WHERE k=?', [kv_key($k)])->fetchColumn();
     return $v === false ? null : $v;
 }
 function kv_set(string $k, ?string $v): void {
-    db()->prepare('INSERT INTO spotify_state (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v = VALUES(v)')->execute([kv_key($k), $v]);
+    kv_q('INSERT INTO spotify_state (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v = VALUES(v)', [kv_key($k), $v]);
 }
 function kv_del(string ...$keys): void {
-    $st = db()->prepare('DELETE FROM spotify_state WHERE k=?');
-    foreach ($keys as $k) $st->execute([kv_key($k)]);
+    foreach ($keys as $k) kv_q('DELETE FROM spotify_state WHERE k=?', [kv_key($k)]);
 }
 
 require_once __DIR__ . '/_net.inc.php'; // http_req()
