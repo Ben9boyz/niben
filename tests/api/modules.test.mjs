@@ -36,6 +36,17 @@ test('hobby modules: a room adds, fills, moves and removes them; others only loo
   assert.ok([403, 404].includes((await bob.client.post('mod_save', { id, data: { items: [{ t: 'x' }] } })).status))
   assert.ok([403, 404].includes((await bob.client.post('mod_remove', { id })).status))
 
+  // her own 3D model instead of the built-in one: only .glb, only her module, and it can be taken away
+  const glb = Buffer.concat([Buffer.from('glTF'), Buffer.alloc(20)])
+  assert.equal((await alice.client.upload('mod_model', { id }, { name: 'x.png', bytes: glb })).status, 400)
+  assert.equal((await alice.client.upload('mod_model', { id }, { name: 'x.glb', bytes: Buffer.from('nope') })).status, 400)
+  assert.ok([403, 404].includes((await bob.client.upload('mod_model', { id }, { name: 'x.glb', bytes: glb })).status))
+  const up = await alice.client.upload('mod_model', { id }, { name: 'kino.glb', bytes: glb })
+  assert.equal(up.status, 200, up.text)
+  assert.match(up.json.item.file, /^uploads\/models\/[0-9a-f]+\.glb$/)
+  assert.equal((await alice.client.post('mod_model_clear', { id })).status, 200)
+  assert.equal((await alice.client.get('decor_get')).json.items.find((i) => i.id === id).file, '')
+
   // alice removes it
   assert.equal((await alice.client.post('mod_remove', { id })).status, 200)
   assert.equal((await alice.client.get('decor_get')).json.items.find((i) => i.id === id), undefined)

@@ -99,7 +99,7 @@ export interface RoomData { gitarer?: Guitar[]; boker?: Book[]; reiser?: Trip[];
 export type GfxInput = Partial<Omit<GfxValues, 'res' | 'ao'>> & { mode?: GfxMode; res?: number | 'auto'; ao?: GfxValues['ao'] | 'auto'; showFps?: boolean }
 interface Eff extends Omit<GfxValues, 'res' | 'ao'> { res: number | 'auto'; ao: GfxValues['ao'] | 'auto'; showFps: boolean; areaLights: boolean; smallLights: boolean }
 /** One of my uploaded 3D models in the room. */
-interface DecorObject { root: THREE.Group; item: DecorItem; prop?: PropHandle; sig?: string }
+interface DecorObject { root: THREE.Group; item: DecorItem; prop?: PropHandle; sig?: string; sig2?: string; glb?: THREE.Object3D }
 /** What the pointer rests on, found by raycasting. */
 interface HitInfo { object: THREE.Object3D; kind?: string; index?: number; station?: string; country?: string }
 interface Flight { from: Pose3; to: Pose3; t: number; dur: number; lift: number }
@@ -1019,6 +1019,31 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     onDecorSelect?.(decorSel)
     invalidate(0.5)
   }
+  /** The uploaded .glb of a decor item (or of a hobby module, where it replaces the built-in model but keeps the sign). */
+  async function giveModel(o: DecorObject): Promise<void> {
+    const it = o.item
+    try {
+      const g = await loadModel(it.file)
+      if (decorObjs.get(it.id) !== o) return
+      const m = g.scene.clone(true)
+      // a handy size (the longest side ~ 50 cm; the scale in the list is relative to that), standing on the floor
+      const size = new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3())
+      m.scale.multiplyScalar((it.mod ? 0.8 : 0.5) / Math.max(size.x, size.y, size.z, 1e-4))
+      m.updateMatrixWorld(true)
+      const b = new THREE.Box3().setFromObject(m)
+      const c = b.getCenter(new THREE.Vector3())
+      m.position.set(-c.x, -b.min.y, -c.z)
+      m.traverse((n) => { if (n instanceof THREE.Mesh) { n.castShadow = true; n.receiveShadow = true } })
+      if (o.prop) { o.prop.body.removeFromParent(); o.prop.sign.position.y = b.getSize(new THREE.Vector3()).y + 0.26 }
+      o.glb?.removeFromParent()
+      o.glb = m
+      o.root.add(m)
+      shadowsDirty = true
+      scheduleEnvCapture(900)
+      refreshSel()
+      invalidate(1)
+    } catch { /* the built-in model stays */ }
+  }
   const modSig = (it: DecorItem): string => `${it.mod}|${it.name}|${it.ico ?? ''}`
   function buildMod(o: DecorObject): void {
     o.prop?.root.removeFromParent()
@@ -1051,7 +1076,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     const o = focusId ? decorObjs.get(focusId) : undefined
     if (!o) return null
     const { x, z } = o.item
-    return { pos: [x * 0.6, 1.45, z + 1.9], target: [x, 0.5, z] }
+    return { pos: [x * 0.4, 1.6, z + 2.4], target: [x, 0.5, z] }
   }
   function setDecor(list: DecorItem[]): void {
     const ids = new Set(list.map((i) => i.id))
@@ -1066,6 +1091,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       if (existing) {
         if (decorDrag?.id !== it.id) { existing.item = { ...it }; placeDecor(existing) }
         if (it.mod && existing.sig !== modSig(it)) buildMod(existing) // (renamed)
+        if (it.mod && (existing.item.file ?? '') !== (existing.sig2 ?? '')) { existing.sig2 = existing.item.file ?? ''; existing.glb?.removeFromParent(); existing.glb = undefined; buildMod(existing); if (existing.item.file) void giveModel(existing) }
         continue
       }
       const o: DecorObject = { root: new THREE.Group(), item: { ...it } }
@@ -1073,24 +1099,10 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       decorObjs.set(it.id, o)
       decorGroup.add(o.root)
       placeDecor(o)
-      if (it.mod) { buildMod(o); continue } // a hobby module: a piece of furniture, not a model file
-      loadModel(it.file).then((g) => {
-        if (decorObjs.get(it.id) !== o) return
-        const m = g.scene.clone(true)
-        // a handy size (the longest side ~ 50 cm; the scale in the list is relative to that), standing on the floor
-        const size = new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3())
-        m.scale.multiplyScalar(0.5 / Math.max(size.x, size.y, size.z, 1e-4))
-        m.updateMatrixWorld(true)
-        const b = new THREE.Box3().setFromObject(m)
-        const c = b.getCenter(new THREE.Vector3())
-        m.position.set(-c.x, -b.min.y, -c.z)
-        m.traverse((n) => { if (n instanceof THREE.Mesh) { n.castShadow = true; n.receiveShadow = true } })
-        o.root.add(m)
-        shadowsDirty = true
-        scheduleEnvCapture(900)
-        refreshSel()
-        invalidate(1)
-      }).catch(() => {})
+      o.sig2 = it.file ?? ''
+      if (it.mod) buildMod(o) // a hobby module: a built-in piece of furniture with a sign – and its own model on top, if it has one
+      if (it.mod && !it.file) continue
+      void giveModel(o)
     }
     refreshSel()
     shadowsDirty = true

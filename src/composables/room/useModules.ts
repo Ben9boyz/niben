@@ -58,3 +58,20 @@ export async function removeModule(id: string): Promise<void> {
 
 /** Another room: its own modules. */
 export function resetModules(): void { store.data = {}; store.loading = {}; store.error = ''; store.saving = false }
+
+/** My own 3D model (.glb) for a module – it stands in the room instead of the built-in one. */
+export async function setModuleModel(id: string, file: File | null): Promise<void> {
+  try {
+    if (file) {
+      const fd = new FormData()
+      fd.append('id', id)
+      fd.append('file', file)
+      const r = await api<{ item: DecorItem }>('mod_model', fd)
+      decor.items = decor.items.map((i) => (i.id === id ? { ...i, file: r.item.file } : i))
+    } else {
+      await api('mod_model_clear', { id })
+      decor.items = decor.items.map((i) => (i.id === id ? { ...i, file: '' } : i))
+    }
+    store.error = ''
+  } catch (e) { store.error = errorMessage(e) }
+}

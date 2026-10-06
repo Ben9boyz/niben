@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { canvasTex } from './textures'
 import type { ModuleKind, Prop } from '@/lib/modules/catalog'
+import { MODELS } from './moduleModels'
 
 // The little piece of furniture a hobby module stands as in the room: seven simple shapes in the module's own colour, with a
 // sign over it (the symbol and the name) that always turns towards you.
@@ -81,11 +82,15 @@ function shape(prop: Prop, col: THREE.Color, g: THREE.Group): number {
   }
 }
 
-export interface PropHandle { root: THREE.Group; dispose: () => void }
+export interface PropHandle { root: THREE.Group; body: THREE.Group; sign: THREE.Sprite; dispose: () => void }
 
 export function buildModuleProp(kind: ModuleKind, title: string, icon: string = kind.icon): PropHandle {
   const root = new THREE.Group()
-  const top = shape(kind.prop, new THREE.Color(kind.color), root)
+  const body = new THREE.Group() // the built-in model (taken away again when the room has its own .glb)
+  root.add(body)
+  const col = new THREE.Color(kind.color)
+  const own = MODELS[kind.id] // a model of its own for the hobby, or else one of the seven general shapes
+  const top = own ? own(body, col) : shape(kind.prop, col, body)
   const tex = canvasTex(512, 256, (x, w, h) => {
     x.fillStyle = 'rgba(16,22,31,0.86)'
     x.beginPath()
@@ -109,5 +114,5 @@ export function buildModuleProp(kind: ModuleKind, title: string, icon: string = 
   sign.position.set(0, top + 0.26, 0)
   sign.userData.noCull = true
   root.add(sign)
-  return { root, dispose: () => { tex.dispose(); mat.dispose() } }
+  return { root, body, sign, dispose: () => { tex.dispose(); mat.dispose() } }
 }

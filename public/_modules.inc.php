@@ -9,6 +9,7 @@ const MOD_MAX = 24;           // modules per room
 const MOD_ITEMS = 600;        // entries per module
 const MOD_MAX_BYTES = 240000; // size of one module's content
 
+function mod_unlink(string $rel): void { $p = __DIR__ . '/' . $rel; if (str_starts_with($rel, 'uploads/models/') && preg_match('~^uploads/models/[a-f0-9]+\.glb$~', $rel) && is_file($p)) @unlink($p); }
 function mod_data_key(string $id): string { return 'mod_' . $id; }
 function mod_find(string $id): ?array {
     foreach (decor_list() as $d) if (($d['id'] ?? '') === $id && !empty($d['mod'])) return $d;
@@ -17,11 +18,11 @@ function mod_find(string $id): ?array {
 /** A free place on the floor in front: the first spot (in rows) with no other decor within 0.9 m. */
 function mod_free_spot(array $list): array {
     for ($row = 0; $row < 5; $row++) {
-        for ($col = 0; $col < 7; $col++) {
-            $x = -3.0 + $col * 1.0;
-            $z = 3.0 - $row * 0.9;
+        for ($col = 0; $col < 5; $col++) {
+            $x = -3.0 + $col * 1.5;
+            $z = 3.0 - $row * 1.3;
             $ok = true;
-            foreach ($list as $d) if (hypot(($d['x'] ?? 0) - $x, ($d['z'] ?? 0) - $z) < 0.9) { $ok = false; break; }
+            foreach ($list as $d) if (hypot(($d['x'] ?? 0) - $x, ($d['z'] ?? 0) - $z) < 1.2) { $ok = false; break; }
             if ($ok) return [$x, $z];
         }
     }
@@ -81,11 +82,45 @@ function mod_handle(string $action, bool $post): void {
         kv_set(mod_data_key($id), $json);
         out(['ok' => true, 'data' => $data]);
     }
+    case 'mod_model': {
+        // my own 3D model (a .glb) for the module instead of the little built-in one
+        if (!$post) fail('Bruk POST.', 405);
+        require_room_owner();
+        $id = (string)($_POST['id'] ?? '');
+        if (!preg_match('~^[a-f0-9]{10}$~', $id) || !mod_find($id)) fail('Fant ikke modulen.', 404);
+        $f = $_FILES['file'] ?? [];
+        if (($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) fail(upload_error((int)($f['error'] ?? UPLOAD_ERR_NO_FILE)));
+        if ($f['size'] > DECOR_MAX_BYTES) fail('Modellen er for stor (maks 14 MB).');
+        if (strtolower(pathinfo((string)$f['name'], PATHINFO_EXTENSION)) !== 'glb') fail('Bare .glb-filer (én fil med alt i).');
+        $fh = @fopen($f['tmp_name'], 'rb');
+        $magic = $fh ? fread($fh, 4) : '';
+        if ($fh) fclose($fh);
+        if ($magic !== 'glTF') fail('Det ser ikke ut som en gyldig GLB-fil.');
+        $name = random_name('glb');
+        if (!move_uploaded_file($f['tmp_name'], upload_dir('models') . '/' . $name)) fail('Klarte ikke å lagre filen.', 500);
+        $list = decor_list();
+        foreach ($list as &$d) if ($d['id'] === $id) { mod_unlink($d['file'] ?? ''); $d['file'] = 'uploads/models/' . $name; $item = $d; }
+        unset($d);
+        decor_store($list);
+        out(['ok' => true, 'item' => $item ?? null]);
+    }
+    case 'mod_model_clear': {
+        if (!$post) fail('Bruk POST.', 405);
+        require_room_owner();
+        $id = (string)(body()['id'] ?? '');
+        if (!mod_find($id)) fail('Fant ikke modulen.', 404);
+        $list = decor_list();
+        foreach ($list as &$d) if ($d['id'] === $id) { mod_unlink($d['file'] ?? ''); $d['file'] = ''; }
+        unset($d);
+        decor_store($list);
+        out(['ok' => true]);
+    }
     case 'mod_remove': {
         if (!$post) fail('Bruk POST.', 405);
         require_room_owner();
         $id = (string)(body()['id'] ?? '');
         if (!mod_find($id)) fail('Fant ikke modulen.', 404);
+        foreach (decor_list() as $d) if (($d['id'] ?? '') === $id) mod_unlink($d['file'] ?? '');
         decor_store(array_values(array_filter(decor_list(), fn($d) => ($d['id'] ?? '') !== $id)));
         kv_del(mod_data_key($id));
         out(['ok' => true]);

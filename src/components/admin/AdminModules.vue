@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Trash2, Move, Plus, Eye, EyeOff } from 'lucide-vue-next'
+import { Trash2, Move, Plus, Eye, EyeOff, Box } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { decor, loadDecor, changed, removeDecor } from '@/composables/room/useDecor'
-import { placed, addModule, modState } from '@/composables/room/useModules'
+import { placed, addModule, modState, setModuleModel } from '@/composables/room/useModules'
 import { CATALOG, CATEGORIES } from '@/lib/modules/catalog'
 import { mode } from '@/composables/ui/useMode'
 
@@ -25,6 +25,7 @@ const isPreset = (g: string | undefined): boolean => PRESET_TABS.some((p) => p.v
 const tabChoice = (g: string | undefined): string => (isPreset(g) ? g ?? '' : '*')
 function setTab(m: { item: { grp?: string } }, v: string): void { m.item.grp = v === '*' ? (isPreset(m.item.grp) ? 'Trening' : m.item.grp) : v; changed() }
 const openIcons = ref('')
+function pickModel(id: string, e: Event) { const i = e.target as HTMLInputElement; const f = i.files?.[0]; i.value = ''; if (f) void setModuleModel(id, f) }
 const askRemove = (id: string, name: string) => { if (confirm(`Slette «${name}» og alt som står i den?`)) void removeDecor(id) }
 function edit() { decor.editing = true; if (mode.value !== 'rom') void router.push('/') }
 </script>
@@ -51,6 +52,8 @@ function edit() { decor.editing = true; if (mode.value !== 'rom') void router.pu
             <option v-for="p in PRESET_TABS" :key="p.v" :value="p.v">{{ p.l }}</option><option value="*">Egen fane …</option>
           </select>
           <input v-if="tabChoice(m.item.grp) === '*'" v-model="m.item.grp" class="own" maxlength="30" placeholder="Navn på fanen" aria-label="Navn på egen fane" @change="changed()" />
+          <label class="btn soft small mdl" :title="m.item.file ? 'Bytt din egen 3D-modell' : 'Bruk din egen 3D-modell (.glb) i stedet for den innebygde'"><Box :size="14" />{{ m.item.file ? 'Bytt modell' : 'Egen modell' }}<input type="file" accept=".glb,model/gltf-binary" hidden @change="pickModel(m.id, $event)" /></label>
+          <button v-if="m.item.file" class="btn soft small" type="button" @click="setModuleModel(m.id, null)">Bruk innebygd</button>
           <router-link class="btn soft small" :to="{ name: 'modul', params: { id: m.id } }">Åpne</router-link>
           <button class="ib" :title="m.item.visible === false ? 'Vis i rommet' : 'Skjul i rommet'" @click="m.item.visible = m.item.visible === false; changed()"><EyeOff v-if="m.item.visible !== false" :size="16" /><Eye v-else :size="16" /></button>
           <button class="ib danger" title="Slett" aria-label="Slett" @click="askRemove(m.id, m.name)"><Trash2 :size="16" /></button>
@@ -91,4 +94,5 @@ h3 { margin: 0 0 8px; font-size: 0.95rem; }
 .kind:hover, .kind:focus-visible { transform: translateY(-3px); border-color: var(--mc); }
 .kind .e { font-size: 1.7rem; } .kind small { color: var(--text-3); font-size: 0.76rem; line-height: 1.3; }
 .kind .p { position: absolute; top: 10px; right: 10px; color: var(--mc); }
+.mdl { cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
 </style>
