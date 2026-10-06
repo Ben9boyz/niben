@@ -7,6 +7,7 @@ import { decor } from '@/composables/room/useDecor'
 import { api, errorMessage } from '@/composables/site/useAdmin'
 import type { Field } from '@/lib/modules/catalog'
 import LogInsights from './LogInsights.vue'
+import { safeUrl } from '@/lib/modules/safe'
 import { parseGpx, routePath, paceText } from '@/lib/modules/gpx'
 
 // One hobby module, whatever the hobby: the kind says which fields an entry has and how the entries are shown
@@ -16,7 +17,8 @@ const draft = ref<{ at: number; e: Entry } | null>(null) // at = -1: a new one
 const kat = ref('')
 const mod = computed(() => moduleById(props.id))
 const data = computed(() => dataOf(props.id))
-watch(() => props.id, (id) => { void loadModule(id); draft.value = null; kat.value = '' }, { immediate: true })
+watch(() => props.id, (id) => { void loadModule(id); draft.value = null; kat.value = ''; peek.value = null })
+void loadModule(props.id)
 const mine = computed(() => canManage.value)
 
 // ── entries ──
@@ -34,6 +36,10 @@ function startNew(prefill: Entry = {}): void {
   for (const f of mod.value?.kind.fields ?? []) if (f.kind === 'date' && e[f.k] === undefined && mod.value?.kind.layout === 'log') e[f.k] = today()
   draft.value = { at: -1, e }
 }
+// a click on an entry: I edit it in my own room – a visitor gets to read all of it
+const peek = ref<Entry | null>(null)
+function openEntry(i: number, e: Entry): void { if (mine.value) draft.value = { at: i, e: { ...e } }; else peek.value = peek.value === e ? null : e }
+const shownValue = (f: Field, v: unknown): string => (f.kind === 'rating' ? stars(v) : f.kind === 'number' && f.unit ? `${String(v).replace('.', ',')} ${f.unit}` : String(v))
 function save(): void {
   const d = draft.value
   const dd = data.value
@@ -117,8 +123,8 @@ function useHit(h: Hit): void {
   const d = draft.value
   if (!d) return
   d.e.t = h.title
-  if (h.img) d.e.img = h.img
-  if (h.url) d.e.url = h.url
+  if (safeUrl(h.img)) d.e.img = h.img as string
+  if (safeUrl(h.url)) d.e.url = h.url as string
   if (h.note && !d.e.note) d.e.note = h.note
   if (mod.value?.kind.lookup === 'sted' && h.sub) { const f = mod.value.kind.fields.find((x) => x.k === 'adresse' || x.k === 'sted'); if (f && !d.e[f.k]) d.e[f.k] = h.sub }
   const opts = katField.value?.options
@@ -173,7 +179,7 @@ void decor
       </form>
     </section>
     <section v-if="mod.kind.live === 'apod' && live?.title" class="live apod">
-      <img v-if="live.img" :src="live.img" alt="" loading="lazy" />
+      <img v-if="safeUrl(live.img)" :src="safeUrl(live.img) ?? undefined" alt="" loading="lazy" />
       <div><b>Dagens stjernebilde (NASA)</b><span>{{ live.title }}</span><small>{{ live.text }}</small></div>
     </section>
 
@@ -185,7 +191,7 @@ void decor
         <label class="field"><span><Search :size="13" /> Finn tittel</span><input placeholder="Begynn å skrive …" autocomplete="off" @input="lookup(($event.target as HTMLInputElement).value)" /></label>
         <p v-if="lookupBusy" class="muted">Søker …</p><p v-else-if="lookupErr" class="err">{{ lookupErr }}</p>
         <ul v-if="hits.length" class="hits">
-          <li v-for="(h, i) in hits" :key="i"><button type="button" @click="useHit(h)"><img v-if="h.img" :src="h.img" alt="" loading="lazy" /><span class="nm"><b>{{ h.title }}</b><small>{{ h.sub }}</small></span></button></li>
+          <li v-for="(h, i) in hits" :key="i"><button type="button" @click="useHit(h)"><img v-if="safeUrl(h.img)" :src="safeUrl(h.img) ?? undefined" alt="" loading="lazy" /><span class="nm"><b>{{ h.title }}</b><small>{{ h.sub }}</small></span></button></li>
         </ul>
       </div>
       <div v-if="mod.kind.workout" class="look">
@@ -208,6 +214,20 @@ void decor
       </div>
     </form>
 
+    <!-- one entry, read by a visitor -->
+    <article v-if="peek" class="peek">
+      <button class="x" type="button" aria-label="Lukk" @click="peek = null"><X :size="16" /></button>
+      <img v-if="safeUrl(peek.img)" :src="safeUrl(peek.img) ?? undefined" alt="" />
+      <div>
+        <h3>{{ title(peek) }}</h3>
+        <dl>
+          <template v-for="f in mod.kind.fields" :key="f.k"><template v-if="f.k !== 't' && f.kind !== 'hidden' && f.kind !== 'url' && peek[f.k] !== undefined && peek[f.k] !== ''"><dt>{{ f.label }}</dt><dd :class="{ long: f.kind === 'longtext' }">{{ shownValue(f, peek[f.k]) }}</dd></template></template>
+        </dl>
+        <svg v-if="typeof peek.route === 'string' && peek.route" class="route big" viewBox="-30 -30 1060 1060" aria-label="Ruten"><path :d="routePath(peek.route)" /></svg>
+        <a v-if="safeUrl(peek.url)" :href="safeUrl(peek.url) ?? undefined" target="_blank" rel="noopener noreferrer">Åpne lenken</a>
+      </div>
+    </article>
+
     <!-- category chips: one per genre / type that is in use -->
     <div v-if="usedKats.length" class="chips" role="group" aria-label="Kategori">
       <button :class="{ on: !kat }" @click="kat = ''">Alle <small>{{ items.length }}</small></button>
@@ -223,7 +243,7 @@ void decor
       <div v-if="items.length" class="stats"><span><b>{{ items.length }}</b>oppføringer</span><span v-if="stat"><b>{{ stat.value }}</b>{{ stat.label }}</span></div>
       <div v-if="series.length > 1" class="chart" aria-hidden="true"><i v-for="(p, i) in series" :key="i" :style="{ height: p.h + '%' }" :title="String(p.n)"></i></div>
       <ul class="log">
-        <li v-for="{ e, i } in shown" :key="i"><button :disabled="!mine" @click="draft = { at: i, e: { ...e } }"><time>{{ e.date ?? '' }}</time><b>{{ title(e) }}</b><span>{{ sub(e) }}<template v-if="pace(e)"> · {{ pace(e) }}</template></span><svg v-if="typeof e.route === 'string' && e.route" class="route" viewBox="-30 -30 1060 1060" aria-hidden="true"><path :d="routePath(e.route)" /></svg><em v-if="mod.kind.stat && e[mod.kind.stat.field] !== undefined">{{ e[mod.kind.stat.field] }}</em></button></li>
+        <li v-for="{ e, i } in shown" :key="i"><button @click="openEntry(i, e)"><time>{{ e.date ?? '' }}</time><b>{{ title(e) }}</b><span>{{ sub(e) }}<template v-if="pace(e)"> · {{ pace(e) }}</template></span><svg v-if="typeof e.route === 'string' && e.route" class="route" viewBox="-30 -30 1060 1060" aria-hidden="true"><path :d="routePath(e.route)" /></svg><em v-if="mod.kind.stat && e[mod.kind.stat.field] !== undefined">{{ e[mod.kind.stat.field] }}</em></button></li>
       </ul>
     </template>
 
@@ -233,7 +253,7 @@ void decor
       <ul class="chk">
         <li v-for="{ e, i } in shown" :key="i" :class="{ ok: e.done }">
           <button class="box" :disabled="!mine" :aria-label="e.done ? 'Ikke gjort' : 'Gjort'" @click="toggle(i)"><Check v-if="e.done" :size="14" /></button>
-          <button class="txt" :disabled="!mine" @click="draft = { at: i, e: { ...e } }"><b>{{ title(e) }}</b><small>{{ sub(e) }}</small></button>
+          <button class="txt" @click="openEntry(i, e)"><b>{{ title(e) }}</b><small>{{ sub(e) }}</small></button>
         </li>
       </ul>
     </template>
@@ -241,13 +261,13 @@ void decor
     <!-- cards -->
     <ul v-else class="cards">
       <li v-for="{ e, i } in shown" :key="i">
-        <button :disabled="!mine" @click="draft = { at: i, e: { ...e } }">
-          <span class="im" :style="e.img ? { backgroundImage: `url(${e.img})` } : undefined"><template v-if="!e.img">{{ mod.kind.icon }}</template></span>
+        <button @click="openEntry(i, e)">
+          <span class="im" :style="safeUrl(e.img) ? { backgroundImage: `url(${safeUrl(e.img)})` } : undefined"><template v-if="!safeUrl(e.img)">{{ mod.icon }}</template></span>
           <b>{{ title(e) }}</b>
           <small>{{ sub(e) }}</small>
           <span v-if="e.rating" class="st">{{ stars(e.rating) }}</span>
           <p v-if="e.note && !compact">{{ e.note }}</p>
-          <a v-if="e.url && !compact" :href="String(e.url)" target="_blank" rel="noopener noreferrer" @click.stop>Åpne</a>
+          <a v-if="safeUrl(e.url) && !compact" :href="safeUrl(e.url) ?? undefined" target="_blank" rel="noopener noreferrer" @click.stop>Åpne</a>
         </button>
       </li>
     </ul>
@@ -312,5 +332,11 @@ void decor
 .route.big { width: 120px; height: 120px; margin-top: 6px; }
 .gpx { cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
 .goalset { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-3); } .goalset input { width: 90px; padding: 6px 8px; border: 1px solid var(--glass-border); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+.peek { position: relative; display: flex; gap: 16px; padding: 16px; border-radius: 16px; border: 1px solid var(--glass-border); background: color-mix(in srgb, var(--mc) 7%, var(--bg)); }
+.peek img { width: 120px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 10px; flex: none; }
+.peek h3 { margin: 0 0 8px; } .peek dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 8px; font-size: 0.88rem; }
+.peek dt { color: var(--text-3); } .peek dd { margin: 0; } .peek dd.long { grid-column: 1 / -1; white-space: pre-wrap; }
+.peek a { color: var(--accent); font-size: 0.88rem; }
+.peek .x { all: unset; position: absolute; top: 10px; right: 10px; cursor: pointer; padding: 4px; border-radius: 8px; } .peek .x:hover { background: var(--glass-border); }
 @media (max-width: 560px) { .log button { grid-template-columns: 74px 1fr auto auto; } .log span { display: none; } }
 </style>

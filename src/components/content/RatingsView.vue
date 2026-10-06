@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { computed, ref, watchEffect } from 'vue'
-import { placed, dataOf, loadModule } from '@/composables/room/useModules'
+import { placed, dataOf, loadModules } from '@/composables/room/useModules'
+import { safeUrl } from '@/lib/modules/safe'
 
 // Everything you have given stars, from every module together: films beside restaurants beside coffee. Best first.
 const mods = computed(() => placed.value.filter((m) => m.kind.fields.some((f) => f.kind === 'rating')))
-watchEffect(() => { for (const m of mods.value) void loadModule(m.id) })
+watchEffect(() => { void loadModules(mods.value.map((m) => m.id)) }) // (all of them in one request)
 const only = ref('')
 interface Row { mod: string; icon: string; modName: string; title: string; sub: string; rating: number; img: string | null; note: string; date: string }
 const rows = computed<Row[]>(() => mods.value.flatMap((m) => (dataOf(m.id)?.items ?? []).filter((e) => Number(e.rating) > 0).map((e) => ({
   mod: m.id, icon: m.icon, modName: m.name, title: String(e.t ?? e.date ?? '–'), sub: [e.kat, e.pris, e.adresse].filter(Boolean).join(' · '),
-  rating: Number(e.rating), img: typeof e.img === 'string' ? e.img : null, note: String(e.note ?? ''), date: String(e.date ?? ''),
+  rating: Number(e.rating), img: safeUrl(e.img), note: String(e.note ?? ''), date: String(e.date ?? ''),
 }))))
 const shown = computed(() => rows.value.filter((r) => !only.value || r.mod === only.value).sort((a, b) => b.rating - a.rating || b.date.localeCompare(a.date)))
 const withRows = computed(() => mods.value.filter((m) => rows.value.some((r) => r.mod === m.id)))

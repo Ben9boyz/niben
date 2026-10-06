@@ -10,6 +10,22 @@ const MOD_ITEMS = 600;        // entries per module
 const MOD_MAX_BYTES = 240000; // size of one module's content
 
 function mod_unlink(string $rel): void { $p = __DIR__ . '/' . $rel; if (str_starts_with($rel, 'uploads/models/') && preg_match('~^uploads/models/[a-f0-9]+\.glb$~', $rel) && is_file($p)) @unlink($p); }
+/** A web address that is safe to put in a link or a picture: http(s) only, no quotes, brackets or spaces (so no javascript:, no CSS tricks). */
+function mod_safe_url(string $u): ?string {
+    $u = str_replace([' ', '(', ')'], ['%20', '%28', '%29'], trim($u)); // (an address with brackets or spaces is fine once they are written the safe way)
+    return strlen($u) <= 400 && preg_match('~^https?://[^\s"\'<>()\\\\]+$~i', $u) ? $u : null;
+}
+/** What a lookup answered, kept for a day for everyone (the services are asked as little as possible). */
+function mod_cache_get(string $key): ?array {
+    $room = kv_scope(); kv_scope(0);
+    try { $raw = kv_get($key); } finally { kv_scope($room); }
+    $c = $raw ? json_decode($raw, true) : null;
+    return $c && ($c['t'] ?? 0) > time() - 86400 ? $c['d'] : null;
+}
+function mod_cache_set(string $key, array $d): void {
+    $room = kv_scope(); kv_scope(0);
+    try { kv_set($key, json_encode(['t' => time(), 'd' => $d], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); } finally { kv_scope($room); }
+}
 function mod_data_key(string $id): string { return 'mod_' . $id; }
 function mod_find(string $id): ?array {
     foreach (decor_list() as $d) if (($d['id'] ?? '') === $id && !empty($d['mod'])) return $d;
@@ -38,6 +54,7 @@ function mod_clean_data($in): array {
             if (!preg_match('~^[a-z][a-z0-9_]{0,23}$~i', $k)) continue;
             if (is_bool($v)) $row[$k] = $v;
             elseif (is_numeric($v) && !is_string($v)) $row[$k] = $v + 0;
+            elseif ($k === 'url' || $k === 'img') { $u = mod_safe_url((string)$v); if ($u !== null) $row[$k] = $u; } // (a link or a picture: only http(s), nothing that can run)
             else { $s = mb_substr(trim((string)$v), 0, $k === 'route' ? 700 : 400); if ($k === 'route' && !preg_match('~^\d{1,3},\d{1,3}( \d{1,3},\d{1,3})*$~', $s)) continue; if ($s !== '') $row[$k] = $s; }
         }
         if ($row) $items[] = $row;
@@ -56,6 +73,18 @@ function mod_handle(string $action, bool $post): void {
         if (!preg_match('~^[a-f0-9]{10}$~', $id) || !mod_find($id)) fail('Fant ikke modulen.', 404);
         $raw = kv_get(mod_data_key($id));
         out(['data' => $raw ? json_decode($raw, true) : ['items' => [], 'settings' => new stdClass()]]);
+    }
+    case 'mod_get_many': {
+        // several modules' content in one go (the page with every rating from every module): ?ids=a,b,c
+        $ids = array_slice(array_filter(explode(',', (string)($_GET['ids'] ?? '')), fn($x) => preg_match('~^[a-f0-9]{10}$~', $x)), 0, 40);
+        $mine = array_column(array_filter(decor_list(), fn($d) => !empty($d['mod'])), 'id');
+        $out = [];
+        foreach ($ids as $id) {
+            if (!in_array($id, $mine, true)) continue;
+            $raw = kv_get(mod_data_key($id));
+            $out[$id] = $raw ? json_decode($raw, true) : ['items' => [], 'settings' => new stdClass()];
+        }
+        out(['data' => (object)$out]);
     }
     case 'mod_add': {
         if (!$post) fail('Bruk POST.', 405);
@@ -130,6 +159,9 @@ function mod_handle(string $action, bool $post): void {
         $src = (string)($_GET['s'] ?? '');
         $q = trim((string)($_GET['q'] ?? ''));
         if (mb_strlen($q) < 2 || mb_strlen($q) > 80) out(['results' => []]);
+        $ck = 'lk_' . substr(md5($src . '|' . mb_strtolower($q)), 0, 24);
+        if (($hit = mod_cache_get($ck)) !== null) out(['results' => $hit]);
+        if (session_uid() < 1) rl_or_fail('lookup:' . client_ip(), 30, 60); // (somebody without an account: a few a minute is plenty)
         $enc = rawurlencode($q);
         $h = ['User-Agent: niben.no', 'Accept: application/json'];
         $res = [];
@@ -145,7 +177,8 @@ function mod_handle(string $action, bool $post): void {
         } elseif ($src === 'art') {
             foreach (array_slice($get('https://api.gbif.org/v1/species/suggest?limit=8&q=' . $enc), 0, 8) as $r) $res[] = ['title' => $r['canonicalName'] ?? $r['scientificName'] ?? '', 'sub' => trim(($r['family'] ?? '') . ' ' . ($r['rank'] ?? '')), 'img' => null, 'url' => isset($r['key']) ? 'https://www.gbif.org/species/' . $r['key'] : null, 'genre' => null, 'note' => ''];
         } elseif ($src === 'sted') {
-            // places (restaurants, cafés, trails, campsites …) from OpenStreetMap – its rules ask for a name on the request and one question at a time
+            // places (restaurants, cafés, trails, campsites …) from OpenStreetMap – its rules ask for a name on the request and at most one question a second
+            for ($i = 0; !rl_hit('nominatim', 1, 1); $i++) { if ($i >= 4) fail('Kartet er opptatt – prøv igjen om et øyeblikk.', 429); usleep(350000); }
             $h2 = ['User-Agent: niben.no (hobby pages)', 'Accept: application/json', 'Accept-Language: nb,en'];
             [$st, $b] = http_req('GET', 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&addressdetails=0&q=' . $enc, $h2);
             foreach (array_slice($st === 200 ? (json_decode($b, true) ?: []) : [], 0, 8) as $r) {
@@ -157,11 +190,16 @@ function mod_handle(string $action, bool $post): void {
         } elseif ($src === 'land') {
             foreach (array_slice($get('https://restcountries.com/v3.1/name/' . $enc . '?fields=name,flags,translations,region'), 0, 8) as $r) $res[] = ['title' => $r['translations']['nob']['common'] ?? $r['name']['common'] ?? '', 'sub' => $r['region'] ?? '', 'img' => $r['flags']['png'] ?? null, 'url' => null, 'genre' => null, 'note' => ''];
         } else fail('Ukjent tjeneste.');
-        out(['results' => array_values(array_filter($res, fn($r) => $r['title'] !== ''))]);
+        foreach ($res as &$r) { $r['img'] = $r['img'] ? mod_safe_url((string)$r['img']) : null; $r['url'] = $r['url'] ? mod_safe_url((string)$r['url']) : null; }
+        unset($r);
+        $res = array_values(array_filter($res, fn($r) => $r['title'] !== ''));
+        if ($res) mod_cache_set($ck, $res);
+        out(['results' => $res]);
     }
     case 'mod_live': {
         // an account on a public service (no key needed): the number the module shows beside the entries
         $provider = (string)($_GET['p'] ?? '');
+        if (session_uid() < 1) rl_or_fail('live:' . client_ip(), 20, 60);
         if ($provider === 'apod') { // the astronomy picture of the day (NASA's open demo key), kept for six hours
             $raw = kv_get('live_apod');
             $c = $raw ? json_decode($raw, true) : null;

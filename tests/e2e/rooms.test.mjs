@@ -1,6 +1,6 @@
 import { test, before, after, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { launch, openPage, closePages, cookie, ownerClient, makeUser, mockSpotify, db, clearLimits } from './helpers.mjs'
+import { launch, openPage, closePages, cookie, ownerClient, makeUser, mockSpotify, db, clearLimits, pickRoom } from './helpers.mjs'
 
 let browser
 before(async () => { browser = await launch() })
@@ -18,7 +18,7 @@ test('switching rooms does not reload the page, and the new room shows its own t
   assert.match(await page.locator('h1').innerText(), /Benjamin/)
 
   await page.getByRole('button', { name: /Rom og konto/ }).click()
-  await page.locator('.smenu .row', { hasText: alice.name }).click()
+  await pickRoom(page, alice.name)
   await page.getByRole('heading', { level: 1, name: /Alicia/ }).waitFor()
   assert.equal(await page.evaluate(() => window.__same_page), true, 'the page was not reloaded')
   assert.equal(await cookie(page, 'niben_r'), String(alice.id))
@@ -46,7 +46,7 @@ test('the library of one room does not show in another (the saved copy in the br
   assert.deepEqual(saved, ['niben-spotify-lists-v2:r1'], 'saved under the main room')
 
   await page.getByRole('button', { name: /Rom og konto/ }).click()
-  await page.locator('.smenu .row', { hasText: alice.name }).click()
+  await pickRoom(page, alice.name)
   await page.waitForFunction((id) => document.cookie.includes(`niben_r=${id}`), String(alice.id))
   await page.waitForTimeout(1500)
   await page.goto(`${APP_URL()}/#/lytte`)
@@ -93,7 +93,7 @@ test('the admin is grouped, and a user sees only what is theirs', async () => {
   await page.locator('.tabs.groups button', { hasText: 'Profil' }).click()
   assert.deepEqual((await page.locator('.tabs.sub button').allInnerTexts()).map((t) => t.trim()), ['Om meg', 'Tekster', 'Gjestebok'])
   await page.locator('.tabs.groups button', { hasText: 'Tilkoblinger' }).click()
-  await page.getByRole('heading', { name: /Spotify/ }).waitFor()
+  await page.locator('details.svc summary', { hasText: 'Spotify' }).waitFor()
   assert.deepEqual(page.errors, [])
 
   // the owner has the site's own parts as well

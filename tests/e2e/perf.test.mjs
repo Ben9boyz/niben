@@ -1,6 +1,6 @@
 import { test, before, after, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { launch, openPage, closePages } from './helpers.mjs'
+import { launch, openPage, closePages, ownerClient, makeUser } from './helpers.mjs'
 
 // The room must stay light enough for a weak machine. What one plain render costs, per view, may not grow past this:
 //   a corner you look at: < 150 draw calls, < 70 000 triangles (the guitar wall – several many-part models – < 200 / 90 000)
@@ -26,6 +26,29 @@ test('every view of the room stays inside the draw-call and triangle budget', as
     assert.ok(row.calls < calls, `${row.s}: ${row.calls} draw calls (budget ${calls})`)
     assert.ok(row.triangles < tris, `${row.s}: ${row.triangles} triangles (budget ${tris})`)
   }
+})
+
+test('a room with twenty hobby modules stays inside the same budget', async () => {
+  const owner = await ownerClient()
+  const u = await makeUser(owner)
+  const kinds = ['sjakk', 'filmer', 'serier', 'brettspill', 'retro', 'piano', 'oppskrifter', 'kaffe', 'vin', 'lego', 'kunst', 'foto', 'planter', 'akvarium', 'trening', 'sykling', 'styrke', 'camping', 'skriving', 'reisemal']
+  for (const k of kinds) assert.equal((await u.client.post('mod_add', { type: k })).status, 200)
+  const page = await openPage(browser, { mode: 'rom', width: 1280, height: 760 })
+  await page.evaluate((n) => fetch('api.php?action=room_set', { method: 'POST', headers: { 'X-Niben': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ username: n }) }), u.name)
+  await page.reload()
+  await page.waitForFunction(() => !!window.__room, null, { timeout: 30000 })
+  await page.waitForFunction(() => window.__room.dumpScene().filter((o) => /Sprite/.test(o[0])).length >= 20, null, { timeout: 30000 }) // (all twenty are standing)
+  await page.waitForTimeout(2000)
+  const rows = await page.evaluate((names) => {
+    const r = window.__room
+    return names.map((s) => { r.goTo(s, { instant: true }); r.fastForward(2); return { s, ...r.stats() } })
+  }, Object.keys(BUDGET))
+  for (const row of rows) {
+    const [calls, tris] = BUDGET[row.s]
+    assert.ok(row.calls < calls, `${row.s} with 20 modules: ${row.calls} draw calls (budget ${calls})`)
+    assert.ok(row.triangles < tris, `${row.s} with 20 modules: ${row.triangles} triangles (budget ${tris})`)
+  }
+  assert.deepEqual(page.errors, [])
 })
 
 test('a corner far out of view is switched off, and comes back when the camera goes there', async () => {

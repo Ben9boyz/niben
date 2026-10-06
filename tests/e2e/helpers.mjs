@@ -47,3 +47,10 @@ export function tinyGlb() {
   const bc = ch(pos.length, 'BIN\0'); bc.writeUInt32LE(0x004e4942, 4)
   return Buffer.concat([head, jc, j, bc, pos])
 }
+
+/** Picks a room in the open "Rom og konto" menu – with many rooms (a long test run) through its search field. */
+export async function pickRoom(page, name) {
+  const find = page.locator('.smenu .rfind')
+  if (await find.count()) await find.fill(name)
+  await page.locator('.smenu .row', { hasText: name }).first().click()
+}

@@ -22,6 +22,18 @@ test('hobby modules: a room adds, fills, moves and removes them; others only loo
   assert.equal(saved.json.data.items[0]['bad key!'], undefined)
   assert.equal(saved.json.data.items[0].note.length, 400)
 
+  // a link or a picture is only ever http(s): nothing that could run in a visitor's browser
+  const urls = await alice.client.post('mod_save', { id, data: { items: [{ t: 'A', url: 'javascript:alert(1)', img: 'https://x.no/a.jpg' }, { t: 'B', url: 'https://ok.no/x (1)', img: 'data:text/html,hi' }] } })
+  assert.equal(urls.json.data.items[0].url, undefined)
+  assert.equal(urls.json.data.items[0].img, 'https://x.no/a.jpg')
+  assert.equal(urls.json.data.items[1].url, 'https://ok.no/x%20%281%29')
+  assert.equal(urls.json.data.items[1].img, undefined)
+  await alice.client.post('mod_save', { id, data })
+
+  // several at once (the ratings page): only this room's modules
+  const many = await visitorIn(alice.name).then((v) => v.get('mod_get_many', `&ids=${id},ffffffffff`))
+  assert.deepEqual(Object.keys(many.json.data), [id])
+
   // it is in the room's decor list (that is how it gets a place) and can be moved
   const list = (await alice.client.get('decor_get')).json.items
   assert.ok(list.find((i) => i.id === id && i.mod === 'filmer'))

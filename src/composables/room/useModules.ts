@@ -27,6 +27,19 @@ export async function loadModule(id: string, force = false): Promise<void> {
   } catch (e) { store.error = errorMessage(e) } finally { store.loading[id] = false }
 }
 
+/** Several modules at once (one request, however many there are). */
+export async function loadModules(ids: string[]): Promise<void> {
+  const want = ids.filter((id) => !store.data[id] && !store.loading[id])
+  if (!want.length) return
+  for (const id of want) store.loading[id] = true
+  try {
+    const r = await fetch(`api.php?action=mod_get_many&ids=${want.map(encodeURIComponent).join(',')}`, { cache: 'no-cache' })
+    const j = (await r.json()) as { data?: Record<string, { items?: Entry[]; settings?: Record<string, string> | unknown[] }>; error?: string }
+    if (j.error) throw new Error(j.error)
+    for (const [id, d] of Object.entries(j.data ?? {})) store.data[id] = { items: d.items ?? [], settings: d.settings && !Array.isArray(d.settings) ? (d.settings as Record<string, string>) : {} }
+  } catch (e) { store.error = errorMessage(e) } finally { for (const id of want) store.loading[id] = false }
+}
+
 const timers = new Map<string, number>()
 /** Something in a module changed: save it in a moment (several changes in a row go as one). */
 export function touch(id: string): void {

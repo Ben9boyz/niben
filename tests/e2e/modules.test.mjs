@@ -22,6 +22,9 @@ test('hobby modules show as pages with their entries, categories and numbers, an
   const page = await openPage(browser, { hash: `/h/${a.id}` })
   await page.getByRole('heading', { name: 'Kinokvelder' }).waitFor()
   await page.getByText('Alien').first().waitFor()
+  await page.getByRole('button', { name: /Alien/ }).first().click() // a visitor reads an entry
+  await page.locator('.peek').getByText('Skrekk').waitFor()
+  await page.getByRole('button', { name: 'Lukk' }).click()
   await page.locator('.chips').getByRole('button', { name: /Skrekk/ }).click() // the category chip
   assert.equal(await page.getByText('Paddington').count(), 0)
   await page.getByRole('tab', { name: /Løpeturer/ }).first().click()

@@ -19,7 +19,7 @@ test('the iPod is used from its stand: it never leaves it, and the X on its scre
   await page.waitForFunction(() => !!window.__room, null, { timeout: 60000 })
   await page.waitForFunction(() => window.__room.dumpScene().some((o) => o[0].includes('ipod_fixed')), null, { timeout: 90000 }) // (the iPod model has arrived)
   await page.waitForTimeout(2000)
-  const stand = [3.59, 0.9, 0.08] // (the stand on the sideboard, world coordinates)
+  const stand = [3.6, 0.92, 0.75] // (the stand on the listening table, world coordinates)
   const before = await objectsNear(page, stand, 0.16)
   assert.ok(before.length > 5, 'the iPod and its stand are there')
 

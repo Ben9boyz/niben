@@ -2,7 +2,8 @@
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { Check, ShieldCheck, LogIn, LogOut, UserPlus, DoorOpen } from 'lucide-vue-next'
-import { rooms, loadRooms, setRoom } from '@/composables/room/useRooms'
+import { rooms, loadRooms, setRoom, type RoomInfo } from '@/composables/room/useRooms'
+import { api } from '@/composables/site/useAdmin'
 import { admin, account, signedIn, login, userLogin, logout, errorMessage } from '@/composables/site/useAdmin'
 import { useData } from '@/composables/site/useData'
 import { thumb } from '@/lib/photos'
@@ -19,6 +20,21 @@ const menuEl = ref<HTMLElement | null>(null)
 const pos = ref<Record<string, string>>({})
 onMounted(loadRooms)
 
+// many rooms: the menu shows the first ones, and a search finds the rest
+const q = ref('')
+const found = ref<RoomInfo[] | null>(null)
+let qTimer = 0
+let qSeq = 0
+function findRoom(): void {
+  clearTimeout(qTimer)
+  const term = q.value.trim()
+  if (!term) { found.value = null; return }
+  qTimer = window.setTimeout(async () => {
+    const seq = ++qSeq
+    try { const r = await api<{ rooms: RoomInfo[] }>('rooms_find', { q: term, offset: 0, limit: 8 }); if (seq === qSeq) found.value = r.rooms } catch { /* keep the list */ }
+  }, 200)
+}
+const shownRooms = computed(() => found.value ?? rooms.list)
 const here = computed(() => rooms.list.find((r) => r.username === rooms.current) ?? null)
 const roomName = computed(() => here.value?.username ?? data.profile.username)
 const photo = computed(() => here.value?.photo || data.om?.bilde || null)
@@ -52,7 +68,7 @@ async function toggle() {
   const top = phone ? Math.min(r.bottom + 8, innerHeight - h - 24) : Math.min(r.top, innerHeight - h - 24)
   pos.value = { left: `${left}px`, top: `${Math.max(8, top)}px` }
 }
-const close = () => { open.value = false }
+const close = () => { open.value = false; q.value = ''; found.value = null }
 const onDoc = (e: Event) => { if (open.value && !root.value?.contains(targetEl(e)) && !menuEl.value?.contains(targetEl(e))) close() }
 const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
 onMounted(() => { document.addEventListener('pointerdown', onDoc); window.addEventListener('keydown', onKey); window.addEventListener('resize', close) })
@@ -70,7 +86,8 @@ watch(() => route.fullPath, close)
     <transition name="fade">
       <div v-if="open" ref="menuEl" class="smenu glass" role="menu" translate="no" :style="pos" @click.stop>
         <div v-if="rooms.list.length > 1" class="grp first"><span class="cap">Rom</span></div>
-        <button v-for="r in rooms.list.length > 1 ? rooms.list : []" :key="r.username" class="row" role="menuitem" @click="close(); if (r.username !== rooms.current) void setRoom(r.username)">
+        <input v-if="rooms.total > rooms.list.length" v-model="q" class="rfind" type="search" placeholder="Finn et rom …" aria-label="Finn et rom" @input="findRoom" @keydown.stop />
+        <button v-for="r in rooms.list.length > 1 ? shownRooms : []" :key="r.username" class="row" role="menuitem" @click="close(); if (r.username !== rooms.current) void setRoom(r.username)">
           <img v-if="r.photo" class="av" :src="thumb(r.photo, 400)" alt="" crossorigin="anonymous" /><span v-else class="av ph">{{ r.username.slice(0, 1).toUpperCase() }}</span>
           <span class="l"><b>{{ r.username }}<small v-if="r.owner"> · hovedrommet</small></b><small v-if="r.tagline">{{ r.tagline }}</small></span>
           <Check v-if="r.username === rooms.current" :size="16" aria-hidden="true" />
@@ -113,4 +130,5 @@ watch(() => route.fullPath, close)
 .smenu .row.cur { cursor: default; }
 .smenu .row.cur:hover { background: transparent; }
 @media (max-width: 720px) { html body .sm.profile { width: 40px; height: 40px; } html body .sm.sm.profile { right: 62px; } }
+.rfind { width: calc(100% - 12px); margin: 2px 6px 6px; box-sizing: border-box; padding: 7px 10px; border: 1px solid var(--glass-border); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; font-size: 0.85rem; }
 </style>

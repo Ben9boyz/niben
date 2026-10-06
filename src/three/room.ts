@@ -99,7 +99,7 @@ export interface RoomData { gitarer?: Guitar[]; boker?: Book[]; reiser?: Trip[];
 export type GfxInput = Partial<Omit<GfxValues, 'res' | 'ao'>> & { mode?: GfxMode; res?: number | 'auto'; ao?: GfxValues['ao'] | 'auto'; showFps?: boolean }
 interface Eff extends Omit<GfxValues, 'res' | 'ao'> { res: number | 'auto'; ao: GfxValues['ao'] | 'auto'; showFps: boolean; areaLights: boolean; smallLights: boolean }
 /** One of my uploaded 3D models in the room. */
-interface DecorObject { root: THREE.Group; item: DecorItem; prop?: PropHandle; sig?: string; sig2?: string; glb?: THREE.Object3D }
+interface DecorObject { root: THREE.Group; item: DecorItem; prop?: PropHandle; sig?: string; sig2?: string; glb?: THREE.Object3D; box?: THREE.Box3; culled?: boolean }
 /** What the pointer rests on, found by raycasting. */
 interface HitInfo { object: THREE.Object3D; kind?: string; index?: number; station?: string; country?: string }
 interface Flight { from: Pose3; to: Pose3; t: number; dur: number; lift: number }
@@ -798,6 +798,15 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       }
       if (o.visible !== want) { o.visible = want; changed = true }
     }
+    // my own models and the hobby modules: the same – out of view, out of the picture (twenty of them must not cost anything you don't see)
+    for (const o of decorObjs.values()) {
+      let cull = false
+      if (cullOn && !roam.on && !decorEdit) {
+        if (!o.box) { o.box = new THREE.Box3().setFromObject(o.root); if (!o.box.isEmpty()) o.box.expandByScalar(0.4) }
+        if (!o.box.isEmpty()) cull = !(sees(wideNow, o.box) || (ahead && sees(wideEnd, o.box)))
+      }
+      if (cull !== !!o.culled) { o.culled = cull; o.root.visible = (o.item.visible !== false || decorEdit) && !cull; changed = true }
+    }
     // little things far away: under ~2 px they cannot be seen anyway
     if (!tinies) tinies = collectTinies()
     const pxPerM = (host.clientHeight * renderer.getPixelRatio()) / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)))
@@ -1005,7 +1014,8 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     o.root.position.set(it.x, it.y || 0, it.z)
     o.root.rotation.y = it.rot || 0
     o.root.scale.setScalar(it.scale || 1)
-    o.root.visible = it.visible !== false || decorEdit // hidden ones still show while editing, so they can be found again
+    o.root.visible = (it.visible !== false || decorEdit) && !o.culled // hidden ones still show while editing, so they can be found again
+    o.box = undefined // (moved: where it is is worked out again)
   }
   function refreshSel(): void {
     const o = decorSel ? decorObjs.get(decorSel) : undefined
@@ -1038,6 +1048,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       o.glb?.removeFromParent()
       o.glb = m
       o.root.add(m)
+      o.box = undefined
       shadowsDirty = true
       scheduleEnvCapture(900)
       refreshSel()
@@ -1054,6 +1065,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     o.prop = buildModuleProp(kind, o.item.name || kind.name, o.item.ico || kind.icon)
     o.root.userData.modTitle = o.item.name || kind.name
     o.root.add(o.prop.root)
+    o.box = undefined
     shadowsDirty = true
     refreshSel()
     invalidate(1)

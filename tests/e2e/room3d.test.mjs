@@ -1,6 +1,6 @@
 import { test, before, after, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { launch, openPage, closePages, ownerClient, makeUser, mockSpotify, db } from './helpers.mjs'
+import { launch, openPage, closePages, ownerClient, makeUser, mockSpotify, db, pickRoom } from './helpers.mjs'
 
 let browser
 before(async () => { browser = await launch() })
@@ -40,7 +40,7 @@ test('the listening corner shows the shelf of a connected room and survives a sw
   const before = await scene(page)
 
   await page.getByRole('button', { name: /Rom og konto/ }).click()
-  await page.locator('.smenu .row', { hasText: alice.name }).click()
+  await pickRoom(page, alice.name)
   await page.waitForFunction((id) => document.cookie.includes(`niben_r=${id}`), String(alice.id))
   await page.waitForTimeout(2500)
   assert.ok(await looksDrawn(page), 'still a drawn room after the switch')
