@@ -91,9 +91,9 @@ const onDragEnd = () => { dragging.value = null; overKey.value = null }
 
 // a click on a song in Spotify's queue: jump to it (the songs before it are skipped). Only for me – the others just see the queue.
 const canHop = computed(() => admin.mine)
-async function hop(idx: number, name: string) {
+async function hop(idx: number, name: string, uri?: string) {
   if (!canHop.value) return
-  const r = await skipTo(idx + 1)
+  const r = await skipTo(idx + 1, uri)
   notify(r.ok ? `Spiller «${name}»` : r.error ?? '', !r.ok)
   clearTimeout(soon); soon = setTimeout(load, 900)
 }
@@ -106,8 +106,8 @@ async function where() {
   pos.value = i >= 0 ? { n: i + 1, of: list.length, next: list[i + 1]?.uri || null } : null
 }
 // a new song: look again (a moment later, once Spotify has caught up)
-watch(() => spotify.now?.uri, () => { open.value = new Set(); clearTimeout(soon); soon = setTimeout(() => { void load(); void where() }, 700) }, { immediate: true })
-watch(() => spotify.queueV, () => { clearTimeout(soon); soon = setTimeout(load, 400) })
+watch(() => spotify.now?.uri, () => { open.value = new Set(); clearTimeout(soon); soon = setTimeout(() => { void load(); void where() }, 120) }, { immediate: true })
+watch(() => spotify.queueV, () => { clearTimeout(soon); soon = setTimeout(load, 40) })
 watch(() => admin.mine, (v) => { if (v) loadMyQueue() }, { immediate: true })
 onMounted(() => { timer = setInterval(() => { if (!document.hidden && spotify.now?.playing && !editing.value) load() }, 15000) })
 onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
@@ -167,25 +167,25 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
         <ol v-else-if="asAlbums" class="albums">
           <li v-for="(g, i) in groups.slice(0, 20)" :key="(g.uri || g.name) + i" class="grp" :class="{ one: !isAlbum(g) }">
             <div v-if="isAlbum(g)" class="gh" role="button" tabindex="0" :aria-expanded="open.has('s' + i)" @click="toggle('s' + i)" @keydown.enter="toggle('s' + i)">
-              <button v-if="canHop" class="hopb" :title="`Hopp hit: «${g.tracks[0].t.name}»`" :aria-label="`Hopp til ${g.tracks[0].t.name}`" @click.stop="hop(g.tracks[0].idx, g.tracks[0].t.name)"><img v-if="g.image" crossorigin="anonymous" :src="g.image" alt="" /><span v-else class="ph"><Music :size="13" /></span><Play :size="14" fill="currentColor" class="hopi" /></button>
+              <button v-if="canHop" class="hopb" :title="`Hopp hit: «${g.tracks[0].t.name}»`" :aria-label="`Hopp til ${g.tracks[0].t.name}`" @click.stop="hop(g.tracks[0].idx, g.tracks[0].t.name, g.tracks[0].t.uri)"><img v-if="g.image" crossorigin="anonymous" :src="g.image" alt="" /><span v-else class="ph"><Music :size="13" /></span><Play :size="14" fill="currentColor" class="hopi" /></button>
               <template v-else><img v-if="g.image" crossorigin="anonymous" :src="g.image" alt="" /><span v-else class="ph"><Music :size="13" /></span></template>
               <span class="t" translate="no"><b><template v-if="rest(g)">Resten av </template><a v-if="g.uri" class="lnk" href="#" title="Åpne albumet" @click.stop.prevent="openGroupAlbum(g)">{{ g.name }}</a><template v-else>{{ g.name }}</template></b><small><i class="tag">Album</i>{{ g.tracks.length }} låter · {{ minutes(g) }}</small></span>
               <ChevronRight :size="15" class="chev" :class="{ on: open.has('s' + i) }" aria-hidden="true" />
             </div>
-            <div v-else class="gh single" :class="{ hop: canHop }" :role="canHop ? 'button' : undefined" :tabindex="canHop ? 0 : undefined" :title="canHop ? 'Hopp hit' : undefined" @click="hop(g.tracks[0].idx, g.tracks[0].t.name)" @keydown.enter="hop(g.tracks[0].idx, g.tracks[0].t.name)">
+            <div v-else class="gh single" :class="{ hop: canHop }" :role="canHop ? 'button' : undefined" :tabindex="canHop ? 0 : undefined" :title="canHop ? 'Hopp hit' : undefined" @click="hop(g.tracks[0].idx, g.tracks[0].t.name, g.tracks[0].t.uri)" @keydown.enter="hop(g.tracks[0].idx, g.tracks[0].t.name, g.tracks[0].t.uri)">
               <img v-if="g.tracks[0].t.img || g.image" crossorigin="anonymous" :src="g.tracks[0].t.img || g.image || undefined" alt="" /><span v-else class="ph"><Music :size="13" /></span>
-              <span class="t" translate="no"><b>{{ g.tracks[0].t.name }}</b><small><i class="tag pl">Spilleliste</i><a v-if="g.tracks[0].t.artist" class="lnk" href="#" title="Åpne artisten" @click.prevent="openArtistOf(g.tracks[0].t)">{{ g.tracks[0].t.artist }}</a></small></span>
+              <span class="t" translate="no"><b>{{ g.tracks[0].t.name }}</b><small><a v-if="g.tracks[0].t.artist" class="lnk" href="#" title="Åpne artisten" @click.stop.prevent="openArtistOf(g.tracks[0].t)">{{ g.tracks[0].t.artist }}</a></small></span>
               <small class="d">{{ fmtClock((g.tracks[0].t.ms ?? 0) / 1000) }}</small>
             </div>
             <ol v-if="isAlbum(g) && open.has('s' + i)" class="songs">
-              <li v-for="(x, j) in g.tracks" :key="x.t.uri + j" :class="{ hop: canHop }" :title="canHop ? 'Hopp hit' : undefined" @click="hop(x.idx, x.t.name)"><span class="n">{{ j + 1 }}</span><span class="t" translate="no"><b>{{ x.t.name }}</b></span><small class="d">{{ fmtClock((x.t.ms ?? 0) / 1000) }}</small></li>
+              <li v-for="(x, j) in g.tracks" :key="x.t.uri + j" :class="{ hop: canHop }" :title="canHop ? 'Hopp hit' : undefined" @click="hop(x.idx, x.t.name, x.t.uri)"><span class="n">{{ j + 1 }}</span><span class="t" translate="no"><b>{{ x.t.name }}</b></span><small class="d">{{ fmtClock((x.t.ms ?? 0) / 1000) }}</small></li>
             </ol>
           </li>
         </ol>
         <ol v-else>
-          <li v-for="(t, i) in spotQueue.slice(0, 12)" :key="t.uri + i" :class="{ hop: canHop }" :title="canHop ? 'Hopp hit' : undefined" @click="hop(i, t.name)">
+          <li v-for="(t, i) in spotQueue.slice(0, 12)" :key="t.uri + i" :class="{ hop: canHop }" :title="canHop ? 'Hopp hit' : undefined" @click="hop(i, t.name, t.uri)">
             <img v-if="t.img" crossorigin="anonymous" :src="t.img" alt="" /><span v-else class="ph"><Music :size="13" /></span>
-            <span class="t" translate="no"><b>{{ t.name }}</b><small><a v-if="t.artist" class="lnk" href="#" title="Åpne artisten" @click.prevent="openArtistOf(t)">{{ t.artist }}</a></small></span>
+            <span class="t" translate="no"><b>{{ t.name }}</b><small><a v-if="t.artist" class="lnk" href="#" title="Åpne artisten" @click.stop.prevent="openArtistOf(t)">{{ t.artist }}</a></small></span>
             <small class="d">{{ fmtClock((t.ms ?? 0) / 1000) }}</small>
           </li>
         </ol>
@@ -242,7 +242,7 @@ li img, .ph { width: 32px; height: 32px; border-radius: 5px; object-fit: cover; 
 .edit { white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border: 0; border-radius: 999px; background: var(--glass); color: var(--text-2); font: 600 0.72rem var(--font); cursor: pointer; }
 .edit:hover { color: var(--accent); }
 .edit.on { background: var(--accent); color: #fff; }
-.lnk { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; padding: 0; border: 0; background: none; color: #d24b4b; font: 600 0.74rem var(--font); cursor: pointer; }
+.bar .lnk { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; padding: 0; border: 0; background: none; color: #d24b4b; font: 600 0.74rem var(--font); cursor: pointer; }
 .hint { margin: 0; padding: 6px 10px; border-radius: 10px; background: var(--accent-soft); color: var(--text-2); font-size: 0.74rem; line-height: 1.35; }
 .lists { display: grid; gap: 3px; max-height: 440px; overflow-y: auto; overscroll-behavior: contain; }
 .div { padding: 8px 4px 2px; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); border-top: 1px solid var(--glass-border); margin-top: 4px; }

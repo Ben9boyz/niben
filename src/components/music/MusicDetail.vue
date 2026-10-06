@@ -3,7 +3,7 @@ import { Bookmark, ChevronLeft, Music, Lock, Play, Pause, ArrowUpRight, CirclePl
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import AddMenu from './AddMenu.vue'
 import { startTrackDrag, endDrag } from '@/composables/music/useDrag'
-import { spotify, lockLeft, fmtClock, play, fetchTracks, lockNote, control, addToPlaylist, enqueue, enqueueAlbum, isSaved, toggleAlbumSaved, setPlaylistImage } from '@/composables/music/useSpotify'
+import { spotify, lockLeft, fmtClock, play, fetchTracks, control, addToPlaylist, enqueue, enqueueAlbum, isSaved, toggleAlbumSaved, setPlaylistImage } from '@/composables/music/useSpotify'
 import { admin } from '@/composables/site/useAdmin'
 import { pickedFile, targetEl } from '@/lib/dom'
 import type { Album, Playlist, Track, TrackList, Flash } from '@/types'
@@ -125,7 +125,7 @@ async function onPlay(track: Track | null = null) {
   busy.value = track?.uri || props.item.uri
   const r = await play(props.item.uri, track?.uri ?? null)
   busy.value = null
-  msg.value = r.ok ? { ok: `Spiller «${track ? track.name : props.item.name}»${lockNote()}` } : { error: r.error }
+  msg.value = r.ok ? null : { error: r.error }
 }
 </script>
 

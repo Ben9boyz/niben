@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { Play, Lock, Plus, Check, Music, CirclePlus, ListEnd } from 'lucide-vue-next'
-import { spotify, lockLeft, type SearchResults, fmtClock, play, lockNote, searchSpotify, saveAlbum, addToPlaylist, addGuest, control, followPlaylist, enqueue } from '@/composables/music/useSpotify'
+import { spotify, lockLeft, type SearchResults, fmtClock, play, searchSpotify, saveAlbum, addToPlaylist, addGuest, control, followPlaylist, enqueue } from '@/composables/music/useSpotify'
 import { room } from '@/composables/room/useRoom'
 import { mode } from '@/composables/ui/useMode'
 import { admin, errorMessage } from '@/composables/site/useAdmin'
@@ -96,7 +96,7 @@ async function playTrack(t: Track) {
   const onShelf = props.tab === 'vinyl' && spotify.albums.some((a) => a.uri === t.album_uri)
   const r = await play(t.album_uri ?? '', t.uri, onShelf ? {} : { from: 'search' })
   busy.value = null
-  msg.value = r.ok ? { ok: `Spiller «${t.name}»${lockNote()}` } : { error: r.error }
+  msg.value = r.ok ? null : { error: r.error }
 }
 async function save(a: Album) {
   busy.value = a.uri

@@ -311,7 +311,7 @@ export function notify(text: string, error = false): void {
 /** Spotify cannot jump to a place in the queue: "next" is pressed once for every song in between (the ones skipped leave the queue).
  *  `steps` = how many "next" (1 = the next song). In the browser player the volume is down meanwhile, so the songs in between are not heard. */
 export const SKIP_MAX = 15
-export async function skipTo(steps: number): Promise<Result> {
+export async function skipTo(steps: number, expectUri?: string): Promise<Result> {
   if (!admin.mine) return { ok: false, error: 'Logg inn for å styre musikken' }
   if (lockLeft.value > 0) return { ok: false, error: `Låst – hør ferdig (${fmtClock(lockLeft.value)})` }
   if (steps > SKIP_MAX) return { ok: false, error: `For langt ned i køen – Spotify tåler ikke mer enn ${SKIP_MAX} hopp på rad. Hopp et stykke først.` }
@@ -324,10 +324,34 @@ export async function skipTo(steps: number): Promise<Result> {
       if (!r.ok) return r
       if (i < steps - 1) await new Promise((res) => setTimeout(res, 220)) // (Spotify limits how fast commands may come)
     }
+    if (expectUri) await landOn(expectUri)
     return { ok: true }
   } finally {
     if (steps > 1) setTimeout(() => playDevice.mute?.(false), 450)
   }
+}
+/** Spotify sometimes drops one of the quick "next" presses and the hop stops a song short. Look at where we ended up
+ *  and, if the song is still ahead in the queue, press "next" for the rest. */
+async function landOn(uri: string): Promise<void> {
+  for (let round = 0; round < 3; round++) {
+    await new Promise((res) => setTimeout(res, 700))
+    await refreshNow()
+    if (spotify.now?.uri === uri) return
+    const left = (await fetchQueue()).findIndex((t) => t.uri === uri)
+    if (left < 0 || left >= SKIP_MAX) return // it is not ahead any more (we are there, or past it)
+    for (let i = 0; i <= left; i++) {
+      const r = await control('next')
+      if (!r.ok) return
+      if (i < left) await new Promise((res) => setTimeout(res, 220))
+    }
+  }
+}
+
+/** "Next" was pressed: the queue shrinks by one at once (Spotify follows a moment later). */
+function noteNext(): void {
+  optNext.push(Date.now())
+  spotify.queueV++
+  setTimeout(() => { spotify.queueV++ }, 1000)
 }
 
 /** Pause / resume / seek / next / previous (admin). Goes straight to the browser player when it's
@@ -336,7 +360,7 @@ export async function control(op: string, ms = 0): Promise<Result> {
   cancelGap() // (a button press wins over the pause between two songs)
   if (['seek', 'next', 'previous'].includes(op) && lockLeft.value > 0) return { ok: false, error: 'Låst – hør ferdig' }
   try {
-    if (playDevice.control && (await playDevice.control(op, ms))) return { ok: true }
+    if (playDevice.control && (await playDevice.control(op, ms))) { if (op === 'next') noteNext(); return { ok: true } }
   } catch { /* the browser player failed: ask Spotify through the server instead */ }
   try {
     const body: Record<string, unknown> = { op, ms: Math.round(ms) }
@@ -348,6 +372,7 @@ export async function control(op: string, ms = 0): Promise<Result> {
       fetchedAt = Date.now()
     }
     setTimeout(refreshNow, 800)
+    if (op === 'next') noteNext()
     return { ok: true }
   } catch (e) {
     return { ok: false, error: errorMessage(e) }
@@ -591,9 +616,28 @@ async function act<T extends object = Record<string, never>>(action: string, bod
 function saveLists(): void {
   try { localStorage.setItem(listsKey(), JSON.stringify({ at: listsAt, sig: listsSig, room: roomSeen, lib: libSig, albums: spotify.albums, playlists: spotify.playlists })) } catch { /* private mode / full */ }
 }
-/** Up next in Spotify's queue. */
+/** Up next in Spotify's queue. Spotify itself is a moment behind after "next" or "add to queue", so what I just did is
+ *  laid over its answer for a few seconds: the song that was skipped is gone and the song I added is already there. */
+const OPT_MS = 3000
+let optNext: number[] = [] // when I pressed "next"
+let optAdds: { t: Track; at: number }[] = []
+let lastQueue: Track[] = []
 export async function fetchQueue(): Promise<Track[]> {
-  try { const r = await fetch('api.php?action=spotify_queue', { cache: 'no-store' }); return ((await r.json()) as { tracks?: Track[] }).tracks ?? [] } catch { return [] }
+  let q: Track[]
+  try { const r = await fetch('api.php?action=spotify_queue', { cache: 'no-store' }); q = ((await r.json()) as { tracks?: Track[] }).tracks ?? [] } catch { return lastQueue }
+  const now = Date.now()
+  optNext = optNext.filter((at) => now - at < OPT_MS)
+  optAdds = optAdds.filter((a) => now - a.at < OPT_MS)
+  const same = q.length === lastQueue.length && q.every((t, i) => t.uri === lastQueue[i]?.uri)
+  lastQueue = q
+  if (!same) optNext = [] // Spotify has caught up with the "next"
+  const out = optNext.length && same ? q.slice(optNext.length) : q.slice()
+  for (const a of optAdds) if (!q.some((t) => t.uri === a.t.uri)) out.push(a.t)
+  return out
+}
+function optQueued(tracks: Partial<Track>[]): void {
+  const at = Date.now()
+  for (const t of tracks) if (t.uri && t.name) optAdds.push({ t: { img: t.album_image ?? null, ms: 0, artist: '', name: '', ...t } as Track, at })
 }
 /** My Spotify devices (admin). */
 export interface SpotifyDevice { id: string; name: string; type: string; active: boolean; volume: number | null; restricted: boolean }
@@ -645,7 +689,7 @@ export function queuedKind(uri: string): 'album' | 'single' | null {
 /** The queue panel / the 3D table read the queue again: at once, and once more when Spotify has caught up. */
 function queueChanged(): void {
   spotify.queueV++
-  setTimeout(() => { spotify.queueV++ }, 1500)
+  setTimeout(() => { spotify.queueV++ }, 1200)
 }
 /** Put a song last in Spotify's queue. `t` is the song ({ uri, name, … }) or just its uri. */
 export async function enqueue(t: string | Partial<Track> & { uri: string }): Promise<Result> {
@@ -655,7 +699,7 @@ export async function enqueue(t: string | Partial<Track> & { uri: string }): Pro
     return addSongs([track])
   }
   const r = await act('spotify_enqueue', { uri: track.uri })
-  if (r.ok) { noteQueued([track]); notify(track.name ? `«${track.name}» er lagt i køen.` : 'Lagt i køen.'); queueChanged() }
+  if (r.ok) { noteQueued([track]); optQueued([track]); notify(track.name ? `«${track.name}» er lagt i køen.` : 'Lagt i køen.'); queueChanged() }
   else notify(r.error || 'Klarte ikke å legge i køen.', true)
   return r
 }
@@ -665,7 +709,7 @@ export async function enqueueAlbum(uri: string, name = ''): Promise<Result> {
   const t = await fetchTracks(uri)
   if (!t.tracks.length) { notify(t.hidden ? 'Spotify lar oss ikke se låtene i denne spillelista, så den kan ikke legges i køen.' : 'Fant ingen låter i albumet.', true); return { ok: false } }
   const r = await act<{ added?: number; total?: number; failed?: number }>('spotify_enqueue_many', { uris: t.tracks.map((x) => x.uri) })
-  if (r.ok) noteQueued(t.tracks.map((x) => ({ uri: x.uri, album_uri: x.album_uri })), uri.startsWith('spotify:album:') ? uri : null, true)
+  if (r.ok) { noteQueued(t.tracks.map((x) => ({ uri: x.uri, album_uri: x.album_uri })), uri.startsWith('spotify:album:') ? uri : null, true); optQueued(t.tracks) }
   queueChanged()
   if (!r.ok) { notify(r.error || 'Klarte ikke å legge albumet i køen.', true); return r }
   if (r.failed) { notify(`Bare ${r.added} av ${r.total} låter kom inn i køen – prøv en gang til.`, true); return { ok: false, error: 'partial' } }
