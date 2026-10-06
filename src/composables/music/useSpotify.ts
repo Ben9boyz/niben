@@ -439,7 +439,7 @@ export async function play(uri: string, track: string | null = null, opts: { fro
         // Spotify can't see the page's player (it dropped out after a while): re-register it and try again …
         const id = playDevice.reconnect ? await playDevice.reconnect() : null
         if (id) body.device = id
-        else { delete body.device; body.fallback = true } // (no player on the page to bring back: any of my devices will do)
+        else { delete body.device; body.fallback = true } // (no player on the page to bring back, so whichever of my devices will do)
         try {
           r = await send()
         } catch (e2) {

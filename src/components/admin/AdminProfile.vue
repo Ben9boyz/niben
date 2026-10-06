@@ -2,7 +2,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { Check, ImageUp, Plus, X, Trash2, Trophy } from 'lucide-vue-next'
 import { api, errorMessage, shrinkImage, account } from '@/composables/site/useAdmin'
-import { reloadData, type About, type AboutLink } from '@/composables/site/useData'
+import { reloadData, useData, type About, type AboutLink, type Question } from '@/composables/site/useData'
 import { siteTexts, setTexts } from '@/composables/site/useTexts'
 import { ACCENTS, ACCENT_KEY, DEFAULT_ACCENT, accentHex, validAccent } from '@/composables/ui/useAccent'
 import { milestones, loadMilestones, setMilestones, type Milestone } from '@/composables/site/useMilestones'
@@ -45,11 +45,16 @@ const pickCustom = (e: Event) => { void setAccent((e.target as HTMLInputElement)
 
 // ── photo, about text, links ──
 const about = ref<About | null>(null)
-const edit = reactive<{ tagline: string; tekst: string; lenker: AboutLink[] }>({ tagline: '', tekst: '', lenker: [] })
+const edit = reactive<{ tagline: string; tekst: string; lenker: AboutLink[]; svar: Record<string, string> }>({ tagline: '', tekst: '', lenker: [], svar: {} })
+const data = useData()
+const isOwner = computed(() => !!data.profile.owner && !!data.profile.mine)
+const qs = reactive<{ list: Question[] }>({ list: [] })
 async function loadAbout() {
   try {
-    const r = (await api<{ about?: About | null }>('about_get'))
+    const r = (await api<{ about?: About | null; questions?: Question[] }>('about_get'))
     about.value = r.about || null
+    qs.list = (r.questions ?? []).map((q) => ({ ...q }))
+    edit.svar = { ...(about.value?.svar ?? {}) }
     edit.tagline = about.value?.tagline || ''
     edit.tekst = about.value?.tekst || ''
     edit.lenker = (about.value?.lenker || []).map((l) => ({ ...l }))
@@ -75,10 +80,22 @@ async function saveAbout() {
   busy.value = 'about'
   msg.value = null
   try {
-    const r = await api<{ about: About }>('about_save', { tagline: edit.tagline, tekst: edit.tekst, lenker: edit.lenker.filter((l) => l.navn.trim() && l.url.trim()) })
+    const r = await api<{ about: About }>('about_save', { tagline: edit.tagline, tekst: edit.tekst, lenker: edit.lenker.filter((l) => l.navn.trim() && l.url.trim()), svar: edit.svar })
     about.value = r.about
     await reloadData()
     flash('Om meg er lagret.')
+  } catch (e) { fail(e) } finally { busy.value = '' }
+}
+
+// ── questions: the owner sets them for everyone, each room answers the ones it wants ──
+async function saveQuestions() {
+  busy.value = 'questions'
+  msg.value = null
+  try {
+    const r = await api<{ questions: Question[] }>('about_questions', { questions: qs.list })
+    qs.list = r.questions.map((q) => ({ ...q }))
+    await reloadData()
+    flash('Spørsmålene er lagret.')
   } catch (e) { fail(e) } finally { busy.value = '' }
 }
 
@@ -140,7 +157,23 @@ onMounted(() => { void loadAbout(); void loadMilestones(true) })
           <button type="button" class="x" aria-label="Fjern lenke" @click="edit.lenker.splice(i, 1)"><X :size="14" /></button>
         </div>
         <button v-if="edit.lenker.length < 8" type="button" class="btn soft small add" @click="edit.lenker.push({ navn: '', url: '' })"><Plus :size="14" />Lenke</button>
+        <span class="lbl">Bli kjent med meg</span>
+        <p class="muted q">Svar på de spørsmålene du vil. Det du lar stå tomt vises ikke.</p>
+        <label v-for="q in qs.list" :key="q.id" class="field"><span>{{ q.text }}</span><input v-model="edit.svar[q.id]" maxlength="300" /></label>
         <button class="btn primary" :disabled="busy === 'about'"><Check :size="15" />Lagre om meg</button>
+      </form>
+    </section>
+
+    <section v-if="isOwner">
+      <h3>Spørsmål til alle rommene</h3>
+      <p class="muted">Bare du kan endre disse. De vises til alle, og hver person svarer på de de vil, under «Om meg». Opptil seks, korte.</p>
+      <form class="f" @submit.prevent="saveQuestions">
+        <div v-for="(q, i) in qs.list" :key="q.id" class="lrow qrow">
+          <input v-model="q.text" maxlength="100" :aria-label="`Spørsmål ${i + 1}`" />
+          <button type="button" class="x" aria-label="Fjern spørsmål" @click="qs.list.splice(i, 1)"><X :size="14" /></button>
+        </div>
+        <button v-if="qs.list.length < 6" type="button" class="btn soft small add" @click="qs.list.push({ id: 'ny' + qs.list.length, text: '' })"><Plus :size="14" />Spørsmål</button>
+        <button class="btn primary" :disabled="busy === 'questions'"><Check :size="15" />Lagre spørsmålene</button>
       </form>
     </section>
 
@@ -179,6 +212,8 @@ textarea, input, select { width: 100%; box-sizing: border-box; }
 .up { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .up.busy { opacity: 0.6; pointer-events: none; }
 .lbl { font-size: 0.82rem; font-weight: 600; color: var(--text-2); }
+.qrow { grid-template-columns: minmax(0, 1fr) auto; }
+.muted.q { margin: 0; }
 .lrow { display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; gap: 6px; align-items: center; }
 .x { border: 0; background: transparent; color: var(--text-3); cursor: pointer; padding: 6px; border-radius: 8px; }
 .x:hover { color: #e0705f; }

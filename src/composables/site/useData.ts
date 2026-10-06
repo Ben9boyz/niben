@@ -78,7 +78,9 @@ export interface Project {
 }
 export interface AboutLink { navn: string; url: string }
 /** "Om meg": the text written in the admin page (or the placeholder in data.json). */
-export interface About { bilde?: string | null; tagline?: string; tekst?: string; lenker?: AboutLink[] }
+export interface About { bilde?: string | null; tagline?: string; tekst?: string; lenker?: AboutLink[]; svar?: Record<string, string> }
+/** A question every room can answer (set by the owner of the site) – "Om meg" shows the ones that were answered. */
+export interface Question { id: string; text: string }
 /** Whose room this is and which corners of it are switched on. */
 export const SECTION_IDS = ['reiser', 'boker', 'gitar', 'ovelse', 'japansk', 'lytte', 'gaming', 'kode', 'om'] as const
 export type SectionId = (typeof SECTION_IDS)[number]
@@ -93,6 +95,7 @@ export interface SiteData {
   site: { navn?: string; undertittel?: string; intro?: string }
   gitarer: Guitar[]
   figurer: Figure[]
+  sporsmal: Question[]
   boker: Book[]
   reiser: Trip[]
   prosjekter: Project[]
@@ -112,12 +115,13 @@ interface DbContent {
   guitars?: DbGuitar[]
   guitar_models?: Record<string, string>
   figures?: Figure[]
+  questions?: Question[]
   profile?: Partial<RoomProfile>
   trips: DbTrip[]
   books: DbBook[]
   recordings: DbRecording[]
   songs?: DbSong[]
-  about?: { bilde?: string } | null
+  about?: { bilde?: string; svar?: Record<string, string> } | null
   texts?: Record<string, unknown>
 }
 interface Repo { name: string; description?: string; homepage?: string | null; created?: string | number | null; language?: string | null; topics: string[]; url: string; stars: number }
@@ -133,6 +137,7 @@ const state: SiteData = reactive({
   site: {},
   gitarer: [],
   figurer: [],
+  sporsmal: [],
   boker: [],
   reiser: [],
   prosjekter: [],
@@ -252,6 +257,7 @@ function assemble(db: DbContent | null): void {
       if (!g.farger && !g.tre) g.egen = true // (the owner's built-in guitars keep their colour recipe)
     }
     merged.figurer = db.figures ?? []
+    merged.sporsmal = db.questions ?? []
     merged.reiser = db.trips.map(mapTrip)
     merged.boker = db.books.map(mapBook)
     for (const g of merged.gitarer ?? []) {

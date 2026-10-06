@@ -34,6 +34,8 @@ async function loadAbout() {
 const fallback = computed(() => (/^Eksempel/i.test(data.om?.tekst || '') ? '' : data.om?.tekst || ''))
 const text = computed(() => about.value?.tekst || fallback.value)
 const tagline = computed(() => about.value?.tagline || '')
+// the shared questions this room has answered (a question without an answer is not shown)
+const qa = computed(() => data.sporsmal.map((q) => ({ id: q.id, q: q.text, a: (about.value?.svar ?? data.om?.svar ?? {})[q.id] || '' })).filter((x) => x.a))
 // my photo: uploaded on this page (stored on the server like the trip photos), else the one in data.json
 const photo = computed(() => about.value?.bilde || data.om?.bilde || '')
 const photoBusy = ref(false)
@@ -154,6 +156,13 @@ async function save() {
       </div>
     </header>
 
+    <section v-if="qa.length" class="grid-sec qa">
+      <b class="label-caps">Bli kjent med meg</b>
+      <div class="qacards">
+        <div v-for="x in qa" :key="x.id" class="qac"><small>{{ x.q }}</small><p>{{ x.a }}</p></div>
+      </div>
+    </section>
+
     <section class="grid-sec">
       <b class="label-caps">Det jeg driver med</b>
       <div class="cards">
@@ -176,6 +185,10 @@ async function save() {
 </template>
 
 <style scoped>
+.qacards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.qac { padding: 12px 14px; border-radius: 16px; background: var(--glass-strong); border: 1px solid var(--glass-border); display: grid; gap: 4px; align-content: start; }
+.qac small { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+.qac p { margin: 0; overflow-wrap: anywhere; }
 .about { display: grid; gap: 24px; }
 .hero { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 32px; align-items: center; }
 .compact .hero { grid-template-columns: minmax(0, 1fr); gap: 0; }
