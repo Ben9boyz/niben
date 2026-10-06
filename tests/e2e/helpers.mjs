@@ -24,7 +24,7 @@ export async function openPage(browser, { mode = 'enkel', width = 1200, height =
   page.on('pageerror', (e) => page.errors.push(e.message.slice(0, 200)))
   page.on('console', (m) => {
     const t = m.text()
-    if (/Vue warn/.test(t) || (m.type() === 'error' && !/Failed to load resource|ERR_|net::/.test(t))) page.errors.push(t.slice(0, 200)) // (the fake server has no internet: failed requests are expected)
+    if (/Vue warn/.test(t) || (m.type() === 'error' && !/Failed to load resource|ERR_|net::|No supported keysystem/.test(t))) page.errors.push(t.slice(0, 200)) // (the fake server has no internet: failed requests are expected; a Chromium without Widevine – CI – cannot do the DRM of Spotify's web player)
   })
   await page.addInitScript((m) => { localStorage.setItem('niben-tour', 'done'); localStorage.setItem('niben-mode', m) }, mode)
   await page.goto(`${APP}/#${hash}`)
