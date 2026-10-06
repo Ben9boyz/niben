@@ -19,6 +19,7 @@ import MusicSwitch from './MusicSwitch.vue'
 import ListenDock from './ListenDock.vue'
 import TourCard from './TourCard.vue'
 import { admin } from '../composables/useAdmin'
+import { shelfAlbums } from '../composables/useGroups'
 
 const data = useData()
 const route = useRoute()
@@ -58,6 +59,14 @@ const miniOn = computed(() => !(mobile.value && isMusic.value) && (!!spotify.now
 // phones in the listening corner: no side menus – one tiny switch (Album / Spillelister) on top and ONE action bar at the bottom (ListenDock)
 const listenPhone = computed(() => mobile.value && isMusic.value)
 watch(listenPhone, (v) => document.documentElement.classList.toggle('listen-phone', v), { immediate: true })
+// phones: a record that comes out of the shelf is at once held up close to the camera (no half-way "peek" to tap again);
+// the arrows (and a swipe) then flick through the shelf with each record up close
+watch(() => [listenPhone.value, room.shelfView, room.musicView] as const, async ([phoneListen, onShelf, view]) => {
+  if (!phoneListen || !onShelf || view !== 'vinyl' || room.sel.musikk) return
+  await nextTick() // (Room.vue picks which record comes out first)
+  const a = shelfAlbums.value[room.peekIndex]
+  if (a && room.shelfView && !room.sel.musikk) room.sel.musikk = { kind: 'album', uri: a.uri, t: Date.now() }
+}, { immediate: true })
 onBeforeUnmount(() => document.documentElement.classList.remove('listen-phone'))
 const belowMini = computed(() => miniOn.value && !mobile.value && !hidden.value && !isFocus.value && !isHome.value)
 function setHidden(v: boolean) {

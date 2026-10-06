@@ -1336,6 +1336,8 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
         if (station === 'lytte') goTo('lytte', { duration: 1.3 })
       }
     },
+    /** The tonearm's angle: 0 = needle on the record, 0.45 = resting. */
+    tonearmAngle: (): number => listening.tonearmAngle(),
     /** iPod screen rectangle in viewport CSS px (for the HTML overlay), or null when not held. */
     ipodScreenRect() {
       if (!listening.isHoldingIpod()) return null

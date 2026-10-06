@@ -34,7 +34,7 @@ const toTurntable = () => { room.sel.musikk = null; room.shelfView = false; room
 const toDeck = () => { room.shelfView = false; room.sel.musikk = null; room.musicView = 'vinyl'; room.deckView = true }
 const toIpod = () => { room.deckView = false; room.shelfView = false; room.sel.musikk = null; room.musicView = 'ipod' }
 const putIpodDown = () => { room.musicView = 'ipodDock' }
-const putBack = () => { room.sel.musikk = null; room.recordFlipped = false }
+const putBack = () => { room.sel.musikk = null; room.shelfView = false; room.recordFlipped = false } // (phones: back up to the turntable)
 const flip = () => { room.recordFlipped = !room.recordFlipped }
 function browse(d: number) {
   const n = shelfCount.value

@@ -1654,6 +1654,8 @@ export function buildListeningCorner() {
     setTempo(bpm: number | string | null | undefined) { tempo = Number(bpm) || 0 },
     isSpinning: () => playing || spin > 0.02,
     isHoldingIpod: () => holdIpod,
+    /** 0 = the needle is on the record, 0.45 = the tonearm rests (the vinyl sounds are timed to it). */
+    tonearmAngle: () => armAngle,
     ipodScreenRect,
     selectedRect,
     update,

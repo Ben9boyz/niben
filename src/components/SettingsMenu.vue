@@ -11,7 +11,8 @@ import { shortcuts } from '../composables/useShortcuts'
 import { admin } from '../composables/useAdmin'
 import { useData } from '../composables/useData'
 import { gfxUi } from '../composables/useGraphics'
-import { targetEl } from '../lib/dom'
+import { vinyl, setVinyl, setVinylLevel, setVinylMech, setVinylWow } from '../composables/useVinylNoise'
+import { targetEl, inputOf } from '../lib/dom'
 
 // One button for everything about how the site looks: my photo (with the green dot) when I'm logged in, a cog for
 // everybody else. It opens a small menu: admin (me only), 3D room / plain version, theme, calm mode, language, shortcuts.
@@ -106,6 +107,20 @@ const setView = (v: string) => { if (viewMode.value !== v) toggleMode() }
           </ul>
         </div>
 
+        <div v-if="viewMode === 'rom'" class="grp">
+          <span class="cap">Vinyl</span>
+          <button class="row" role="menuitemcheckbox" :aria-checked="vinyl.on" @click="setVinyl(!vinyl.on)">
+            <span class="l"><b>Knitring</b><small>Støy og knitring under musikken på platespilleren</small></span><i class="tg" :class="{ on: vinyl.on }" aria-hidden="true"></i>
+          </button>
+          <template v-if="vinyl.on">
+            <label class="vrow"><span>Styrke</span><input type="range" min="0" max="100" :value="vinyl.level" aria-label="Styrke på knitringen" @input="setVinylLevel(+inputOf($event).value)" /></label>
+            <label class="vrow"><span>Svai</span><input type="range" min="0" max="100" :value="vinyl.wow" aria-label="Svai (små turtallssvingninger)" @input="setVinylWow(+inputOf($event).value)" /></label>
+            <button class="row" role="menuitemcheckbox" :aria-checked="vinyl.mech" @click="setVinylMech(!vinyl.mech)">
+              <span class="l"><b>Mekaniske lyder</b><small>Nåla som lander og løftes, og skrap når låta byttes</small></span><i class="tg" :class="{ on: vinyl.mech }" aria-hidden="true"></i>
+            </button>
+          </template>
+        </div>
+
         <button v-if="viewMode === 'rom'" class="row" role="menuitem" @click="close(); gfxUi.open = true"><Gauge :size="16" aria-hidden="true" /><span class="l"><b>Grafikk</b></span></button>
 
         <button v-if="!touch" class="row" role="menuitem" @click="close(); shortcuts.open = true"><Keyboard :size="16" aria-hidden="true" /><span class="l"><b>Hurtigtaster</b></span></button>
@@ -133,6 +148,9 @@ const setView = (v: string) => { if (viewMode.value !== v) toggleMode() }
 .smenu .l small { font-size: 0.72rem; color: var(--text-3); line-height: 1.25; }
 .smenu .grp { display: grid; gap: 4px; padding: 5px 0 3px; border-top: 1px solid var(--glass-border); }
 .smenu .cap { padding: 0 10px; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+.smenu .vrow { display: flex; align-items: center; gap: 10px; padding: 3px 10px; font-size: 0.8rem; color: var(--text-2); }
+.smenu .vrow span { flex: none; width: 52px; }
+.smenu .vrow input { flex: 1; min-width: 0; accent-color: var(--accent); }
 .smenu .seg { display: flex; gap: 3px; padding: 3px; margin: 0 4px; border-radius: 12px; background: var(--glass-strong); }
 .smenu .seg button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 8px 4px; border: 0; border-radius: 9px; background: transparent; color: var(--text-2); font: 600 0.82rem var(--font); cursor: pointer; }
 .smenu .seg button.on { background: var(--bg); color: var(--accent); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14); }
