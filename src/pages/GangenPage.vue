@@ -3,8 +3,8 @@ import DoorCards from '@/components/room/DoorCards.vue'
 </script>
 
 <template>
-  <!-- the title and the line about it are in the page's head card (PageHead); here: the wall of doors -->
   <div class="cpage gangen-page">
+    <!-- the title and the line about it are in the page's head card (PageHead); here: the wall of doors -->
     <section class="wall"><DoorCards /></section>
   </div>
 </template>
