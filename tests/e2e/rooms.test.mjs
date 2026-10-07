@@ -72,8 +72,15 @@ test('logging in from the profile button: a wrong password says so, the right on
   await page.getByPlaceholder('Passord').fill(u.password)
   await page.getByRole('button', { name: 'Logg inn' }).last().click()
   await page.waitForFunction(() => document.cookie.includes('niben_r='))
-  await page.getByRole('button', { name: /Rom og konto/ }).first().click()
-  await page.getByRole('menuitem', { name: /Admin/ }).waitFor()
+  // (logging in takes you into your own room – the page may still be on its way there: open the menu once it has settled)
+  await page.waitForLoadState('load')
+  let shown = false
+  for (let i = 0; i < 8 && !shown; i++) {
+    await page.getByRole('button', { name: /Rom og konto/ }).first().click()
+    shown = await page.getByRole('menuitem', { name: /Admin/ }).waitFor({ timeout: 2000 }).then(() => true, () => false)
+    if (!shown) { await page.keyboard.press('Escape'); await page.waitForTimeout(500) }
+  }
+  assert.ok(shown, 'the menu shows Admin once logged in')
   assert.deepEqual(page.errors, [])
 })
 
