@@ -968,7 +968,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     invalidate(0.4)
     setNdc(e)
     pointer.inside = true
-    if (decorDrag) { moveDecorDrag(); return }
+    if (decorDrag) { moveDecorDrag(e.shiftKey || decorLift); return }
     if (decorEdit) { renderer.domElement.style.cursor = decorAt() ? 'grab' : 'default'; return }
     if (dragging) {
       const dx = (e.clientX - dragging.x) / renderer.domElement.clientWidth
@@ -1084,7 +1084,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   const decorObjs = new Map<string, DecorObject>()
   let decorEdit = false
   let decorSel: string | null = null
-  let decorDrag: { id: string; ox: number; oz: number; moved: boolean } | null = null
+  let decorDrag: { id: string; ox: number; oz: number; moved: boolean; lift?: { y0: number; py: number } } | null = null
   const selBox = new THREE.BoxHelper(new THREE.Object3D(), 0x2b8cff)
   onAccent(() => (selBox.material as THREE.LineBasicMaterial).color.copy(accent))
   const selMat = selBox.material as THREE.LineBasicMaterial
@@ -1097,6 +1097,46 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   const dPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
   const DECOR_X = 3.65, DECOR_Z = 3.2 // the floor (the walls are at ±4 and ±3.5)
   const clampN = (v: number, a: number, b: number): number => Math.max(a, Math.min(b, v))
+  // ── Things stay in the room: what a thing takes up (its box, turned and sized as it is) never goes through a wall, the
+  // floor or the ceiling, and near a wall it clicks flat against it (a picture hangs on the wall, a shelf stands against
+  // it). The snap can be switched off; staying inside cannot. The front edge has no wall (the room is cut open there):
+  // things stop at the edge of the floor but do not snap to it.
+  const WALLS = { x0: -4, x1: 4, z0: -3.5, z1: 3.5, top: 3.2 }
+  const SNAP = 0.3
+  let decorSnap = true
+  let decorLift = false // (touch: dragging moves up and down instead of across)
+  const homeBoxes = new Map<string, THREE.Box3>() // a corner as built – it may stand a little into a wall already, and is allowed to
+  const decorBox = (o: DecorObject): THREE.Box3 => { o.root.updateMatrixWorld(true); return new THREE.Box3().setFromObject(o.root) }
+  /** Moves a thing back inside the room (and against a wall it is close to, when snapping is on). Returns whether it snapped. */
+  function keepInside(o: DecorObject): string | null {
+    const it = o.item
+    const b = decorBox(o)
+    if (b.isEmpty()) return null
+    let lim = { x0: WALLS.x0, x1: WALLS.x1, z0: WALLS.z0, z1: WALLS.z1 }
+    if (o.c) {
+      let h = homeBoxes.get(it.id)
+      if (!h) { h = b.clone().translate(new THREE.Vector3(-it.x, -(it.y || 0), -it.z)); homeBoxes.set(it.id, h) }
+      lim = { x0: Math.min(lim.x0, h.min.x), x1: Math.max(lim.x1, h.max.x), z0: Math.min(lim.z0, h.min.z), z1: Math.max(lim.z1, h.max.z) }
+    }
+    let snapped: string | null = null
+    const fit = (lo: number, hi: number, a: number, b2: number, wallLo: string | null, wallHi: string | null): number => {
+      if (hi - lo > b2 - a) return (a + b2) / 2 - (lo + hi) / 2 // (bigger than the room that way: in the middle)
+      if (lo < a) { if (wallLo) snapped = wallLo; return a - lo }
+      if (hi > b2) { if (wallHi) snapped = wallHi; return b2 - hi }
+      if (decorSnap && wallLo && lo - a < SNAP) { snapped = wallLo; return a - lo }
+      if (decorSnap && wallHi && b2 - hi < SNAP) { snapped = wallHi; return b2 - hi }
+      return 0
+    }
+    const dx = fit(b.min.x, b.max.x, lim.x0, lim.x1, 'left', 'right')
+    const dz = fit(b.min.z, b.max.z, lim.z0, lim.z1, 'back', null)
+    const dy = b.max.y > WALLS.top ? WALLS.top - b.max.y : 0
+    if (!dx && !dz && !dy) return snapped
+    it.x += dx
+    it.z += dz
+    it.y = Math.max(0, (it.y || 0) + dy)
+    placeDecor(o)
+    return snapped
+  }
 
   function placeDecor(o: DecorObject): void {
     const it = o.item
@@ -1245,21 +1285,36 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     renderer.domElement.style.cursor = 'grabbing'
     return true
   }
-  function moveDecorDrag(): void {
+  function moveDecorDrag(lift = false): void {
     if (!decorDrag) return
     const o = decorObjs.get(decorDrag.id)
     if (!o) return
-    ray.setFromCamera(ndc, camera)
-    if (!ray.ray.intersectPlane(dPlane, dPoint)) return
-    const ax = clampN(dPoint.x + decorDrag.ox, -DECOR_X, DECOR_X), az = clampN(dPoint.z + decorDrag.oz, -DECOR_Z, DECOR_Z)
-    o.item.x = o.c ? ax - o.c.x : ax
-    o.item.z = o.c ? az - o.c.z : az
+    if (lift) {
+      // up and down (Shift held, or the lift mode on a phone): the whole height of the screen is the height of the room
+      const y = pointer.y
+      if (!decorDrag.lift) decorDrag.lift = { y0: o.item.y || 0, py: y }
+      o.item.y = clampN(decorDrag.lift.y0 + (y - decorDrag.lift.py) * 1.6, 0, 3)
+    } else {
+      if (decorDrag.lift) { // (back to moving across: start again from where it is now)
+        decorDrag.lift = undefined
+        dPlane.constant = -o.root.position.y
+        ray.setFromCamera(ndc, camera)
+        if (ray.ray.intersectPlane(dPlane, dPoint)) { decorDrag.ox = o.root.position.x - dPoint.x; decorDrag.oz = o.root.position.z - dPoint.z }
+      }
+      ray.setFromCamera(ndc, camera)
+      if (!ray.ray.intersectPlane(dPlane, dPoint)) return
+      const ax = dPoint.x + decorDrag.ox, az = dPoint.z + decorDrag.oz
+      o.item.x = o.c ? ax - o.c.x : ax
+      o.item.z = o.c ? az - o.c.z : az
+    }
     decorDrag.moved = true
     placeDecor(o)
+    snapHint = keepInside(o)
     selBox.setFromObject(o.root)
     shadowsDirty = true
     invalidate(0.3)
   }
+  let snapHint: string | null = null
   function endDecorDrag(): void {
     const moved = decorDrag?.moved
     decorDrag = null
@@ -1280,9 +1335,26 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     if (patch.visible !== undefined) it.visible = patch.visible
     if (patch.name !== undefined) it.name = patch.name
     placeDecor(o)
+    if (patch.rot !== undefined || patch.scale !== undefined || patch.y !== undefined || patch.x !== undefined || patch.z !== undefined) keepInside(o) // (turned or grown into a wall: back out)
     refreshSel()
     shadowsDirty = true
     invalidate(0.5)
+    onDecorChange?.(serializeDecor())
+  }
+  /** Back to where it stood from the start: a corner to its own place, a hobby to a free spot on the floor, a model to the
+   *  middle of the room – the right way round and the normal size. `null` = everything in the room. */
+  function resetDecor(id: string | null): void {
+    const list = id ? [decorObjs.get(id)].filter((o): o is DecorObject => !!o) : [...decorObjs.values()]
+    for (const o of list) {
+      const it = o.item
+      it.rot = 0; it.scale = 1; it.y = 0
+      if (o.c) { it.x = 0; it.z = 0 } else if (it.mod) { const p = freeSpot(it.id); it.x = p?.x ?? 0; it.z = p?.z ?? 1.2 } else { it.x = 0; it.z = 1.2 }
+      placeDecor(o)
+    }
+    refreshSel()
+    stationBoxes.clear(); tinies = null
+    shadowsDirty = true
+    invalidate(0.6)
     onDecorChange?.(serializeDecor())
   }
   function setDecorEdit(on: boolean): void {
@@ -1863,6 +1935,12 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     setData,
     /** Which hobby module the camera looks at when the station is 'modul'. */
     freeSpot,
+    resetDecor,
+    /** (dev/testing) the space a decor thing takes up: [min, max] */
+    decorBounds(id: string) { const o = decorObjs.get(id); if (!o) return null; const b = decorBox(o); return { min: b.min.toArray(), max: b.max.toArray(), item: { ...o.item } } },
+    setDecorSnap(on: boolean) { decorSnap = !!on },
+    setDecorLift(on: boolean) { decorLift = !!on },
+    get decorSnapped() { return snapHint },
     focusModule(id: string | null) { focusId = id; if (station === 'modul') goTo('modul') },
     enterDoor,
     exitDoor,

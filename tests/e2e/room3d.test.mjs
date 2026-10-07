@@ -66,3 +66,38 @@ test('the hall in 3D: you come out of your own room’s door, and go into anothe
   await page.waitForFunction((id) => document.cookie.includes(`niben_r=${id}`), String(alice.id), { timeout: 20000 })
   assert.deepEqual(page.errors, [])
 })
+
+test('things in the room stay inside it: dragged or pushed past a wall they stop at it, near a wall they snap to it (unless that is off), and can be put back', async () => {
+  const owner = await ownerClient()
+  const u = await makeUser(owner)
+  const m = (await u.client.post('mod_add', { type: 'planter' })).json.item
+  const page = await openPage(browser, { mode: 'rom', width: 1100, height: 700, hash: '/' })
+  await page.evaluate((n) => fetch('api.php?action=room_set', { method: 'POST', headers: { 'X-Niben': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ username: n }) }), u.name)
+  await page.reload()
+  await page.waitForFunction((id) => !!window.__room?.decorBounds(id), m.id, { timeout: 30000 })
+  const r = await page.evaluate((id) => {
+    const R = window.__room
+    R.setDecorSnap(true)
+    R.adjustDecor(id, { x: 3.65 }) // (pushed against the right wall – and through it, if nothing stopped it)
+    const far = R.decorBounds(id)
+    R.adjustDecor(id, { x: 3.5 }) // close to it (a hand's breadth): snaps flat against it
+    const near = R.decorBounds(id)
+    R.setDecorSnap(false)
+    R.adjustDecor(id, { x: 3.0 }) // snapping off: stays where it was put
+    const free = R.decorBounds(id)
+    R.adjustDecor(id, { y: 5 }) // up through the ceiling? no
+    const high = R.decorBounds(id)
+    R.resetDecor(id)
+    const back = R.decorBounds(id)
+    R.setDecorSnap(true)
+    return { far, near, free, high, back }
+  }, m.id)
+  assert.ok(r.far.max[0] <= 4.0001, `not through the wall: ${r.far.max[0]}`)
+  assert.ok(Math.abs(r.near.max[0] - 4) < 0.001, `snapped to the wall: ${r.near.max[0]}`)
+  assert.ok(r.free.max[0] < 3.95, `no snap when it is off: ${r.free.max[0]}`)
+  assert.ok(r.high.max[1] <= 3.2001 && r.high.item.y > 0.5, `lifted, but under the ceiling: ${r.high.max[1]}`)
+  assert.equal(r.back.item.y, 0)
+  assert.equal(r.back.item.rot, 0)
+  assert.ok(r.back.max[0] < 3.9, 'back on a free spot of the floor')
+  assert.deepEqual(page.errors, [])
+})
