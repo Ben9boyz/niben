@@ -21,7 +21,7 @@ mkdir -p "$DIR/uploads"
 HASH="$(php -r 'echo password_hash("owner-secret-pw", PASSWORD_DEFAULT);')"
 php -r '
 $c = ["db_host" => $argv[1], "db_name" => $argv[2], "db_user" => $argv[3], "db_pass" => $argv[4], "admin_hash" => $argv[5],
-      "mail_log" => $argv[6] . "/mail.log", "admin_email" => "owner@example.com", "probe_ttl" => 1];
+      "mail_log" => $argv[6] . "/mail.log", "admin_email" => "owner@example.com", "probe_ttl" => 1, "backoff_min" => 1];
 file_put_contents($argv[6] . "/_config.php", "<?php return " . var_export($c, true) . ";");
 file_put_contents($argv[6] . "/_spotify.php", "<?php return [\"client_id\" => \"a\", \"client_secret\" => \"b\"];");
 file_put_contents($argv[6] . "/_strava.php", "<?php return [\"client_id\" => \"123\", \"client_secret\" => \"c\"];");

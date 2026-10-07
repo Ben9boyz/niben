@@ -104,7 +104,19 @@ function sp_access_token(bool $force = false): ?string {
 }
 
 /** Calls the Spotify Web API. Returns [status, decoded body]. */
+/** Spotify said "too many requests" (429): until when nothing is asked of it at all. The limit is the whole app's (every room
+ *  shares one client id), so the pause is shared too. Asking again while it lasts only makes the pause longer – and every
+ *  page that polls would keep it going for ever. Meanwhile the lists kept from before are shown. */
+function sp_backoff(?int $until = null): int {
+    $room = kv_scope();
+    kv_scope(0);
+    try {
+        if ($until !== null) kv_set('sp_backoff', (string)$until);
+        return (int)kv_get('sp_backoff');
+    } finally { kv_scope($room); }
+}
 function sp_api(string $method, string $path, ?array $body = null): array {
+    if (sp_backoff() > time()) return [429, null]; // (still in Spotify's pause: don't even ask)
     for ($try = 0; $try < 2; $try++) {
         $tok = sp_access_token($try > 0);
         if (!$tok) return [401, null];
@@ -113,6 +125,7 @@ function sp_api(string $method, string $path, ?array $body = null): array {
         [$status, $res] = http_req($method, 'https://api.spotify.com/v1' . $path, $headers, $body !== null ? json_encode($body) : null);
         // "slow down" (429) on something I changed (like, add to a list …): wait a moment and try once more – reads are never held up
         if ($status === 429 && $method !== 'GET') { sleep(2); [$status, $res] = http_req($method, 'https://api.spotify.com/v1' . $path, $headers, $body !== null ? json_encode($body) : null); }
+        if ($status === 429) { global $config; $ra = (int)(http_last_header('Retry-After') ?? 0); sp_backoff(time() + max((int)($config['backoff_min'] ?? 15), min(3600, $ra ?: 30))); } // (backoff_min: for the tests)
         if ($status >= 400 && $status !== 401) kv_set('sp_last_err', $status . '|' . time()); // (the page can say why a list is empty)
         if ($status !== 401) return [$status, $res === '' ? null : json_decode($res, true)];
     }
@@ -192,6 +205,14 @@ function sp_sync_library(): void {
         if ($raw) { $c = json_decode($raw, true); if (is_array($c)) { $c['t'] = 0; kv_set($k, json_encode($c, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); } }
     }
     kv_set('lib_stamp', $stamp);
+}
+
+/** The album and playlist lists marked as old (fetched again at the next look) – but kept, so a Spotify that cannot answer
+ *  right then (too many requests …) still leaves the shelf with what it had. */
+function sp_mark_old(): int {
+    $n = 0;
+    foreach (['cache_albums_v4', 'cache_playlists_v3'] as $k) { $raw = kv_get($k); $c = $raw ? json_decode($raw, true) : null; if (is_array($c)) { $c['t'] = 0; kv_set($k, json_encode($c, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); $n++; } }
+    return $n;
 }
 
 function sp_albums(): ?array {
@@ -500,6 +521,7 @@ function sp_handle(string $action, bool $post): void {
             'connected' => true,
             'denied' => sp_denied(),
             'spotify_status' => sp_recent_error(),
+            'wait' => max(0, sp_backoff() - time()), // (seconds left of Spotify's "too many requests" pause)
             'lib' => sp_library_stamp(),
             'now' => sp_now(),
             'albums' => $__albums,
@@ -595,7 +617,8 @@ function sp_handle(string $action, bool $post): void {
     case 'spotify_refresh': {
         if (!$post) fail('Bruk POST.', 405);
         require_room_owner();
-        kv_del('cache_albums_v3', 'cache_albums_v4', 'cache_playlists_v3', 'cache_playlists_v4', 'cache_now', 'sp_denied');
+        sp_mark_old();
+        kv_del('cache_albums_v3', 'cache_playlists_v4', 'cache_now', 'sp_denied');
         out(['ok' => true]);
     }
 
@@ -606,8 +629,11 @@ function sp_handle(string $action, bool $post): void {
         require_room_owner();
         $p = kv_scope() === 1 ? '' : 'u' . kv_scope() . '_';
         $n = 0;
+        // the album and playlist lists are only marked as old, not thrown away: if Spotify cannot answer right now (too many
+        // requests …), the shelf still shows what it had instead of standing empty
+        $n += sp_mark_old();
         // (only Spotify's: GitHub keeps its cache_github_ …)
-        foreach (['cache_albums%', 'cache_playlists%', 'cache_now%', 'cache_queue%', 'tracks%', 'artist%', 'tempo%', 'probe_lib%', 'audio_features%', 'lib_stamp%'] as $like) $n += kv_q('DELETE FROM spotify_state WHERE k LIKE ?', [str_replace('_', '\\_', $p . $like)])->rowCount();
+        foreach (['cache_albums_v3', 'cache_playlists_v4', 'cache_now%', 'cache_queue%', 'tracks%', 'artist%', 'tempo%', 'probe_lib%', 'audio_features%', 'lib_stamp%'] as $like) $n += kv_q('DELETE FROM spotify_state WHERE k LIKE ?', [str_replace('_', '\\_', $p . $like)])->rowCount();
         kv_del('sp_denied', 'sp_last_err');
         out(['ok' => true, 'removed' => $n]);
     }

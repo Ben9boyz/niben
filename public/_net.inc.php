@@ -17,9 +17,16 @@ function http_req(string $method, string $url, array $headers = [], ?string $bod
     ]]);
     $res = @file_get_contents($url, false, $ctx);
     $status = 0;
+    $GLOBALS['http_last_headers'] = $http_response_header ?? [];
     foreach ($http_response_header ?? [] as $h) {
         if (preg_match('~^HTTP/\S+\s+(\d{3})~', $h, $m)) $status = (int)$m[1];
     }
     return [$status, $res === false ? '' : $res];
 }
 
+
+/** A header of the last answer http_req got (case-insensitive), or null. */
+function http_last_header(string $name): ?string {
+    foreach ((array)($GLOBALS['http_last_headers'] ?? []) as $h) if (stripos($h, $name . ':') === 0) return trim(substr($h, strlen($name) + 1));
+    return null;
+}

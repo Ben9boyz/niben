@@ -35,6 +35,7 @@ interface PublicReply {
   denied?: boolean
   diag?: { albums: number; albums_msg: string | null; playlists: number; playlists_msg: string | null; albums_total: number | null; playlists_total: number | null; scopes: string } | null
   spotify_status?: number | null // the status Spotify last answered no with (429 = too many requests), if just now
+  wait?: number // seconds left of Spotify's "too many requests" pause (nothing is asked of it until then)
   configured?: boolean
   connected?: boolean
   now?: NowPlaying | null
@@ -169,7 +170,7 @@ export async function refreshLists(force = false): Promise<void> {
       if (sig !== listsSig) {
         // Spotify answering "no" (too many requests …) gives empty lists: keep what is on the shelf rather than wiping it
         const empty = !(j.albums?.length) && !(j.playlists?.length)
-        if (empty && (spotify.albums.length || spotify.playlists.length) && j.spotify_status) {
+        if (empty && (spotify.albums.length || spotify.playlists.length) && (j.spotify_status || j.wait)) {
           spotify.error = `Spotify svarer ${j.spotify_status} akkurat nå (for mange forespørsler?). Viser det som er lagret.`
         } else {
           listsSig = sig
@@ -185,7 +186,10 @@ export async function refreshLists(force = false): Promise<void> {
       try { localStorage.removeItem(listsKey()) } catch { /* private mode */ }
     }
     spotify.error = null
-    if (j.diag) { // empty shelf: say what Spotify answers
+    const pause = (sec: number): string => `Spotify har bedt oss ta en pause (for mange forespørsler) – prøver igjen om ${sec < 90 ? `${Math.max(1, Math.round(sec))} sek` : `${Math.round(sec / 60)} min`}.${spotify.albums.length || spotify.playlists.length ? ' Viser det som er lagret.' : ''}`
+    if (j.wait) spotify.error = pause(j.wait)
+    else if (j.diag && (j.diag.albums === 429 || j.diag.playlists === 429)) spotify.error = pause(30)
+    else if (j.diag) { // empty shelf: say what Spotify answers
       const d = j.diag
       spotify.error = `Noe mangler i biblioteket. Spotify svarer ${d.albums}${d.albums_msg ? ` «${d.albums_msg}»` : ''} på album og ${d.playlists}${d.playlists_msg ? ` «${d.playlists_msg}»` : ''} på spillelister`
         + (d.albums === 200 ? ` (${d.albums_total ?? 0} album, ${d.playlists_total ?? 0} spillelister på kontoen).` : '.')
@@ -209,9 +213,7 @@ export async function forgetSpotifyCache(): Promise<void> {
   try { localStorage.removeItem(listsKey()) } catch { /* private mode */ }
   trackCache.clear(); tempoCache.clear(); searchCache.clear(); likedCache.clear()
   await pclear(['tracks2:', 'tempo:', 'artist:', 'tr:'])
-  spotify.albums = []
-  spotify.playlists = []
-  listsAt = 0; listsSig = ''
+  listsAt = 0; listsSig = '' // (what is on the shelf stays until the fresh lists are here – or Spotify says wait)
   await refreshLists(true)
 }
 

@@ -183,3 +183,27 @@ test('emptying the Spotify cache throws away what this room kept – fresh from 
   assert.equal(after.json.albums.length, 2)
   assert.equal(full(), 1, 'hers was fetched fresh from Spotify')
 })
+
+test('Spotify says "too many requests": nothing more is asked until its pause is over, and the shelf keeps what it had', async () => {
+  mockSpotify({ albums: 3 })
+  const owner = await ownerClient()
+  const alice = await makeUser(owner)
+  db('connect', String(alice.id))
+  assert.equal((await alice.client.get('spotify_public')).json.albums.length, 3)
+  await alice.client.post('spotify_cache_clear') // (the lists are marked old – not thrown away)
+
+  mockSpotify({ albums: 3, rate: 2 }) // "wait 2 seconds"
+  const r = await alice.client.get('spotify_public')
+  assert.equal(r.json.albums.length, 3, 'the old shelf, not an empty one')
+  assert.ok(r.json.wait >= 1, `the page is told to wait: ${r.json.wait}`)
+  clearCalls()
+  await alice.client.get('spotify_public')
+  await alice.client.get('spotify_public')
+  assert.equal(spotifyCalls().filter((c) => !c.includes('strava')).length, 0, 'nothing asked while the pause lasts')
+
+  mockSpotify({ albums: 4 })
+  await sleep(2300)
+  const after = await alice.client.get('spotify_public')
+  assert.equal(after.json.wait, 0)
+  assert.equal(after.json.albums.length, 4, 'fetched again once the pause is over')
+})

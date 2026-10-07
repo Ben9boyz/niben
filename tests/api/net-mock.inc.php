@@ -22,6 +22,8 @@ function http_req(string $method, string $url, array $headers = [], ?string $bod
     @file_put_contents("$dir/spotify-calls.log", $method . ' ' . preg_replace('~^https://api\.spotify\.com/v1~', '', $url) . "\n", FILE_APPEND);
     $m = json_decode((string)@file_get_contents("$dir/spotify-mock.json"), true) ?: [];
     if (!empty($m['deny'])) return [403, '{"error":{"status":403,"message":"user not registered"}}'];
+    $GLOBALS['http_last_headers'] = [];
+    if (!empty($m['rate'])) { $GLOBALS['http_last_headers'] = ['Retry-After: ' . (int)$m['rate']]; return [429, '{"error":{"status":429,"message":"Too many requests"}}']; }
     $path = (string)parse_url($url, PHP_URL_PATH);
     parse_str((string)parse_url($url, PHP_URL_QUERY), $q);
     $limit = max(1, (int)($q['limit'] ?? 20));
@@ -53,4 +55,9 @@ function http_req(string $method, string $url, array $headers = [], ?string $bod
         return $json(['items' => $items, 'total' => $total, 'next' => $offset + $page < $total ? 'more' : null]);
     }
     return [404, '{}'];
+}
+
+function http_last_header(string $name): ?string {
+    foreach ((array)($GLOBALS['http_last_headers'] ?? []) as $h) if (stripos($h, $name . ':') === 0) return trim(substr($h, strlen($name) + 1));
+    return null;
 }
