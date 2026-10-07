@@ -1,0 +1,413 @@
+/* ───────────────────────── Skins ─────────────────────────
+   A room's material, picked by its owner (Admin → Profil → Stil, useSkin.ts). Without a skin the page keeps
+   style.css's own look. A skin redefines the shared tokens (so every card made of --glass-strong follows) and
+   a small set of --sk-* tokens the rules at the bottom use for the glass panes, buttons, pills, tabs and the rail.
+   Every colour comes from --accent, so each skin works with any accent; each has a light and a dark version. */
+
+/* the felt grain used by Leire (a tiny tile of noise, drawn over the surface colour) */
+:root {
+  --sk-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .25 0 0 0 0 .2 0 0 0 .1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Leire: matte clay with your colour mixed in ── */
+:root[data-skin="clay"] {
+  --c-base: color-mix(in oklab, var(--accent) 4%, #e9e0d2);
+  --c-surface: color-mix(in oklab, var(--accent) 2%, #f8f2e9);
+  --c-sunk: color-mix(in oklab, var(--accent) 6%, #e1d7c8);
+  --c-clay: color-mix(in oklab, var(--accent) 56%, #e3dacd);
+  --c-clay-hi: color-mix(in oklab, var(--accent) 30%, #fbf7f1);
+  --c-clay-lo: color-mix(in oklab, var(--accent) 60%, #7d6a57);
+  --c-shade: color-mix(in oklab, var(--accent) 22%, #5b4733);
+  --bg: var(--c-base);
+  --bg-2: var(--c-sunk);
+  --text: color-mix(in oklab, var(--accent) 20%, #1c1814);
+  --text-2: color-mix(in oklab, var(--accent) 12%, #4b4238);
+  --text-3: color-mix(in oklab, var(--accent) 10%, #665b4e);
+  --accent-ink: color-mix(in oklab, var(--accent) 45%, #1c1814);
+  --glass: var(--c-surface);
+  --glass-strong: var(--c-surface);
+  --glass-border: color-mix(in oklab, var(--c-shade) 14%, transparent);
+  --glass-hi: rgba(255, 255, 255, 0.8);
+  --glass-edge: transparent;
+  --paper: var(--c-surface);
+  --shadow-1: 0 2px 3px color-mix(in oklab, var(--c-shade) 14%, transparent), 0 10px 20px -10px color-mix(in oklab, var(--c-shade) 35%, transparent);
+  --shadow-2: 0 2px 3px color-mix(in oklab, var(--c-shade) 14%, transparent), 0 20px 36px -16px color-mix(in oklab, var(--c-shade) 42%, transparent);
+  --sk-bg: var(--sk-grain), var(--c-base);
+  --sk-surface: var(--sk-grain), var(--c-surface);
+  --sk-surface-sh: inset 0 1.5px 0 rgba(255, 255, 255, 0.8), inset 0 -2px 0 color-mix(in oklab, var(--c-shade) 9%, transparent), var(--shadow-2);
+  --sk-border: 1px solid transparent;
+  --sk-key: var(--sk-grain), var(--c-surface);
+  --sk-key-sh: inset 0 1.5px 0 rgba(255, 255, 255, 0.85), inset 0 -4px 0 color-mix(in oklab, var(--c-shade) 12%, transparent), 0 2px 2px color-mix(in oklab, var(--c-shade) 18%, transparent), 0 8px 14px -6px color-mix(in oklab, var(--c-shade) 40%, transparent);
+  --sk-sunk: var(--c-sunk);
+  --sk-sunk-sh: inset 0 2px 6px color-mix(in oklab, var(--c-shade) 24%, transparent), inset 0 -1px 0 rgba(255, 255, 255, 0.65);
+  --sk-primary: var(--sk-grain), var(--c-clay);
+  --sk-primary-mid: var(--c-clay);
+  --sk-primary-sh: inset 0 1.5px 0 var(--c-clay-hi), inset 0 -4px 0 color-mix(in oklab, var(--c-clay-lo) 40%, transparent), 0 12px 22px -12px color-mix(in oklab, var(--c-clay-lo) 80%, transparent);
+  --sk-active: var(--c-clay);
+  --sk-active-sh: inset 0 3px 7px color-mix(in oklab, var(--c-clay-lo) 70%, transparent), inset 0 -1px 0 var(--c-clay-hi);
+  --sk-active-ink: var(--text);
+  --sk-fill: var(--c-clay);
+  --sk-fill-sh: inset 0 1px 0 var(--c-clay-hi);
+  --sk-btn-r: 16px;
+}
+:root[data-skin="clay"][data-theme="dark"] {
+  --c-base: color-mix(in oklab, var(--accent) 8%, #1b1814);
+  --c-surface: color-mix(in oklab, var(--accent) 6%, #29251f);
+  --c-sunk: color-mix(in oklab, var(--accent) 8%, #13110e);
+  --c-clay: color-mix(in oklab, var(--accent) 52%, #3a332b);
+  --c-clay-hi: color-mix(in oklab, var(--accent) 45%, #6a5f52);
+  --c-clay-lo: color-mix(in oklab, var(--accent) 40%, #000);
+  --c-shade: #000;
+  --text: #f1ebe2;
+  --text-2: #cdc3b6;
+  --text-3: #a59a8c;
+  --accent-ink: color-mix(in oklab, var(--accent) 55%, #fff);
+  --glass-hi: rgba(255, 255, 255, 0.08);
+  --sk-surface-sh: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 2px 3px rgba(0, 0, 0, 0.3), 0 20px 36px -16px rgba(0, 0, 0, 0.6);
+  --sk-key-sh: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -3px 0 rgba(0, 0, 0, 0.25), 0 6px 12px -6px rgba(0, 0, 0, 0.6);
+  --sk-sunk-sh: inset 0 2px 6px rgba(0, 0, 0, 0.55), inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* ── Taster: soft plastic, keys that press down, glowing dots ── */
+:root[data-skin="keys"] {
+  --bg: #ece8e2;
+  --bg-2: #e2ddd5;
+  --text: #221e1a;
+  --text-2: #4a433b;
+  --text-3: #645c52;
+  --glass: #f2efea;
+  --glass-strong: #f4f1ec;
+  --glass-border: rgba(60, 48, 34, 0.08);
+  --glass-hi: #fff;
+  --glass-edge: transparent;
+  --paper: #f6f3ee;
+  --shadow-1: -3px -3px 8px rgba(255, 255, 255, 0.9), 4px 5px 10px rgba(86, 72, 56, 0.18);
+  --shadow-2: -6px -6px 14px rgba(255, 255, 255, 0.95), 8px 10px 22px rgba(86, 72, 56, 0.22);
+  --sk-bg: #ece8e2;
+  --sk-surface: linear-gradient(150deg, #f8f6f3, #e6e2dc);
+  --sk-surface-sh: inset 0 1px 0 #fff, var(--shadow-2);
+  --sk-border: 1px solid rgba(60, 48, 34, 0.08);
+  --sk-key: linear-gradient(150deg, #faf8f5, #e6e1da);
+  --sk-key-sh: -3px -3px 8px rgba(255, 255, 255, 0.95), 4px 5px 10px rgba(86, 72, 56, 0.24), inset 0 1px 0 #fff, inset 0 -2px 0 rgba(86, 72, 56, 0.08);
+  --sk-sunk: linear-gradient(150deg, #ddd8d0, #ebe7e1);
+  --sk-sunk-sh: inset 4px 5px 10px rgba(86, 72, 56, 0.22), inset -4px -4px 9px rgba(255, 255, 255, 0.9);
+  --sk-primary: linear-gradient(170deg, color-mix(in srgb, var(--accent) 78%, #fff), var(--accent) 45%, color-mix(in srgb, var(--accent) 72%, #000));
+  --sk-primary-mid: var(--accent);
+  --sk-primary-sh: -4px -4px 10px rgba(255, 255, 255, 0.9), 6px 8px 18px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 -3px 0 rgba(0, 0, 0, 0.18);
+  --sk-active: var(--sk-sunk);
+  --sk-active-sh: var(--sk-sunk-sh);
+  --sk-active-ink: var(--accent-ink);
+  --sk-fill: var(--accent);
+  --sk-fill-sh: 0 0 8px var(--accent);
+  --sk-glow: 0 0 10px var(--accent);
+  --sk-btn-r: 16px;
+}
+:root[data-skin="keys"][data-theme="dark"] {
+  --bg: #1e2025;
+  --bg-2: #18191d;
+  --text: #eef0f4;
+  --text-2: #b9bec8;
+  --text-3: #8e94a0;
+  --glass: #25272d;
+  --glass-strong: #272a30;
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-hi: rgba(255, 255, 255, 0.08);
+  --paper: #25272d;
+  --shadow-1: -2px -2px 6px rgba(255, 255, 255, 0.03), 4px 5px 10px rgba(0, 0, 0, 0.45);
+  --shadow-2: -5px -5px 12px rgba(255, 255, 255, 0.035), 8px 10px 22px rgba(0, 0, 0, 0.55);
+  --sk-bg: #1e2025;
+  --sk-surface: linear-gradient(150deg, #2b2e34, #222429);
+  --sk-surface-sh: inset 0 1px 0 rgba(255, 255, 255, 0.06), var(--shadow-2);
+  --sk-border: 1px solid rgba(255, 255, 255, 0.04);
+  --sk-key: linear-gradient(150deg, #30333a, #24262b);
+  --sk-key-sh: -3px -3px 8px rgba(255, 255, 255, 0.035), 4px 5px 10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --sk-sunk: linear-gradient(150deg, #17181c, #202227);
+  --sk-sunk-sh: inset 4px 5px 10px rgba(0, 0, 0, 0.5), inset -3px -3px 8px rgba(255, 255, 255, 0.03);
+  --sk-primary-sh: 0 6px 18px color-mix(in srgb, var(--accent) 40%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+
+/* ── Material: tonal surfaces made from your colour, pill buttons, quiet elevation ── */
+:root[data-skin="material"] {
+  --font: "Roboto Flex", "Inter", system-ui, sans-serif;
+  --font-display: "Roboto Flex", "Inter Tight", system-ui, sans-serif;
+  --bg: color-mix(in oklab, var(--accent) 5%, #fdfcff);
+  --bg-2: color-mix(in oklab, var(--accent) 10%, #f5f3f9);
+  --text: #1b1b1f;
+  --text-2: #46464f;
+  --text-3: #5d5d67;
+  --accent-ink: color-mix(in oklab, var(--accent) 62%, #000);
+  --glass: color-mix(in oklab, var(--accent) 8%, #fdfcff);
+  --glass-strong: color-mix(in oklab, var(--accent) 8%, #fdfcff);
+  --glass-border: color-mix(in oklab, var(--accent) 14%, #e4e1ec);
+  --glass-hi: transparent;
+  --glass-edge: transparent;
+  --paper: color-mix(in oklab, var(--accent) 6%, #fdfcff);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.16), 0 1px 3px 1px rgba(0, 0, 0, 0.08);
+  --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.16), 0 2px 6px 2px rgba(0, 0, 0, 0.08);
+  --sk-bg: var(--bg);
+  --sk-surface: var(--glass);
+  --sk-surface-sh: var(--shadow-1);
+  --sk-border: 1px solid transparent;
+  --sk-key: transparent;
+  --sk-key-sh: inset 0 0 0 1px #79747e;
+  --sk-key-ink: var(--accent-ink);
+  --sk-sunk: color-mix(in oklab, var(--accent) 13%, #f3f1f7);
+  --sk-sunk-sh: none;
+  --sk-primary: color-mix(in oklab, var(--accent) 85%, #000);
+  --sk-primary-mid: color-mix(in oklab, var(--accent) 85%, #000);
+  --sk-primary-sh: none;
+  --sk-primary-sh-hover: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --sk-active: color-mix(in oklab, var(--accent) 26%, #fff);
+  --sk-active-sh: none;
+  --sk-active-ink: color-mix(in oklab, var(--accent) 40%, #000);
+  --sk-fill: color-mix(in oklab, var(--accent) 85%, #000);
+  --sk-fill-sh: none;
+  --sk-btn-r: 999px;
+}
+:root[data-skin="material"][data-theme="dark"] {
+  --bg: color-mix(in oklab, var(--accent) 6%, #131316);
+  --bg-2: color-mix(in oklab, var(--accent) 8%, #0e0e11);
+  --text: #e5e1e9;
+  --text-2: #c7c5d0;
+  --text-3: #a09ea9;
+  --accent-ink: color-mix(in oklab, var(--accent) 55%, #fff);
+  --glass: color-mix(in oklab, var(--accent) 10%, #1d1d21);
+  --glass-strong: color-mix(in oklab, var(--accent) 10%, #1d1d21);
+  --glass-border: color-mix(in oklab, var(--accent) 14%, #34333a);
+  --paper: color-mix(in oklab, var(--accent) 8%, #1b1b1f);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px 1px rgba(0, 0, 0, 0.2);
+  --sk-key-sh: inset 0 0 0 1px #938f99;
+  --sk-sunk: color-mix(in oklab, var(--accent) 12%, #25252a);
+  --sk-primary: color-mix(in oklab, var(--accent) 60%, #fff);
+  --sk-primary-mid: color-mix(in oklab, var(--accent) 60%, #fff);
+  --sk-active: color-mix(in oklab, var(--accent) 35%, #26262b);
+  --sk-active-ink: color-mix(in oklab, var(--accent) 25%, #fff);
+  --sk-fill: color-mix(in oklab, var(--accent) 60%, #fff);
+}
+
+/* ── Skeuomorf: the real thing – linen, paper, bevelled glossy buttons ── */
+:root[data-skin="skeu"] {
+  --bg: #e3dccf;
+  --bg-2: #d8cfbf;
+  --text: #2a241c;
+  --text-2: #554b3f;
+  --text-3: #6a5e50;
+  --accent-ink: color-mix(in oklab, var(--accent) 66%, #000);
+  --glass: #fbf7f0;
+  --glass-strong: #fdfaf4;
+  --glass-border: #cdc3b1;
+  --glass-hi: #fff;
+  --glass-edge: rgba(80, 60, 30, 0.15);
+  --paper: #fdfaf4;
+  --shadow-1: 0 1px 0 #fff inset, 0 0 0 1px #cfc6b6, 0 2px 4px rgba(60, 45, 25, 0.2);
+  --shadow-2: 0 3px 6px rgba(60, 45, 25, 0.22), 0 14px 26px -12px rgba(60, 45, 25, 0.4);
+  --sk-bg: repeating-linear-gradient(45deg, rgba(90, 70, 40, 0.035) 0 2px, transparent 2px 4px), repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.28) 0 2px, transparent 2px 4px), #e3dccf;
+  --sk-surface: linear-gradient(180deg, #fffdf8, #efe8dc);
+  --sk-surface-sh: inset 0 1px 0 #fff, 0 0 0 1px #cbc1af, var(--shadow-2);
+  --sk-border: 1px solid transparent;
+  --sk-key: linear-gradient(180deg, #ffffff 0%, #f2eee7 48%, #e1d9cc 52%, #ebe5da 100%);
+  --sk-key-sh: inset 0 1px 0 #fff, 0 0 0 1px #b3a894, 0 2px 3px rgba(60, 45, 25, 0.35);
+  --sk-sunk: linear-gradient(180deg, #d4cbbb, #e4ddd0);
+  --sk-sunk-sh: inset 0 2px 4px rgba(50, 35, 15, 0.38), inset 0 0 0 1px rgba(80, 60, 30, 0.22), 0 1px 0 rgba(255, 255, 255, 0.85);
+  --sk-primary: linear-gradient(180deg, color-mix(in srgb, var(--accent) 50%, #fff) 0%, color-mix(in srgb, var(--accent) 85%, #fff) 48%, var(--accent) 52%, color-mix(in srgb, var(--accent) 78%, #000) 100%);
+  --sk-primary-mid: var(--accent);
+  --sk-primary-sh: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 0 1px color-mix(in srgb, var(--accent) 55%, #000), 0 2px 4px rgba(0, 0, 0, 0.35);
+  --sk-active: var(--sk-sunk);
+  --sk-active-sh: var(--sk-sunk-sh);
+  --sk-active-ink: var(--accent-ink);
+  --sk-fill: linear-gradient(180deg, color-mix(in srgb, var(--accent) 60%, #fff), var(--accent) 50%, color-mix(in srgb, var(--accent) 80%, #000));
+  --sk-fill-sh: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --sk-btn-r: 10px;
+}
+:root[data-skin="skeu"][data-theme="dark"] {
+  --bg: #2a231d;
+  --bg-2: #211b16;
+  --text: #f3ebdf;
+  --text-2: #d2c5b3;
+  --text-3: #ab9d8a;
+  --accent-ink: color-mix(in oklab, var(--accent) 55%, #fff);
+  --glass: #3a3129;
+  --glass-strong: #3d342b;
+  --glass-border: #4f4438;
+  --glass-hi: rgba(255, 255, 255, 0.1);
+  --paper: #3d342b;
+  --shadow-2: 0 3px 6px rgba(0, 0, 0, 0.4), 0 14px 26px -12px rgba(0, 0, 0, 0.7);
+  --sk-bg: repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.12) 0 2px, transparent 2px 4px), repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.025) 0 2px, transparent 2px 4px), #2a231d;
+  --sk-surface: linear-gradient(180deg, #43392f, #362e26);
+  --sk-surface-sh: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 0 1px #1a1511, var(--shadow-2);
+  --sk-key: linear-gradient(180deg, #5a4e42 0%, #4a4036 48%, #3c332b 52%, #443a31 100%);
+  --sk-key-sh: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 0 0 1px #15110d, 0 2px 3px rgba(0, 0, 0, 0.5);
+  --sk-sunk: linear-gradient(180deg, #1c1713, #28211b);
+  --sk-sunk-sh: inset 0 2px 4px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* ── Flat: no shadows, no texture – solid shapes, your colour at full strength ── */
+:root[data-skin="flat"] {
+  --bg: color-mix(in oklab, var(--accent) 6%, #f7f7f4);
+  --bg-2: color-mix(in oklab, var(--accent) 11%, #efefeb);
+  --text: #16181d;
+  --text-2: #444952;
+  --text-3: #5b606a;
+  --accent-ink: color-mix(in oklab, var(--accent) 72%, #000);
+  --glass: #fff;
+  --glass-strong: #fff;
+  --glass-border: color-mix(in oklab, var(--accent) 12%, #e6e6e1);
+  --glass-hi: transparent;
+  --glass-edge: transparent;
+  --paper: #fff;
+  --shadow-1: none;
+  --shadow-2: none;
+  --shadow-3: none;
+  --sk-bg: var(--bg);
+  --sk-surface: #fff;
+  --sk-surface-sh: none;
+  --sk-border: 1px solid transparent;
+  --sk-key: color-mix(in oklab, var(--accent) 9%, #f1f1ee);
+  --sk-key-sh: none;
+  --sk-sunk: color-mix(in oklab, var(--accent) 11%, #efefeb);
+  --sk-sunk-sh: none;
+  --sk-primary: var(--accent);
+  --sk-primary-mid: var(--accent);
+  --sk-primary-sh: none;
+  --sk-active: var(--accent);
+  --sk-active-sh: none;
+  --sk-active-ink: var(--sk-on-primary);
+  --sk-fill: var(--accent);
+  --sk-fill-sh: none;
+  --sk-btn-r: 10px;
+}
+:root[data-skin="flat"][data-theme="dark"] {
+  --bg: color-mix(in oklab, var(--accent) 6%, #121317);
+  --bg-2: color-mix(in oklab, var(--accent) 8%, #0c0d10);
+  --text: #f1f2f5;
+  --text-2: #c2c6ce;
+  --text-3: #9aa0aa;
+  --accent-ink: color-mix(in oklab, var(--accent) 60%, #fff);
+  --glass: #1c1d22;
+  --glass-strong: #1c1d22;
+  --glass-border: #2c2e35;
+  --paper: #1c1d22;
+  --sk-surface: #1c1d22;
+  --sk-key: color-mix(in oklab, var(--accent) 10%, #26272d);
+  --sk-sunk: color-mix(in oklab, var(--accent) 10%, #15161a);
+}
+
+/* ── Glass: frosted panes over soft blobs of your colour and its neighbours ── */
+:root[data-skin="glass"] {
+  --bg: color-mix(in oklab, var(--accent) 14%, #eef0f6);
+  --text: #14161c;
+  --text-2: #343946;
+  --text-3: #4c5262;
+  --accent-ink: color-mix(in oklab, var(--accent) 60%, #000);
+  --glass: rgba(255, 255, 255, 0.4);
+  --glass-strong: rgba(255, 255, 255, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-hi: rgba(255, 255, 255, 0.9);
+  --glass-edge: transparent;
+  --paper: rgba(255, 255, 255, 0.6);
+  --blob-1: var(--accent);
+  --blob-2: oklch(from var(--accent) l c calc(h + 70));
+  --blob-3: oklch(from var(--accent) l c calc(h - 60));
+  --sk-bg: var(--bg);
+  --sk-surface: rgba(255, 255, 255, 0.38);
+  --sk-surface-sh: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.5), 0 20px 40px -18px rgba(20, 25, 50, 0.35);
+  --sk-blur: blur(22px) saturate(170%);
+  --sk-sheen: block;
+  --sk-border: 1px solid transparent;
+  --sk-key: rgba(255, 255, 255, 0.42);
+  --sk-key-sh: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.5), 0 6px 14px -6px rgba(20, 25, 50, 0.3);
+  --sk-sunk: rgba(255, 255, 255, 0.16);
+  --sk-sunk-sh: inset 0 1px 3px rgba(20, 25, 50, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.35);
+  --sk-primary: linear-gradient(160deg, color-mix(in oklab, var(--accent) 78%, #fff), var(--accent));
+  --sk-primary-mid: var(--accent);
+  --sk-primary-sh: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 10px 24px -10px var(--accent);
+  --sk-active: rgba(255, 255, 255, 0.78);
+  --sk-active-sh: inset 0 1px 0 #fff, 0 4px 12px -4px rgba(20, 25, 50, 0.25);
+  --sk-active-ink: var(--accent-ink);
+  --sk-fill: var(--accent);
+  --sk-fill-sh: 0 0 10px color-mix(in oklab, var(--accent) 60%, transparent);
+  --sk-btn-r: 14px;
+}
+:root[data-skin="glass"][data-theme="dark"] {
+  --bg: color-mix(in oklab, var(--accent) 10%, #0a0c13);
+  --text: #f2f4fa;
+  --text-2: #c4cad8;
+  --text-3: #9aa2b4;
+  --accent-ink: color-mix(in oklab, var(--accent) 55%, #fff);
+  --glass: rgba(30, 34, 52, 0.45);
+  --glass-strong: rgba(34, 38, 58, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-hi: rgba(255, 255, 255, 0.14);
+  --paper: rgba(34, 38, 58, 0.6);
+  --sk-surface: rgba(30, 34, 52, 0.42);
+  --sk-surface-sh: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 0 0 1px rgba(255, 255, 255, 0.08), 0 20px 40px -18px rgba(0, 0, 0, 0.6);
+  --sk-key: rgba(255, 255, 255, 0.08);
+  --sk-key-sh: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 0 1px rgba(255, 255, 255, 0.1), 0 6px 14px -6px rgba(0, 0, 0, 0.5);
+  --sk-sunk: rgba(0, 0, 0, 0.2);
+  --sk-sunk-sh: inset 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --sk-active: rgba(255, 255, 255, 0.18);
+  --sk-active-sh: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 12px -4px rgba(0, 0, 0, 0.4);
+}
+
+/* text on the main colour: black or white, whichever reads on that particular shade */
+:root[data-skin] { --sk-on-primary: #fff; }
+@supports (color: oklch(from red l c h)) {
+  :root[data-skin] { --sk-on-primary: oklch(from var(--sk-primary-mid) clamp(0, (0.68 - l) * 1000, 1) 0 0); }
+}
+
+/* ───────── what the skins change ───────── */
+:root[data-skin] body { background: var(--sk-bg, var(--bg)); background-attachment: fixed; }
+:root[data-skin]:not([data-skin="glass"]) .backdrop .blob { display: none; }
+:root[data-skin="glass"] .backdrop .blob { opacity: 0.55; }
+:root[data-skin="glass"][data-theme="dark"] .backdrop .blob { opacity: 0.35; }
+
+:root[data-skin] .glass {
+  background: var(--sk-surface);
+  border: var(--sk-border);
+  box-shadow: var(--sk-surface-sh);
+  -webkit-backdrop-filter: var(--sk-blur, none);
+  backdrop-filter: var(--sk-blur, none);
+}
+:root[data-skin] .glass::before { display: var(--sk-sheen, none); }
+
+:root[data-skin] .paper { background: var(--sk-surface); border: var(--sk-border); box-shadow: var(--sk-surface-sh); }
+:root[data-skin] .groove, :root[data-skin] .water-tube, :root[data-skin] .ash { background: var(--sk-sunk); box-shadow: var(--sk-sunk-sh); }
+:root[data-skin] .water { background: var(--sk-fill); box-shadow: var(--sk-fill-sh); }
+
+:root[data-skin] .btn {
+  background: var(--sk-key);
+  border: 1px solid transparent;
+  border-radius: var(--sk-btn-r, 14px);
+  box-shadow: var(--sk-key-sh);
+  color: var(--sk-key-ink, var(--text));
+}
+:root[data-skin] .btn:hover { filter: brightness(1.03); box-shadow: var(--sk-key-sh); }
+:root[data-skin] .btn:active { transform: translateY(1px); box-shadow: var(--sk-sunk-sh); background: var(--sk-sunk); }
+:root[data-skin] .btn.primary { background: var(--sk-primary); border-color: transparent; box-shadow: var(--sk-primary-sh); color: var(--sk-on-primary); }
+:root[data-skin] .btn.primary:hover { box-shadow: var(--sk-primary-sh-hover, var(--sk-primary-sh)); }
+:root[data-skin] .btn.primary:active { filter: brightness(0.95); box-shadow: var(--sk-primary-sh); background: var(--sk-primary); }
+:root[data-skin] .btn.soft { color: var(--sk-key-ink, var(--text)); }
+
+:root[data-skin] .pbtn, :root[data-skin] .pills > button {
+  background: var(--sk-key);
+  border: 1px solid transparent;
+  box-shadow: var(--sk-key-sh);
+  color: var(--text-2);
+}
+:root[data-skin] .pbtn.on, :root[data-skin] .pills > button.on { background: var(--sk-active); box-shadow: var(--sk-active-sh); color: var(--sk-active-ink); }
+
+/* the rail: the room you are on is set into it */
+:root[data-skin] .nav-wrap .nav .drop { background: var(--sk-active); box-shadow: var(--sk-active-sh); }
+:root[data-skin] .nav-wrap .nav .item.active { color: var(--sk-active-ink); }
+
+/* tab switches: a slot with a puck */
+:root[data-skin] nav.seg:not(.floating) { background: var(--sk-sunk); border: 0; box-shadow: var(--sk-sunk-sh); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-skin] nav.seg > .mark { background: var(--sk-key); box-shadow: var(--sk-key-sh); }
+:root[data-skin] nav.seg > .on { color: var(--sk-active-ink); }
+:root[data-skin="flat"] nav.seg > .mark { background: var(--accent); }
+:root[data-skin="flat"] nav.seg > .on { color: var(--sk-on-primary); }
+:root[data-skin="material"] nav.seg > .mark { background: var(--sk-active); box-shadow: none; }
+
+/* small glowing touches only in Taster */
+:root[data-skin="keys"] .eyebrow::before { box-shadow: var(--sk-glow); }
+:root[data-skin]:not([data-skin="keys"]):not([data-skin="glass"]) .eyebrow::before { box-shadow: none; }

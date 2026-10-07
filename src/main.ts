@@ -12,6 +12,7 @@ import { useData } from '@/composables/site/useData'
 import { watch } from 'vue'
 import { startDomTranslate } from './lib/domTranslate'
 import './style.css'
+import './skins.css'
 // Every page loads on demand: a panel (3D room) and a page (plain version) per route
 const preloads: (() => Promise<unknown>)[] = []
 const lazy = (panel: () => Promise<Component>, page: AsyncComponentLoader, title: string): { component: () => Promise<Component>; meta: RouteMeta } => { preloads.push(panel, page as () => Promise<unknown>); return { component: panel, meta: { page: defineAsyncComponent(page), title } } }

@@ -20,12 +20,14 @@ const RoomLayout = defineAsyncComponent(() => import('@/components/room/RoomLayo
 import { useData } from '@/composables/site/useData'
 import { mode } from '@/composables/ui/useMode'
 import { useAccent } from '@/composables/ui/useAccent'
+import { useSkin } from '@/composables/ui/useSkin'
 import { shell } from '@/composables/ui/useShell'
 import PlayerTop from '@/components/layout/PlayerTop.vue'
 
 const data = useData()
 useMediaSession()
 useAccent() // the room's own accent colour (Admin → Profil)
+useSkin() // … and its material: Leire, Taster, Material, Skeuomorf, Flat or Glass
 const route = useRoute()
 const toTop = () => window.scrollTo(0, 0)
 

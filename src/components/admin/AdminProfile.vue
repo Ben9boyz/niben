@@ -5,6 +5,7 @@ import { api, errorMessage, shrinkImage, account } from '@/composables/site/useA
 import { reloadData, useData, type About, type AboutLink, type Question } from '@/composables/site/useData'
 import { siteTexts, setTexts } from '@/composables/site/useTexts'
 import { ACCENTS, ACCENT_KEY, DEFAULT_ACCENT, accentHex, validAccent } from '@/composables/ui/useAccent'
+import { SKINS, SKIN_KEY, skinId, validSkin, type SkinId } from '@/composables/ui/useSkin'
 import { milestones, loadMilestones, setMilestones, type Milestone } from '@/composables/site/useMilestones'
 import { thumb } from '../../lib/photos'
 import ImageCropper from '@/components/ui/ImageCropper.vue'
@@ -45,6 +46,16 @@ async function setAccent(hex: string | null) {
   try { setTexts((await api<{ texts: Record<string, string> }>('texts_save', { texts })).texts); flash(v ? 'Fargen er lagret.' : 'Tilbake til standard blå.') } catch (e) { fail(e) } finally { busy.value = '' }
 }
 const pickCustom = (e: Event) => { void setAccent((e.target as HTMLInputElement).value) }
+
+// ── material (the room's style: Leire, Taster, Material …) ──
+async function setSkin(id: SkinId | null) {
+  const v = validSkin(id)
+  const texts: Record<string, string> = { ...siteTexts }
+  if (v) texts[SKIN_KEY] = v; else delete texts[SKIN_KEY]
+  setTexts(texts) // (the page changes material at once)
+  busy.value = 'skin'
+  try { setTexts((await api<{ texts: Record<string, string> }>('texts_save', { texts })).texts); flash('Stilen er lagret.') } catch (e) { fail(e) } finally { busy.value = '' }
+}
 
 // ── photo, about text, links ──
 const about = ref<About | null>(null)
@@ -183,6 +194,18 @@ onMounted(() => { void loadAbout(); void loadMilestones(true) })
     </section>
 
     <section v-if="part === 'utseende'">
+      <h3>Stil</h3>
+      <p class="muted">Hva rommet ditt er laget av: knapper, kort og faner. Alle som besøker rommet ser stilen du velger, og alle passer med fargen din.</p>
+      <div class="skins" role="radiogroup" aria-label="Stil">
+        <button v-for="k in SKINS" :key="k.id ?? 'std'" type="button" class="skin" role="radio" :aria-checked="skinId === k.id" :class="{ on: skinId === k.id }" :disabled="busy === 'skin'" :data-pv="k.id ?? 'std'" @click="setSkin(k.id)">
+          <span class="pv" aria-hidden="true"><i class="pv-card"><i class="pv-bar"></i><i class="pv-btn"></i><i class="pv-key"></i></i></span>
+          <b>{{ k.label }}</b>
+          <small>{{ k.hint }}</small>
+        </button>
+      </div>
+    </section>
+
+    <section v-if="part === 'utseende'">
       <h3>Døra og veggene</h3>
       <p class="muted">Last opp hva du vil. Du velger selv hvilken del av bildet som brukes – rammen har nøyaktig formen til stedet bildet skal henge.</p>
       <div class="imgs">
@@ -269,6 +292,52 @@ textarea, input, select { width: 100%; box-sizing: border-box; }
 .dot.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px currentColor; color: var(--text); }
 .dot.custom { position: relative; display: grid; place-items: center; background: conic-gradient(#e5484d, #f08a24, #2fb36d, #2b8cff, #8b5cf6, #e5559b, #e5484d); color: #fff; font-weight: 700; overflow: hidden; }
 .dot.custom input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+/* the style picker: a tiny made-up corner of each material, in your colour */
+.skins { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.skin { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 10px 10px 12px; border: 2px solid transparent; border-radius: 18px; background: transparent; color: var(--text); text-align: left; cursor: pointer; transition: border-color 0.2s, transform 0.3s var(--spring); }
+.skin:hover { transform: translateY(-2px); }
+.skin.on { border-color: var(--accent); }
+.skin b { font-size: 0.92rem; margin-top: 6px; }
+.skin small { color: var(--text-3); font-size: 0.76rem; line-height: 1.3; }
+.pv { display: grid; place-items: center; width: 100%; height: 84px; border-radius: 14px; overflow: hidden; }
+.pv-card { position: relative; display: block; width: 74%; height: 58px; border-radius: 12px; }
+.pv-bar { position: absolute; left: 10px; right: 10px; top: 10px; height: 8px; border-radius: 4px; }
+.pv-btn { position: absolute; left: 10px; bottom: 10px; width: 46%; height: 18px; border-radius: 7px; background: var(--accent); }
+.pv-key { position: absolute; right: 10px; bottom: 10px; width: 22%; height: 18px; border-radius: 7px; }
+[data-pv="std"] .pv { background: linear-gradient(160deg, #f4f1ec, #e6e9ee); }
+[data-pv="std"] .pv-card { background: rgba(255, 255, 255, 0.75); box-shadow: 0 6px 16px rgba(60, 45, 25, 0.12), inset 0 1px 0 #fff; }
+[data-pv="std"] .pv-bar { background: #dfe2e6; }
+[data-pv="std"] .pv-key { background: linear-gradient(180deg, #fff, #e3e7eb); box-shadow: 0 0 0 1px #cdd3da; }
+[data-pv="clay"] .pv { background: color-mix(in oklab, var(--accent) 4%, #e9e0d2); }
+[data-pv="clay"] .pv-card { background: color-mix(in oklab, var(--accent) 2%, #f8f2e9); box-shadow: inset 0 1px 0 #fff, 0 10px 16px -8px rgba(90, 70, 50, 0.5); }
+[data-pv="clay"] .pv-bar { background: color-mix(in oklab, var(--accent) 10%, #e1d9cc); box-shadow: inset 0 1px 3px rgba(90, 70, 50, 0.3); }
+[data-pv="clay"] .pv-btn { background: color-mix(in oklab, var(--accent) 56%, #e3dacd); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.12); }
+[data-pv="clay"] .pv-key { background: color-mix(in oklab, var(--accent) 4%, #f7f2eb); box-shadow: inset 0 -2px 0 rgba(90, 70, 50, 0.15), 0 3px 5px -2px rgba(90, 70, 50, 0.4); }
+[data-pv="keys"] .pv { background: #ece8e2; }
+[data-pv="keys"] .pv-card { background: linear-gradient(150deg, #f8f6f3, #e6e2dc); box-shadow: -4px -4px 9px #fff, 5px 6px 12px rgba(86, 72, 56, 0.25); }
+[data-pv="keys"] .pv-bar { background: #e2ddd5; box-shadow: inset 2px 2px 4px rgba(86, 72, 56, 0.25), inset -2px -2px 4px #fff; }
+[data-pv="keys"] .pv-btn { box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 55%, transparent); }
+[data-pv="keys"] .pv-key { background: linear-gradient(150deg, #faf8f5, #e6e1da); box-shadow: -2px -2px 4px #fff, 2px 3px 5px rgba(86, 72, 56, 0.3); }
+[data-pv="material"] .pv { background: color-mix(in oklab, var(--accent) 5%, #fdfcff); }
+[data-pv="material"] .pv-card { background: color-mix(in oklab, var(--accent) 9%, #fdfcff); border-radius: 14px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 1px 3px 1px rgba(0, 0, 0, 0.08); }
+[data-pv="material"] .pv-bar { background: color-mix(in oklab, var(--accent) 26%, #fff); border-radius: 99px; }
+[data-pv="material"] .pv-btn, [data-pv="material"] .pv-key { border-radius: 99px; }
+[data-pv="material"] .pv-btn { background: color-mix(in oklab, var(--accent) 85%, #000); }
+[data-pv="material"] .pv-key { box-shadow: inset 0 0 0 1px #79747e; }
+[data-pv="skeu"] .pv { background: repeating-linear-gradient(45deg, rgba(90, 70, 40, 0.06) 0 2px, transparent 2px 4px), #e3dccf; }
+[data-pv="skeu"] .pv-card { background: linear-gradient(180deg, #fffdf8, #efe8dc); border-radius: 8px; box-shadow: 0 0 0 1px #cbc1af, 0 4px 8px rgba(60, 45, 25, 0.3); }
+[data-pv="skeu"] .pv-bar { background: linear-gradient(180deg, #d4cbbb, #e4ddd0); box-shadow: inset 0 1px 2px rgba(50, 35, 15, 0.4); }
+[data-pv="skeu"] .pv-btn { border-radius: 5px; background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 50%, #fff), var(--accent) 52%, color-mix(in srgb, var(--accent) 78%, #000)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, #000); }
+[data-pv="skeu"] .pv-key { border-radius: 5px; background: linear-gradient(180deg, #fff, #e1d9cc 52%, #ebe5da); box-shadow: 0 0 0 1px #b3a894; }
+[data-pv="flat"] .pv { background: color-mix(in oklab, var(--accent) 6%, #f7f7f4); }
+[data-pv="flat"] .pv-card { background: #fff; border-radius: 8px; }
+[data-pv="flat"] .pv-bar { background: color-mix(in oklab, var(--accent) 14%, #efefeb); }
+[data-pv="flat"] .pv-btn, [data-pv="flat"] .pv-key { border-radius: 4px; }
+[data-pv="flat"] .pv-key { background: color-mix(in oklab, var(--accent) 12%, #f1f1ee); }
+[data-pv="glass"] .pv { background: radial-gradient(60% 80% at 15% 20%, var(--accent), transparent 70%), radial-gradient(60% 80% at 90% 80%, oklch(from var(--accent) l c calc(h + 70)), transparent 70%), #eef0f6; }
+[data-pv="glass"] .pv-card { background: rgba(255, 255, 255, 0.4); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.5); }
+[data-pv="glass"] .pv-bar { background: rgba(255, 255, 255, 0.35); }
+[data-pv="glass"] .pv-key { background: rgba(255, 255, 255, 0.55); }
 .who { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
 .ph { width: 84px; height: 104px; border-radius: 16px; overflow: hidden; background: var(--accent-soft); display: grid; place-items: center; flex: none; }
 .ph img { width: 100%; height: 100%; object-fit: cover; }
