@@ -13,6 +13,7 @@ import SegSwitch from '@/components/ui/SegSwitch.vue'
 import JapanWords from './JapanWords.vue'
 import KanjiPractice from './KanjiPractice.vue'
 import Fold from '@/components/ui/Fold.vue'
+import ServiceSetup from '@/components/ui/ServiceSetup.vue'
 
 // The Japanese corner's content (3D panel and plain page): progress from jpdb, the word of the day,
 // and – for the admin – flashcard practice.
@@ -53,7 +54,8 @@ watch(() => room.jpAnime, async (i) => {
     <JapanPractice v-if="practicing && canManage" @close="practicing = false" />
 
     <template v-else>
-      <div v-if="jp.loaded && !jp.configured" class="empty">jpdb er ikke koblet til ennå.</div>
+      <ServiceSetup service="jpdb" />
+      <div v-if="jp.loaded && !jp.configured && !canManage" class="empty">jpdb er ikke koblet til ennå.</div>
       <p v-else-if="jp.error" class="notice error">{{ jp.error }}</p>
 
       <template v-if="jp.configured && !jp.error">

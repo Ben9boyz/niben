@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { tx } from '@/composables/site/useTexts'
+import ServiceSetup from '@/components/ui/ServiceSetup.vue'
+import { canManage } from '@/composables/site/useAdmin'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Gamepad2, Clock, Trophy, Library, ArrowUpRight, ChevronDown, Radio, Users, Newspaper, Heart, Flame, Archive, Monitor } from 'lucide-vue-next'
 import { steam, watchSteam, type SteamGame, headerImg, coverImg, storeUrl, ago, fmtHours, sessionLen, fmtDate, fmtYears } from '@/composables/site/useSteam'
@@ -46,7 +48,8 @@ const coverFailed = (g: Pick<SteamGame, 'appid'>) => { noCover.value = new Set(n
 
 <template>
   <div class="gc">
-    <div v-if="steam.loaded && !steam.configured" class="empty">Steam er ikke koblet til ennå.</div>
+    <ServiceSetup service="steam" />
+    <div v-if="steam.loaded && !steam.configured && !canManage" class="empty">Steam er ikke koblet til ennå.</div>
     <p v-else-if="steam.error" class="notice error">{{ steam.error }}</p>
 
     <template v-if="p">

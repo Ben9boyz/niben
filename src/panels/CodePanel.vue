@@ -2,13 +2,14 @@
 import { tx } from '@/composables/site/useTexts'
 import { ArrowUpRight, BookOpenText } from 'lucide-vue-next'
 import RepoBrowser from '@/components/content/RepoBrowser.vue'
+import ServiceSetup from '@/components/ui/ServiceSetup.vue'
 import { computed, ref } from 'vue'
 import { useData, type Project } from '@/composables/site/useData'
 import { room } from '@/composables/room/useRoom'
 
 const data = useData()
 // a project on my GitHub can be read right here (RepoBrowser)
-const repoOf = (p: Project | undefined) => (/github\.com\/Ben9boyz\/([\w.-]+)/i.exec(p?.kode || '') || [])[1] || null
+const repoOf = (p: Project | undefined) => (/github\.com\/[\w.-]+\/([\w.-]+)/i.exec(p?.kode || '') || [])[1] || null // (the room's own GitHub account – the server only opens repos it lists)
 const reading = ref<string | null>(null)
 const list = computed(() => data.prosjekter || [])
 const p = computed(() => list.value[room.sel.prosjekt])
@@ -23,6 +24,7 @@ const p = computed(() => list.value[room.sel.prosjekt])
     </header>
 
     <div class="panel-body">
+      <ServiceSetup service="github" />
       <div class="list">
         <button v-for="(item, i) in list" :key="i" class="row" :class="{ active: i === room.sel.prosjekt }" :style="{ '--i': i }" @click="room.sel.prosjekt = i">
           <span class="num">{{ String(i + 1).padStart(2, '0') }}</span>

@@ -5,6 +5,7 @@ import { api, errorMessage, account } from '@/composables/site/useAdmin'
 import { reloadData, type SectionId } from '@/composables/site/useData'
 import type { Flash } from '../../types'
 import { strava, loadStrava, disconnectStrava } from '@/composables/site/useStrava'
+import ServiceSetup from '@/components/ui/ServiceSetup.vue'
 
 // One component, two admin tabs: `tilkoblinger` (Spotify, Steam, jpdb … the services it fetches from) and `konto` (e-mail,
 // password, backup, deleting the account). Which corners the room shows is decided in Faner (AdminTabs).
@@ -23,13 +24,9 @@ interface PlaceHit { name: string; region: string; country: string; lat: number;
 const s = ref<Settings | null>(null)
 const msg = ref<Flash | null>(null)
 const busy = ref(false)
-const jpdbKey = ref('')
-const steamId = ref('')
-const steamKey = ref('')
 const newEmail = ref('')
 const emailPw = ref('')
 const delPw = ref('')
-const ghUser = ref('')
 const lastfm = ref('')
 const place = ref<{ name: string } | null>(null)
 const placeQ = ref('')
@@ -41,8 +38,6 @@ const newPw = ref('')
 async function load() {
   try {
     s.value = await api<Settings>('me_settings')
-    steamId.value = s.value.keys.steam_id && s.value.keys.steam_id !== 'fra oppsettet' ? s.value.keys.steam_id : ''
-    ghUser.value = s.value.keys.github_user ?? ''
     api<{ place: { name: string } | null }>('home_get').then((r) => { place.value = r.place }).catch(() => {})
   } catch (e) { msg.value = { error: errorMessage(e) } }
 }
@@ -57,18 +52,10 @@ async function post(body: Record<string, unknown>, ok: string) {
     await reloadData() // the room changes at once
   } catch (e) { msg.value = { error: errorMessage(e) } } finally { busy.value = false }
 }
-async function saveJpdb() { await post({ jpdb_key: jpdbKey.value.trim() }, 'jpdb-nøkkelen er lagret.'); jpdbKey.value = '' }
-async function saveSteam() {
-  const body: Record<string, unknown> = { steam_id: steamId.value.trim() }
-  if (steamKey.value.trim()) body.steam_key = steamKey.value.trim()
-  await post(body, 'Steam er lagret.')
-  steamKey.value = ''
-}
 async function disconnectSpotify() {
   busy.value = true
   try { await api('spotify_disconnect', {}); await load(); await reloadData(); msg.value = { ok: 'Spotify er koblet fra.' } } catch (e) { msg.value = { error: errorMessage(e) } } finally { busy.value = false }
 }
-const saveGithub = () => post({ github_user: ghUser.value.trim() }, ghUser.value.trim() ? 'GitHub-navnet er lagret.' : 'GitHub-navnet er fjernet.')
 async function saveLastfm() { await post({ lastfm_key: lastfm.value.trim() }, lastfm.value.trim() ? 'Last.fm-nøkkelen er lagret.' : 'Last.fm-nøkkelen er fjernet.'); lastfm.value = '' }
 function findPlace() {
   clearTimeout(placeTimer)
@@ -89,7 +76,6 @@ async function clearPlace() {
   busy.value = true
   try { await api('home_set', { clear: true }); place.value = null; msg.value = { ok: 'Bostedet er fjernet.' } } catch (e) { msg.value = { error: errorMessage(e) } } finally { busy.value = false }
 }
-const clearJpdb = () => post({ jpdb_key: '' }, 'jpdb-nøkkelen er fjernet.')
 async function changeEmail() {
   busy.value = true
   msg.value = null
@@ -162,31 +148,17 @@ async function changePw() {
 
       <details class="svc">
         <summary><KeyRound :size="18" /><span class="t"><b>jpdb</b><small>Japansk: ord, repetisjon og anime</small></span><span class="pill" :class="s.keys.jpdb ? 'ok' : 'off'">{{ s.keys.jpdb ? 'Nøkkel lagret' : 'Ikke satt' }}</span></summary>
-        <form class="body keys" @submit.prevent="saveJpdb">
-          <label class="field">
-            <span>API-nøkkel</span>
-            <input v-model="jpdbKey" type="password" autocomplete="off" :placeholder="s.keys.jpdb ? '•••••••• (skriv en ny for å bytte)' : 'Lim inn nøkkelen'" />
-            <small>jpdb.io → Settings → API → «API key». <a href="https://jpdb.io/settings" target="_blank" rel="noopener">Åpne jpdb <ExternalLink :size="11" /></a></small>
-          </label>
-          <div class="btns"><button class="btn primary small" :disabled="busy || !jpdbKey.trim()"><Check :size="14" />Lagre</button><button v-if="s.keys.jpdb" type="button" class="btn soft small" :disabled="busy" @click="clearJpdb">Fjern</button></div>
-        </form>
+        <div class="body"><ServiceSetup service="jpdb" /><p class="muted">Finnes også øverst på <router-link :to="{ name: 'japansk' }">Japansk</router-link>, der den brukes.</p></div>
       </details>
 
       <details class="svc">
         <summary><KeyRound :size="18" /><span class="t"><b>Steam</b><small>Spill: profilen og biblioteket</small></span><span class="pill" :class="s.keys.steam_id ? 'ok' : 'off'">{{ s.keys.steam_id ? 'Koblet til' : 'Ikke satt' }}</span></summary>
-        <form class="body keys" @submit.prevent="saveSteam">
-          <label class="field"><span>Steam-ID</span><input v-model="steamId" placeholder="76561198… eller lenken til profilen din" /><small>Profilen og spillene dine må være offentlige i Steam.</small></label>
-          <label class="field"><span>Egen Steam API-nøkkel <small>(valgfritt – ellers brukes sidens)</small></span><input v-model="steamKey" type="password" autocomplete="off" :placeholder="s.keys.steam_key ? '•••••••• (lagret)' : ''" /></label>
-          <div class="btns"><button class="btn primary small" :disabled="busy"><Check :size="14" />Lagre</button></div>
-        </form>
+        <div class="body"><ServiceSetup service="steam" /><p class="muted">Finnes også øverst på <router-link :to="{ name: 'gaming' }">Spill</router-link>, der den brukes.</p></div>
       </details>
 
       <details class="svc">
         <summary><KeyRound :size="18" /><span class="t"><b>GitHub</b><small>Prosjekter: dine åpne prosjekter</small></span><span class="pill" :class="s.keys.github_user ? 'ok' : 'off'">{{ s.keys.github_user ? s.keys.github_user : 'Ikke satt' }}</span></summary>
-        <form class="body keys" @submit.prevent="saveGithub">
-          <label class="field"><span>Brukernavn</span><input v-model="ghUser" placeholder="navn eller lenken til profilen din" /><small>Bare åpne (public) prosjekter vises. Skru på «Prosjekter» under «Hva vises».</small></label>
-          <div class="btns"><button class="btn primary small" :disabled="busy"><Check :size="14" />Lagre</button></div>
-        </form>
+        <div class="body"><ServiceSetup service="github" /><p class="muted">Finnes også øverst på <router-link :to="{ name: 'kode' }">Prosjekter</router-link>, der den brukes.</p></div>
       </details>
 
       <details class="svc">
@@ -265,6 +237,7 @@ async function changePw() {
 .set { display: grid; gap: 26px; }
 h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 1.05rem; }
 .muted { color: var(--text-3); font-size: 0.86rem; margin: 0 0 10px; }
+.muted a { color: var(--accent); }
 .row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; margin-bottom: 4px; border: 0; border-radius: 12px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
 .row:hover:not(:disabled) { background: var(--accent-soft); }
 .row.off { opacity: 0.5; cursor: default; }
