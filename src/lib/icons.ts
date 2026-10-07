@@ -3,7 +3,7 @@ import {
   Clapperboard, Tv, Dice5, ChefHat, Croissant, Coffee, Wine, Sprout, Fish, PawPrint, Gamepad2, Blocks, Plane, Palette, Camera, Scissors, Wrench,
   Piano, Music4, Mic, Gem, Bookmark, Bird, Telescope, Footprints, Bike, Dumbbell, Waves, Mountain, Tent, Crown, PenLine, Languages, Flower2,
   NotebookPen, Car, Gift, Target, Shovel, Luggage, Medal, UtensilsCrossed, Trophy, Star, House, GraduationCap, Hammer, Compass, Heart, Flame,
-  Briefcase, Globe, BookOpen, Guitar, Timer, Code2, User, Disc3, Music, Leaf, Activity, Puzzle, Sparkles, Brush, Drama, Swords, Glasses,
+  Briefcase, Globe, BookOpen, Guitar, Timer, Code2, User, Disc3, Music, Leaf, Activity, Puzzle, Sparkles, Brush, Drama, Swords, Glasses, CalendarDays,
 } from 'lucide-vue-next'
 
 // The site's symbols, by name – what a hobby, a tab or a corner is shown with (stored as the name, e.g. "Bike"). Never emoji:
@@ -12,7 +12,7 @@ export const ICONS: Record<string, Component> = {
   Clapperboard, Tv, Dice5, ChefHat, Croissant, Coffee, Wine, Sprout, Fish, PawPrint, Gamepad2, Blocks, Plane, Palette, Camera, Scissors, Wrench,
   Piano, Music4, Mic, Gem, Bookmark, Bird, Telescope, Footprints, Bike, Dumbbell, Waves, Mountain, Tent, Crown, PenLine, Languages, Flower2,
   NotebookPen, Car, Gift, Target, Shovel, Luggage, Medal, UtensilsCrossed, Trophy, Star, House, GraduationCap, Hammer, Compass, Heart, Flame,
-  Briefcase, Globe, BookOpen, Guitar, Timer, Code2, User, Disc3, Music, Leaf, Activity, Puzzle, Sparkles, Brush, Drama, Swords, Glasses,
+  Briefcase, Globe, BookOpen, Guitar, Timer, Code2, User, Disc3, Music, Leaf, Activity, Puzzle, Sparkles, Brush, Drama, Swords, Glasses, CalendarDays,
 }
 /** The ones offered when you pick a symbol yourself. */
 export const PICKABLE = ['Star', 'Heart', 'Flame', 'Sparkles', 'House', 'GraduationCap', 'Hammer', 'Compass', 'Briefcase', 'Globe', 'BookOpen', 'Music', 'Guitar', 'Disc3',

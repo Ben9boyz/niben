@@ -3,7 +3,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, type Component } from
 import { targetEl } from '@/lib/dom'
 import { useRoute, useRouter } from 'vue-router'
 import { useData } from '@/composables/site/useData'
-import { LayoutDashboard, Plane, BookOpen, Mic, Music, Type, Box, Mail, Eye, EyeOff, LogOut, Lock, Users, SlidersHorizontal, Guitar, DoorOpen, MessageCircle, X, UserRound, Plug, KeyRound, Disc3, Star, Palette } from 'lucide-vue-next'
+import { LayoutDashboard, Plane, BookOpen, Mic, Music, Type, Box, Mail, Eye, EyeOff, LogOut, Lock, Users, Guitar, DoorOpen, MessageCircle, X, UserRound, Plug, KeyRound, Disc3, Star, Palette } from 'lucide-vue-next'
 import { admin, account, signedIn, checkLogin, login, userLogin, registerAccount, forgotPassword, resetPassword, logout, errorMessage } from '@/composables/site/useAdmin'
 import { setRoom } from '@/composables/room/useRooms'
 import AdminOverview from '../components/admin/AdminOverview.vue'
@@ -15,7 +15,6 @@ import AdminUsers from '../components/admin/AdminUsers.vue'
 import AdminGuestbook from '../components/admin/AdminGuestbook.vue'
 import AdminProfile from '../components/admin/AdminProfile.vue'
 import AdminSettings from '../components/admin/AdminSettings.vue'
-import AdminTabs from '../components/admin/AdminTabs.vue'
 
 interface TabDef { id: string; label: string; icon: Component }
 interface GroupDef { id: string; label: string; icon: Component; tabs: TabDef[] }
@@ -31,13 +30,13 @@ const GROUPS = computed<GroupDef[]>(() => {
   if (isOwner.value) list.push({ id: 'oversikt', label: 'Oversikt', icon: LayoutDashboard, tabs: [TAB('oversikt', 'Oversikt', LayoutDashboard), TAB('brukere', 'Brukere', Users), TAB('nyhetsbrev', 'Nyhetsbrev', Mail)] })
   list.push({ id: 'hobbyer', label: 'Hobbyer', icon: Star, tabs: [TAB('hobbyer', 'Hobbyer', Star)] })
   list.push({ id: 'profil', label: 'Profil', icon: UserRound, tabs: [TAB('profil', 'Om meg', UserRound), TAB('tekster', 'Tekster', Type), TAB('gjestebok', 'Gjestebok', MessageCircle)] })
-  list.push({ id: 'rommet', label: 'Rommet', icon: Box, tabs: [TAB('faner', 'Faner', SlidersHorizontal), TAB('utseende', 'Utseende', Palette), ...(isOwner.value ? [TAB('rom', 'Egne 3D-modeller', Box)] : [])] })
+  list.push({ id: 'rommet', label: 'Rommet', icon: Box, tabs: [TAB('utseende', 'Utseende', Palette), ...(isOwner.value ? [TAB('rom', 'Egne 3D-modeller', Box)] : [])] })
   list.push({ id: 'tilkoblinger', label: 'Tilkoblinger', icon: Plug, tabs: [TAB('tilkoblinger', 'Tilkoblinger', Plug)] })
   list.push({ id: 'konto', label: 'Konto', icon: KeyRound, tabs: [TAB('konto', 'Konto', KeyRound)] })
   return list
 })
 const KEY = 'niben-admin-tab'
-const OLD: Record<string, string> = { innstillinger: 'faner', rommet: 'faner', reiser: 'hobbyer', boker: 'hobbyer', gitarer: 'hobbyer', figurer: 'hobbyer', opptak: 'hobbyer', sanger: 'hobbyer', musikk: 'hobbyer' } // (tabs that moved)
+const OLD: Record<string, string> = { innstillinger: 'hobbyer', rommet: 'utseende', faner: 'hobbyer', reiser: 'hobbyer', boker: 'hobbyer', gitarer: 'hobbyer', figurer: 'hobbyer', opptak: 'hobbyer', sanger: 'hobbyer', musikk: 'hobbyer' } // (tabs that moved)
 const saved = (() => { try { const v = localStorage.getItem(KEY); return v ? OLD[v] ?? v : null } catch { return null } })()
 const tab = ref(saved ?? 'hobbyer')
 /** From the overview's numbers straight to that corner in Hobbyer. */
@@ -172,7 +171,6 @@ const myRoom = () => { if (account.user) void setRoom(account.user.username) }
           <AdminGuestbook v-else-if="shownTab === 'gjestebok'" key="gb" />
           <AdminProfile v-else-if="shownTab === 'profil'" key="p" part="om" />
           <AdminProfile v-else-if="shownTab === 'utseende'" key="ut" part="utseende" />
-          <AdminTabs v-else-if="shownTab === 'faner'" key="fa" />
           <AdminSettings v-else-if="shownTab === 'tilkoblinger'" key="s2" part="tilkoblinger" />
           <AdminSettings v-else-if="shownTab === 'konto'" key="s3" part="konto" />
           <AdminHobbies v-else key="hb2" />

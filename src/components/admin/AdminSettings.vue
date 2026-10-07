@@ -8,7 +8,7 @@ import { strava, loadStrava, disconnectStrava } from '@/composables/site/useStra
 import ServiceSetup from '@/components/ui/ServiceSetup.vue'
 
 // One component, two admin tabs: `tilkoblinger` (Spotify, Steam, jpdb … the services it fetches from) and `konto` (e-mail,
-// password, backup, deleting the account). Which corners the room shows is decided in Faner (AdminTabs).
+// password, backup, deleting the account). Which corners the room shows is decided in Hobbyer (the menu sits there too).
 const props = defineProps<{ part: 'tilkoblinger' | 'konto' }>()
 // What this room shows, and the keys it needs: switch corners off (they disappear from the room and the menu), and add
 // your own API keys for the things that fetch from other services (jpdb for Japanese, Steam for the gaming corner).

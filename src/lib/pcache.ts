@@ -49,3 +49,10 @@ export async function pdel(key: string): Promise<void> {
   mem.delete(key)
   await run('readwrite', (s) => s.delete(key))
 }
+/** Forget every entry whose key starts with one of `prefixes` (here and in IndexedDB). */
+export async function pclear(prefixes: string[]): Promise<void> {
+  const hit = (k: string): boolean => prefixes.some((p) => k.startsWith(p))
+  for (const k of [...mem.keys()]) if (hit(k)) mem.delete(k)
+  const keys = (await run<IDBValidKey[]>('readonly', (s) => s.getAllKeys())) ?? []
+  for (const k of keys) if (typeof k === 'string' && hit(k)) await run('readwrite', (s) => s.delete(k))
+}

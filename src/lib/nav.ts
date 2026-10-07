@@ -1,7 +1,6 @@
 import { computed, reactive } from 'vue'
 import { useData } from '@/composables/site/useData'
 import { routeAllowed } from './sections'
-import { rooms } from '@/composables/room/useRooms'
 import { placed } from '@/composables/room/useModules'
 import { iconOf, isIcon } from './icons'
 import { decor } from '@/composables/room/useDecor'
@@ -67,16 +66,16 @@ export const standardGroups = computed<NavGroup[]>(() => {
   // a tab of one's own goes in before "Om meg" and the hall
   const at = out.findIndex((g) => g.id === 'gangen')
   out.splice(at < 0 ? out.length : at, 0, ...custom.values())
-  return out.filter((g) => g.routes.length > 0 && (g.id !== 'gangen' || rooms.total > 1)) // (the hall is only there when there is more than one room)
+  return out.filter((g) => g.routes.length > 0 && g.id !== 'gangen') // (the hall is not a tab: it is the door out of the room – HallDoor)
 })
 const STAR = 'M12 2l2.4 6.9H22l-6 4.4 2.3 7L12 16l-6.3 4.3 2.3-7-6-4.4h7.6z'
-/** The menu of the room on screen: its own tabs if it has made them (Admin → Rommet → Faner), else the standard ones. Hjem comes first and
- *  the hall last whatever; a page the tabs don't mention (a corner switched on later, a new hobby) goes where it would have stood, or under "Mer". */
+/** The menu of the room on screen: its own tabs if it has made them (Admin → Hobbyer), else the standard ones. Hjem comes first
+ *  whatever; a page the tabs don't mention (a corner switched on later, a new hobby) goes where it would have stood, or under "Mer". */
 export const navGroups = computed<NavGroup[]>(() => {
   const std = standardGroups.value
   const nav = data.nav
   if (!nav) return std
-  const home = std.find((g) => g.id === 'hjem'), hall = std.find((g) => g.id === 'gangen')
+  const home = std.find((g) => g.id === 'hjem')
   const home0 = new Map<string, string>() // page → the standard tab it belongs to
   for (const g of std) if (g.id !== 'hjem' && g.id !== 'gangen') for (const r of g.routes) home0.set(r, g.id)
   const used = new Set(nav.hidden)
@@ -87,7 +86,7 @@ export const navGroups = computed<NavGroup[]>(() => {
   })
   const more: NavGroup = { id: 'mer', label: 'Mer', routes: [], icon: STAR }
   for (const [r, gid] of home0) if (!used.has(r)) (tabs.find((t) => t.id === gid) ?? more).routes.push(r)
-  return [home, ...tabs, more, hall].filter((g): g is NavGroup => !!g && g.routes.length > 0)
+  return [home, ...tabs, more].filter((g): g is NavGroup => !!g && g.routes.length > 0)
 })
 /** A hobby module's tab is called 'h:<id>' (the route itself is /h/<id>). */
 export const HOBBY = 'h:'

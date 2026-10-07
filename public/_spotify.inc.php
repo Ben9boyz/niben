@@ -599,6 +599,19 @@ function sp_handle(string $action, bool $post): void {
         out(['ok' => true]);
     }
 
+    case 'spotify_cache_clear': {
+        // everything this room has kept from Spotify (the album and playlist lists, track lists, artist pages, the library
+        // fingerprint …) is thrown away – the next look fetches it all fresh. The connection itself is kept.
+        if (!$post) fail('Bruk POST.', 405);
+        require_room_owner();
+        $p = kv_scope() === 1 ? '' : 'u' . kv_scope() . '_';
+        $n = 0;
+        // (only Spotify's: GitHub keeps its cache_github_ …)
+        foreach (['cache_albums%', 'cache_playlists%', 'cache_now%', 'cache_queue%', 'tracks%', 'artist%', 'tempo%', 'probe_lib%', 'audio_features%', 'lib_stamp%'] as $like) $n += kv_q('DELETE FROM spotify_state WHERE k LIKE ?', [str_replace('_', '\\_', $p . $like)])->rowCount();
+        kv_del('sp_denied', 'sp_last_err');
+        out(['ok' => true, 'removed' => $n]);
+    }
+
     case 'spotify_lock': {
         // change the lock length for the next play. A running lock can't be changed or lifted.
         if (!$post) fail('Bruk POST.', 405);

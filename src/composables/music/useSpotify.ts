@@ -1,7 +1,7 @@
 import { reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import type { Album, Notice, NowPlaying, PlayOrigin, Playlist, Result, Track, TrackList } from '@/types'
 import { api, admin, ApiError, errorMessage } from '@/composables/site/useAdmin'
-import { pget, pset, pdel } from '@/lib/pcache'
+import { pget, pset, pdel, pclear } from '@/lib/pcache'
 import { CUSTOM_QUEUE, addSongs, addCollection, startQueueDriver, releaseSent, myQueue } from './useQueue'
 import { roomKey } from '@/lib/room'
 import { cancelGap } from './useTrackGap'
@@ -200,6 +200,18 @@ export async function refreshLists(force = false): Promise<void> {
 
 /** Everything, fresh (after connecting, refreshing from Spotify or disconnecting). */
 export async function refreshSpotify(): Promise<void> {
+  await refreshLists(true)
+}
+
+/** Throw away everything this browser has kept from Spotify for the room – the saved album and playlist lists, track lists,
+ *  tempos, artist pages – and fetch the lists again (the server's copy is emptied first, by the caller: spotify_cache_clear). */
+export async function forgetSpotifyCache(): Promise<void> {
+  try { localStorage.removeItem(listsKey()) } catch { /* private mode */ }
+  trackCache.clear(); tempoCache.clear(); searchCache.clear(); likedCache.clear()
+  await pclear(['tracks2:', 'tempo:', 'artist:', 'tr:'])
+  spotify.albums = []
+  spotify.playlists = []
+  listsAt = 0; listsSig = ''
   await refreshLists(true)
 }
 

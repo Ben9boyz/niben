@@ -2,6 +2,7 @@
 import SettingsMenu from './SettingsMenu.vue'
 import ViewSwitch from './ViewSwitch.vue'
 import ProfileMenu from './ProfileMenu.vue'
+import HallDoor from './HallDoor.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, type Component, type ComponentPublicInstance } from 'vue'
 import { navGroups, groupOf, groupTarget, tabLabel, tabTarget, routeKey, tabIcon } from '@/lib/nav'
 import { iconOf } from '@/lib/icons'
@@ -215,6 +216,8 @@ onBeforeUnmount(() => {
         <span class="tip">Gå rundt i rommet</span>
       </button>
     </nav>
+    <!-- the hall is not a tab of the room – it is the way out of it, to look for another room: a door of its own -->
+    <HallDoor v-if="!isPhone" />
 
     <span class="spacer" aria-hidden="true"></span>
     <!-- me / settings: my photo (logged in) or a cog – opens the menu with view, theme, language … -->
@@ -236,6 +239,7 @@ onBeforeUnmount(() => {
   <!-- phones: the way between the 3D room and the plain version sits flat in the bar, next to the menu -->
   <ViewSwitch v-if="isPhone" />
   <ProfileMenu v-if="isPhone" />
+  <HallDoor v-if="isPhone" />
   <SettingsMenu v-if="isPhone" />
 </template>
 

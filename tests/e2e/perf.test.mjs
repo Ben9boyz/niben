@@ -4,9 +4,9 @@ import { launch, openPage, closePages, ownerClient, makeUser } from './helpers.m
 
 // The room must stay light enough for a weak machine. What one plain render costs, per view, may not grow past this:
 //   a corner you look at: < 150 draw calls, < 70 000 triangles (the guitar wall – several many-part models – < 200 / 90 000)
-//   the overview (everything in view): < 550 calls, < 200 000 triangles
+//   the overview (everything in view): < 600 calls, < 200 000 triangles (the corners are movable pivots now and are never culled from it)
 // (A glass material with `transmission` once made the whole scene be drawn twice – 1100 calls for the overview.)
-const BUDGET = { hjem: [550, 200000], lytte: [150, 70000], boker: [150, 70000], kode: [150, 70000], gitar: [200, 90000], japansk: [150, 70000], reiser: [150, 70000], ovelse: [150, 70000], om: [150, 70000] }
+const BUDGET = { hjem: [600, 200000], lytte: [150, 70000], boker: [150, 70000], kode: [150, 70000], gitar: [200, 90000], japansk: [150, 70000], reiser: [150, 70000], ovelse: [150, 70000], om: [150, 70000] }
 
 let browser
 before(async () => { browser = await launch() })
@@ -37,7 +37,7 @@ test('a room with twenty hobby modules stays inside the same budget', async () =
   await page.evaluate((n) => fetch('api.php?action=room_set', { method: 'POST', headers: { 'X-Niben': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ username: n }) }), u.name)
   await page.reload()
   await page.waitForFunction(() => !!window.__room, null, { timeout: 30000 })
-  await page.waitForFunction(() => window.__room.dumpScene().filter((o) => /Sprite/.test(o[0])).length === 0 && window.__room.stats().meshes > 0, null, { timeout: 30000 })
+  await page.waitForFunction(() => window.__room.dumpScene().filter((o) => /(^|\/)mod-[^/]*$/.test(o[0])).length >= 20, null, { timeout: 30000 })
   await page.waitForTimeout(2500) // (all twenty are standing)
   await page.waitForTimeout(2000)
   const rows = await page.evaluate((names) => {

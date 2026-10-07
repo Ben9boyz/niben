@@ -79,11 +79,13 @@ async function uploadPhoto(e: Event) {
     flash('Bildet er byttet.')
   } catch (err) { fail(err) } finally { busy.value = '' }
 }
-// ── the door in the hall and two walls: each in exactly the shape of the place it is for ──
+// ── the door in the hall, the three walls and the floor: each in exactly the shape of the place it is for ──
 const IMAGE_SLOTS = [
   { id: 'door', label: 'Døra i gangen', hint: 'Dørbladet alle ser i Gangen', aspect: 1 / 2.05, out: 640 },
   { id: 'wall_back', label: 'Bakveggen', hint: 'Veggen bak skrivebordet og bokhyllen (8 × 3,2 m)', aspect: 8 / 3.2, out: 2048 },
   { id: 'wall_left', label: 'Venstre vegg', hint: 'Veggen med gitarene (7 × 3,2 m)', aspect: 7 / 3.2, out: 2048 },
+  { id: 'wall_right', label: 'Høyre vegg', hint: 'Veggen med vinduet og sofaen (7 × 3,2 m) – vinduet skjæres ut av bildet', aspect: 7 / 3.2, out: 2048 },
+  { id: 'floor', label: 'Gulvet', hint: 'Hele gulvet (8 × 7 m) – toppen av bildet ligger mot bakveggen', aspect: 8 / 7, out: 2048 },
 ] as const
 const crop = ref<{ slot: (typeof IMAGE_SLOTS)[number]; file: File } | null>(null)
 function pickImage(slot: (typeof IMAGE_SLOTS)[number], e: Event) {

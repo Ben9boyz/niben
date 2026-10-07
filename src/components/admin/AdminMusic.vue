@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { RefreshCw, Trash2, Plus, Lock } from 'lucide-vue-next'
+import { RefreshCw, Trash2, Plus, Lock, Eraser } from 'lucide-vue-next'
 import { errorMessage, api } from '@/composables/site/useAdmin'
-import { spotify, setLockSeconds, refreshSpotify, fmtLock } from '@/composables/music/useSpotify'
+import { spotify, setLockSeconds, refreshSpotify, fmtLock, forgetSpotifyCache } from '@/composables/music/useSpotify'
 import { discover, loadDiscover, addPick, delPick, refreshRecs } from '@/composables/music/useDiscover'
 import type { Flash } from '../../types'
 
@@ -19,6 +19,16 @@ async function setLock(s: number) {
 async function refresh() {
   busy.value = 'refresh'
   try { await api('spotify_refresh', {}); await refreshSpotify(); msg.value = { ok: 'Hentet på nytt fra Spotify.' } } catch (e) { msg.value = { error: errorMessage(e) } } finally { busy.value = '' }
+}
+// the hard way: everything kept from Spotify – on the server and in this browser – is thrown away and fetched fresh
+async function clearCache() {
+  if (!confirm('Tømme alt som er mellomlagret fra Spotify (album, spillelister, sporlister)? Det hentes på nytt med en gang – tilkoblingen beholdes.')) return
+  busy.value = 'clear'
+  try {
+    await api('spotify_cache_clear', {})
+    await forgetSpotifyCache()
+    msg.value = { ok: `Mellomlageret er tømt – ${spotify.albums.length} album og ${spotify.playlists.length} spillelister hentet på nytt.` }
+  } catch (e) { msg.value = { error: errorMessage(e) } } finally { busy.value = '' }
 }
 const url = ref('')
 const note = ref('')
@@ -46,7 +56,11 @@ onMounted(() => { void loadDiscover() })
         <button v-for="s in LOCKS" :key="s" :class="{ on: spotify.lockSeconds === s }" :disabled="busy === 'lock' || locked" @click="setLock(s)">{{ s ? fmtLock(s) : 'Av' }}</button>
       </div>
       <p v-if="locked" class="muted">Låsen kan endres når den er ferdig.</p>
-      <button class="btn soft small" :disabled="busy === 'refresh'" @click="refresh"><RefreshCw :size="14" />Hent album og spillelister fra Spotify på nytt</button>
+      <div class="row">
+        <button class="btn soft small" :disabled="!!busy" @click="refresh"><RefreshCw :size="14" />Hent album og spillelister fra Spotify på nytt</button>
+        <button class="btn soft small" :disabled="!!busy" @click="clearCache"><Eraser :size="14" />{{ busy === 'clear' ? 'Tømmer …' : 'Tøm mellomlageret' }}</button>
+      </div>
+      <p class="muted">Ser hylla rar ut – album som mangler, gamle spillelister? «Tøm mellomlageret» kaster alt som er lagret fra Spotify, både på serveren og i denne nettleseren, og henter det ferskt.</p>
     </section>
 
     <section>
@@ -68,6 +82,8 @@ onMounted(() => { void loadDiscover() })
 </template>
 
 <style scoped>
+.row { display: flex; gap: 6px; flex-wrap: wrap; }
+.row .btn { display: inline-flex; align-items: center; gap: 5px; }
 .mu { display: grid; gap: 26px; }
 h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 1.05rem; }
 .muted { color: var(--text-3); font-size: 0.86rem; margin: 0 0 12px; }

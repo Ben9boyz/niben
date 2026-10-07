@@ -13,11 +13,12 @@ test('a room can have its own door and walls: only known places, kept when the t
   assert.equal(up.status, 200, up.text)
   assert.match(up.json.bilder.door, /^uploads\/photos\/[0-9a-f]+\.jpg$/)
   await alice.client.upload('about_image', { slot: 'wall_back' }, { name: 'w.png', bytes: PNG })
+  for (const slot of ['wall_right', 'floor']) assert.equal((await alice.client.upload('about_image', { slot }, { name: 'f.png', bytes: PNG })).status, 200, slot) // (the window wall and the floor too)
 
   // the text is saved: the pictures stay
   await alice.client.post('about_save', { tagline: 'x', tekst: '', lenker: [] })
   const about = (await alice.client.get('content')).json.about
-  assert.ok(about.bilder.door && about.bilder.wall_back)
+  assert.ok(about.bilder.door && about.bilder.wall_back && about.bilder.wall_right && about.bilder.floor)
 
   // the door shows in the list of rooms
   const rooms = (await owner.get('rooms')).json.rooms

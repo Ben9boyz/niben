@@ -17,7 +17,7 @@ function q_list(): array {
 }
 
 // the places a room can have its own picture: the door in the hall and two walls of the room
-const ABOUT_IMAGE_SLOTS = ['door', 'wall_back', 'wall_left'];
+const ABOUT_IMAGE_SLOTS = ['door', 'wall_back', 'wall_left', 'wall_right', 'floor'];
 
 function about_handle(string $action, bool $post): void {
     switch ($action) {

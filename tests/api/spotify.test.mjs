@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { Client, ownerClient, makeUser, visitorIn, mockSpotify, spotifyCalls, clearCalls, db, sleep } from './helpers.mjs'
 
-const WRITES = ['spotify_play', 'spotify_control', 'spotify_lock', 'spotify_save', 'spotify_unsave', 'spotify_follow', 'spotify_playlist_create', 'spotify_refresh', 'spotify_disconnect', 'spotify_groups_save']
+const WRITES = ['spotify_play', 'spotify_control', 'spotify_lock', 'spotify_save', 'spotify_unsave', 'spotify_follow', 'spotify_playlist_create', 'spotify_refresh', 'spotify_cache_clear', 'spotify_disconnect', 'spotify_groups_save']
 const names = (r) => r.json.albums.map((a) => a.name)
 
 test('only the logged-in owner of the room controls its music', async () => {
@@ -159,4 +159,27 @@ test('there are no folders to begin with; a room makes its own and may delete th
 
   const gone = await alice.client.post('spotify_groups_save', { groups: [] })
   assert.deepEqual(gone.json.groups, [])
+})
+
+test('emptying the Spotify cache throws away what this room kept – fresh from Spotify after, the connection stays, other rooms keep theirs', async () => {
+  mockSpotify({ albums: 2 })
+  const owner = await ownerClient()
+  const alice = await makeUser(owner)
+  const bob = await makeUser(owner)
+  db('connect', String(alice.id))
+  db('connect', String(bob.id))
+  assert.equal((await alice.client.get('spotify_public')).json.albums.length, 2)
+  assert.equal((await bob.client.get('spotify_public')).json.albums.length, 2)
+
+  const r = await alice.client.post('spotify_cache_clear')
+  assert.equal(r.status, 200, r.text)
+  assert.ok(r.json.removed >= 1, 'something was removed')
+  const full = () => spotifyCalls().filter((c) => /\/me\/albums\?limit=50/.test(c)).length
+  clearCalls()
+  await bob.client.get('spotify_public')
+  assert.equal(full(), 0, 'bob’s list was not touched')
+  const after = await alice.client.get('spotify_public')
+  assert.equal(after.json.connected, true, 'still connected')
+  assert.equal(after.json.albums.length, 2)
+  assert.equal(full(), 1, 'hers was fetched fresh from Spotify')
 })

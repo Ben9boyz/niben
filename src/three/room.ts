@@ -235,22 +235,36 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
 
   box(8.3, 3.2, 0.15, wallMat, 0, 1.6, -3.575)                     // back
   box(0.15, 3.2, 7.15, wallMat, -4.075, 1.6, -0.075)               // left
-  // The room's own wallpaper: a picture for the back wall and one for the left (the page has cut them to the walls' shapes: 8 × 3.2 m and 7 × 3.2 m)
+  // The room's own wallpaper: a picture for each wall and one for the floor (the page has cut them to the right shapes: back 8 × 3.2 m,
+  // left and right 7 × 3.2 m, the floor 8 × 7 m). The right wall's picture has the window cut out of it – the light still comes in.
   const muralMats: Record<string, THREE.MeshStandardMaterial> = {}
   const murals: Record<string, THREE.Mesh> = {}
-  function mural(slot: string, w: number, x: number, z: number, rotY: number): void {
-    const mat = new THREE.MeshStandardMaterial({ roughness: 0.92 })
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, 3.2), mat)
-    m.position.set(x, 1.6, z)
-    m.rotation.y = rotY
+  function mural(slot: string, geo: THREE.BufferGeometry, pos: [number, number, number], rot: [number, number, number]): void {
+    const mat = new THREE.MeshStandardMaterial({ roughness: 0.92, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })
+    const m = new THREE.Mesh(geo, mat)
+    m.position.set(...pos)
+    m.rotation.set(...rot)
     m.visible = false
+    m.receiveShadow = true
     m.userData.noCull = true
     scene.add(m)
     muralMats[slot] = mat
     murals[slot] = m
   }
-  mural('wall_back', 8, 0, -3.497, 0)
-  mural('wall_left', 7, -3.997, 0, Math.PI / 2)
+  /** A w × h picture with holes in it ([x0, y0, x1, y1] in metres from the picture's middle) – the uv still runs 0..1 over the whole picture. */
+  function holedPlane(w: number, h: number, holes: [number, number, number, number][]): THREE.BufferGeometry {
+    const shape = new THREE.Shape([new THREE.Vector2(-w / 2, -h / 2), new THREE.Vector2(w / 2, -h / 2), new THREE.Vector2(w / 2, h / 2), new THREE.Vector2(-w / 2, h / 2)])
+    for (const [x0, y0, x1, y1] of holes) shape.holes.push(new THREE.Path([new THREE.Vector2(x0, y0), new THREE.Vector2(x0, y1), new THREE.Vector2(x1, y1), new THREE.Vector2(x1, y0)]))
+    const g = new THREE.ShapeGeometry(shape)
+    const p = g.attributes.position!, uv = g.attributes.uv!
+    for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) + w / 2) / w, (p.getY(i) + h / 2) / h)
+    return g
+  }
+  mural('wall_back', new THREE.PlaneGeometry(8, 3.2), [0, 1.6, -3.497], [0, 0, 0])
+  mural('wall_left', new THREE.PlaneGeometry(7, 3.2), [-3.997, 1.6, 0], [0, Math.PI / 2, 0])
+  // (seen from inside the room the picture's left–right runs along +z: the window – z 1.0..2.4, y 0.9..2.3 – is a hole in it)
+  mural('wall_right', holedPlane(7, 3.2, [[1.0, 0.9 - 1.6, 2.4, 2.3 - 1.6]]), [3.997, 1.6, 0], [0, -Math.PI / 2, 0])
+  mural('floor', new THREE.PlaneGeometry(8, 7), [0, 0.003, 0], [-Math.PI / 2, 0, 0])
   const muralUrls: Record<string, string | null> = {}
   function setMurals(bilder: Record<string, string> | null | undefined): void {
     for (const slot of Object.keys(murals)) {
@@ -1194,6 +1208,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       }
       const o: DecorObject = { root: new THREE.Group(), item: { ...it } }
       o.root.userData.decorId = it.id
+      o.root.name = (it.mod ? 'mod-' : 'decor-') + it.id
       decorObjs.set(it.id, o)
       decorGroup.add(o.root)
       placeDecor(o)
