@@ -1,7 +1,7 @@
 import { markRaw, reactive, shallowReactive } from 'vue'
 import { api, errorMessage } from '@/composables/site/useAdmin'
 import { decor, loadDecor } from '@/composables/room/useDecor'
-import { catchUp, fromSaved, makeTank, newTrophies, toSaved, trophyOf, type Tank, type Trophy } from '@/lib/games/aquarium'
+import { catchUp, fillQuests, fromSaved, makeTank, newTrophies, toSaved, trophyOf, type Tank, type Trophy } from '@/lib/games/aquarium'
 
 // The aquarium games of the room: one tank per aquarium hobby. Loaded once (anybody can watch), played and saved by the room's
 // owner – a little after each change and when the page is left. The 3D room shows the same fish (Room.vue → setTankFish).
@@ -22,7 +22,7 @@ export function loadGame(id: string, mine: boolean): Promise<Game | null> {
         const s = fromSaved(r.state)
         const g: Game = reactive({ tank: markRaw(makeTank(s)), // (the tank itself is not reactive: it moves sixty times a second – the page reads it on its own beat)
          mine, away: 0, error: '', saving: false, dirty: false, won: [], level: null }) as Game
-        if (mine) { g.away = catchUp(s); if (g.away) g.dirty = true; newTrophies(s) } // (what the fish made while I was gone)
+        if (mine) { g.away = catchUp(s); fillQuests(s); if (g.away || s.quests.length) g.dirty = true; newTrophies(s) } // (what the fish made while I was gone; the quests ready)
         games.set(id, g)
         tankVersion.n++
         if (g.dirty) scheduleSave(id)

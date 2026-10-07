@@ -12,7 +12,7 @@ import { spotify, useSpotify, prefetchTracks, fetchTracks, fetchTempo, fetchQueu
 import { admin, canManage } from '@/composables/site/useAdmin'
 import { placed } from '@/composables/room/useModules'
 import { games, loadGame, tankVersion } from '@/composables/games/useAquarium'
-import { speciesOf } from '@/lib/games/aquarium'
+import { speciesOf, fishSize } from '@/lib/games/aquarium'
 import { useVinylNoise } from '@/composables/music/useVinylNoise'
 import { gfxPayload } from '@/composables/ui/useGraphics'
 import { accentHex } from '@/composables/ui/useAccent'
@@ -299,7 +299,7 @@ watch(() => ({ ...room.sel }), (s) => api?.setSelection(s), { deep: true })
 const tanks = computed(() => placed.value.filter((m) => m.kind.game === 'aquarium').map((m) => m.id))
 watch([() => tanks.value.join(), () => canManage.value], () => { for (const id of tanks.value) void loadGame(id, canManage.value) }, { immediate: true })
 watch([() => tankVersion.n, () => room.api, () => decor.items.length], () => {
-  for (const [id, g] of games) room.api?.setTankFish(id, g.tank.s.fish.map((f) => { const sp = speciesOf(f.sp); return { color: sp.color, color2: sp.color2, size: sp.size, speed: sp.speed } }))
+  for (const [id, g] of games) room.api?.setTankFish(id, g.tank.s.fish.map((f) => { const sp = speciesOf(f.sp); const gold = f.variant === 'gull'; return { color: gold ? '#ffd700' : sp.color, color2: gold ? '#ff9f1a' : sp.color2, size: fishSize(f), speed: sp.speed } }))
 })
 
 // the room's name tag belongs to the 3D view: drop it as soon as the pointer is over the panel or

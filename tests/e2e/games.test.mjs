@@ -71,3 +71,39 @@ test('in the 3D room the fish swim in the aquarium and a trophy stands as a cup'
   }
   assert.deepEqual(page.errors, [])
 })
+
+test('days of play: quests to claim, the fish book, a daily gift and a move to a new sea', async () => {
+  const owner = await ownerClient()
+  const u = await makeUser(owner)
+  const id = (await u.client.post('mod_add', { type: 'akvarium' })).json.item.id
+  // a tank well under way: level 31, a grown koi, a quest that is done
+  await u.client.post('mod_game_save', { id, state: { v: 2, coins: 5e5, total: 9e5, best: 31, fish: [{ id: 'k', sp: 'koi', hunger: 1, xp: 300, variant: 'skinnende', name: 'Kari' }], up: { tank: 2, food: 0, feeder: 0, magnet: 0 }, decor: { slott: 1 }, perks: {}, pearls: 0, pearlsEver: 0, prestiges: 0, dex: { koi: 3 }, quests: [{ id: 'q1', kind: 'feed', target: 5, base: 0, reward: 1000, pearls: 0, text: 'Gi fisken mat 5 ganger' }], daily: { day: '', streak: 0, best: 0 }, trophies: [], stats: { fed: 10, bought: 1, collected: 0, coins: 9e5, quests: 0, chests: 0, upgrades: 1, events: 0 }, last: Date.now() } })
+  const page = await loggedIn(u)
+  await page.evaluate((m) => { location.hash = `#/h/${m}` }, id)
+  await page.locator('.aq canvas').waitFor()
+
+  await page.getByRole('button', { name: 'Dagens gave' }).click()
+  await page.locator('.toast', { hasText: 'Dagens gave' }).waitFor()
+  await page.getByRole('tab', { name: /Oppdrag/ }).click()
+  await page.locator('.quest.done', { hasText: 'Gi fisken mat 5 ganger' }).getByRole('button', { name: 'Hent' }).click()
+  await page.locator('.toast', { hasText: 'Oppdrag fullført' }).waitFor()
+  await page.getByRole('tab', { name: /Fiskeboka/ }).click()
+  await page.locator('.dex.seen', { hasText: 'Koi' }).waitFor()
+  await page.getByRole('tab', { name: /Tanken/ }).click()
+  await page.locator('.mine-fish.skinnende', { hasText: 'Kari' }).waitFor()
+  if (process.env.SHOT) { await page.waitForTimeout(1500); fs.writeFileSync(process.env.SHOT.replace('.png', '-v2.png'), await page.locator('.aq').screenshot()) }
+
+  // level 31: a new sea
+  await page.getByRole('tab', { name: /Perler/ }).click()
+  page.once('dialog', (d) => d.accept())
+  await page.getByRole('button', { name: /Flytt til Korallrevet/ }).click()
+  await page.locator('.lvl', { hasText: 'Korallrevet' }).waitFor()
+  await page.waitForTimeout(9000) // (saved a moment after)
+  const st = (await u.client.get('mod_game_get', `&id=${id}`)).json.state
+  assert.equal(st.prestiges, 1)
+  assert.ok(st.pearls > 0)
+  assert.equal(st.fish.length, 0)
+  assert.equal(st.daily.streak, 1)
+  assert.equal(st.stats.quests, 1)
+  assert.deepEqual(page.errors, [])
+})
