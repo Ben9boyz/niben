@@ -1,7 +1,7 @@
 {
   "name": "niben-desktop",
   "productName": "niben",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "niben.no som app – alltid samme versjon som nettsiden",
   "main": "out/main.js",
   "private": true,
@@ -48,7 +48,8 @@
     "electronVersion": "44.5.1+wvcus",
     "electronDownload": {
       "mirror": "https://github.com/castlabs/electron-releases/releases/download/"
-    }
+    },
+    "afterPack": "out/vmp.js"
   },
   "devDependencies": {
     "electron": "github:castlabs/electron-releases#v44.5.1+wvcus",

@@ -45,7 +45,7 @@ php -S 127.0.0.1:8099   # (in a copy of public/ with a test _config.php)
 NIBEN_API=http://127.0.0.1:8099 npm run dev   # the frontend against a real api.php + MySQL instead of the mock
 ```
 
-Desktop apps: `cd desktop && npm install && npm run dist` (niben) / `npm run dist:music` (niben musikk).
+Desktop apps: `cd desktop && npm install && npm run dist` (niben) / `npm run dist:music` (niben musikk). Run `desktop/vmp-setup.sh` once first: Spotify only plays inside a VMP-signed build (castlabs EVS, free).
 
 `public/_config.php`, `public/_spotify.php` and uploads are deliberately **not** in this repository.
 

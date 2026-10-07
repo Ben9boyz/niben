@@ -3,6 +3,7 @@ import { api, admin, errorMessage } from '@/composables/site/useAdmin'
 import { playDevice, setLocalNow } from './useSpotify'
 import { loadSpotifySdk } from '@/lib/spotifySdk'
 import { trackGap, trackGapFor } from './useTrackGap'
+import { skipWatch } from '@/lib/skipStorm'
 
 // niben.no as a Spotify speaker (Spotify Web Playback SDK). Admin only: the browser shows up as a
 // device called "niben.no" in Spotify, and "Spill av" plays straight here. Needs Spotify Premium.
@@ -12,7 +13,14 @@ function stored(): boolean {
 }
 
 // the desktop app's Chromium has no DRM, which Spotify's streams need – there it controls other devices
-const noDrm = !!window.nibenApp && !window.nibenApp.drm
+const inApp = !!window.nibenApp
+// The app has a DRM module, but Spotify only hands out its licence to a build it trusts (VMP-signed). Where it does
+// not, every song fails to start and Spotify jumps on to the next one – four songs gone in a few seconds. When that
+// has been seen, the app leaves playing to the other Spotify devices (for a week; a signed build is then tried again).
+const BROKEN_KEY = 'niben-app-drm-broken'
+const WEEK = 7 * 86400 * 1000
+const drmBrokenBefore = (() => { try { return inApp && Date.now() - Number(localStorage.getItem(BROKEN_KEY) || 0) < WEEK } catch { return false } })()
+const noDrm = (inApp && !window.nibenApp?.drm) || drmBrokenBefore
 
 export type WebStatus = 'off' | 'loading' | 'ready' | 'reconnect' | 'error' | 'elsewhere' // elsewhere = another tab is the player
 export const web = reactive({
@@ -45,6 +53,19 @@ chan?.addEventListener('message', (e: MessageEvent<TakeMessage | undefined>) => 
 })
 
 let player: SpotifyPlayer | null = null
+const storm = skipWatch()
+let lastTrack: string | null = null
+/** The app cannot play Spotify itself after all: stop being a speaker, say so, and let plays go to my other devices. */
+function drmBroken(): void {
+  if (!inApp || web.unavailable) return
+  try { localStorage.setItem(BROKEN_KEY, String(Date.now())) } catch { /* private mode */ }
+  void player?.pause()
+  web.unavailable = true
+  web.enabled = false
+  fatal = true
+  stop()
+  fail('Appen får ikke spilt Spotify selv – musikken spilles på en av de andre Spotify-enhetene dine. Trykk play igjen.')
+}
 let gapper: ReturnType<typeof trackGapFor> | null = null // makes the pause between two songs (useTrackGap)
 let retryTimer = 0
 // ── the watchdog ──
@@ -141,9 +162,13 @@ export async function start({ force = false }: { force?: boolean } = {}): Promis
   p.addListener('initialization_error', ({ message }) => { fail(`Nettleseren støtter ikke Spotify-avspilling (${message}) – spiller på andre enheter.`); web.unavailable = true; fatal = true; stop() })
   p.addListener('authentication_error', () => { fatal = true; fail('Spotify godtok ikke innloggingen – koble til på nytt.') })
   p.addListener('account_error', () => { fatal = true; fail('Avspilling i nettleseren krever Spotify Premium.') })
-  p.addListener('playback_error', ({ message }) => { web.error = message })
+  p.addListener('playback_error', ({ message }) => { web.error = message; if (inApp && storm.note(performance.now())) drmBroken() })
   gapper = trackGapFor(p, () => web.volume)
   p.addListener('player_state_changed', (st) => {
+    // songs flying past by themselves in the app = Spotify refusing to play here (see drmBroken)
+    const cur = st?.track_window.current_track?.uri ?? null
+    if (inApp && cur && cur !== lastTrack && lastTrack && storm.note(performance.now())) { lastTrack = cur; drmBroken(); return }
+    lastTrack = cur
     gapper?.onState(st)
     activeHere = !!st
     web.paused = !st || st.paused
@@ -172,6 +197,7 @@ export async function start({ force = false }: { force?: boolean } = {}): Promis
   // pause / resume / seek go straight to the player when the music is playing here
   playDevice.control = async (op, ms) => {
     if (!player || !activeHere) return false
+    storm.user(performance.now()) // (songs changing after a press are wanted)
     gapper?.cancel() // (pressing something wins over the pause between songs)
     if (op === 'pause') await player.pause()
     else if (op === 'resume') await player.resume()
