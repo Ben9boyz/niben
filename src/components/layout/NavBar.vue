@@ -196,10 +196,12 @@ onBeforeUnmount(() => {
     </router-link>
 
     <!-- me: the room you are in (and the way between rooms) sits at the top of the rail, above Hjem -->
+    <!-- WHERE: the room you stand in – its picture set into a socket, its name under it -->
     <div v-if="!isPhone" class="where">
-      <ProfileMenu />
+      <span class="socket"><ProfileMenu /></span>
       <span v-if="whereName" class="where-name" :title="`Du står i rommet til ${whereName}`">{{ whereName }}</span>
     </div>
+    <span v-if="!isPhone" class="rule" aria-hidden="true"></span>
 
     <nav class="nav glass" :class="{ open: navOpen }" ref="track">
       <span
@@ -235,7 +237,7 @@ onBeforeUnmount(() => {
     <!-- the "you" zone rests on a light ash ledge: the way out (Gangen), how you see the room, and you -->
     <div v-if="!isPhone" class="ledge ash">
       <HallDoor />
-      <ViewSwitch />
+      <ViewSwitch rail />
       <!-- me / settings: my photo (logged in) or a cog – opens the menu with view, theme, language … -->
       <SettingsMenu />
     </div>
@@ -334,6 +336,8 @@ onBeforeUnmount(() => {
   .where-name { max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.66rem; font-weight: 700; color: var(--text-2); }
 }
 @media (min-width: 721px) and (max-height: 760px) { .where-name { display: none; } }
+.rule { display: none; }
+
 @media (min-width: 721px) {
   .ledge { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 8px 0; border-radius: 22px; }
   .ledge > * { margin: 0 !important; }
@@ -466,6 +470,31 @@ button.item { border: 0; background: transparent; font-family: inherit; cursor: 
   .item.active { background: var(--accent-soft); }
 }
 @media (min-width: 721px) { .mlogo { display: none; } }
+/* Desktop: the rail is ONE moulded body – the room you are in at the top, the menu as keys in the middle (the page you are on is
+   pressed down, with a light), and a pocket at the bottom with the hall, the 3D / 2D switch and you. Made of the room's style. */
+@media (min-width: 721px) {
+  .nav-wrap { width: 92px; padding: 14px 0 12px; gap: 12px; align-items: center; border-radius: 32px; background: var(--sk-surface, var(--glass-strong)); border: var(--sk-border, 1px solid var(--glass-border)); box-shadow: var(--sk-surface-sh, var(--shadow-2)); }
+  .socket { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--sk-sunk, var(--bg-2)); box-shadow: var(--sk-sunk-sh, inset 0 2px 5px rgba(0, 0, 0, 0.15)); }
+  .rule { display: block; flex: none; width: 44px; height: 4px; border-radius: 4px; background: var(--sk-sunk, var(--bg-2)); box-shadow: var(--sk-sunk-sh, inset 0 1px 2px rgba(0, 0, 0, 0.15)); }
+  .nav-wrap .nav.glass { align-items: center; gap: 10px; padding: 4px 0 8px; background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; overflow-x: visible; }
+  .nav-wrap .nav.glass::before { display: none; }
+  .nav-wrap .nav .drop { display: none; }
+  .nav-wrap .nav .item { flex: none; width: 64px; min-height: 60px; border-radius: 18px; background: var(--sk-key, var(--glass)); box-shadow: var(--sk-key-sh, var(--shadow-1)); transition: transform 0.12s, background 0.25s, box-shadow 0.25s, color 0.25s; }
+  .nav-wrap .nav .item:hover { color: var(--text); }
+  .nav-wrap .nav .item:active { transform: translateY(1px); }
+  .nav-wrap .nav .item.active { transform: translateY(1px); background: var(--sk-active, var(--sk-sunk, var(--bg-2))); box-shadow: var(--sk-active-sh, var(--sk-sunk-sh, inset 0 2px 5px rgba(0, 0, 0, 0.15))); color: var(--sk-active-ink, var(--accent-ink)); }
+  .nav-wrap .nav .item.active::after { content: ""; position: absolute; top: 7px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: var(--sk-glow, 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent)); }
+  .nav-wrap .ledge { width: 76px; padding: 10px 0; gap: 12px; border-radius: 26px; }
+  .nav-wrap .ledge :deep(.hd.glass), .nav-wrap .ledge :deep(.sm.glass) { background: var(--sk-key, var(--glass)); border: 0; box-shadow: var(--sk-key-sh, var(--shadow-1)); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .nav-wrap .ledge :deep(.hd.glass) { width: 64px; min-height: 66px; border-radius: 22px 22px 14px 14px; }
+  .nav-wrap .ledge :deep(.glass)::before, .nav-wrap .socket :deep(.glass)::before { display: none; }
+  .nav-wrap .socket :deep(.sm.profile) { background: transparent; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (min-width: 721px) and (max-height: 860px) {
+  .nav-wrap .nav .item { min-height: 52px; }
+  .nav-wrap .nav.glass { gap: 7px; }
+  .socket { width: 56px; height: 56px; }
+}
 </style>
 
 <style>

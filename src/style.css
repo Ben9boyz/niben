@@ -483,7 +483,7 @@ html.classic, html.classic body { height: auto; overflow: visible; overflow-x: c
 .cpage { width: min(var(--page-max, 1360px), 100%); margin: 0 auto; padding: 40px 32px 120px; }
 /* desktop: the nav is a rail on the left (see NavBar) – everything else keeps clear of it */
 :root { --rail: 0px; }
-@media (min-width: 721px) { :root { --rail: 92px; } }
+@media (min-width: 721px) { :root { --rail: 116px; } }
 html.player-shell { --rail: 0px; }
 #app > main { padding-left: var(--rail); }
 .cpage-head { margin-bottom: 28px; }
