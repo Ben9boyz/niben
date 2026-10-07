@@ -4,6 +4,7 @@
 #   ./deploy.sh sftp   – SFTP (virker ikke hos Webhuset med FTP-passordet)
 #   ./deploy.sh ftp api.php _spotify.inc.php   – bare disse filene (raskt)
 #   ./deploy.sh app    – desktop-appen (desktop/dist) til niben.no/app/
+#   ./deploy.sh clean  – rydd bort gamle byggfiler på serveren (spør før noe slettes)
 #
 # Lagre FTP-passordet i nøkkelringen én gang, så slipper du å skrive det:
 #   security add-generic-password -s niben-ftp -a <FTP-brukernavn> -w
@@ -21,8 +22,10 @@ MODE="${1:-ftp}"
 shift || true
 ONLY="$*" # optional: just these files
 
-echo "Bygger nettsiden …"
-npm run build
+if [ "$MODE" != "clean" ]; then
+  echo "Bygger nettsiden …"
+  npm run build
+fi
 cd dist
 
 upload_sftp() {
@@ -130,7 +133,47 @@ upload_app() {
   [ "$FAILED" = 0 ]
 }
 
-if [ "$MODE" = "app" ]; then
+# Old build files pile up on the server (every build gets new names). Delete the ones the live site no
+# longer uses: start from niben.no/index.html, follow every script it loads, keep those – and only ever
+# touch built script names (name-xxxxxxxx.js) and leftover temp files. Asks first (YES=1 skips that).
+clean_ftp() {
+  local live remote doomed n
+  live="$(mktemp)"; remote="$(mktemp)"; doomed="$(mktemp)"
+  echo "Finner filene siden bruker nå …"
+  if ! node ../scripts/live-files.mjs > "$live"; then echo "  Klarte ikke å lese hele den publiserte siden – rydder ikke."; return 1; fi
+  [ "$(wc -l < "$live")" -gt 10 ] || { echo "  Fant for få filer – rydder ikke."; return 1; }
+  ftp_password
+  printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sS --connect-timeout 20 --max-time 60 -K - --list-only -X "NLST -a" "ftp://$HOST/www/" | tr -d '\r' > "$remote" || { unset PASS; echo "  Fikk ikke lest mappa på serveren."; return 1; }
+  grep -E '^[A-Za-z0-9._-]+-[A-Za-z0-9_-]{8}(-[a-z0-9]+)?\.js$|^\.up-.*\.tmp$' "$remote" | grep -vxF -f "$live" > "$doomed" || true
+  n=$(wc -l < "$doomed" | tr -d ' ')
+  echo "  Siden bruker $(wc -l < "$live" | tr -d ' ') filer. $n gamle filer kan slettes:"
+  sed 's/^/    /' "$doomed"
+  if [ "$n" = 0 ]; then unset PASS; echo "  Ingenting å rydde."; return 0; fi
+  if [ "${YES:-}" != 1 ]; then
+    [ -t 0 ] || { unset PASS; echo "  (Ingenting slettet – kjør med YES=1 for å slette.)"; return 0; }
+    read -r -p "  Slette disse $n filene? (j/N) " ans
+    [ "$ans" = "j" ] || [ "$ans" = "J" ] || { unset PASS; echo "  Ingenting slettet."; return 0; }
+  fi
+  # 25 at a time, one connection each
+  local args=() k=0 gone=0
+  while IFS= read -r f; do
+    args+=(-Q "DELE $f"); k=$((k + 1))
+    if [ "$k" -ge 25 ]; then
+      printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sS --connect-timeout 20 --max-time 120 -K - "${args[@]}" "ftp://$HOST/www/" -o /dev/null && gone=$((gone + k))
+      args=(); k=0
+    fi
+  done < "$doomed"
+  if [ "$k" -gt 0 ]; then
+    printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sS --connect-timeout 20 --max-time 120 -K - "${args[@]}" "ftp://$HOST/www/" -o /dev/null && gone=$((gone + k))
+  fi
+  unset PASS
+  echo "  Slettet $gone gamle filer."
+}
+
+if [ "$MODE" = "clean" ]; then
+  clean_ftp || exit 1
+  exit 0
+elif [ "$MODE" = "app" ]; then
   upload_app || { echo "Noen filer feilet – se meldingene over."; exit 1; }
 elif [ "$MODE" = "ftp" ]; then
   upload_ftp || { echo "Noen filer feilet – se meldingene over."; exit 1; }
