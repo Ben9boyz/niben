@@ -150,17 +150,18 @@ const myRoom = () => { if (account.user) void setRoom(account.user.username) }
         <span>Du ser et annet rom akkurat nå. Gå til ditt eget for å redigere.</span>
         <button class="btn primary small" @click="myRoom"><DoorOpen :size="14" />Til mitt rom</button>
       </div>
-      <template v-else>
-        <nav class="tabs groups" role="tablist" aria-label="Admin">
-          <button v-for="g in GROUPS" :key="g.id" role="tab" :aria-selected="group?.id === g.id" :class="{ on: group?.id === g.id }" @click="tab = g.tabs[0]?.id ?? tab">
-            <component :is="g.icon" :size="16" aria-hidden="true" /><span>{{ g.label }}</span>
+    </template>
+    <!-- one sidebar, one level: every page of the admin in a list, grouped under small headings (a group of one is just its name) -->
+    <div v-if="signedIn && account.mine" class="adm">
+      <nav class="anav" role="tablist" aria-label="Admin" aria-orientation="vertical">
+        <div v-for="g in GROUPS" :key="g.id" class="ag">
+          <span v-if="g.tabs.length > 1" class="agl">{{ g.label }}</span>
+          <button v-for="t in g.tabs" :key="t.id" type="button" role="tab" :aria-selected="shownTab === t.id" :class="{ on: shownTab === t.id }" @click="tab = t.id">
+            <component :is="g.tabs.length > 1 ? t.icon : g.icon" :size="16" aria-hidden="true" /><span>{{ g.tabs.length > 1 ? t.label : g.label }}</span>
           </button>
-        </nav>
-        <nav v-if="group && group.tabs.length > 1" class="tabs sub" role="tablist" :aria-label="group.label">
-          <button v-for="t in group.tabs" :key="t.id" role="tab" :aria-selected="shownTab === t.id" :class="{ on: shownTab === t.id }" @click="tab = t.id">{{ t.label }}</button>
-        </nav>
-      </template>
-      <div v-if="account.mine" class="body">
+        </div>
+      </nav>
+      <div class="body">
         <transition name="fade" mode="out-in">
           <AdminOverview v-if="shownTab === 'oversikt'" key="v" @goto="gotoTab" />
           <AdminUsers v-else-if="shownTab === 'brukere'" key="u" />
@@ -176,7 +177,7 @@ const myRoom = () => { if (account.user) void setRoom(account.user.username) }
           <AdminHobbies v-else key="hb2" />
         </transition>
       </div>
-    </template>
+    </div>
   </section>
 </template>
 
@@ -230,7 +231,23 @@ const myRoom = () => { if (account.user) void setRoom(account.user.username) }
 .linkbtn:hover { color: var(--text); }
 .tabs button:hover { color: var(--text); }
 .tabs button.on { background: var(--accent-soft); color: var(--accent); }
+.adm { display: grid; grid-template-columns: 200px minmax(0, 1fr); flex: 1; min-height: 0; border-top: 1px solid var(--glass-border); }
+.anav { display: flex; flex-direction: column; gap: 10px; padding: 16px 10px 20px 16px; overflow-y: auto; min-height: 0; border-right: 1px solid var(--glass-border); scrollbar-width: none; }
+.ag { display: flex; flex-direction: column; gap: 2px; }
+.agl { padding: 6px 12px 4px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
+.anav button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 0 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text-2); font: 600 0.92rem var(--font); text-align: left; cursor: pointer; transition: background 0.2s, color 0.2s, box-shadow 0.2s; }
+.anav button:hover { color: var(--text); background: var(--accent-soft); }
+.anav button.on { color: var(--accent-ink); background: var(--glass-strong); box-shadow: inset 0 1px 0 var(--glass-hi), var(--shadow-1); }
+:root[data-skin] .anav button.on { background: var(--sk-active); box-shadow: var(--sk-active-sh); color: var(--sk-active-ink); }
 .body { overflow-y: auto; padding: 18px 24px 24px; min-height: 0; overscroll-behavior: contain; }
+/* narrow: the list lies down as one scrolling row above the page */
+@media (max-width: 900px) {
+  .adm { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .anav { flex-direction: row; gap: 4px; padding: 10px 12px; overflow-x: auto; overflow-y: hidden; border-right: 0; border-bottom: 1px solid var(--glass-border); }
+  .ag { flex-direction: row; flex: none; gap: 4px; }
+  .agl { display: none; }
+  .anav button { width: auto; flex: none; white-space: nowrap; }
+}
 @media (max-width: 900px) {
   .head { padding: 16px 18px 10px; }
   .body { padding: 14px 16px 18px; }

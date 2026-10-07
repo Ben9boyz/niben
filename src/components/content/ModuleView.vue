@@ -311,7 +311,7 @@ void decor
 
     <!-- checklist -->
     <template v-else-if="mod.kind.layout === 'checklist'">
-      <div v-if="items.length" class="prog"><span>{{ done }} av {{ items.length }}</span><i><u :style="{ width: (done / items.length) * 100 + '%' }"></u></i></div>
+      <div v-if="items.length" class="prog"><span>{{ done }} av {{ items.length }}</span><i class="water-tube"><u class="water" :style="{ width: (done / items.length) * 100 + '%' }"></u></i></div>
       <ul class="chk">
         <li v-for="{ e, i } in shown" :key="i" :class="{ ok: e.done }">
           <button class="box" :disabled="!mine" :aria-label="e.done ? 'Ikke gjort' : 'Gjort'" @click="toggle(i)"><Check v-if="e.done" :size="14" /></button>
@@ -392,7 +392,7 @@ void decor
 .log, .chk { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .log button { all: unset; box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 90px 1fr auto auto auto; gap: 10px; align-items: baseline; padding: 9px 4px; border-bottom: 1px solid var(--glass-border); cursor: pointer; }
 .log button:disabled { cursor: default; } .log time, .log span { color: var(--text-3); font-size: 0.82rem; } .log em { font-style: normal; font-weight: 800; color: var(--mc); }
-.prog { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-3); } .prog i { flex: 1; height: 8px; border-radius: 99px; background: color-mix(in srgb, var(--mc) 20%, transparent); overflow: hidden; } .prog u { display: block; height: 100%; background: var(--mc); transition: width 0.5s var(--spring, ease); }
+.prog { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-3); } .prog i { flex: 1; height: 12px; padding: 2px; } .prog u { display: block; height: 100%; min-width: 6px; --water-1: color-mix(in srgb, var(--mc) 65%, #fff); --water-2: var(--mc); transition: width 0.5s var(--spring, ease); }
 .chk li { display: flex; align-items: center; gap: 10px; padding: 8px 2px; border-bottom: 1px solid var(--glass-border); }
 .box { all: unset; width: 24px; height: 24px; border-radius: 8px; border: 2px solid var(--mc); display: grid; place-items: center; cursor: pointer; flex: none; } .ok .box { background: var(--mc); color: #fff; }
 .txt { all: unset; display: flex; flex-direction: column; flex: 1; cursor: pointer; } .ok .txt b { text-decoration: line-through; opacity: 0.55; } .txt small { color: var(--text-3); }

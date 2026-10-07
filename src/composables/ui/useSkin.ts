@@ -2,25 +2,26 @@ import { computed, watch } from 'vue'
 import { siteTexts } from '@/composables/site/useTexts'
 
 // The room's material ("stil"): what its buttons, cards and tabs are made of. Like the accent colour, the owner picks it
-// under Admin → Profil and it is kept with the room's texts (key theme.skin), so every visitor sees the owner's choice.
-// Nothing is set for the standard: the stylesheet's own aluminium-and-glass look is used, exactly as before.
+// under Admin → Rommet → Utseende and it is kept with the room's texts (key theme.skin), so every visitor sees the owner's choice.
+// A room that has not chosen gets Taster. 'alu' is the site's first look (style.css alone, no data-skin).
 // Every skin takes its colour from the accent, so all of them work with any colour. The looks live in skins.css.
 export const SKIN_KEY = 'theme.skin'
-export type SkinId = 'clay' | 'keys' | 'material' | 'skeu' | 'flat' | 'glass'
-export const SKINS: { id: SkinId | null; label: string; hint: string }[] = [
-  { id: null, label: 'Standard', hint: 'Aluminium og glass' },
+export type SkinId = 'keys' | 'clay' | 'material' | 'skeu' | 'flat' | 'glass' | 'alu'
+export const DEFAULT_SKIN: SkinId = 'keys'
+export const SKINS: { id: SkinId; label: string; hint: string }[] = [
+  { id: 'keys', label: 'Taster', hint: 'Myk plast med lysende prikker (standard)' },
   { id: 'clay', label: 'Leire', hint: 'Matt og kornete, koselig' },
-  { id: 'keys', label: 'Taster', hint: 'Myk plast med lysende prikker' },
   { id: 'material', label: 'Material', hint: 'Toner av fargen din, runde knapper' },
   { id: 'skeu', label: 'Skeuomorf', hint: 'Lin, papir og blanke knapper' },
   { id: 'flat', label: 'Flat', hint: 'Ingen skygger, rene former' },
   { id: 'glass', label: 'Glass', hint: 'Frostet glass over farger' },
+  { id: 'alu', label: 'Aluminium', hint: 'Børstet metall og glass' },
 ]
 
-/** A known skin id, or null (the standard look, or anything unknown). */
-export function validSkin(v: string | null | undefined): SkinId | null {
+/** The skin a stored value means: a known id, else the standard (Taster). */
+export function validSkin(v: string | null | undefined): SkinId {
   const s = (v ?? '').trim()
-  return SKINS.some((k) => k.id === s) ? (s as SkinId) : null
+  return SKINS.some((k) => k.id === s) ? (s as SkinId) : DEFAULT_SKIN
 }
 
 export const skinId = computed(() => validSkin(siteTexts[SKIN_KEY]))
@@ -40,7 +41,7 @@ function loadRoboto(): void {
 export function useSkin(): void {
   watch(skinId, (id) => {
     const el = document.documentElement
-    if (!id) { delete el.dataset.skin; return }
+    if (id === 'alu') { delete el.dataset.skin; return }
     if (id === 'material') loadRoboto()
     el.dataset.skin = id
   }, { immediate: true })

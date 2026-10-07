@@ -372,7 +372,10 @@
 
 :root[data-skin] .paper { background: var(--sk-surface); border: var(--sk-border); box-shadow: var(--sk-surface-sh); }
 :root[data-skin] .groove, :root[data-skin] .water-tube, :root[data-skin] .ash { background: var(--sk-sunk); box-shadow: var(--sk-sunk-sh); }
-:root[data-skin] .water { background: var(--sk-fill); box-shadow: var(--sk-fill-sh); }
+:root[data-skin] { --water-1: color-mix(in srgb, var(--accent) 62%, #fff); --water-2: var(--accent); }
+:root[data-skin="flat"] .water, :root[data-skin="material"] .water { background: var(--water-2); box-shadow: none; }
+:root[data-skin] .progress { background: var(--sk-sunk); box-shadow: var(--sk-sunk-sh); }
+:root[data-skin] .progress > span { background: var(--sk-fill); box-shadow: var(--sk-fill-sh); }
 
 :root[data-skin] .btn {
   background: var(--sk-key);

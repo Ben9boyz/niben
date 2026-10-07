@@ -7,7 +7,7 @@ import AdminPanel from '../panels/AdminPanel.vue'
 </template>
 
 <style scoped>
-.wide { width: min(900px, 100%); }
+.wide { width: min(1180px, 100%); }
 .wide :deep(.admin) { max-height: none; }
 .wide :deep(.body) { overflow: visible; }
 </style>

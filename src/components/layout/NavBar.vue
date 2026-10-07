@@ -13,8 +13,13 @@ import { Menu, X, Footprints, Disc3, Library, Smartphone } from 'lucide-vue-next
 import { room } from '@/composables/room/useRoom'
 import { targetEl } from '@/lib/dom'
 import { mode } from '@/composables/ui/useMode'
+import { rooms } from '@/composables/room/useRooms'
+import { useData } from '@/composables/site/useData'
 
 const route = useRoute()
+const siteData = useData()
+// the top zone of the rail says where you are: the picture and the name of the room you stand in
+const whereName = computed(() => rooms.current || siteData.profile.username || '')
 const router = useRouter()
 
 // Hidden way into the admin page: double-click (or long-press) the logo
@@ -52,6 +57,11 @@ const closeNav = () => { navOpen.value = false }
 const onNavDoc = (e: Event) => { if (navOpen.value && !targetEl(e).closest('.nav-wrap')) closeNav() }
 const onNavKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeNav() }
 const scrolled = ref(false)
+// phones, plain version: the menu is a tab bar along the bottom (like an app). Not on the music page, which has its own
+// bottom unit (player + Bibliotek / Søk) – there the menu stays behind the button in the corner. The 3D room keeps the corner
+// button too: the bottom of the screen belongs to the sheet with the page.
+const tabbar = computed(() => isPhone.value && mode.value === 'enkel' && route.name !== 'lytte')
+watch(tabbar, (v) => document.documentElement.classList.toggle('tabbar', v), { immediate: true })
 
 function place() {
   const idx = links.value.findIndex((l) => l.name === activeGroup.value)
@@ -156,6 +166,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   setHidden(false)
+  document.documentElement.classList.remove('tabbar')
   window.removeEventListener('resize', place)
   window.removeEventListener('scroll', onScroll)
   document.removeEventListener('pointerdown', onNavDoc)
@@ -185,7 +196,10 @@ onBeforeUnmount(() => {
     </router-link>
 
     <!-- me: the room you are in (and the way between rooms) sits at the top of the rail, above Hjem -->
-    <ProfileMenu v-if="!isPhone" />
+    <div v-if="!isPhone" class="where">
+      <ProfileMenu />
+      <span v-if="whereName" class="where-name" :title="`Du står i rommet til ${whereName}`">{{ whereName }}</span>
+    </div>
 
     <nav class="nav glass" :class="{ open: navOpen }" ref="track">
       <span
@@ -237,7 +251,7 @@ onBeforeUnmount(() => {
   </teleport>
   <!-- phones: the whole menu sits behind the logo (tap it); the settings cog is in the other corner -->
   <div v-if="isPhone" class="mbar" aria-hidden="true"></div>
-  <button v-if="isPhone" class="mlogo glass" :aria-expanded="navOpen" aria-label="Meny" @click="navOpen = !navOpen" @dblclick.prevent="toAdmin" @pointerdown="pressStart" @pointerup="pressEnd" @pointerleave="pressEnd"><X v-if="navOpen" :size="24" aria-hidden="true" /><Menu v-else :size="24" aria-hidden="true" /></button>
+  <button v-if="isPhone && !tabbar" class="mlogo glass" :aria-expanded="navOpen" aria-label="Meny" @click="navOpen = !navOpen" @dblclick.prevent="toAdmin" @pointerdown="pressStart" @pointerup="pressEnd" @pointerleave="pressEnd"><X v-if="navOpen" :size="24" aria-hidden="true" /><Menu v-else :size="24" aria-hidden="true" /></button>
   <!-- phones: the way between the 3D room and the plain version sits flat in the bar, next to the menu -->
   <ViewSwitch v-if="isPhone" />
   <ProfileMenu v-if="isPhone" />
@@ -314,6 +328,12 @@ onBeforeUnmount(() => {
 }
 .drop.ready { opacity: 1; }
 .ledge { display: none; }
+.where { display: none; }
+@media (min-width: 721px) {
+  .where { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .where-name { max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.66rem; font-weight: 700; color: var(--text-2); }
+}
+@media (min-width: 721px) and (max-height: 760px) { .where-name { display: none; } }
 @media (min-width: 721px) {
   .ledge { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 8px 0; border-radius: 22px; }
   .ledge > * { margin: 0 !important; }
@@ -480,8 +500,21 @@ html.flying [aria-label="Underfaner"], html.flying .msw .cam { opacity: 0; anima
   html body .sm.sm { position: fixed; top: calc(12px + env(safe-area-inset-top)); right: 12px; width: 42px; height: 42px; z-index: 41; }
   html.classic body .sm.sm { box-shadow: none; }
 }
+/* phones, plain version: the tab bar along the bottom – every tab with its icon and name, the one you are on set into the bar */
+@media (max-width: 720px) {
+  html.tabbar .nav-wrap .nav { top: auto; bottom: calc(10px + env(safe-area-inset-bottom)); left: 10px; right: 10px; width: auto; flex-direction: row; gap: 2px; padding: 6px; border-radius: 24px; transform: none; opacity: 1; visibility: visible; pointer-events: auto; transition: transform 0.35s var(--ease), opacity 0.25s; }
+  html.tabbar .nav-wrap .nav .drop { display: block; top: 6px; bottom: 6px; border-radius: 18px; }
+  html.tabbar .nav-wrap .nav .item { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: 3px; padding: 8px 0 6px; border-radius: 18px; }
+  html.tabbar .nav-wrap .nav .item.active { background: transparent; }
+  html.tabbar .nav-wrap .nav .item .label { display: block; font-size: 0.64rem; line-height: 1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
 /* phones: the menu slides away while scrolling down (class set in the script) */
 @media (max-width: 720px) {
   html.nav-hidden .nav-wrap { transform: translateY(calc(100% + 28px)); opacity: 0; pointer-events: none; }
+  html.nav-hidden.tabbar .nav-wrap .nav { transform: translateY(calc(100% + 28px)); opacity: 0; pointer-events: none; }
+  /* with the tab bar the corner button is gone: the 3D switch moves into its place, and the page keeps clear of the bar */
+  html.tabbar body .vs.vs { left: 10px; }
+  html.tabbar.classic .mtop { padding-left: 84px; }
+  html.tabbar .cpage { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 }
 </style>

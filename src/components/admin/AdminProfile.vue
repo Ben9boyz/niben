@@ -5,7 +5,7 @@ import { api, errorMessage, shrinkImage, account } from '@/composables/site/useA
 import { reloadData, useData, type About, type AboutLink, type Question } from '@/composables/site/useData'
 import { siteTexts, setTexts } from '@/composables/site/useTexts'
 import { ACCENTS, ACCENT_KEY, DEFAULT_ACCENT, accentHex, validAccent } from '@/composables/ui/useAccent'
-import { SKINS, SKIN_KEY, skinId, validSkin, type SkinId } from '@/composables/ui/useSkin'
+import { SKINS, SKIN_KEY, DEFAULT_SKIN, skinId, validSkin, type SkinId } from '@/composables/ui/useSkin'
 import { milestones, loadMilestones, setMilestones, type Milestone } from '@/composables/site/useMilestones'
 import { thumb } from '../../lib/photos'
 import ImageCropper from '@/components/ui/ImageCropper.vue'
@@ -48,10 +48,10 @@ async function setAccent(hex: string | null) {
 const pickCustom = (e: Event) => { void setAccent((e.target as HTMLInputElement).value) }
 
 // ── material (the room's style: Leire, Taster, Material …) ──
-async function setSkin(id: SkinId | null) {
+async function setSkin(id: SkinId) {
   const v = validSkin(id)
   const texts: Record<string, string> = { ...siteTexts }
-  if (v) texts[SKIN_KEY] = v; else delete texts[SKIN_KEY]
+  if (v !== DEFAULT_SKIN) texts[SKIN_KEY] = v; else delete texts[SKIN_KEY]
   setTexts(texts) // (the page changes material at once)
   busy.value = 'skin'
   try { setTexts((await api<{ texts: Record<string, string> }>('texts_save', { texts })).texts); flash('Stilen er lagret.') } catch (e) { fail(e) } finally { busy.value = '' }
@@ -197,7 +197,7 @@ onMounted(() => { void loadAbout(); void loadMilestones(true) })
       <h3>Stil</h3>
       <p class="muted">Hva rommet ditt er laget av: knapper, kort og faner. Alle som besøker rommet ser stilen du velger, og alle passer med fargen din.</p>
       <div class="skins" role="radiogroup" aria-label="Stil">
-        <button v-for="k in SKINS" :key="k.id ?? 'std'" type="button" class="skin" role="radio" :aria-checked="skinId === k.id" :class="{ on: skinId === k.id }" :disabled="busy === 'skin'" :data-pv="k.id ?? 'std'" @click="setSkin(k.id)">
+        <button v-for="k in SKINS" :key="k.id" type="button" class="skin" role="radio" :aria-checked="skinId === k.id" :class="{ on: skinId === k.id }" :disabled="busy === 'skin'" :data-pv="k.id" @click="setSkin(k.id)">
           <span class="pv" aria-hidden="true"><i class="pv-card"><i class="pv-bar"></i><i class="pv-btn"></i><i class="pv-key"></i></i></span>
           <b>{{ k.label }}</b>
           <small>{{ k.hint }}</small>
@@ -304,10 +304,10 @@ textarea, input, select { width: 100%; box-sizing: border-box; }
 .pv-bar { position: absolute; left: 10px; right: 10px; top: 10px; height: 8px; border-radius: 4px; }
 .pv-btn { position: absolute; left: 10px; bottom: 10px; width: 46%; height: 18px; border-radius: 7px; background: var(--accent); }
 .pv-key { position: absolute; right: 10px; bottom: 10px; width: 22%; height: 18px; border-radius: 7px; }
-[data-pv="std"] .pv { background: linear-gradient(160deg, #f4f1ec, #e6e9ee); }
-[data-pv="std"] .pv-card { background: rgba(255, 255, 255, 0.75); box-shadow: 0 6px 16px rgba(60, 45, 25, 0.12), inset 0 1px 0 #fff; }
-[data-pv="std"] .pv-bar { background: #dfe2e6; }
-[data-pv="std"] .pv-key { background: linear-gradient(180deg, #fff, #e3e7eb); box-shadow: 0 0 0 1px #cdd3da; }
+[data-pv="alu"] .pv { background: linear-gradient(160deg, #f4f1ec, #e6e9ee); }
+[data-pv="alu"] .pv-card { background: rgba(255, 255, 255, 0.75); box-shadow: 0 6px 16px rgba(60, 45, 25, 0.12), inset 0 1px 0 #fff; }
+[data-pv="alu"] .pv-bar { background: #dfe2e6; }
+[data-pv="alu"] .pv-key { background: linear-gradient(180deg, #fff, #e3e7eb); box-shadow: 0 0 0 1px #cdd3da; }
 [data-pv="clay"] .pv { background: color-mix(in oklab, var(--accent) 4%, #e9e0d2); }
 [data-pv="clay"] .pv-card { background: color-mix(in oklab, var(--accent) 2%, #f8f2e9); box-shadow: inset 0 1px 0 #fff, 0 10px 16px -8px rgba(90, 70, 50, 0.5); }
 [data-pv="clay"] .pv-bar { background: color-mix(in oklab, var(--accent) 10%, #e1d9cc); box-shadow: inset 0 1px 3px rgba(90, 70, 50, 0.3); }

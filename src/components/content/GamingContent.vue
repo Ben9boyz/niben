@@ -115,7 +115,7 @@ const coverFailed = (g: Pick<SteamGame, 'appid'>) => { noCover.value = new Set(n
       <section v-if="lib?.genres?.length || plat.length" class="sec">
         <b class="label-caps">{{ tx('gaming.how') }}</b>
         <ul v-if="lib?.genres?.length" class="genres">
-          <li v-for="g in lib.genres" :key="g.name"><span>{{ g.name }}</span><span class="bar"><i :style="{ width: `${(g.hours / maxGenre) * 100}%` }"></i></span><small>{{ fmtHours(g.hours) }}</small></li>
+          <li v-for="g in lib.genres" :key="g.name"><span>{{ g.name }}</span><span class="bar water-tube"><i class="water" :style="{ width: `${(g.hours / maxGenre) * 100}%` }"></i></span><small>{{ fmtHours(g.hours) }}</small></li>
         </ul>
         <p v-if="plat.length" class="platform"><Monitor :size="13" />{{ plat.map((x) => `${x.n} ${x.pct} %`).join(' · ') }}</p>
         <p v-if="lib?.longest" class="platform"><Trophy :size="13" />Mest spilt: <b>{{ lib.longest.name }}</b> – {{ fmtHours(lib.longest.hours) }}</p>
@@ -147,7 +147,7 @@ const coverFailed = (g: Pick<SteamGame, 'appid'>) => { noCover.value = new Set(n
               <img :src="headerImg(g.appid)" alt="" loading="lazy" />
               <span class="tm">
                 <b>{{ g.name }}</b>
-                <span class="bar"><i :style="{ width: `${(g.hours / maxHours) * 100}%` }"></i></span>
+                <span class="bar water-tube"><i class="water" :style="{ width: `${(g.hours / maxHours) * 100}%` }"></i></span>
               </span>
               <span class="hrs">{{ fmtHours(g.hours) }}</span>
             </a>
@@ -242,8 +242,8 @@ const coverFailed = (g: Pick<SteamGame, 'appid'>) => { noCover.value = new Set(n
 .top img { flex: none; width: 76px; aspect-ratio: 460 / 215; border-radius: 6px; object-fit: cover; background: var(--accent-soft); }
 .tm { flex: 1; min-width: 0; display: grid; gap: 5px; }
 .tm b { font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bar { display: block; height: 4px; border-radius: 4px; background: var(--accent-soft); overflow: hidden; }
-.bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent-2), var(--accent)); }
+.bar { display: block; height: 8px; padding: 1.5px; }
+.bar i { display: block; height: 100%; min-width: 4px; --water-1: var(--accent-2); --water-2: var(--accent); }
 .hrs { flex: none; font-size: 0.78rem; font-weight: 600; color: var(--text-2); font-variant-numeric: tabular-nums; }
 
 .now { display: grid; gap: 10px; padding: 12px; border-radius: 16px; background: var(--glass-strong); border: 1px solid var(--glass-border); min-width: 0; }

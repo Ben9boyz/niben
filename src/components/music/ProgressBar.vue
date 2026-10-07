@@ -23,7 +23,7 @@ async function seek(e: MouseEvent) {
 <template>
   <div v-if="now?.duration_ms" class="pb" :class="layout">
     <span class="t0">{{ fmtClock(progressMs / 1000) }}</span>
-    <div class="bar" :class="{ seekable: canSeek }" :title="admin.mine && locked ? 'Låst – hør ferdig' : undefined" @click="seek"><i :style="{ width: `${pct}%` }"></i></div>
+    <div class="bar water-tube" :class="{ seekable: canSeek }" :title="admin.mine && locked ? 'Låst – hør ferdig' : undefined" @click="seek"><i class="water" :style="{ width: `${pct}%` }"></i></div>
     <span class="t1">{{ fmtClock(now.duration_ms / 1000) }}</span>
   </div>
 </template>
@@ -36,10 +36,10 @@ async function seek(e: MouseEvent) {
 .pb.below .bar { grid-area: bar; }
 .pb.below .t0 { grid-area: t0; }
 .pb.below .t1 { grid-area: t1; text-align: right; }
-.bar { position: relative; height: 4px; border-radius: 4px; background: var(--accent-soft); overflow: hidden; transition: height 0.15s; }
-.bar i { display: block; height: 100%; background: var(--accent); transition: width 1s linear; }
+.bar { position: relative; height: 6px; overflow: visible; transition: height 0.15s; }
+.bar i { display: block; height: 100%; --water-1: var(--accent-2); --water-2: var(--accent); transition: width 1s linear; }
 .bar.seekable { cursor: pointer; }
-.bar.seekable:hover { height: 6px; }
-.bar.seekable:hover i { background: #1db954; }
+.bar.seekable:hover { height: 9px; }
+.bar.seekable:hover i { --water-1: #5ee08c; --water-2: #1db954; }
 .bar.seekable::before { content: ''; position: absolute; inset: -8px 0; } /* a bigger click target */
 </style>

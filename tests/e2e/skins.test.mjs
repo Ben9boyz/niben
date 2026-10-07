@@ -16,7 +16,7 @@ test('a room owner picks a material (Leire) and it is kept for the room', async 
   await page.getByLabel(/^Passord/).fill(u.password)
   await Promise.all([page.waitForEvent('load'), page.getByRole('button', { name: 'Logg inn' }).last().click()])
   await page.locator('.side .it').first().waitFor()
-  assert.equal(await page.evaluate(() => document.documentElement.dataset.skin ?? null), null) // the standard look
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.skin), 'keys') // the standard: Taster
   await page.getByRole('tab', { name: /Rommet/ }).first().click()
   await page.getByRole('radio', { name: /^Leire/ }).click()
   await page.getByText('Stilen er lagret.').waitFor()
@@ -24,8 +24,8 @@ test('a room owner picks a material (Leire) and it is kept for the room', async 
   // saved with the room: still there after a reload (it comes back from the server with the room's texts)
   await page.reload()
   await page.waitForFunction(() => document.documentElement.dataset.skin === 'clay')
-  // back to the standard: the attribute goes away
+  // the first look of the site: no skin at all
   await page.getByRole('tab', { name: /Rommet/ }).first().click()
-  await page.getByRole('radio', { name: /^Standard/ }).click()
+  await page.getByRole('radio', { name: /^Aluminium/ }).click()
   await page.waitForFunction(() => !document.documentElement.dataset.skin)
 })

@@ -46,8 +46,8 @@ test('Hobbyer is the room’s menu as well: the corners and hobbies sit under th
   await page.getByRole('button', { name: 'Logg inn' }).last().click()
   await page.waitForFunction(() => document.cookie.includes('niben_r='))
   await page.goto(`${process.env.NIBEN_APP}/#/admin`)
-  await page.locator('.tabs.groups button', { hasText: 'Hobbyer' }).click()
-  assert.equal(await page.locator('.tabs.sub button', { hasText: 'Faner' }).count(), 0, 'no tab editor of its own any more')
+  await page.locator('.anav button', { hasText: 'Hobbyer' }).click()
+  assert.equal(await page.locator('.anav button', { hasText: 'Faner' }).count(), 0, 'no tab editor of its own any more')
   await page.locator('.side .it', { hasText: 'Japansk' }).click()
   assert.equal(await page.locator('.tabsel select').inputValue(), 'lare', 'Japansk sits under Lære')
 

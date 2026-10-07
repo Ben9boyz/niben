@@ -5,6 +5,7 @@ import MusicToast from '@/components/music/MusicToast.vue'
 import { useMediaSession } from '@/composables/music/useMediaSession'
 import { defineAsyncComponent } from 'vue'
 import SubTabs from '@/components/layout/SubTabs.vue'
+import PageTrail from '@/components/layout/PageTrail.vue'
 import DropTray from '@/components/music/DropTray.vue'
 import GlobalMini from '@/components/music/GlobalMini.vue'
 import ShortcutsHelp from '@/components/layout/ShortcutsHelp.vue'
@@ -44,6 +45,7 @@ const toTop = () => window.scrollTo(0, 0)
     </div>
     <WeatherFx />
     <main>
+      <PageTrail />
       <SubTabs class="flat-tabs" />
       <router-view v-slot="{ route: r }">
         <transition name="page" mode="out-in" type="transition" @before-enter="toTop">
