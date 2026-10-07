@@ -157,7 +157,9 @@ clean_ftp() {
   # 25 at a time, one connection each
   local args=() k=0 gone=0
   while IFS= read -r f; do
-    args+=(-Q "DELE $f"); k=$((k + 1))
+    # "*" = one file that's already gone (550) doesn't stop the rest of the batch
+    # (quote commands run before curl changes into www/, hence the path)
+    args+=(-Q "*DELE www/$f"); k=$((k + 1))
     if [ "$k" -ge 25 ]; then
       printf 'user = "%s:%s"\n' "$USER_NAME" "$PASS" | curl --ssl-reqd -sS --connect-timeout 20 --max-time 120 -K - "${args[@]}" "ftp://$HOST/www/" -o /dev/null && gone=$((gone + k))
       args=(); k=0
