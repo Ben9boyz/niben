@@ -625,5 +625,25 @@ canvas.play { cursor: crosshair; }
 .tt { flex: 1; display: grid; } .tt small { font-size: 0.74rem; color: var(--text-3); }
 .in { display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 700; color: #30a46c; } .lk { color: var(--text-3); }
 .muted { grid-column: 1 / -1; margin: 0; color: var(--text-3); font-size: 0.82rem; }
+/* ── the new look: the HUD as one raised bar with the coins on a little screen, the tank set into a bezel,
+   the tabs a slot with a key that stands up, the shop's items as keys ── */
+.hud { padding: 10px 14px; border-radius: 22px; background: var(--sk-surface, var(--glass-strong)); box-shadow: var(--sk-surface-sh, var(--shadow-1)); }
+.money { padding: 6px 12px; border-radius: 12px; background: linear-gradient(180deg, #16231d, #0e1813); box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.55); color: #ffd36b; }
+.money b { color: #9cf5b8; font-family: ui-monospace, "SF Mono", Menlo, monospace; text-shadow: 0 0 10px rgba(110, 240, 160, 0.5); }
+.money small { color: rgba(156, 245, 184, 0.7); }
+.bar { height: 12px; padding: 2px; box-sizing: border-box; background: var(--sk-sunk, var(--glass-border)); box-shadow: var(--sk-sunk-sh, none); }
+.bar i { background: radial-gradient(70% 140% at 25% -10%, rgba(255, 255, 255, 0.55), transparent 55%), linear-gradient(90deg, #4fc3f7, #7b2ff7); }
+.ib { background: var(--sk-key, transparent); box-shadow: var(--sk-key-sh, none); width: 36px; height: 36px; border-radius: 11px; }
+.tank { padding: 10px; border-radius: 26px; background: var(--sk-sunk, transparent); box-shadow: var(--sk-sunk-sh, none); }
+.tabs { gap: 4px; padding: 5px; border-radius: 18px; background: var(--sk-sunk, transparent); box-shadow: var(--sk-sunk-sh, none); }
+.tabs button { min-height: 36px; padding: 0 12px; border-radius: 13px; }
+.tabs button.on { background: var(--sk-key, var(--accent-soft)); box-shadow: var(--sk-key-sh, none); color: var(--accent-ink, var(--accent)); }
+.card { border: 0; border-radius: 16px; background: var(--sk-key, var(--glass-strong)); box-shadow: var(--sk-key-sh, inset 0 0 0 1px var(--glass-border)); }
+.card:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--sk-key-sh, inset 0 0 0 1px var(--accent)), 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+.card:active:not(:disabled) { transform: translateY(1px); background: var(--sk-sunk, var(--glass-strong)); box-shadow: var(--sk-sunk-sh, none); }
+.quest, .trophy, .sea { border: 0; background: var(--sk-surface, var(--glass-strong)); box-shadow: var(--sk-surface-sh, inset 0 0 0 1px var(--glass-border)); }
+.quest.done { box-shadow: var(--sk-surface-sh, none), inset 0 0 0 2px #a29bfe; }
+.hb { height: 10px; padding: 2px; box-sizing: border-box; background: var(--sk-sunk, var(--glass-border)); box-shadow: var(--sk-sunk-sh, none); }
+.cup { background: var(--sk-sunk, var(--glass-strong)); box-shadow: var(--sk-sunk-sh, none); }
 @media (max-width: 520px) { .card.wide { grid-column: 1 / -1; } .shop { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); } .flv { width: 52px; } }
 </style>

@@ -408,5 +408,29 @@ void decor
 .peek .x { all: unset; position: absolute; top: 10px; right: 10px; cursor: pointer; padding: 4px; border-radius: 8px; } .peek .x:hover { background: var(--glass-border); }
 .strava { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, #fc4c02 9%, transparent); }
 .strava small { color: var(--text-3); } .strava .ok { color: #2fa84f; }
+/* ── the new look: the same pieces as the rest of the room (a raised card for each part, wells for what you type in,
+   keys for choices, a little screen for numbers, water for progress). The hobby's own colour stays as the accent. ── */
+.mv:not(.compact) .top { padding: 16px 18px; border-radius: 24px; background: var(--sk-surface, var(--glass-strong)); border: var(--sk-border, 1px solid var(--glass-border)); box-shadow: var(--sk-surface-sh, var(--shadow-1)); }
+.ico { background: var(--sk-sunk, color-mix(in srgb, var(--mc) 20%, transparent)); box-shadow: var(--sk-sunk-sh, none); }
+.live, .strava, .form, .peek { border: 0; border-radius: 24px; padding: 18px; background: var(--sk-surface, var(--glass-strong)); box-shadow: var(--sk-surface-sh, var(--shadow-1)); }
+.strava { box-shadow: var(--sk-surface-sh, var(--shadow-1)), inset 4px 0 0 #fc4c02; }
+.field input, .field select, .field textarea, .goalset input, .acct input, .acct select { border: 0; border-radius: 12px; padding: 10px 12px; background: var(--sk-sunk, var(--bg)); box-shadow: var(--sk-sunk-sh, inset 0 0 0 1px var(--glass-border)); }
+.chips { gap: 8px; }
+.chips button { min-height: 36px; display: inline-flex; align-items: center; gap: 5px; padding: 0 14px; border: 0; border-radius: 12px; font-weight: 700; background: var(--sk-key, var(--glass-strong)); box-shadow: var(--sk-key-sh, inset 0 0 0 1px var(--glass-border)); }
+.chips button.on { background: var(--sk-sunk, var(--mc)); box-shadow: var(--sk-sunk-sh, none); color: var(--mc); }
+.rates span, .stats span { padding: 10px 14px; border-radius: 14px; background: linear-gradient(180deg, #16231d, #0e1813); box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.55); color: rgba(156, 245, 184, 0.75); }
+.rates b, .stats b { color: #9cf5b8; font-family: ui-monospace, "SF Mono", Menlo, monospace; text-shadow: 0 0 10px rgba(110, 240, 160, 0.5); }
+.chart { height: 110px; gap: 6px; padding: 10px; border-radius: 18px; background: var(--sk-sunk, var(--bg-2)); box-shadow: var(--sk-sunk-sh, none); }
+.chart i { border-radius: 8px; opacity: 1; background: radial-gradient(70% 140% at 25% -10%, rgba(255, 255, 255, 0.5), transparent 55%), linear-gradient(180deg, color-mix(in srgb, var(--mc) 65%, #fff), var(--mc)); }
+.log, .chk { padding: 6px 16px; border-radius: 24px; background: var(--sk-surface, var(--glass-strong)); box-shadow: var(--sk-surface-sh, var(--shadow-1)); }
+.log li:last-child button, .chk li:last-child { border-bottom: 0; }
+.box { border: 0; border-radius: 9px; background: var(--sk-key, transparent); box-shadow: var(--sk-key-sh, inset 0 0 0 2px var(--mc)); }
+.ok .box { background: var(--sk-sunk, var(--mc)); box-shadow: var(--sk-sunk-sh, none); color: var(--mc); }
+.prog { padding: 12px 16px; border-radius: 18px; background: var(--sk-surface, var(--glass-strong)); box-shadow: var(--sk-surface-sh, none); }
+.cards button { padding: 10px; border-radius: 20px; background: var(--sk-surface, var(--glass-strong)); box-shadow: var(--sk-surface-sh, var(--shadow-1)); transition: transform 0.2s; }
+.cards button:not(:disabled):hover { transform: translateY(-3px); }
+.cards button:not(:disabled):hover .im { transform: none; }
+.im { border-radius: 14px; box-shadow: 0 10px 18px -8px rgba(40, 25, 10, 0.5); }
+.compact .cards button { padding: 6px; border-radius: 14px; }
 @media (max-width: 560px) { .log button { grid-template-columns: 74px 1fr auto auto; } .log span { display: none; } }
 </style>

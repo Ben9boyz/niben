@@ -10,4 +10,6 @@ const route = useRoute()
 
 <style scoped>
 .mod-page { width: min(1000px, 100%); }
+/* the head card above already names the hobby: here only its line about itself and the Ny key */
+.mod-page :deep(.top h2) { display: none; }
 </style>

@@ -21,7 +21,9 @@ const now = computed(() => spotify.now)
 <template>
   <section class="now" :class="{ playing: now?.playing, admin: admin.mine, stacked: props.stacked, dropping: queueOver }" v-on="queueDrop">
     <div class="cover" :class="{ link: !!now?.name }" :role="now?.name ? 'button' : undefined" :tabindex="now?.name ? 0 : undefined" :title="now?.name ? 'Åpne albumet' : undefined" @click="openNowAlbum" @keydown.enter="openNowAlbum">
-      <img crossorigin="anonymous" v-if="now?.image" :src="(props.stacked && now.image_large) || now.image" alt="" />
+      <!-- stacked (the plain music page): a turntable – the record spins while it plays, the cover is its label -->
+      <span v-if="props.stacked" class="disc" :class="{ spin: now?.playing }"><img crossorigin="anonymous" v-if="now?.image" :src="now.image_large || now.image" alt="" /></span>
+      <img crossorigin="anonymous" v-else-if="now?.image" :src="now.image" alt="" />
       <div v-else class="vinyl-ph"></div>
       <span v-if="now?.playing" class="eq" aria-hidden="true"><i></i><i></i><i></i></span>
     </div>
@@ -75,9 +77,16 @@ const now = computed(() => spotify.now)
 
 @media (min-width: 821px) {
   .now.stacked { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 12px; }
-  .now.stacked .cover { width: 100%; height: auto; aspect-ratio: 1; border-radius: 12px; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.3); }
+  .now.stacked .cover { width: 100%; height: auto; aspect-ratio: 1; display: grid; place-items: center; border-radius: 26px; overflow: visible; background: var(--sk-sunk, var(--bg-2)); box-shadow: var(--sk-sunk-sh, inset 0 3px 10px rgba(0, 0, 0, 0.15)); }
+  .now.stacked .disc { position: relative; display: grid; place-items: center; width: 86%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, transparent 0 35%, rgba(255, 255, 255, 0.05) 35.5% 36%, transparent 36.5%), repeating-radial-gradient(circle, #24201b 0 2px, #2f2a24 2px 3px); box-shadow: 0 14px 26px -10px rgba(0, 0, 0, 0.55); }
+  .now.stacked .disc img { width: 36%; height: auto; aspect-ratio: 1; border-radius: 50%; object-fit: cover; }
+  .now.stacked .disc::after { content: ''; position: absolute; width: 3%; aspect-ratio: 1; border-radius: 50%; background: #1a1714; }
+  .now.stacked .disc.spin { animation: spin 2.2s linear infinite; }
+  .now.stacked { background: var(--sk-surface, var(--glass-strong)); border: var(--sk-border, 1px solid var(--glass-border)); box-shadow: var(--sk-surface-sh, inset 0 1px 0 var(--glass-hi)); border-radius: 26px; }
   .now.stacked .eq { right: 10px; bottom: 10px; }
   .now.stacked .title { font-size: 1.15rem; }
   .now.stacked .ctrl { margin-top: 2px; }
 }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .disc.spin { animation: none !important; } }
 </style>
