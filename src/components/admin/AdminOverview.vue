@@ -27,6 +27,27 @@ async function load() {
 onMounted(load)
 const flash = (t: string) => { msg.value = t; setTimeout(() => { if (msg.value === t) msg.value = '' }, 3500) }
 
+// old build files: every upload leaves the previous version's JS files on the server – find the unused ones, then delete them on my word
+interface Scan { old: { name: string; bytes: number }[]; kept: number; missing: string[]; recent: number }
+const scan = ref<Scan | null>(null)
+const showFiles = ref(false)
+const mb = (n: number): string => (n / 1048576).toFixed(1).replace('.', ',') + ' MB'
+const oldBytes = computed(() => scan.value?.old.reduce((s, o) => s + o.bytes, 0) ?? 0)
+async function findOld() {
+  busy.value = 'scan'
+  try { scan.value = await api<Scan>('admin_cleanup'); showFiles.value = false } catch (e) { err.value = errorMessage(e) } finally { busy.value = '' }
+}
+async function deleteOld() {
+  const s = scan.value
+  if (!s?.old.length || !confirm(`Slette ${s.old.length} gamle filer (${mb(oldBytes.value)})? Siden du har nå beholder alt den bruker.`)) return
+  busy.value = 'clean'
+  try {
+    const r = await api<{ deleted: number; freed: number; failed: string[] }>('admin_cleanup', { delete: true, names: s.old.map((o) => o.name) })
+    flash(`Slettet ${r.deleted} filer – ${mb(r.freed)} frigjort.${r.failed.length ? ` ${r.failed.length} kunne ikke slettes (rettigheter på serveren).` : ''}`)
+    await findOld()
+  } catch (e) { err.value = errorMessage(e) } finally { busy.value = '' }
+}
+
 async function clearLang(lang: string) {
   if (!confirm(lang ? `Slette oversettelsene til ${byCode[lang]?.en || lang}? De lages på nytt neste gang noen velger språket.` : 'Slette ALLE oversettelser? De lages på nytt etter hvert.')) return
   busy.value = 'tr'
@@ -96,6 +117,22 @@ const langName = (c: string) => byCode[c]?.en || c
           <li class="bfrow" v-if="st.steam"><span>Bestevenn på Steam</span><input v-model="bf" class="bfin" placeholder="Steam-ID eller lenke til profilen" aria-label="Bestevenn på Steam" @keydown.enter="saveBf" /><button class="btn small" :disabled="busy === 'bf'" @click="saveBf">Lagre</button></li>
           <li><span>jpdb (japansk)</span><span class="pill" :class="st.jpdb ? 'ok' : 'off'">{{ st.jpdb ? 'På' : 'Av' }}</span><small v-if="!st.jpdb">Kjør <code>./jpdb-setup.sh</code>.</small></li>
         </ul>
+      </section>
+
+      <!-- old build files -->
+      <section class="card">
+        <header><Trash2 :size="18" /><h3>Gamle filer på serveren</h3></header>
+        <p class="help">Hver opplasting legger nye programfiler ved siden av de gamle. Her finner du de den nye siden ikke bruker lenger, og kan slette dem. Bare filer med byggenavn (som <code>Side-AbCd1234.js</code>) – aldri PHP, innstillinger, opplastede bilder eller modeller.</p>
+        <div class="row-btns">
+          <button class="btn small" :disabled="busy === 'scan'" @click="findOld">{{ busy === 'scan' ? 'Leter …' : 'Finn gamle filer' }}</button>
+          <button v-if="scan?.old.length && !scan.missing.length" class="btn small danger" :disabled="busy === 'clean'" @click="deleteOld"><Trash2 :size="14" />Slett {{ scan.old.length }} filer ({{ mb(oldBytes) }})</button>
+        </div>
+        <template v-if="scan">
+          <p v-if="scan.missing.length" class="help warn">Siden mangler {{ scan.missing.length }} fil(er), f.eks. <code>{{ scan.missing[0] }}</code>. Last opp hele zip-filen på nytt først – til da slettes ingenting.</p>
+          <p v-else-if="!scan.old.length" class="help">Ingen gamle filer – alt på serveren er i bruk. 👍</p>
+          <p v-else class="help">{{ scan.old.length }} gamle filer ({{ mb(oldBytes) }}). Siden bruker {{ scan.kept }} filer, og de blir stående.<template v-if="scan.recent"> {{ scan.recent }} fil(er) lastet opp siste time får også stå.</template> <button class="lnk" @click="showFiles = !showFiles">{{ showFiles ? 'Skjul listen' : 'Vis listen' }}</button></p>
+          <ul v-if="showFiles" class="files"><li v-for="o in scan.old" :key="o.name"><code>{{ o.name }}</code><small>{{ (o.bytes / 1024).toFixed(0) }} kB</small></li></ul>
+        </template>
       </section>
 
       <!-- translation -->
@@ -182,4 +219,10 @@ const langName = (c: string) => byCode[c]?.en || c
 .x { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--text-3); cursor: pointer; }
 .x:hover { color: #d24b4b; background: rgba(229, 83, 61, 0.12); }
 @media (max-width: 600px) { .cards { grid-template-columns: 1fr 1fr 1fr; gap: 8px; } .stat { padding: 10px; } .stat b { font-size: 1.3rem; } }
+.row-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn.danger { background: #c8493a; color: #fff; display: inline-flex; align-items: center; gap: 6px; }
+.warn { color: #c8493a; }
+.lnk { all: unset; cursor: pointer; color: var(--accent); font-weight: 600; }
+.files { list-style: none; margin: 6px 0 0; padding: 0; max-height: 220px; overflow: auto; display: grid; gap: 2px; font-size: 0.8rem; }
+.files li { display: flex; justify-content: space-between; gap: 10px; } .files small { color: var(--text-3); }
 </style>

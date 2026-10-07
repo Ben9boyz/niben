@@ -270,6 +270,7 @@ require_once __DIR__ . '/_discover.inc.php';
 require_once __DIR__ . '/_decor.inc.php';
 require_once __DIR__ . '/_modules.inc.php';
 require_once __DIR__ . '/_strava.inc.php';
+require_once __DIR__ . '/_cleanup.inc.php';
 require_once __DIR__ . '/_news.inc.php';
 
 try {
@@ -302,6 +303,7 @@ try {
     }
     if ($action === 'translate') tr_handle();
     if (str_starts_with($action, 'news_') || $action === 'feed') { nw_handle($action, $post); fail('Ukjent handling.', 404); }
+    if ($action === 'admin_cleanup') { cleanup_handle($action, $post); fail('Ukjent handling.', 404); }
     if (str_starts_with($action, 'strava_')) { strava_handle($action, $post); fail('Ukjent handling.', 404); }
     if (str_starts_with($action, 'mod_')) { mod_handle($action, $post); fail('Ukjent handling.', 404); }
     if (str_starts_with($action, 'decor_')) { decor_handle($action, $post); fail('Ukjent handling.', 404); }
