@@ -5,7 +5,7 @@ import { Music, BookOpen, Languages, Guitar, Gamepad2, Plane, ArrowRight, Radio,
 import { milestones, loadMilestones } from '@/composables/site/useMilestones'
 import { useRouter } from 'vue-router'
 import { useData, type SectionId } from '@/composables/site/useData'
-import { useSpotify } from '@/composables/music/useSpotify'
+import { useSpotify, progressMs } from '@/composables/music/useSpotify'
 import { steam, watchSteam, headerImg, fmtHours } from '@/composables/site/useSteam'
 import { jp, loadJapanese } from '@/composables/japan/useJapanese'
 import { parseProgression } from '@/lib/chords'
@@ -45,6 +45,7 @@ const msAgo = (t: number) => {
 
 // ── music ──
 const track = computed(() => (spotify.now?.name ? spotify.now : null))
+const trackPct = computed(() => (track.value?.duration_ms ? Math.min(100, (progressMs.value / track.value.duration_ms) * 100) : 0))
 
 // ── the record of the day ──
 function openDaily() {
@@ -109,12 +110,14 @@ const inDays = (t: Trip) => {
 
     <!-- listening -->
     <section v-if="on('lytte')" class="card">
-      <h3><Music :size="15" />{{ tx('now.listen') }}</h3>
-      <router-link v-if="track" to="/lytte" class="row">
-        <img v-if="track.image" :src="track.image" alt="" class="art" />
+      <h3><Music :size="15" />{{ tx('now.listen') }}<span v-if="track?.playing" class="pip live" aria-hidden="true"></span></h3>
+      <router-link v-if="track" to="/lytte" class="row deckrow">
+        <!-- a little turntable: the record spins while it plays, the cover is its label -->
+        <span class="platter" aria-hidden="true"><span class="vinyl" :class="{ spin: track.playing }"><img v-if="track.image" :src="track.image" alt="" /></span></span>
         <span class="txt"><b>{{ track.name }}</b><small>{{ track.artist }}<template v-if="track.album"> · {{ track.album }}</template></small></span>
         <span v-if="track.playing" class="live"><Radio :size="12" />spiller</span>
       </router-link>
+      <div v-if="track?.duration_ms" class="progress" aria-hidden="true"><span :style="{ width: `${trackPct}%` }"></span></div>
       <p v-else class="none">{{ tx('now.listen.none') }}</p>
     </section>
 
@@ -208,7 +211,18 @@ const inDays = (t: Trip) => {
 .now { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; container-type: inline-size; }
 /* wide (the plain home page): three columns, the cards sit side by side instead of in two tall stacks */
 .card:has(> .none:last-child:nth-child(2)) { opacity: 0.7; }
-.card { display: grid; gap: 8px; align-content: start; padding: 16px; border-radius: 16px; background: var(--glass-strong); border: 1px solid var(--glass-border); min-width: 0; }
+.card { display: grid; gap: 10px; align-content: start; padding: 18px; border-radius: 24px; background: var(--sk-surface, var(--glass-strong)); border: var(--sk-border, 1px solid var(--glass-border)); box-shadow: var(--sk-surface-sh, none); min-width: 0; }
+/* the turntable in Hører på */
+.platter { display: grid; place-items: center; width: 76px; height: 76px; border-radius: 20px; flex: none; background: var(--sk-sunk, var(--bg-2)); box-shadow: var(--sk-sunk-sh, inset 0 2px 6px rgba(0, 0, 0, 0.15)); }
+.vinyl { position: relative; display: grid; place-items: center; width: 62px; height: 62px; border-radius: 50%; background: repeating-radial-gradient(circle, #24201b 0 2px, #2f2a24 2px 3px); box-shadow: 0 6px 12px -4px rgba(0, 0, 0, 0.45); }
+.vinyl img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+.vinyl::after { content: ""; position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #1a1714; }
+.vinyl.spin { animation: spin 2s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.deckrow { gap: 14px; }
+h3 .pip { margin-left: auto; width: 8px; height: 8px; border-radius: 50%; }
+h3 .pip.live { background: #22a35a; box-shadow: 0 0 0 3px rgba(34, 163, 90, 0.18); }
+@media (prefers-reduced-motion: reduce) { .vinyl.spin { animation: none; } }
 .card.wide { grid-column: span 2; }
 .ms ul { margin: 0; padding: 0 0 0 14px; list-style: none; display: grid; gap: 6px; border-left: 2px solid var(--glass-border); }
 .ms li { position: relative; }
@@ -251,7 +265,9 @@ h3 { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 0.7rem;
 .top a em { margin-left: auto; font-style: normal; color: var(--text-3); font-variant-numeric: tabular-nums; }
 .trips { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .trip { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--accent-soft); color: inherit; text-decoration: none; }
-.trip.next { background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: #fff; }
+.trip { background: var(--sk-sunk, var(--accent-soft)); box-shadow: var(--sk-sunk-sh, none); }
+.trip.next { background: var(--sk-primary, linear-gradient(135deg, var(--accent-2), var(--accent))); box-shadow: var(--sk-primary-sh, none); color: var(--sk-on-primary, #fff); }
+.trip.next .none { color: inherit; opacity: 0.85; }
 .trip small { font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.7; }
 .trip b { font-size: 1.05rem; }
 .trip span { font-size: 0.8rem; opacity: 0.85; }
