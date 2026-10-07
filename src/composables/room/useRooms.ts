@@ -8,6 +8,7 @@ import { milestones, resetMilestones, loadMilestones } from '@/composables/site/
 import { jp, resetJapanese, loadJapanese } from '@/composables/japan/useJapanese'
 import { steam, resetSteam, loadSteam } from '@/composables/site/useSteam'
 import { decor, resetDecor, loadDecor } from './useDecor'
+import { leaveGames } from '@/composables/games/useAquarium'
 import { live, resetLive, loadLive } from './useLive'
 import { myQueue, resetQueue, loadMyQueue } from '@/composables/music/useQueue'
 import { resetDaily, loadDaily } from '@/composables/music/useDaily'
@@ -92,6 +93,7 @@ export async function setRoom(username: string, { viaDoor = false }: { viaDoor?:
   const root = document.documentElement
   if (!viaDoor) root.dataset.roomfx = 'out' // the room flies off (style.css) – unless you walked through its door: then you are simply in it
   try {
+    await leaveGames() // (a game's last moves are saved in the room they were made in)
     await Promise.all([api('room_set', { username }), wait(viaDoor ? 0 : 320)])
     await swapRoomState(username)
     // the room's things (corners, hobbies) arrive a moment after its content: the spinner stays until they are there

@@ -9,7 +9,10 @@ import { useTheme } from '@/composables/ui/useTheme'
 import { timer, timerState, toggle as toggleTimer } from '@/composables/site/useTimer'
 import { myQueue } from '@/composables/music/useQueue'
 import { spotify, useSpotify, prefetchTracks, fetchTracks, fetchTempo, fetchQueue, control, findAlbum, addGuest } from '@/composables/music/useSpotify'
-import { admin } from '@/composables/site/useAdmin'
+import { admin, canManage } from '@/composables/site/useAdmin'
+import { placed } from '@/composables/room/useModules'
+import { games, loadGame, tankVersion } from '@/composables/games/useAquarium'
+import { speciesOf } from '@/lib/games/aquarium'
 import { useVinylNoise } from '@/composables/music/useVinylNoise'
 import { gfxPayload } from '@/composables/ui/useGraphics'
 import { accentHex } from '@/composables/ui/useAccent'
@@ -292,6 +295,12 @@ watch(() => [route.name, route.params.id], ([n], [was]) => {
 // the modules are loaded a little after the room: a page opened by its address then flies in once its place is known
 watch(() => [room.api, decor.items.length], () => { if (route.name === 'modul') { api?.focusModule(String(route.params.id)); api?.goTo('modul') } })
 watch(() => ({ ...room.sel }), (s) => api?.setSelection(s), { deep: true })
+// the aquarium game: its fish swim in the aquarium standing in the room (everybody sees them; the owner plays on the hobby's page)
+const tanks = computed(() => placed.value.filter((m) => m.kind.game === 'aquarium').map((m) => m.id))
+watch([() => tanks.value.join(), () => canManage.value], () => { for (const id of tanks.value) void loadGame(id, canManage.value) }, { immediate: true })
+watch([() => tankVersion.n, () => room.api, () => decor.items.length], () => {
+  for (const [id, g] of games) room.api?.setTankFish(id, g.tank.s.fish.map((f) => { const sp = speciesOf(f.sp); return { color: sp.color, color2: sp.color2, size: sp.size, speed: sp.speed } }))
+})
 
 // the room's name tag belongs to the 3D view: drop it as soon as the pointer is over the panel or
 // any other UI (the canvas doesn't always get a 'leave' when a panel slides in under a still pointer)

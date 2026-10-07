@@ -184,6 +184,47 @@ function mod_handle(string $action, bool $post): void {
         if (in_array($p, $pending, true)) { delete_upload($p); mod_pending(array_diff($pending, [$p])); } // (only one this room uploaded and has not used)
         out(['ok' => true]);
     }
+    case 'mod_game_get': {
+        // a game a hobby has (the aquarium …): its saved state, for everybody to look at
+        $id = (string)($_GET['id'] ?? '');
+        if (!preg_match('~^[a-f0-9]{10}$~', $id) || !mod_find($id)) fail('Fant ikke modulen.', 404);
+        $raw = kv_get('modgame_' . $id);
+        out(['state' => $raw ? json_decode($raw, true) : null]);
+    }
+    case 'mod_game_save': {
+        // the room's owner plays: the game's state (the page keeps the rules; this only stores it, small and as JSON)
+        if (!$post) fail('Bruk POST.', 405);
+        require_room_owner();
+        $id = (string)(body()['id'] ?? '');
+        if (!mod_find($id)) fail('Fant ikke modulen.', 404);
+        $state = body()['state'] ?? null;
+        if (!is_array($state)) fail('Ugyldig spill.');
+        $json = json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if (strlen($json) > 30000) fail('Spillet er for stort til å lagres.');
+        rl_or_fail('mod_game_save', 240, 3600);
+        kv_set('modgame_' . $id, $json);
+        out(['ok' => true]);
+    }
+    case 'mod_trophy': {
+        // a trophy won in a game, put in the room as a cup on the floor (one of each); it is then moved like any other thing
+        if (!$post) fail('Bruk POST.', 405);
+        require_room_owner();
+        $b = body();
+        $id = (string)($b['id'] ?? '');
+        $tid = (string)($b['trophy'] ?? '');
+        if (!mod_find($id) || !preg_match('~^[a-z0-9]{2,16}$~', $tid)) fail('Fant ikke trofeet.', 404);
+        $game = json_decode((string)kv_get('modgame_' . $id), true);
+        if (!in_array($tid, (array)($game['trophies'] ?? []), true)) fail('Det trofeet er ikke vunnet ennå.');
+        $tier = in_array($b['tier'] ?? '', ['bronse', 'solv', 'gull', 'platina', 'diamant', 'legende'], true) ? $b['tier'] : 'bronse';
+        $key = $id . ':' . $tid;
+        $list = decor_list();
+        foreach ($list as $d) if (($d['trophy'] ?? '') === $key) out(['ok' => true, 'item' => $d]); // (already standing)
+        [$x, $z] = mod_free_spot($list);
+        $item = ['id' => bin2hex(random_bytes(5)), 'file' => '', 'trophy' => $key, 'tier' => $tier, 'name' => mb_substr(trim(strip_tags((string)($b['name'] ?? 'Trofé'))), 0, 40) ?: 'Trofé', 'x' => $x, 'y' => 0.0, 'z' => $z, 'rot' => 0.0, 'scale' => 1.0, 'visible' => true];
+        $list[] = $item;
+        decor_store($list);
+        out(['ok' => true, 'item' => $item]);
+    }
     case 'mod_remove': {
         if (!$post) fail('Bruk POST.', 405);
         require_room_owner();
@@ -192,7 +233,7 @@ function mod_handle(string $action, bool $post): void {
         foreach (decor_list() as $d) if (($d['id'] ?? '') === $id) mod_unlink($d['file'] ?? '');
         foreach (mod_imgs(json_decode((string)kv_get(mod_data_key($id)), true)) as $p) delete_upload($p);
         decor_store(array_values(array_filter(decor_list(), fn($d) => ($d['id'] ?? '') !== $id)));
-        kv_del(mod_data_key($id));
+        kv_del(mod_data_key($id), 'modgame_' . $id);
         out(['ok' => true]);
     }
     case 'mod_lookup': {

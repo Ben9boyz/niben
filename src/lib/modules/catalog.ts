@@ -16,6 +16,7 @@ export interface ModuleKind {
   stat?: { field: string; label: string; op: 'sum' | 'avg' | 'max' } // log: the number that is added up
   workout?: boolean // entries are workouts: pace, a weekly goal and a GPX import
   live?: 'chess' | 'apod' // an account on a public service whose numbers are shown on top
+  game?: 'aquarium' // a little game played on the page (and in the 3D room): lib/games
 }
 
 const t = (k: string, label: string): Field => ({ k, label, kind: 'text' })
@@ -39,7 +40,7 @@ export const CATALOG: ModuleKind[] = [
   { id: 'kaffe', name: 'Kaffe og te', icon: 'Coffee', color: '#8b5e3c', blurb: 'Bønner, bladene og smaken', cat: 'Mat og drikke', layout: 'cards', fields: [t('t', 'Navn'), t('opphav', 'Opphav'), pick('type', 'Type', ['Kaffe', 'Te', 'Annet']), stars(), note()] },
   { id: 'vin', name: 'Vin og øl', icon: 'Wine', color: '#a02850', blurb: 'Smaksnotater og favoritter', cat: 'Mat og drikke', layout: 'cards', fields: [t('t', 'Navn'), t('produsent', 'Produsent'), pick('type', 'Type', ['Rødvin', 'Hvitvin', 'Musserende', 'Øl', 'Annet']), stars(), note()] },
   { id: 'planter', name: 'Planter', icon: 'Sprout', color: '#2fa84f', blurb: 'Hva som står hvor og når det ble vannet', cat: 'Natur og dyr', lookup: 'art', layout: 'cards', fields: [t('t', 'Plante'), pick('kat', 'Type', ['Stueplante', 'Urt', 'Kaktus og sukkulent', 'Blomst', 'Tre', 'Annet']), t('sted', 'Står i'), date('Sist vannet'), num('dager', 'Vann hver', 'dager'), note(), img()] },
-  { id: 'akvarium', name: 'Akvarium', icon: 'Fish', color: '#2b9fd8', blurb: 'Fisk, planter og vannprøver', cat: 'Natur og dyr', layout: 'cards', fields: [t('t', 'Hva'), num('antall', 'Antall'), date('Siden'), note(), img()] },
+  { id: 'akvarium', name: 'Akvarium', icon: 'Fish', color: '#2b9fd8', blurb: 'Et spill: mat fisken, samle mynter, kjøp nye fisker – 100 nivåer og trofeer', cat: 'Natur og dyr', layout: 'cards', game: 'aquarium', fields: [t('t', 'Hva'), num('antall', 'Antall'), date('Siden'), note(), img()] },
   { id: 'kjaledyr', name: 'Kjæledyr', icon: 'PawPrint', color: '#e07b53', blurb: 'Gutta og jentene i huset', cat: 'Natur og dyr', layout: 'cards', fields: [t('t', 'Navn'), t('art', 'Art / rase'), date('Født'), note(), img()] },
   { id: 'retro', name: 'Retro-samling', icon: 'Gamepad2', color: '#5c6bc0', blurb: 'Konsoller, spill og kassetter', cat: 'Se, lytt og spill', layout: 'cards', fields: [t('t', 'Tittel'), pick('kat', 'Type', ['Konsoll', 'Spill', 'Tilbehør', 'Datamaskin', 'Annet']), t('system', 'System'), pick('stand', 'Stand', ['Ny', 'God', 'Slitt', 'Mangler boks']), note(), img()] },
   { id: 'lego', name: 'LEGO', icon: 'Blocks', color: '#f0c020', blurb: 'Sett du har bygget', cat: 'Skap og bygg', layout: 'cards', fields: [t('t', 'Sett'), t('nr', 'Nummer'), pick('status', 'Status', ['Uåpnet', 'Bygger', 'Ferdig']), note(), img()] },

@@ -31,6 +31,7 @@ import { buildFigureShelf } from './figures'
 import { buildHall, type Door } from './hall'
 import { buildModuleProp, type PropHandle } from './moduleProp'
 import { kindOf } from '@/lib/modules/catalog'
+import { buildTrophy } from './trophy'
 import { woodFloor, wallTexture, skyTexture, canvasTex } from './textures'
 import { atlasName, norskNavn } from './countries'
 
@@ -1202,6 +1203,58 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     } catch { /* the built-in model stays */ }
   }
   const modSig = (it: DecorItem): string => `${it.mod}|${it.name}|${it.ico ?? ''}`
+  // ── The aquarium game's fish, swimming in the aquarium hobby's tank (the tank: x ±0.33, y 0.13…0.4, z ±0.15) ──
+  interface TankFishSpec { color: string; color2: string; size: number; speed: number }
+  const tankSpecs = new Map<string, TankFishSpec[]>()
+  const tankGroups = new Map<string, THREE.Group>()
+  const fishBody = new THREE.SphereGeometry(0.5, 12, 8)
+  const fishTail = new THREE.ConeGeometry(0.32, 0.45, 6)
+  fishTail.rotateZ(Math.PI / 2)
+  const fishMats = new Map<string, THREE.MeshStandardMaterial>()
+  const fishMat = (c: string): THREE.MeshStandardMaterial => { let m = fishMats.get(c); if (!m) { m = new THREE.MeshStandardMaterial({ color: c, roughness: 0.35, emissive: c, emissiveIntensity: 0.35 }); fishMats.set(c, m) } return m }
+  function attachTankFish(o: DecorObject): void {
+    const id = o.item.id
+    tankGroups.get(id)?.removeFromParent()
+    tankGroups.delete(id)
+    const list = tankSpecs.get(id)
+    if (!list?.length || !o.prop || o.item.mod !== 'akvarium') return
+    const g = new THREE.Group()
+    g.name = 'tankFish'
+    list.slice(0, 40).forEach((f, i) => {
+      const fish = new THREE.Group()
+      const L = Math.max(0.05, Math.min(0.16, f.size * 1.2))
+      const body = new THREE.Mesh(fishBody, fishMat(f.color)); body.scale.set(L, L * 0.5, L * 0.3)
+      const tail = new THREE.Mesh(fishTail, fishMat(f.color2)); tail.scale.setScalar(L); tail.position.x = -L * 0.6
+      fish.add(body, tail)
+      fish.renderOrder = 2 // (drawn after the water, so they show through it)
+      body.renderOrder = 2; tail.renderOrder = 2
+      fish.userData.f = { ph: i * 1.7 + Math.random() * 3, sp: 0.35 + f.speed * 3, y: 0.17 + ((i * 0.37) % 1) * 0.2, z: ((i * 0.53) % 1) * 0.24 - 0.12, L }
+      g.add(fish)
+    })
+    o.prop.body.add(g)
+    tankGroups.set(id, g)
+    swimFish(performance.now() / 1000)
+  }
+  function swimFish(t: number): void {
+    for (const g of tankGroups.values()) {
+      for (const fish of g.children) {
+        const d = fish.userData.f as { ph: number; sp: number; y: number; z: number; L: number }
+        const a = t * d.sp * 0.6 + d.ph
+        const x = Math.sin(a) * (0.33 - d.L * 0.6)
+        fish.position.set(x, d.y + Math.sin(a * 1.7) * 0.015, d.z + Math.sin(a * 0.5) * 0.03)
+        fish.rotation.y = Math.cos(a) >= 0 ? 0 : Math.PI // (always facing the way it swims)
+        const tail = fish.children[1]
+        if (tail) tail.rotation.y = Math.sin(t * 9 + d.ph) * 0.4
+      }
+    }
+  }
+  /** The fish of an aquarium game (by the module's id) – shown swimming in its tank. */
+  function setTankFish(id: string, list: TankFishSpec[]): void {
+    tankSpecs.set(id, list)
+    const o = decorObjs.get(id)
+    if (o) attachTankFish(o)
+    invalidate(0.5)
+  }
   function buildMod(o: DecorObject): void {
     o.prop?.root.removeFromParent()
     o.prop?.dispose()
@@ -1211,6 +1264,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     o.prop = buildModuleProp(kind, o.item.name || kind.name, o.item.ico || kind.icon)
     o.root.userData.modTitle = o.item.name || kind.name
     o.root.add(o.prop.root)
+    attachTankFish(o)
     o.box = undefined
     shadowsDirty = true
     refreshSel()
@@ -1241,6 +1295,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     for (const [id, o] of decorObjs) {
       if (ids.has(id)) continue
       if (o.c) { o.item = { ...o.item, x: 0, y: 0, z: 0, rot: 0, scale: 1, visible: true }; placeDecor(o); decorObjs.delete(id); continue } // (a corner back where it was)
+      tankGroups.delete(id); tankSpecs.delete(id)
       o.prop?.dispose()
       decorGroup.remove(o.root)
       decorObjs.delete(id)
@@ -1269,6 +1324,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       decorGroup.add(o.root)
       placeDecor(o)
       o.sig2 = it.file ?? ''
+      if (it.trophy) { const tr = buildTrophy(it.tier ?? 'bronse', it.name); o.prop = tr; o.root.add(tr.root); continue } // (a cup won in a game)
       if (it.mod) buildMod(o) // a hobby module: a built-in piece of furniture with a sign – and its own model on top, if it has one
       if (it.mod && !it.file) continue
       void giveModel(o)
@@ -1809,6 +1865,8 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
 
     // a door in the hall swinging open / shut
     if (ajar.size || hoverDoor) stepAjar(dt)
+    // the aquarium's fish (they keep the picture moving while the camera looks at a tank)
+    if (tankGroups.size) { swimFish(t); if (station === 'modul' && focusId && tankGroups.has(focusId)) invalidate(0.1) }
     if (doorAnim) {
       doorAnim.t += dt
       const k = Math.min(1, Math.max(0, (doorAnim.t - doorAnim.delay) / doorAnim.dur))
@@ -1953,6 +2011,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     /** Which hobby module the camera looks at when the station is 'modul'. */
     freeSpot,
     resetDecor,
+    setTankFish,
     /** (dev/testing) how far a door in the hall stands open, and where on the screen it is */
     doorOpen: (user: string): number => hall.openOf(user),
     doorOnScreen(user: string): { x: number; y: number } | null {

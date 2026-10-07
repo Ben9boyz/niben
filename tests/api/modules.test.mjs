@@ -104,3 +104,32 @@ test('a picture for an entry can be uploaded – and only the room that uploaded
   await alice.client.post('mod_image_drop', { id: am, path })
   assert.equal((await alice.client.get('mod_get', `&id=${am}`)).json.data.items[0].img, path)
 })
+
+test('the aquarium game: everybody can look at it, only the owner saves it, and a trophy goes in the room only once it is won', async () => {
+  const owner = await ownerClient()
+  const alice = await makeUser(owner)
+  const id = (await alice.client.post('mod_add', { type: 'akvarium' })).json.item.id
+  assert.equal((await alice.client.get('mod_game_get', `&id=${id}`)).json.state, null, 'a new tank')
+
+  const state = { v: 1, coins: 120, total: 900, fish: [{ id: 'a1', sp: 'guppy', hunger: 0.5 }], up: { tank: 1, food: 0, feeder: 0, magnet: 0 }, trophies: ['first', 'lvl5'], placed: [], stats: { fed: 3, bought: 1, collected: 9 }, last: Date.now() }
+  assert.equal((await alice.client.post('mod_game_save', { id, state })).status, 200)
+  const v = await visitorIn(alice.name)
+  assert.equal((await v.get('mod_game_get', `&id=${id}`)).json.state.coins, 120, 'a visitor sees the tank')
+  assert.notEqual((await v.post('mod_game_save', { id, state: { ...state, coins: 1e12 } })).status, 200, 'but cannot change it')
+  assert.equal((await alice.client.post('mod_game_save', { id, state: { big: 'x'.repeat(40000) } })).status, 400, 'nothing huge')
+
+  // a trophy not won yet: no; a won one: a cup in the room (once)
+  assert.equal((await alice.client.post('mod_trophy', { id, trophy: 'lvl100', tier: 'legende', name: 'Havets hersker' })).status, 400)
+  const t1 = await alice.client.post('mod_trophy', { id, trophy: 'lvl5', tier: 'bronse', name: 'Akvarist' })
+  assert.equal(t1.status, 200, t1.text)
+  assert.equal(t1.json.item.trophy, `${id}:lvl5`)
+  assert.equal(t1.json.item.tier, 'bronse')
+  const t2 = await alice.client.post('mod_trophy', { id, trophy: 'lvl5', tier: 'gull', name: 'x' })
+  assert.equal(t2.json.item.id, t1.json.item.id, 'the same one – not two')
+  const items = (await alice.client.get('decor_get')).json.items
+  assert.equal(items.filter((i) => i.trophy).length, 1)
+
+  // the hobby taken away: its game goes too
+  await alice.client.post('mod_remove', { id })
+  assert.equal((await alice.client.get('mod_game_get', `&id=${id}`)).status, 404)
+})

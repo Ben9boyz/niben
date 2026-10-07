@@ -13,6 +13,7 @@ import type { ModData } from '@/composables/room/useModules'
 import { safeUrl, isUpload } from '@/lib/modules/safe'
 import { iconOf } from '@/lib/icons'
 import StarRow from '@/components/ui/StarRow.vue'
+import AquariumGame from '@/components/games/AquariumGame.vue'
 import { parseGpx, routePath, paceText } from '@/lib/modules/gpx'
 
 // One hobby module, whatever the hobby: the kind says which fields an entry has and how the entries are shown
@@ -205,8 +206,11 @@ void decor
     <header class="top">
       <span class="ico" aria-hidden="true"><component :is="iconOf(mod.icon)" :size="28" /></span>
       <div><h2>{{ mod.name }}</h2><p>{{ mod.kind.blurb }}</p></div>
-      <button v-if="mine" class="btn primary small add" @click="startNew()"><Plus :size="15" />Ny</button>
+      <button v-if="mine && !mod.kind.game" class="btn primary small add" @click="startNew()"><Plus :size="15" />Ny</button>
     </header>
+
+    <!-- a hobby that is a game: the game itself (the entries, if any from before, are under it) -->
+    <AquariumGame v-if="mod.kind.game === 'aquarium'" :id="id" />
 
     <!-- numbers from a public service, shown on top -->
     <section v-if="mod.kind.live === 'chess'" class="live">
@@ -292,7 +296,7 @@ void decor
       <button v-for="k in usedKats" :key="k" :class="{ on: kat === k }" @click="kat = k">{{ k }} <small>{{ items.filter(({ e }) => e.kat === k).length }}</small></button>
     </div>
 
-    <p v-if="data && !items.length && !draft" class="empty">{{ mine ? 'Ingenting her ennå. Trykk «Ny» for å skrive inn den første.' : 'Ingenting her ennå.' }}</p>
+    <p v-if="data && !items.length && !draft && !mod.kind.game" class="empty">{{ mine ? 'Ingenting her ennå. Trykk «Ny» for å skrive inn den første.' : 'Ingenting her ennå.' }}</p>
 
     <!-- log: numbers and a chart -->
     <template v-if="mod.kind.layout === 'log'">

@@ -9,6 +9,8 @@ export interface DecorItem {
   grp?: string // which tab of the menu a module sits under: '' = Hobbyer, 'lare' | 'laget' | 'opplevd', or the name of a tab of one's own
   corner?: string // one of the room's own corners (lytte, japansk, gitar …): x / z are how far it has been moved
   mod?: string // a hobby module (its kind) instead of a model: see lib/modules/catalog.ts
+  trophy?: string // a trophy won in a game ('<module id>:<trophy id>'), standing as a cup – made by the server only
+  tier?: string // its metal: bronse, solv, gull, platina, diamant, legende
   name: string
   x: number
   y: number

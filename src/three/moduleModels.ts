@@ -14,7 +14,7 @@ const M = {
   steel: new THREE.MeshStandardMaterial({ color: 0xc9d1db, roughness: 0.25, metalness: 0.9 }),
   green: new THREE.MeshStandardMaterial({ color: 0x3f9e57, roughness: 0.7 }),
   glass: new THREE.MeshStandardMaterial({ color: 0xbfe4ff, roughness: 0.05, transparent: true, opacity: 0.28 }),
-  water: new THREE.MeshStandardMaterial({ color: 0x3aa0e0, roughness: 0.2, transparent: true, opacity: 0.55 }),
+  water: new THREE.MeshStandardMaterial({ color: 0x3aa0e0, roughness: 0.2, transparent: true, opacity: 0.38, depthWrite: false }),
   gold: new THREE.MeshStandardMaterial({ color: 0xd7b56d, metalness: 1, roughness: 0.3 }),
   red: new THREE.MeshStandardMaterial({ color: 0xd64545, roughness: 0.55 }),
   cream: new THREE.MeshStandardMaterial({ color: 0xf2e6c9, roughness: 0.8 }),
@@ -280,10 +280,7 @@ export const MODELS: Record<string, Builder> = {
     add(g, B(0.74, 0.04, 0.38), mat(0xe3cf9a, 1), 0, 0.1, 0)
     for (const [x, z] of [[-0.2, -0.08], [0.1, 0.05], [0.25, -0.1]] as const) { add(g, C(0.004, 0.006, 0.18, 5), M.green, x, 0.2, z); add(g, S(0.03, 8), M.green, x, 0.3, z) }
     add(g, S(0.07, 10), M.grey, -0.05, 0.14, -0.1)
-    for (const [x, y, z, c] of [[-0.15, 0.32, 0.05, 0xff7a29], [0.12, 0.25, -0.05, 0x29b6ff], [0.22, 0.36, 0.08, 0xff7a29]] as const) {
-      const f = add(g, S(0.03, 10), mat(c, 0.4), x, y, z); f.scale.set(1.7, 1, 0.7)
-      add(g, new THREE.ConeGeometry(0.025, 0.04, 6), mat(c, 0.4), x - 0.055, y, z, [0, 0, Math.PI / 2])
-    }
+    // (no fish of its own: the ones bought in the aquarium game swim here – room.ts setTankFish)
     add(g, B(0.6, 0.03, 0.1), M.black, 0, 0.6, -0.1)
     return 0.8
   },
