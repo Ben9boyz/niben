@@ -157,9 +157,10 @@ const title = (e: Entry): string => String(e.t ?? '–')
 <style scoped>
 .ex { display: flex; flex-direction: column; gap: 12px; }
 .board { display: flex; gap: 8px; flex-wrap: wrap; }
-.board button { all: unset; cursor: pointer; display: flex; flex-direction: column; min-width: 72px; padding: 8px 12px; border-radius: 14px; border: 1px solid var(--glass-border); font-size: 0.78rem; color: var(--text-3); }
+.board button { all: unset; cursor: pointer; display: flex; flex-direction: column; min-width: 72px; padding: 10px 14px; border-radius: 16px; font-size: 0.78rem; color: var(--text-3); background: var(--sk-key, transparent); box-shadow: var(--sk-key-sh, inset 0 0 0 1px var(--glass-border)); transition: transform 0.12s; }
+.board button:active { transform: translateY(1px); }
 .board b { font-size: 1.4rem; color: var(--tone); }
-.board button.on { border-color: var(--tone); background: color-mix(in srgb, var(--tone) 12%, transparent); }
+.board button.on { background: var(--sk-sunk, color-mix(in srgb, var(--tone) 12%, transparent)); box-shadow: var(--sk-sunk-sh, inset 0 0 0 1px var(--tone)), inset 0 -3px 0 var(--tone); }
 .pipe, .rbar { display: flex; height: 8px; border-radius: 99px; overflow: hidden; gap: 2px; }
 .pick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .pick .btn { display: inline-flex; gap: 6px; align-items: center; }

@@ -414,3 +414,10 @@
 /* small glowing touches only in Taster */
 :root[data-skin="keys"] .eyebrow::before { box-shadow: var(--sk-glow); }
 :root[data-skin]:not([data-skin="keys"]):not([data-skin="glass"]) .eyebrow::before { box-shadow: none; }
+
+/* Flat has no shadows, so the things set into the rail's pocket get an outline of their own colour to stay visible */
+:root[data-skin="flat"] .nav-wrap .ledge .hd.glass, :root[data-skin="flat"] .nav-wrap .ledge .sm.glass { background: var(--sk-surface); }
+:root[data-skin="flat"] .vsw .track { background: color-mix(in oklab, var(--accent) 16%, #fff); }
+:root[data-skin="flat"] .vsw .thumb { background: #fff; box-shadow: 0 0 0 2px var(--accent); }
+:root[data-skin="flat"][data-theme="dark"] .vsw .track { background: color-mix(in oklab, var(--accent) 22%, #1c1d22); }
+:root[data-skin="flat"][data-theme="dark"] .vsw .thumb { background: #2a2b31; }
