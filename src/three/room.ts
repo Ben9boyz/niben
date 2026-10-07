@@ -793,6 +793,21 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
 
   // ── Through a door in the hall: into somebody's room, and out of the room you were in ──
   let doorAnim: { user: string; from: number; to: number; t: number; dur: number; delay: number } | null = null
+  // a door you point at in the hall opens a crack – a little light from the room behind – and closes again when you look away
+  let hoverDoor: string | null = null
+  const ajar = new Map<string, number>()
+  function stepAjar(dt: number): void {
+    if (hoverDoor && !ajar.has(hoverDoor)) ajar.set(hoverDoor, 0)
+    for (const [user, v] of ajar) {
+      if (doorAnim?.user === user) { ajar.delete(user); continue } // (walking through it: that animation has the door)
+      const to = user === hoverDoor && station === 'gangen' ? 0.13 : 0
+      const n = v + (to - v) * Math.min(1, dt * 9)
+      if (Math.abs(n - to) < 0.002) { hall.setOpen(user, to); if (!to) ajar.delete(user); else ajar.set(user, to); continue }
+      hall.setOpen(user, n)
+      ajar.set(user, n)
+      invalidate(0.1)
+    }
+  }
   function flyPose(to: Pose3, dur: number, lift = 0): void {
     invalidate(dur + 0.6)
     flight = { from: { pos: camPos.clone(), target: camTarget.clone() }, to: { pos: to.pos.clone(), target: to.target.clone() }, t: 0, dur, lift }
@@ -981,6 +996,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     const modHit = moduleAt()
     let label: string | null | undefined = null
     hoverGuitar = -1
+    hoverDoor = null
     shelf.setHover(-1)
     globeTable.setHover(null)
     listening.setHover(null)
@@ -998,7 +1014,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
         japan.setAnimeHover(hIndex)
         if (a) label = `${a.en || a.title} · ${String(a.known).replace('.', ',')} % kjent`
       }
-      else if (hi.kind === 'door') label = hall.nameOf(hIndex) ?? null
+      else if (hi.kind === 'door') { label = hall.nameOf(hIndex) ?? null; hoverDoor = hall.userOf(hIndex) ?? null }
       else if (hi.kind === 'ipod') label = 'Spillelister'
       else if (hi.kind === 'stack') { const st = stack[hIndex]; label = st ? `${st.queued ? 'Neste i køen: ' : 'Hørt sist: '}${st.name}` : null }
       else if (hi.kind === 'turntable') label = 'Se ovenfra'
@@ -1792,6 +1808,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     const t = simT
 
     // a door in the hall swinging open / shut
+    if (ajar.size || hoverDoor) stepAjar(dt)
     if (doorAnim) {
       doorAnim.t += dt
       const k = Math.min(1, Math.max(0, (doorAnim.t - doorAnim.delay) / doorAnim.dur))
@@ -1936,6 +1953,15 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     /** Which hobby module the camera looks at when the station is 'modul'. */
     freeSpot,
     resetDecor,
+    /** (dev/testing) how far a door in the hall stands open, and where on the screen it is */
+    doorOpen: (user: string): number => hall.openOf(user),
+    doorOnScreen(user: string): { x: number; y: number } | null {
+      const c = hall.doorCenter(user)
+      if (!c) return null
+      c.project(camera)
+      const r = renderer.domElement.getBoundingClientRect()
+      return { x: r.left + ((c.x + 1) / 2) * r.width, y: r.top + ((1 - c.y) / 2) * r.height }
+    },
     /** (dev/testing) the space a decor thing takes up: [min, max] */
     decorBounds(id: string) { const o = decorObjs.get(id); if (!o) return null; const b = decorBox(o); return { min: b.min.toArray(), max: b.max.toArray(), item: { ...o.item } } },
     setDecorSnap(on: boolean) { decorSnap = !!on },

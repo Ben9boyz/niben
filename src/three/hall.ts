@@ -169,6 +169,10 @@ export function buildHall(scene: THREE.Scene, tag: <T extends THREE.Object3D>(o:
     nameOf: (i: number): string | undefined => list[i]?.label,
     hasDoor: (username: string): boolean => byName.has(username),
     /** How far a room's door stands open (0 shut … 1 wide open, swung into the room behind it). */
+    /** How far a door stands open (0 shut … 1 wide open). */
+    openOf: (username: string): number => (byName.get(username)?.hinge.rotation.y ?? 0) / 1.3,
+    /** (dev/testing) the middle of a door, in the world */
+    doorCenter(username: string): THREE.Vector3 | null { const d = byName.get(username); if (!d) return null; d.g.updateWorldMatrix(true, false); return d.g.localToWorld(new THREE.Vector3(0, 1.1, 0)) },
     setOpen(username: string, a: number): void { const d = byName.get(username); if (d) d.hinge.rotation.y = Math.max(0, Math.min(1, a)) * 1.3 },
     /** In front of a room's door, and just through it (looking on into the room / back out into the hall). */
     doorPoses(username: string): { front: { pos: THREE.Vector3; target: THREE.Vector3 }; through: { pos: THREE.Vector3; target: THREE.Vector3 }; out: { pos: THREE.Vector3; target: THREE.Vector3 } } | null {
