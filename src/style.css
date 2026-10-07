@@ -573,6 +573,11 @@ html.player-shell .cpage { padding-top: 80px; padding-bottom: 40px; }
 
 /* the little player in the top-right corner (flat version): the pages start a little lower so nothing hides under it */
 @media (min-width: 721px) { html.has-mini:not(.player-shell) #app > main > .cpage { padding-top: 84px; } }
+/* … and where the page has a head card, the card moves down instead (the page under it keeps its own small gap) */
+@media (min-width: 721px) {
+  html.has-mini:not(.player-shell) #app > main > .page-head { margin-top: 84px; }
+  html.has-mini:not(.player-shell) #app > main > .page-head ~ .cpage { padding-top: 24px; }
+}
 
 
 /* ── one scrollbar everywhere (the thin soft-blue one the home page has) ── */
