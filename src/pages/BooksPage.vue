@@ -23,6 +23,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <h1>{{ tx('books.title') }}</h1>
       <p>{{ books.length }} bøker lest. Trykk på en bok for å se hva jeg syntes.</p>
     </header>
+    <section class="case">
     <div class="shelf">
       <button v-for="(b, i) in books" :key="b.id || b.tittel" class="book rise" :style="{ '--i': Math.min(i, 12) }" @click="open = b">
         <span class="cov">
@@ -35,6 +36,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </button>
       <div v-if="!books.length" class="empty">{{ tx('books.none') }}</div>
     </div>
+    <!-- the books stand on a shelf of light ash -->
+    <div class="ledge" aria-hidden="true"></div>
+    </section>
 
     <teleport to="body">
       <transition name="fade">
@@ -57,6 +61,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </template>
 
 <style scoped>
+.case { padding: 26px 26px 18px; border-radius: 28px; background: var(--sk-surface, var(--glass-strong)); border: var(--sk-border, 1px solid var(--glass-border)); box-shadow: var(--sk-surface-sh, var(--shadow-2)); }
+.ledge { height: 18px; margin-top: 18px; border-radius: 6px; background: radial-gradient(140% 40% at 50% 0%, rgba(255, 255, 255, 0.55), transparent 70%), repeating-linear-gradient(90deg, rgba(120, 84, 40, 0.05) 0 1px, transparent 1px 6px, rgba(120, 84, 40, 0.05) 6px 7px, transparent 7px 15px), linear-gradient(90deg, #e7d5b9, #f1e3cc 45%, #e7d5b9); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 14px -6px rgba(90, 70, 40, 0.35); }
+:root[data-theme="dark"] .ledge { background: linear-gradient(90deg, #3b2c1e, #4a3726 45%, #3b2c1e); }
+@media (max-width: 600px) { .case { padding: 16px 14px 12px; border-radius: 22px; } }
 .shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 22px 18px; }
 .book { display: flex; flex-direction: column; gap: 4px; padding: 0; border: 0; background: none; color: var(--text); text-align: left; cursor: pointer; }
 .cov { position: relative; aspect-ratio: 2 / 3; border-radius: 6px 12px 12px 6px; overflow: hidden; background: linear-gradient(135deg, var(--accent-2), var(--accent)); box-shadow: 0 10px 24px rgba(10, 30, 60, 0.2), inset 4px 0 6px rgba(0,0,0,.15); transition: transform 0.5s var(--spring), box-shadow 0.3s; margin-bottom: 6px; }

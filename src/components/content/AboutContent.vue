@@ -197,6 +197,11 @@ async function save() {
 .photo-btn:hover { background: rgba(0, 0, 0, 0.7); }
 .photo-btn.busy { opacity: 0.7; pointer-events: none; }
 .photo { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 28px; box-shadow: 0 24px 50px rgba(0, 0, 0, 0.25); }
+/* the plain page: the greeting is one card, the photo set into a socket, the links are keys */
+.about:not(.compact) .hero { padding: 26px; border-radius: 30px; background: var(--sk-surface, var(--glass-strong)); border: var(--sk-border, 1px solid var(--glass-border)); box-shadow: var(--sk-surface-sh, var(--shadow-2)); }
+.about:not(.compact) .photo-wrap { padding: 12px; border-radius: 36px; background: var(--sk-sunk, var(--bg-2)); box-shadow: var(--sk-sunk-sh, inset 0 2px 8px rgba(0, 0, 0, 0.12)); }
+.about:not(.compact) .photo { box-shadow: 0 16px 28px -12px rgba(40, 25, 10, 0.55); }
+.about:not(.compact) .links .chip { min-height: 40px; padding: 0 14px; border-radius: 13px; background: var(--sk-key, var(--accent-soft)); box-shadow: var(--sk-key-sh, none); color: var(--text); }
 .avatar { width: 72px; height: 72px; border-radius: 22px; object-fit: cover; margin-bottom: 10px; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2); }
 .intro { min-width: 0; }
 h1 { font-size: clamp(2.2rem, 4.5vw, 3.4rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; }

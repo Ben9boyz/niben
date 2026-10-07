@@ -548,6 +548,9 @@ html.player-shell .cpage { padding-top: 80px; padding-bottom: 40px; }
 /* the plain version, any width: with sub-tabs the tabs are the title – no big header, the content starts right under the bar,
    and the bar stays at the top while the page scrolls */
 .flat-tabs ~ .cpage .cpage-head { display: none; }
+/* the head card (PageHead) has the title: the pages' own headers step aside */
+.page-head ~ .cpage .cpage-head { display: none; }
+@media (min-width: 721px) { .page-head ~ .cpage { padding-top: 24px; } }
 @media (min-width: 721px) {
   .flat-tabs ~ .cpage { padding-top: 12px; }
   html.has-mini:not(.player-shell) #app > main > .flat-tabs ~ .cpage { padding-top: 12px; }

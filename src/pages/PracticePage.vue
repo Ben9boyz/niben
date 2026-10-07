@@ -15,5 +15,5 @@ import PracticePanel from '../panels/PracticePanel.vue'
 </template>
 
 <style scoped>
-.narrow { width: min(600px, 100%); }
+.narrow { width: min(1000px, 100%); }
 </style>

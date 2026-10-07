@@ -121,7 +121,9 @@ onBeforeUnmount(() => {
   aspect-ratio: 1;
   border: 0;
   padding: 0;
-  background: transparent;
+  /* an instrument: a round bezel set into the surface, the progress ring in it, and a small glowing screen in the middle */
+  background: var(--sk-sunk, color-mix(in srgb, var(--bg) 80%, #000 4%));
+  box-shadow: var(--sk-sunk-sh, inset 0 3px 10px rgba(0, 0, 0, 0.16));
   cursor: pointer;
   color: var(--text);
   border-radius: 50%;
@@ -142,23 +144,24 @@ onBeforeUnmount(() => {
 .focus.go .dial { animation: pulse 0.6s var(--ease) 2; }
 @keyframes pulse { 50% { transform: scale(1.04); } }
 
-.center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.center { position: absolute; inset: 15%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 50%; background: linear-gradient(180deg, #16231d, #0e1813); box-shadow: inset 0 4px 14px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.7), 0 10px 24px -10px rgba(0, 0, 0, 0.5); color: #9cf5b8; }
 .status {
   font-size: clamp(0.85rem, 2.2vh, 1.1rem);
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--text-3);
+  color: #76c792;
   transition: color 0.3s;
 }
 .focus.running .status, .focus.go .status { color: var(--c); }
 .time {
-  font: 800 clamp(3rem, 10vh, 5.6rem) var(--font-display);
+  font: 700 clamp(2.4rem, 8vh, 4.4rem) ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  text-shadow: 0 0 12px rgba(110, 240, 160, 0.55);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.04em;
   line-height: 1;
 }
-.sub { font-size: clamp(0.85rem, 2vh, 1rem); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.sub { font-size: clamp(0.8rem, 1.8vh, 0.95rem); color: rgba(156, 245, 184, 0.75); font-variant-numeric: tabular-nums; }
 
 .buttons { display: flex; gap: 10px; }
 .btn.big { min-width: 150px; justify-content: center; padding: 14px 26px; font-size: 1.05rem; }

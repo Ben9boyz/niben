@@ -5,7 +5,7 @@ import MusicToast from '@/components/music/MusicToast.vue'
 import { useMediaSession } from '@/composables/music/useMediaSession'
 import { defineAsyncComponent } from 'vue'
 import SubTabs from '@/components/layout/SubTabs.vue'
-import PageTrail from '@/components/layout/PageTrail.vue'
+import PageHead from '@/components/layout/PageHead.vue'
 import DropTray from '@/components/music/DropTray.vue'
 import GlobalMini from '@/components/music/GlobalMini.vue'
 import ShortcutsHelp from '@/components/layout/ShortcutsHelp.vue'
@@ -45,7 +45,7 @@ const toTop = () => window.scrollTo(0, 0)
     </div>
     <WeatherFx />
     <main>
-      <PageTrail />
+      <PageHead />
       <SubTabs class="flat-tabs" />
       <router-view v-slot="{ route: r }">
         <transition name="page" mode="out-in" type="transition" @before-enter="toTop">
@@ -83,6 +83,8 @@ const toTop = () => window.scrollTo(0, 0)
 @keyframes drift3 { to { transform: translate(-10vw, -12vh) scale(1.2); } }
 .data-error { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); padding: 12px 20px; border-radius: 999px; z-index: 50; color: #d33; font-size: 0.9rem; }
 .flat-tabs { position: sticky; top: 16px; z-index: 30; margin: 24px auto 0; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08); }
+/* desktop: the sub-tabs live in the page's head card (PageHead) – except where there is no head card */
+@media (min-width: 721px) { .page-head ~ .flat-tabs { display: none; } }
 @media (max-width: 720px) {
   /* under the top bar, and it stays there while the page scrolls */
   .flat-tabs { position: sticky; top: calc(68px + env(safe-area-inset-top)); z-index: 30; margin: calc(68px + env(safe-area-inset-top)) auto 0; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08); }

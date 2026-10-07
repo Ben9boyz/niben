@@ -9,5 +9,5 @@ import AboutContent from '@/components/content/AboutContent.vue'
 </template>
 
 <style scoped>
-.about-page { width: min(1000px, 100%); }
+.about-page { width: min(var(--page-max, 1360px), 100%); }
 </style>

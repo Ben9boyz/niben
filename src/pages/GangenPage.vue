@@ -3,14 +3,13 @@ import DoorCards from '@/components/room/DoorCards.vue'
 </script>
 
 <template>
+  <!-- the title and the line about it are in the page's head card (PageHead); here: the wall of doors -->
   <div class="cpage gangen-page">
-    <h2>Gangen</h2>
-    <p class="lead">Én dør per rom. Gå inn hos en kompis – rommet bytter, og du står i oversikten deres.</p>
-    <DoorCards />
+    <section class="wall"><DoorCards /></section>
   </div>
 </template>
 
 <style scoped>
-.gangen-page { width: min(1000px, 100%); }
-.lead { color: var(--text-2, var(--text-3)); margin: 0 0 24px; }
+.wall { padding: 28px; border-radius: 30px; background: var(--sk-surface, var(--glass-strong)); border: var(--sk-border, 1px solid var(--glass-border)); box-shadow: var(--sk-surface-sh, var(--shadow-2)); }
+@media (max-width: 720px) { .wall { padding: 18px; border-radius: 24px; } }
 </style>

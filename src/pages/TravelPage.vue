@@ -49,7 +49,8 @@ function select(c: string | null) {
     <div class="cols" :class="{ picked: !!selected }">
       <div class="glass card mapcard">
         <div class="search"><CountryPicker :highlight="visited" clear-on-pick placeholder="Søk etter et land …" @pick="select" /></div>
-        <FlatMap :visited="visited" :selected="selected" @select="select" />
+        <!-- the map behind glass, set into the card -->
+        <div class="window"><FlatMap :visited="visited" :selected="selected" @select="select" /></div>
       </div>
 
       <aside class="glass card">
@@ -84,6 +85,8 @@ function select(c: string | null) {
 .cols { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'map' 'list' 'detail'; gap: 16px; align-items: start; }
 .mapcard { grid-area: map; padding: 14px; display: grid; gap: 12px; }
 .search { width: min(420px, 100%); }
+.window { overflow: hidden; border-radius: 22px; padding: 6px; background: var(--sk-sunk, var(--bg-2)); box-shadow: var(--sk-sunk-sh, inset 0 2px 8px rgba(0, 0, 0, 0.12)); }
+.pin { box-shadow: var(--sk-glow, none); }
 aside { grid-area: list; padding: 14px 16px 16px; }
 aside h3 { margin: 0 0 10px; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); display: flex; align-items: center; gap: 8px; }
 aside h3 small { padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.72rem; letter-spacing: 0; }
