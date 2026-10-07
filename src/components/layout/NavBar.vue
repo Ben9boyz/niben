@@ -217,12 +217,14 @@ onBeforeUnmount(() => {
       </button>
     </nav>
     <!-- the hall is not a tab of the room – it is the way out of it, to look for another room: a door of its own -->
-    <HallDoor v-if="!isPhone" />
-
     <span class="spacer" aria-hidden="true"></span>
-    <!-- me / settings: my photo (logged in) or a cog – opens the menu with view, theme, language … -->
-    <ViewSwitch v-if="!isPhone" />
-    <SettingsMenu v-if="!isPhone" />
+    <!-- the "you" zone rests on a light ash ledge: the way out (Gangen), how you see the room, and you -->
+    <div v-if="!isPhone" class="ledge ash">
+      <HallDoor />
+      <ViewSwitch />
+      <!-- me / settings: my photo (logged in) or a cog – opens the menu with view, theme, language … -->
+      <SettingsMenu />
+    </div>
   </header>
   <teleport to="body">
     <div v-if="fly" ref="flyEl" class="fly" :style="{ top: `${fly.top}px`, left: `${fly.left}px` }" @mouseenter="keepFly" @mouseleave="closeFlySoon">
@@ -293,11 +295,12 @@ onBeforeUnmount(() => {
   bottom: 6px;
   left: 0;
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.55));
+  /* a white inlay pressed into the glass – the room you are in is set into the rail, not glowing on it */
+  background: linear-gradient(180deg, #fff, #f7f5f1);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,1),
-    inset 0 -1px 2px color-mix(in srgb, var(--accent) 15%, transparent),
-    0 4px 14px color-mix(in srgb, var(--accent) 22%, transparent);
+    inset 0 1px 2px rgba(60, 45, 25, 0.12),
+    inset 0 0 0 1px rgba(60, 45, 25, 0.06),
+    0 1px 0 rgba(255, 255, 255, 0.9);
   opacity: 0;
   transition:
     transform 0.6s var(--spring),
@@ -310,6 +313,11 @@ onBeforeUnmount(() => {
   box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 4px 18px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 .drop.ready { opacity: 1; }
+.ledge { display: none; }
+@media (min-width: 721px) {
+  .ledge { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 8px 0; border-radius: 22px; }
+  .ledge > * { margin: 0 !important; }
+}
 .drop.stretch { scale: 1.12 0.86; }
 
 .item {
@@ -328,7 +336,7 @@ onBeforeUnmount(() => {
 }
 .item:hover { color: var(--text); }
 button.item { border: 0; background: transparent; font-family: inherit; cursor: pointer; }
-.item.active { color: var(--accent); }
+.item.active { color: var(--accent-ink); }
 .item svg { transition: transform 0.5s var(--spring); }
 .item:hover svg { transform: translateY(-1px) rotate(-6deg) scale(1.1); }
 .item.active svg { transform: scale(1.08); }.install {

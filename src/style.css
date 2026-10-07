@@ -1,10 +1,10 @@
 /* ───────────────────────── Design tokens ───────────────────────── */
 :root {
-  --bg: #eef4fb;
-  --bg-2: #e3ecf8;
-  --text: #0b1424;
-  --text-2: #4a5872;
-  --text-3: #7d8aa3;
+  --bg: #f4f1ec;
+  --bg-2: #ebe6de;
+  --text: #1c1a17;
+  --text-2: #4a443b;
+  --text-3: #6b6358;
   --accent: #2b8cff;
   --accent-2: #7cd0ff;
   --accent-soft: rgba(43, 140, 255, 0.12);
@@ -26,18 +26,35 @@
   --logo-page: #fffaf0;
   --logo-page-line: #c9b99a;
 
-  --glass: rgba(255, 255, 255, 0.66);
-  --glass-strong: rgba(255, 255, 255, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.75);
-  --glass-edge: rgba(15, 40, 80, 0.08);
-  --glass-hi: rgba(255, 255, 255, 0.9);
-  --shadow-1: 0 1px 2px rgba(15, 40, 80, 0.06), 0 4px 16px rgba(15, 40, 80, 0.06);
-  --shadow-2: 0 2px 6px rgba(15, 40, 80, 0.06), 0 18px 48px rgba(15, 40, 80, 0.12);
-  --shadow-3: 0 4px 12px rgba(15, 40, 80, 0.08), 0 32px 80px rgba(15, 40, 80, 0.18);
+  --glass: rgba(255, 255, 255, 0.62);
+  --glass-strong: rgba(255, 253, 249, 0.82);
+  --glass-border: rgba(255, 255, 255, 0.8);
+  --glass-edge: rgba(60, 45, 25, 0.08);
+  --glass-hi: rgba(255, 255, 255, 0.95);
+  --shadow-1: 0 1px 2px rgba(60, 45, 25, 0.08), 0 4px 14px rgba(60, 45, 25, 0.06);
+  --shadow-2: 0 2px 6px rgba(60, 45, 25, 0.07), 0 18px 44px rgba(60, 45, 25, 0.12);
+  --shadow-3: 0 4px 12px rgba(60, 45, 25, 0.08), 0 32px 80px rgba(60, 45, 25, 0.16);
 
-  --blob-1: #8fd3ff;
-  --blob-2: #b9c8ff;
-  --blob-3: #a6f0e6;
+  /* materials (light skeuomorphism: real surfaces in small doses – one light, from the top left) */
+  --paper: #fbf7f0;
+  --paper-edge: rgba(120, 90, 50, 0.12);
+  --metal-1: #ffffff;
+  --metal-2: #eef0f3;
+  --metal-3: #e3e7eb;
+  --metal-edge: #cdd3da;
+  --metal-ink: #1b2430;
+  --groove-1: #dfe2e6;
+  --groove-2: #eceef1;
+  --ash-1: #e7d5b9;
+  --ash-2: #f1e3cc;
+  --ash-grain: rgba(120, 84, 40, 0.05);
+  --water-1: #58c3ee;
+  --water-2: #1e7fc2;
+  --accent-ink: color-mix(in srgb, var(--accent) 76%, #000); /* the accent as text: dark enough to read */
+
+  --blob-1: #ffe9c9;
+  --blob-2: #dbe6f2;
+  --blob-3: #ece4d6;
 
   --r-sm: 14px;
   --r-md: 22px;
@@ -88,6 +105,19 @@
   --blob-1: #0f4c8a;
   --blob-2: #2a2f7a;
   --blob-3: #0d5a5a;
+  --paper: #1a2131;
+  --paper-edge: rgba(255, 255, 255, 0.07);
+  --metal-1: #3a4252;
+  --metal-2: #2c3341;
+  --metal-3: #232a36;
+  --metal-edge: #11161f;
+  --metal-ink: #eef3fb;
+  --groove-1: #0b1019;
+  --groove-2: #161c28;
+  --ash-1: #3b2c1e;
+  --ash-2: #4a3726;
+  --ash-grain: rgba(0, 0, 0, 0.18);
+  --accent-ink: color-mix(in srgb, var(--accent) 82%, #fff);
   color-scheme: dark;
 }
 
@@ -120,7 +150,7 @@ button { font: inherit; color: inherit; }
 /* ───────────────────────── Glass ───────────────────────── */
 .glass {
   position: relative;
-  background: var(--glass);
+  background: linear-gradient(155deg, color-mix(in srgb, var(--glass) 100%, #fff 6%), var(--glass));
   /* modest blur: its cost grows fast with the radius, and it is redrawn whenever the 3D view changes */
   -webkit-backdrop-filter: blur(16px) saturate(140%);
   backdrop-filter: blur(16px) saturate(140%);
@@ -191,25 +221,32 @@ button { font: inherit; color: inherit; }
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 22px;
-  border-radius: 999px;
-  border: 1px solid var(--glass-border);
-  background: var(--glass-strong);
-  color: var(--text);
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 12px;
+  border: 1px solid var(--metal-edge);
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.06) 0 1px, rgba(0, 0, 0, 0.012) 1px 2px),
+    linear-gradient(180deg, var(--metal-1) 0%, var(--metal-2) 50%, var(--metal-3) 100%);
+  color: var(--metal-ink);
   font-weight: 600;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 var(--glass-hi), var(--shadow-1);
-  transition: transform 0.4s var(--spring), box-shadow 0.3s var(--ease), background 0.3s;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(0, 0, 0, 0.05), 0 1px 2px rgba(20, 30, 45, 0.16), 0 4px 10px rgba(20, 30, 45, 0.07);
+  transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease), filter 0.2s;
 }
-.btn:hover { transform: translateY(-2px) scale(1.02); box-shadow: inset 0 1px 0 var(--glass-hi), var(--shadow-2); }
-.btn:active { transform: scale(0.97); transition-duration: 0.1s; }
+.btn:hover { filter: brightness(1.02); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -1px 0 rgba(0, 0, 0, 0.05), 0 2px 4px rgba(20, 30, 45, 0.16), 0 8px 18px rgba(20, 30, 45, 0.09); }
+/* pressed: it sinks a pixel and the shadow goes inside */
+.btn:active { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(20, 30, 45, 0.18); transition-duration: 0.08s; }
 .btn.primary {
-  background: linear-gradient(135deg, var(--accent-2), var(--accent));
-  border-color: transparent;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 2px),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 82%, #fff) 0%, color-mix(in srgb, var(--accent) 88%, #000) 55%, color-mix(in srgb, var(--accent) 74%, #000) 100%);
+  border-color: color-mix(in srgb, var(--accent) 62%, #000);
   color: #fff;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 8px 24px var(--accent-glow);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 0 rgba(0, 0, 0, 0.15), 0 2px 6px color-mix(in srgb, var(--accent) 35%, transparent), 0 8px 18px color-mix(in srgb, var(--accent) 18%, transparent);
 }
-.btn.primary:hover { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 12px 32px var(--accent-glow); }
+.btn.primary:hover { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(0, 0, 0, 0.15), 0 3px 8px color-mix(in srgb, var(--accent) 40%, transparent), 0 12px 26px color-mix(in srgb, var(--accent) 22%, transparent); }
+:root[data-theme="dark"] .btn { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3); }
 
 /* One design language for everyday controls:
    · flat – `.pbtn` / `.pills > button` (filters, presets, small switches), tabs through <SegSwitch>, `.btn` (glass)
@@ -221,9 +258,10 @@ button { font: inherit; color: inherit; }
   gap: 5px;
   min-height: 34px;
   padding: 0 14px;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--metal-edge);
   border-radius: 999px;
-  background: var(--glass-strong);
+  background: linear-gradient(180deg, var(--metal-1), var(--metal-3));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 1px 2px rgba(20, 30, 45, 0.1);
   color: var(--text-2);
   font: 600 0.82rem var(--font);
   white-space: nowrap;
@@ -232,11 +270,11 @@ button { font: inherit; color: inherit; }
   -webkit-tap-highlight-color: transparent;
   transition: color 0.2s, background 0.2s, border-color 0.2s;
 }
-.pbtn:hover:not(:disabled), .pills > button:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
-.pbtn.on, .pills > button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.pbtn:hover:not(:disabled), .pills > button:hover:not(:disabled) { color: var(--accent-ink); }
+.pbtn.on, .pills > button.on { background: linear-gradient(180deg, var(--groove-1), var(--groove-2)); border-color: transparent; box-shadow: inset 0 2px 3px rgba(20, 30, 45, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.8); color: var(--accent-ink); }
 .pbtn:disabled, .pills > button:disabled { opacity: 0.45; cursor: default; }
 .pbtn small, .pills > button small { opacity: 0.6; font-weight: 600; }
-.btn.soft { background: var(--accent-soft); border-color: transparent; box-shadow: none; color: var(--accent); }
+.btn.soft { color: var(--metal-ink); } /* (the everyday button: aluminium like the rest) */
 
 .chip {
   display: inline-flex;
@@ -247,8 +285,21 @@ button { font: inherit; color: inherit; }
   font-size: 0.8rem;
   font-weight: 600;
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-ink);
 }
+
+/* materials to use by name */
+.paper { background: linear-gradient(180deg, color-mix(in srgb, var(--paper) 100%, #fff 40%), var(--paper)); border: 1px solid var(--paper-edge); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(60, 40, 20, 0.07), 0 10px 28px rgba(60, 40, 20, 0.07); }
+.ash {
+  background:
+    radial-gradient(140% 12% at 50% 0%, rgba(255, 255, 255, 0.5), transparent 70%),
+    repeating-linear-gradient(90deg, var(--ash-grain) 0 1px, transparent 1px 6px, var(--ash-grain) 6px 7px, transparent 7px 15px),
+    linear-gradient(90deg, var(--ash-1), var(--ash-2) 45%, var(--ash-1));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(120, 84, 40, 0.18), 0 4px 12px rgba(90, 70, 40, 0.1);
+}
+.groove { background: linear-gradient(180deg, var(--groove-1), var(--groove-2)); box-shadow: inset 0 2px 4px rgba(20, 30, 45, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.85); }
+.water-tube { background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.8)); box-shadow: inset 0 1px 3px rgba(20, 40, 70, 0.28), inset 0 -1px 0 rgba(255, 255, 255, 0.9); border-radius: 999px; overflow: hidden; }
+.water { background: radial-gradient(70% 140% at 25% -10%, rgba(255, 255, 255, 0.6), transparent 55%), linear-gradient(180deg, var(--water-1), var(--water-2)); box-shadow: inset 0 -2px 4px rgba(0, 40, 80, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.55); border-radius: 999px; }
 
 
 /* ───────────────────────── Motion helpers ───────────────────────── */
