@@ -126,5 +126,6 @@ export async function enterRoom(username: string): Promise<void> {
   const door = username !== rooms.current && !!room.api && location.hash.startsWith('#/gangen') && (await room.api.enterDoor(username))
   if (username !== rooms.current) await setRoom(username, { viaDoor: door })
   if (door) room.api?.arriveInRoom() // (in through the door: you are standing just inside the new room, and look around it)
+  if (hall.q) { hall.q = ''; hall.offset = 0; void loadHall() } // (the search is done – back in the hall, every door shows again)
   if (location.hash !== '#/') location.hash = '#/'
 }

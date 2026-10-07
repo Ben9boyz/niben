@@ -126,6 +126,8 @@ test('the hall: a door of its own outside the menu, one door per room there, and
   assert.ok((await page.locator('.door[data-room]').count()) >= 2, 'a door for each room')
   // a slow answer: a spinner (a swinging door) says where you are going while the room loads, and goes when it is there
   await page.route('**/api.php?action=room_set*', async (r) => { await new Promise((ok) => setTimeout(ok, 1500)); await r.continue() })
+  const find = page.locator('.hall .find input') // (many rooms: the hall has a search)
+  if (await find.count()) { await find.fill(alice.name); await page.waitForTimeout(600) }
   await page.locator('.door', { hasText: alice.name }).first().click()
   await page.getByRole('status').filter({ hasText: `Går inn i rommet til ${alice.name}` }).waitFor()
   await page.getByRole('heading', { level: 1, name: /Alicia/ }).waitFor()
