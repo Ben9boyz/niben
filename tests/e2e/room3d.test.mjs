@@ -39,11 +39,29 @@ test('the listening corner shows the shelf of a connected room and survives a sw
   assert.ok(await looksDrawn(page))
   const before = await scene(page)
 
-  await page.getByRole('button', { name: /Rom og konto/ }).click()
   await pickRoom(page, alice.name)
   await page.waitForFunction((id) => document.cookie.includes(`niben_r=${id}`), String(alice.id))
   await page.waitForTimeout(2500)
   assert.ok(await looksDrawn(page), 'still a drawn room after the switch')
   assert.notDeepEqual(await scene(page), before, 'and a different one')
+  assert.deepEqual(page.errors, [])
+})
+
+test('the hall in 3D: you come out of your own room’s door, and go into another room through its door', async () => {
+  const owner = await ownerClient()
+  const alice = await makeUser(owner)
+  const page = await openPage(browser, { mode: 'rom', width: 1100, height: 700, hash: '/' })
+  await page.waitForFunction(() => !!window.__room, null, { timeout: 30000 })
+  await page.waitForTimeout(2500)
+  await page.evaluate(() => { location.hash = '#/gangen' })
+  await page.locator('.door[data-room]').first().waitFor()
+  await page.waitForFunction(() => window.__room.debug.station === 'gangen', null, { timeout: 15000 })
+  if (process.env.SHOT) {
+    await page.evaluate((n) => { const r = window.__room; r.goTo('gangen', { instant: true }) }, alice.name)
+    await page.waitForTimeout(1500)
+    (await import('node:fs')).writeFileSync(process.env.SHOT, await page.screenshot())
+  }
+  await page.locator(`.door[data-room="${alice.name}"]`).click()
+  await page.waitForFunction((id) => document.cookie.includes(`niben_r=${id}`), String(alice.id), { timeout: 20000 })
   assert.deepEqual(page.errors, [])
 })

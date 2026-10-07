@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { tx } from '@/composables/site/useTexts'
 import { computed, onMounted, onBeforeUnmount } from 'vue'
-import { Music, BookOpen, Languages, Guitar, Gamepad2, Plane, ArrowRight, Radio, PartyPopper, Mic, Tv, Trophy, Disc3 } from 'lucide-vue-next'
+import { Music, BookOpen, Languages, Guitar, Gamepad2, Plane, ArrowRight, Radio, PartyPopper, Mic, Tv, Trophy, Disc3, X } from 'lucide-vue-next'
 import { milestones, loadMilestones } from '@/composables/site/useMilestones'
 import { useRouter } from 'vue-router'
 import { useData, type SectionId } from '@/composables/site/useData'
@@ -130,7 +130,7 @@ const inDays = (t: Trip) => {
         <img v-if="dailyRec.thumb || dailyRec.image" :src="dailyRec.thumb || dailyRec.image || undefined" alt="" class="art" crossorigin="anonymous" />
         <span class="txt"><small class="lbl">Anbefalt i dag</small><b>{{ dailyRec.name }}</b><small>{{ dailyRec.artist }}<template v-if="dailyRec.why"> · {{ dailyRec.why }}</template></small></span>
       </button>
-      <button v-if="admin.mine" class="hide" title="Skjul dette forslaget" aria-label="Skjul dette forslaget" @click="hideRec(dailyRec.uri).then(() => loadDaily(true))">✕</button>
+      <button v-if="admin.mine" class="hide" title="Skjul dette forslaget" aria-label="Skjul dette forslaget" @click="hideRec(dailyRec.uri).then(() => loadDaily(true))"><X :size="14" /></button>
       </div>
     </section>
 

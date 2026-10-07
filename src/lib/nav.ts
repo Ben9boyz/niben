@@ -3,10 +3,14 @@ import { useData } from '@/composables/site/useData'
 import { routeAllowed } from './sections'
 import { rooms } from '@/composables/room/useRooms'
 import { placed } from '@/composables/room/useModules'
+import { iconOf, isIcon } from './icons'
+import { decor } from '@/composables/room/useDecor'
+import { CORNER_OF_ROUTE } from './corners'
+import type { Component } from 'vue'
 
 // The main tabs and the sub-tabs inside them. Every sub-tab is still its own route (and its own
 // station in the 3D room); a group just decides which tab lights up in the menu and which pills show.
-export interface NavGroup { id: string; label: string; routes: string[]; icon: string; emoji?: string }
+export interface NavGroup { id: string; label: string; routes: string[]; icon: string; glyph?: string /* a symbol of its own (a name in lib/icons.ts) */ }
 export const GROUPS: NavGroup[] = [
   { id: 'hjem', label: 'Hjem', routes: ['hjem'], icon: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z' },
   { id: 'lytte', label: 'Lytte', routes: ['lytte'], icon: 'M9 18V5l12-2v13M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6z' },
@@ -40,9 +44,15 @@ const data = useData()
 const BUILTIN = new Set(['lare', 'laget', 'opplevd'])
 /** The groups of the room being shown: pages of switched-off corners are left out, and groups with nothing left disappear. A hobby module sits
  *  under the tab its owner chose (Lære, Laget, Opplevd, Hobbyer – or a tab of its own: "Trening" with a swimmer for a symbol). */
+/** A tab with one page that is a room corner (Lytte, Om meg) carries that corner's own name and symbol. */
+function oneCorner(g: NavGroup): Partial<NavGroup> {
+  if (g.routes.length !== 1) return {}
+  const it = cornerItem(g.routes[0]!)
+  return { ...(it?.name?.trim() ? { label: it.name.trim() } : {}), ...(isIcon(it?.ico) ? { glyph: it.ico } : {}) }
+}
 export const standardGroups = computed<NavGroup[]>(() => {
   const mods = placed.value
-  const out: NavGroup[] = GROUPS.map((g) => ({ ...g, routes: g.id === 'hobby' ? [] : g.routes.filter((r) => routeAllowed(r, data.profile) && (r !== 'vurderinger' || mods.some((m) => m.kind.fields.some((f) => f.kind === 'rating')))) }))
+  const out: NavGroup[] = GROUPS.map((g) => ({ ...g, ...oneCorner(g), routes: g.id === 'hobby' ? [] : g.routes.filter((r) => routeAllowed(r, data.profile) && (r !== 'vurderinger' || mods.some((m) => m.kind.fields.some((f) => f.kind === 'rating')))) }))
   const custom = new Map<string, NavGroup>()
   for (const m of mods) {
     const grp = (m.item.grp ?? '').trim()
@@ -51,7 +61,7 @@ export const standardGroups = computed<NavGroup[]>(() => {
     if (target) { target.routes.push(key); continue }
     const id = 'c:' + grp.toLowerCase()
     let g = custom.get(id)
-    if (!g) { g = { id, label: grp, routes: [], icon: GROUPS.find((x) => x.id === 'hobby')?.icon ?? '', emoji: m.icon }; custom.set(id, g) }
+    if (!g) { g = { id, label: grp, routes: [], icon: GROUPS.find((x) => x.id === 'hobby')?.icon ?? '', glyph: m.icon }; custom.set(id, g) }
     g.routes.push(key)
   }
   // a tab of one's own goes in before "Om meg" and the hall
@@ -73,7 +83,7 @@ export const navGroups = computed<NavGroup[]>(() => {
   const tabs: NavGroup[] = nav.tabs.map((t) => {
     const routes = t.routes.filter((r) => home0.has(r) && !used.has(r))
     routes.forEach((r) => used.add(r))
-    return { id: t.id, label: t.label, routes, icon: GROUPS.find((x) => x.id === t.id)?.icon ?? STAR, emoji: t.icon || undefined }
+    return { id: t.id, label: t.label, routes, icon: GROUPS.find((x) => x.id === t.id)?.icon ?? STAR, glyph: isIcon(t.icon) ? t.icon : undefined }
   })
   const more: NavGroup = { id: 'mer', label: 'Mer', routes: [], icon: STAR }
   for (const [r, gid] of home0) if (!used.has(r)) (tabs.find((t) => t.id === gid) ?? more).routes.push(r)
@@ -83,10 +93,18 @@ export const navGroups = computed<NavGroup[]>(() => {
 export const HOBBY = 'h:'
 /** The name a page has in the menu: the route's name, or 'h:<id>' for a hobby module. */
 export const routeKey = (r: { name?: unknown; params?: Record<string, unknown> }): string => (r.name === 'modul' ? HOBBY + String(r.params?.id ?? '') : String(r.name))
+/** A room corner's own name / symbol for a page, if it was given one (Admin → Hobbyer). */
+const cornerItem = (r: string) => { const c = CORNER_OF_ROUTE[r]; return c ? decor.items.find((i) => i.corner === c) : undefined }
 export const tabLabel = (r: string): string => {
-  if (!r.startsWith(HOBBY)) return TAB_LABELS[r] ?? r
+  if (!r.startsWith(HOBBY)) return cornerItem(r)?.name?.trim() || TAB_LABELS[r] || r
   const m = placed.value.find((x) => x.id === r.slice(HOBBY.length))
-  return m ? `${m.icon} ${m.name}` : 'Modul'
+  return m ? m.name : 'Modul'
+}
+/** The symbol of a page in the sub-tabs: an SVG path for the built-in ones, the icon of a hobby module. */
+export const tabIcon = (r: string): string | Component | undefined => {
+  if (!r.startsWith(HOBBY)) { const it = cornerItem(r); return isIcon(it?.ico) ? iconOf(it.ico) : ROUTE_ICONS[r] }
+  const m = placed.value.find((x) => x.id === r.slice(HOBBY.length))
+  return m ? iconOf(m.icon) : undefined
 }
 export const tabTarget = (r: string): { name: string; params?: { id: string } } => (r.startsWith(HOBBY) ? { name: 'modul', params: { id: r.slice(HOBBY.length) } } : { name: r })
 const byRoute = new Map<string, NavGroup>(GROUPS.flatMap((g) => g.routes.map((r): [string, NavGroup] => [r, g])))

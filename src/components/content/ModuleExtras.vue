@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Shuffle, Droplets } from 'lucide-vue-next'
+import { Shuffle, Droplets, Star, Check, Medal, UtensilsCrossed } from 'lucide-vue-next'
 import type { ModuleKind } from '@/lib/modules/catalog'
 import type { Entry } from '@/composables/room/useModules'
 
@@ -122,8 +122,8 @@ const title = (e: Entry): string => String(e.t ?? '–')
     </div>
 
     <div v-if="stars" class="stars">
-      <span class="avg"><b>{{ stars.avg }}</b>★ i snitt</span>
-      <div class="bars"><span v-for="c in stars.counts" :key="c.n"><small>{{ c.n }}★</small><i><u :style="{ width: (c.c / stars.max) * 100 + '%' }"></u></i><small>{{ c.c }}</small></span></div>
+      <span class="avg"><b>{{ stars.avg }} <Star :size="18" class="fs" /></b>i snitt</span>
+      <div class="bars"><span v-for="c in stars.counts" :key="c.n"><small>{{ c.n }} <Star :size="10" class="fs" /></small><i><u :style="{ width: (c.c / stars.max) * 100 + '%' }"></u></i><small>{{ c.c }}</small></span></div>
     </div>
 
     <div v-if="results" class="res">
@@ -133,11 +133,11 @@ const title = (e: Entry): string => String(e.t ?? '–')
 
     <div v-if="thirsty.length" class="thirst">
       <Droplets :size="16" /><span>Trenger vann nå: </span>
-      <template v-for="t in thirsty" :key="t.i"><button v-if="mine" class="water" :title="`Vannet ${title(t.e)} i dag`" @click="emit('water', t.i)">{{ title(t.e) }} ✓</button><b v-else>{{ title(t.e) }}</b></template>
+      <template v-for="t in thirsty" :key="t.i"><button v-if="mine" class="water" :title="`Vannet ${title(t.e)} i dag`" @click="emit('water', t.i)">{{ title(t.e) }} <Check :size="12" /></button><b v-else>{{ title(t.e) }}</b></template>
     </div>
 
     <div v-if="podium" class="podium" aria-label="Topp tre">
-      <button v-for="(p, k) in podium" :key="p.i" :class="'p' + k" @click="emit('open', p.i, p.e)"><span class="medal">{{ ['🥈', '🥇', '🥉'][k] }}</span><b>{{ title(p.e) }}</b><i></i></button>
+      <button v-for="(p, k) in podium" :key="p.i" :class="'p' + k" @click="emit('open', p.i, p.e)"><Medal class="medal" :size="26" :style="{ color: ['#a8b2bd', '#f5a524', '#c98a4b'][k] }" aria-hidden="true" /><b>{{ title(p.e) }}</b><i></i></button>
     </div>
 
     <div v-if="year" class="year">
@@ -146,7 +146,7 @@ const title = (e: Entry): string => String(e.t ?? '–')
     </div>
 
     <div v-if="canMenu" class="menu">
-      <button class="btn soft small" @click="makeMenu">🍽️ {{ menu ? 'Ny ukesmeny' : 'Foreslå ukesmeny' }}</button>
+      <button class="btn soft small" @click="makeMenu"><UtensilsCrossed :size="14" />{{ menu ? 'Ny ukesmeny' : 'Foreslå ukesmeny' }}</button>
       <ol v-if="menu"><li v-for="m in menu" :key="m.d"><small>{{ m.d }}</small><button @click="emit('open', m.i, m.e)">{{ title(m.e) }}</button></li></ol>
     </div>
 
@@ -176,7 +176,9 @@ const title = (e: Entry): string => String(e.t ?? '–')
 .sum { font-size: 0.9rem; color: var(--text-3); } .sum b { color: var(--text); font-size: 1.1rem; }
 .podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; align-items: end; gap: 8px; max-width: 420px; }
 .podium button { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; font-size: 0.82rem; }
-.podium b { overflow-wrap: anywhere; } .podium .medal { font-size: 1.6rem; }
+.podium b { overflow-wrap: anywhere; }
+.fs { fill: #f5a524; color: #f5a524; vertical-align: -2px; }
+.menu .btn, .water { display: inline-flex; align-items: center; gap: 4px; }
 .podium i { display: block; width: 100%; border-radius: 10px 10px 0 0; background: color-mix(in srgb, var(--mc) 30%, transparent); }
 .podium .p0 i { height: 46px; } .podium .p1 i { height: 70px; background: var(--mc); } .podium .p2 i { height: 30px; }
 .year small { color: var(--text-3); font-size: 0.78rem; }

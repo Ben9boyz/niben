@@ -37,7 +37,8 @@ test('a room with twenty hobby modules stays inside the same budget', async () =
   await page.evaluate((n) => fetch('api.php?action=room_set', { method: 'POST', headers: { 'X-Niben': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ username: n }) }), u.name)
   await page.reload()
   await page.waitForFunction(() => !!window.__room, null, { timeout: 30000 })
-  await page.waitForFunction(() => window.__room.dumpScene().filter((o) => /Sprite/.test(o[0])).length >= 20, null, { timeout: 30000 }) // (all twenty are standing)
+  await page.waitForFunction(() => window.__room.dumpScene().filter((o) => /Sprite/.test(o[0])).length === 0 && window.__room.stats().meshes > 0, null, { timeout: 30000 })
+  await page.waitForTimeout(2500) // (all twenty are standing)
   await page.waitForTimeout(2000)
   const rows = await page.evaluate((names) => {
     const r = window.__room

@@ -7,6 +7,7 @@ export interface DecorItem {
   file: string
   ico?: string // a module's own symbol (an emoji) instead of its kind's
   grp?: string // which tab of the menu a module sits under: '' = Hobbyer, 'lare' | 'laget' | 'opplevd', or the name of a tab of one's own
+  corner?: string // one of the room's own corners (lytte, japansk, gitar …): x / z are how far it has been moved
   mod?: string // a hobby module (its kind) instead of a model: see lib/modules/catalog.ts
   name: string
   x: number

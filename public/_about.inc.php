@@ -42,7 +42,7 @@ function about_handle(string $action, bool $post): void {
             $seen['t' . $id] = true;
             $routes = [];
             foreach (array_slice((array)($t['routes'] ?? []), 0, 40) as $r) { $r = $route($r); if ($r && !isset($seen[$r])) { $routes[] = $r; $seen[$r] = true; } }
-            $tabs[] = ['id' => $id, 'label' => mb_substr(trim(strip_tags((string)($t['label'] ?? ''))), 0, 24) ?: 'Fane', 'icon' => mb_substr(trim(strip_tags((string)($t['icon'] ?? ''))), 0, 8), 'routes' => $routes];
+            $tabs[] = ['id' => $id, 'label' => mb_substr(trim(strip_tags((string)($t['label'] ?? ''))), 0, 24) ?: 'Fane', 'icon' => preg_match('~^[A-Za-z0-9]{1,32}$~', (string)($t['icon'] ?? '')) ? (string)$t['icon'] : '', 'routes' => $routes];
         }
         $hidden = [];
         foreach (array_slice((array)($b['hidden'] ?? []), 0, 80) as $r) { $r = $route($r); if ($r && !isset($seen[$r])) { $hidden[] = $r; $seen[$r] = true; } }

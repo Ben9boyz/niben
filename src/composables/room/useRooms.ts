@@ -83,23 +83,25 @@ async function swapRoomState(to: string): Promise<void> {
   ])
 }
 
-export async function setRoom(username: string): Promise<void> {
+export async function setRoom(username: string, { viaDoor = false }: { viaDoor?: boolean } = {}): Promise<void> {
   if (switching) { queued = username; return }
   if (username === rooms.current) return
   switching = true
   stashRoom(rooms.current ?? '')
   const root = document.documentElement
-  root.dataset.roomfx = 'out' // the room flies off (style.css)
+  if (!viaDoor) root.dataset.roomfx = 'out' // the room flies off (style.css) – unless you walked through its door: then you are simply in it
   try {
-    await Promise.all([api('room_set', { username }), wait(320)])
+    await Promise.all([api('room_set', { username }), wait(viaDoor ? 0 : 320)])
     await swapRoomState(username)
     // stay in the corner you are in – only a corner this room does not have (or the admin of somebody else's room) sends you home
     const here = location.hash.replace(/^#\/?/, '').split(/[/?]/)[0]
     if (here && ((useData().profile.sections as Record<string, boolean | undefined>)?.[here] === false || (here === 'admin' && !admin.mine))) location.hash = '#/'
-    root.dataset.roomfx = 'pre' // out of sight on the other side …
-    await frames()
-    root.dataset.roomfx = 'in' // … and in
-    await wait(450)
+    if (!viaDoor) {
+      root.dataset.roomfx = 'pre' // out of sight on the other side …
+      await frames()
+      root.dataset.roomfx = 'in' // … and in
+      await wait(450)
+    }
   } catch {
     location.reload() // anything odd: the safe way, a fresh page
     return
@@ -114,6 +116,9 @@ export async function setRoom(username: string): Promise<void> {
 
 /** A door in the hall: step into that room (the room flies in as usual) and stand in its overview. */
 export async function enterRoom(username: string): Promise<void> {
-  if (username !== rooms.current) await setRoom(username)
+  // in the 3D hall: up to that room's door, it swings open, and in through it – then the room changes
+  const door = username !== rooms.current && !!room.api && location.hash.startsWith('#/gangen') && (await room.api.enterDoor(username))
+  if (username !== rooms.current) await setRoom(username, { viaDoor: door })
+  if (door) room.api?.arriveInRoom() // (in through the door: you are standing just inside the new room, and look around it)
   if (location.hash !== '#/') location.hash = '#/'
 }

@@ -5,6 +5,18 @@
 const DECOR_KEY = 'room_decor';
 const DECOR_MAX_BYTES = 14 * 1024 * 1024;
 
+// The room's own corners are in the same list as everything one can move (id "c-<corner>", field 'corner'): their own name and
+// symbol, hidden or not, and how far they have been moved / turned / resized from where they stand to begin with (x, z = offset).
+const DECOR_CORNERS = ['lytte', 'japansk', 'gitar', 'figurer', 'ovelse', 'reiser', 'boker', 'kode', 'om'];
+function decor_corner_default(string $c): array { return ['id' => 'c-' . $c, 'corner' => $c, 'file' => '', 'name' => '', 'ico' => '', 'x' => 0.0, 'y' => 0.0, 'z' => 0.0, 'rot' => 0.0, 'scale' => 1.0, 'visible' => true]; }
+/** The stored list, with an entry for every corner (those never changed are not stored, just shown as they are). */
+function decor_with_corners(array $l): array {
+    $have = array_column(array_filter($l, fn($d) => !empty($d['corner'])), 'corner');
+    foreach (DECOR_CORNERS as $c) if (!in_array($c, $have, true)) $l[] = decor_corner_default($c);
+    return $l;
+}
+/** A symbol is a name from the site's icon set ("Bike") – nothing else is kept. */
+function decor_icon($v): string { $v = trim((string)$v); return preg_match('~^[A-Za-z0-9]{1,32}$~', $v) ? $v : ''; }
 function decor_list(): array { return json_decode((string)kv_get(DECOR_KEY), true) ?: []; }
 function decor_store(array $l): void { kv_set(DECOR_KEY, json_encode(array_values($l), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); }
 function decor_num($v, float $min, float $max, float $def): float { return is_numeric($v) ? max($min, min($max, (float)$v)) : $def; }
@@ -70,7 +82,7 @@ function fig_store(array $l): void { kv_set(FIG_KEY, json_encode(array_values($l
 function decor_handle(string $action, bool $post): void {
     switch ($action) {
     case 'decor_get':
-        out(['items' => decor_list()]);
+        out(['items' => decor_with_corners(decor_list())]);
 
     case 'decor_upload': {
         if (!$post) fail('Bruk POST.', 405);
@@ -86,7 +98,7 @@ function decor_handle(string $action, bool $post): void {
         $name = random_name('glb');
         if (!move_uploaded_file($f['tmp_name'], upload_dir('models') . '/' . $name)) fail('Klarte ikke å lagre filen.', 500);
         $list = decor_list();
-        if (count($list) >= 40) fail('Maks 40 modeller i rommet.');
+        if (count(array_filter($list, fn($d) => empty($d['corner']) && empty($d['mod']))) >= 40) fail('Maks 40 modeller i rommet.');
         $label = mb_substr(trim((string)($_POST['name'] ?? '')) ?: pathinfo((string)$f['name'], PATHINFO_FILENAME), 0, 50);
         $item = ['id' => bin2hex(random_bytes(5)), 'file' => 'uploads/models/' . $name, 'name' => $label, 'x' => 0.0, 'y' => 0.0, 'z' => 1.2, 'rot' => 0.0, 'scale' => 1.0, 'visible' => true];
         $list[] = $item;
@@ -170,24 +182,27 @@ function decor_handle(string $action, bool $post): void {
         $in = [];
         foreach ((array)(body()['items'] ?? []) as $it) if (is_array($it) && isset($it['id'])) $in[(string)$it['id']] = $it;
         $list = decor_list();
+        $stored = array_column($list, 'id');
+        foreach (DECOR_CORNERS as $c) if (isset($in['c-' . $c]) && !in_array('c-' . $c, $stored, true)) $list[] = decor_corner_default($c); // (a corner changed for the first time)
         foreach ($list as &$d) {
             $n = $in[$d['id']] ?? null;
             if (!$n) continue;
-            $d['x'] = decor_num($n['x'] ?? null, -3.7, 3.7, $d['x']);
-            $d['z'] = decor_num($n['z'] ?? null, -3.3, 3.3, $d['z']);
+            $corner = !empty($d['corner']); // (a corner's x / z are how far it has moved – across the whole room at most)
+            $d['x'] = decor_num($n['x'] ?? null, $corner ? -7.5 : -3.7, $corner ? 7.5 : 3.7, $d['x']);
+            $d['z'] = decor_num($n['z'] ?? null, $corner ? -6.6 : -3.3, $corner ? 6.6 : 3.3, $d['z']);
             $d['y'] = decor_num($n['y'] ?? null, 0, 3, $d['y'] ?? 0);
             $d['rot'] = decor_num($n['rot'] ?? null, -100, 100, $d['rot']);
             $d['scale'] = decor_num($n['scale'] ?? null, 0.05, 8, $d['scale']);
             if (isset($n['visible'])) $d['visible'] = !!$n['visible'];
             if (isset($n['name'])) $d['name'] = mb_substr(trim((string)$n['name']), 0, 50);
-            if (!empty($d['mod'])) { // a hobby module: its own symbol, and which tab of the menu it sits under ('' = Hobbyer, lare / laget / opplevd, or a name of one's own)
-                if (isset($n['ico'])) $d['ico'] = mb_substr(trim(strip_tags((string)$n['ico'])), 0, 8);
+            if (!empty($d['mod']) || $corner) { // a hobby module or a corner: its own symbol (and a module: which tab of the menu it sits under – the old way, Faner now)
+                if (isset($n['ico'])) $d['ico'] = decor_icon($n['ico']);
                 if (isset($n['grp'])) $d['grp'] = mb_substr(trim(strip_tags((string)$n['grp'])), 0, 30);
             }
         }
         unset($d);
         decor_store($list);
-        out(['ok' => true, 'items' => $list]);
+        out(['ok' => true, 'items' => decor_with_corners($list)]);
     }
 
     case 'decor_delete': {

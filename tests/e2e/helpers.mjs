@@ -48,9 +48,11 @@ export function tinyGlb() {
   return Buffer.concat([head, jc, j, bc, pos])
 }
 
-/** Picks a room in the open "Rom og konto" menu – with many rooms (a long test run) through its search field. */
+/** Goes into a room the way people do: through its door in the hall (with many rooms – a long test run – through the hall's search). */
 export async function pickRoom(page, name) {
-  const find = page.locator('.smenu .rfind')
-  if (await find.count()) await find.fill(name)
-  await page.locator('.smenu .row', { hasText: name }).first().click()
+  await page.evaluate(() => { location.hash = '#/gangen' })
+  await page.locator('.door[data-room]').first().waitFor()
+  const find = page.locator('.hall .find input')
+  if (await find.count()) { await find.fill(name); await page.waitForTimeout(600) }
+  await page.locator(`.door[data-room="${name}"]`).click()
 }

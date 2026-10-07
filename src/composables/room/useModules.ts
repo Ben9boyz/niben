@@ -2,13 +2,14 @@ import { computed, reactive } from 'vue'
 import { api, errorMessage } from '@/composables/site/useAdmin'
 import { decor, type DecorItem } from './useDecor'
 import { kindOf, type ModuleKind } from '@/lib/modules/catalog'
+import { isIcon } from '@/lib/icons'
 
 // The hobby modules of the room on screen: the placed pieces (decor items with a `mod`) and what is written in each of them.
 export type Entry = Record<string, string | number | boolean>
 export interface ModData { items: Entry[]; settings: Record<string, string> }
 export interface PlacedModule { id: string; kind: ModuleKind; name: string; icon: string; item: DecorItem }
 
-export const placed = computed<PlacedModule[]>(() => decor.items.flatMap((i) => { const kind = kindOf(i.mod); return kind ? [{ id: i.id, kind, name: i.name || kind.name, icon: i.ico || kind.icon, item: i }] : [] }))
+export const placed = computed<PlacedModule[]>(() => decor.items.flatMap((i) => { const kind = kindOf(i.mod); return kind ? [{ id: i.id, kind, name: i.name || kind.name, icon: isIcon(i.ico) ? i.ico : kind.icon, item: i }] : [] }))
 export const moduleById = (id: string): PlacedModule | undefined => placed.value.find((m) => m.id === id)
 
 const store = reactive<{ data: Record<string, ModData>; loading: Record<string, boolean>; error: string; saving: boolean }>({ data: {}, loading: {}, error: '', saving: false })

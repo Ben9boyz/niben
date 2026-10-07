@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { tx } from '@/composables/site/useTexts'
-import { ArrowUpRight, BookOpenText } from 'lucide-vue-next'
+import { ArrowUpRight, BookOpenText, Star } from 'lucide-vue-next'
 import RepoBrowser from '@/components/content/RepoBrowser.vue'
 import ServiceSetup from '@/components/ui/ServiceSetup.vue'
 import { computed, ref } from 'vue'
@@ -38,7 +38,7 @@ const p = computed(() => list.value[room.sel.prosjekt])
 
       <transition name="fade" mode="out-in">
         <div v-if="p" :key="room.sel.prosjekt" class="detail card">
-          <div class="muted">{{ p.aar }}<template v-if="p.stjerner"> · ★ {{ p.stjerner }}</template><template v-if="p.github"> · GitHub</template></div>
+          <div class="muted">{{ p.aar }}<template v-if="p.stjerner"> · <Star :size="12" class="gs" /> {{ p.stjerner }}</template><template v-if="p.github"> · GitHub</template></div>
           <h3>{{ p.navn }}</h3>
           <p class="body">{{ p.beskrivelse }}</p>
           <div class="tags"><span v-for="t in p.teknologi" :key="t" class="chip">{{ t }}</span></div>
@@ -74,4 +74,5 @@ const p = computed(() => list.value[room.sel.prosjekt])
   background: var(--glass-strong);
   border: 1px solid var(--glass-border);
 }
+.gs { vertical-align: -1px; }
 </style>

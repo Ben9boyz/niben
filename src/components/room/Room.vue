@@ -282,9 +282,11 @@ watch(() => room.sel.musikk?.uri, (uri) => {
   room.recordFlipped = false
   if (uri && room.musicView === 'spiller') room.musicView = 'vinyl'
 })
-watch(() => [route.name, route.params.id], ([n]) => {
+watch(() => [route.name, route.params.id], ([n], [was]) => {
   clearSelection()
   if (n === 'modul') api?.focusModule(String(route.params.id))
+  // into the hall from a room: out through that room's own door (it shuts behind you)
+  if (n === 'gangen' && was !== 'gangen' && rooms.current && api?.exitDoor(rooms.current)) return
   api?.goTo(String(n || 'hjem'))
 })
 // the modules are loaded a little after the room: a page opened by its address then flies in once its place is known

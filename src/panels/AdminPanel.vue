@@ -6,21 +6,14 @@ import { useData } from '@/composables/site/useData'
 import { LayoutDashboard, Plane, BookOpen, Mic, Music, Type, Box, Mail, Eye, EyeOff, LogOut, Lock, Users, SlidersHorizontal, Guitar, DoorOpen, MessageCircle, X, UserRound, Plug, KeyRound, Disc3, Star, Palette } from 'lucide-vue-next'
 import { admin, account, signedIn, checkLogin, login, userLogin, registerAccount, forgotPassword, resetPassword, logout, errorMessage } from '@/composables/site/useAdmin'
 import { setRoom } from '@/composables/room/useRooms'
-import AdminTrips from '../components/admin/AdminTrips.vue'
-import AdminBooks from '../components/admin/AdminBooks.vue'
-import AdminRecordings from '../components/admin/AdminRecordings.vue'
-import AdminSongs from '../components/admin/AdminSongs.vue'
 import AdminOverview from '../components/admin/AdminOverview.vue'
 import AdminTexts from '../components/admin/AdminTexts.vue'
 import AdminRoom from '../components/admin/AdminRoom.vue'
-import AdminModules from '../components/admin/AdminModules.vue'
+import AdminHobbies from '../components/admin/AdminHobbies.vue'
 import AdminNews from '../components/admin/AdminNews.vue'
 import AdminUsers from '../components/admin/AdminUsers.vue'
-import AdminGuitars from '../components/admin/AdminGuitars.vue'
-import AdminFigures from '../components/admin/AdminFigures.vue'
 import AdminGuestbook from '../components/admin/AdminGuestbook.vue'
 import AdminProfile from '../components/admin/AdminProfile.vue'
-import AdminMusic from '../components/admin/AdminMusic.vue'
 import AdminSettings from '../components/admin/AdminSettings.vue'
 import AdminTabs from '../components/admin/AdminTabs.vue'
 
@@ -36,19 +29,23 @@ const GROUPS = computed<GroupDef[]>(() => {
   const music = data.profile.sections.lytte
   const list: GroupDef[] = []
   if (isOwner.value) list.push({ id: 'oversikt', label: 'Oversikt', icon: LayoutDashboard, tabs: [TAB('oversikt', 'Oversikt', LayoutDashboard), TAB('brukere', 'Brukere', Users), TAB('nyhetsbrev', 'Nyhetsbrev', Mail)] })
-  list.push({
-    id: 'innhold', label: 'Innhold', icon: Plane,
-    tabs: [TAB('reiser', 'Reiser', Plane), TAB('boker', 'Bøker', BookOpen), TAB('gitarer', 'Gitarer', Guitar), TAB('figurer', 'Figurer', Box), TAB('opptak', 'Gitaropptak', Mic), TAB('sanger', 'Sanger', Music), ...(music ? [TAB('musikk', 'Musikk', Disc3)] : [])],
-  })
+  list.push({ id: 'hobbyer', label: 'Hobbyer', icon: Star, tabs: [TAB('hobbyer', 'Hobbyer', Star)] })
   list.push({ id: 'profil', label: 'Profil', icon: UserRound, tabs: [TAB('profil', 'Om meg', UserRound), TAB('tekster', 'Tekster', Type), TAB('gjestebok', 'Gjestebok', MessageCircle)] })
-  list.push({ id: 'rommet', label: 'Rommet', icon: Box, tabs: [TAB('faner', 'Faner', SlidersHorizontal), TAB('hobbyer', 'Hobbyer', Star), TAB('utseende', 'Utseende', Palette), ...(isOwner.value ? [TAB('rom', 'Egne 3D-modeller', Box)] : [])] })
+  list.push({ id: 'rommet', label: 'Rommet', icon: Box, tabs: [TAB('faner', 'Faner', SlidersHorizontal), TAB('utseende', 'Utseende', Palette), ...(isOwner.value ? [TAB('rom', 'Egne 3D-modeller', Box)] : [])] })
   list.push({ id: 'tilkoblinger', label: 'Tilkoblinger', icon: Plug, tabs: [TAB('tilkoblinger', 'Tilkoblinger', Plug)] })
   list.push({ id: 'konto', label: 'Konto', icon: KeyRound, tabs: [TAB('konto', 'Konto', KeyRound)] })
   return list
 })
 const KEY = 'niben-admin-tab'
-const saved = (() => { try { const v = localStorage.getItem(KEY); return v === 'innstillinger' || v === 'rommet' ? 'faner' : v } catch { return null } })() // (old names of what is now Faner)
-const tab = ref(saved ?? 'reiser') // remembers where I was
+const OLD: Record<string, string> = { innstillinger: 'faner', rommet: 'faner', reiser: 'hobbyer', boker: 'hobbyer', gitarer: 'hobbyer', figurer: 'hobbyer', opptak: 'hobbyer', sanger: 'hobbyer', musikk: 'hobbyer' } // (tabs that moved)
+const saved = (() => { try { const v = localStorage.getItem(KEY); return v ? OLD[v] ?? v : null } catch { return null } })()
+const tab = ref(saved ?? 'hobbyer')
+/** From the overview's numbers straight to that corner in Hobbyer. */
+function gotoTab(id: string) {
+  const corner: Record<string, string> = { reiser: 'c:reiser', boker: 'c:boker', opptak: 'c:gitar' }
+  if (corner[id]) { try { localStorage.setItem('niben-admin-hobby', corner[id]) } catch { /* private mode */ } }
+  tab.value = OLD[id] ?? id
+} // remembers where I was
 const group = computed(() => GROUPS.value.find((g) => g.tabs.some((t) => t.id === tab.value)) ?? GROUPS.value[0])
 const shownTab = computed(() => group.value?.tabs.find((t) => t.id === tab.value)?.id ?? group.value?.tabs[0]?.id ?? 'reiser')
 watch(tab, (v) => { try { localStorage.setItem(KEY, v) } catch {} })
@@ -166,14 +163,9 @@ const myRoom = () => { if (account.user) void setRoom(account.user.username) }
       </template>
       <div v-if="account.mine" class="body">
         <transition name="fade" mode="out-in">
-          <AdminOverview v-if="shownTab === 'oversikt'" key="v" @goto="tab = $event" />
+          <AdminOverview v-if="shownTab === 'oversikt'" key="v" @goto="gotoTab" />
           <AdminUsers v-else-if="shownTab === 'brukere'" key="u" />
-          <AdminTrips v-else-if="shownTab === 'reiser'" key="r" />
-          <AdminBooks v-else-if="shownTab === 'boker'" key="b" />
-          <AdminGuitars v-else-if="shownTab === 'gitarer'" key="g" />
-          <AdminFigures v-else-if="shownTab === 'figurer'" key="f" />
-          <AdminSongs v-else-if="shownTab === 'sanger'" key="s" />
-          <AdminModules v-else-if="shownTab === 'hobbyer'" key="hb" />
+          <AdminHobbies v-else-if="shownTab === 'hobbyer'" key="hb" />
           <AdminRoom v-else-if="shownTab === 'rom'" key="m" />
           <AdminNews v-else-if="shownTab === 'nyhetsbrev'" key="n" />
           <AdminTexts v-else-if="shownTab === 'tekster'" key="t" />
@@ -181,10 +173,9 @@ const myRoom = () => { if (account.user) void setRoom(account.user.username) }
           <AdminProfile v-else-if="shownTab === 'profil'" key="p" part="om" />
           <AdminProfile v-else-if="shownTab === 'utseende'" key="ut" part="utseende" />
           <AdminTabs v-else-if="shownTab === 'faner'" key="fa" />
-          <AdminMusic v-else-if="shownTab === 'musikk'" key="mu" />
           <AdminSettings v-else-if="shownTab === 'tilkoblinger'" key="s2" part="tilkoblinger" />
           <AdminSettings v-else-if="shownTab === 'konto'" key="s3" part="konto" />
-          <AdminRecordings v-else key="o" />
+          <AdminHobbies v-else key="hb2" />
         </transition>
       </div>
     </template>

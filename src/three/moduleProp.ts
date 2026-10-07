@@ -44,8 +44,7 @@ export function bake(body: THREE.Group): void {
   }
 }
 
-// The piece of furniture a hobby module stands as in the room: its own model (three/moduleModels.ts) in the module's colour, with a
-// sign over it (the symbol and the name) that always turns towards you.
+// The piece of furniture a hobby module stands as in the room: its own model (three/moduleModels.ts) in the module's colour.
 const darkWood = new THREE.MeshStandardMaterial({ color: 0x6d4c2f, roughness: 0.75 })
 
 function mesh(g: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, parent: THREE.Object3D): THREE.Mesh {
@@ -66,7 +65,7 @@ function pedestal(col: THREE.Color, g: THREE.Group): number {
   return 1.1
 }
 
-export interface PropHandle { root: THREE.Group; body: THREE.Group; sign: THREE.Sprite; dispose: () => void }
+export interface PropHandle { root: THREE.Group; body: THREE.Group; dispose: () => void }
 
 export function buildModuleProp(kind: ModuleKind, title: string, icon: string = kind.icon): PropHandle {
   const root = new THREE.Group()
@@ -76,28 +75,7 @@ export function buildModuleProp(kind: ModuleKind, title: string, icon: string = 
   const own = MODELS[kind.id] // a model of its own for the hobby (a new kind without one yet: a pedestal)
   const top = own ? own(body, col) : pedestal(col, body)
   bake(body)
-  const tex = canvasTex(512, 256, (x, w, h) => {
-    x.fillStyle = 'rgba(16,22,31,0.86)'
-    x.beginPath()
-    x.roundRect(8, 8, w - 16, h - 16, 40)
-    x.fill()
-    x.fillStyle = kind.color
-    x.fillRect(40, h - 34, w - 80, 8)
-    x.textAlign = 'center'
-    x.textBaseline = 'middle'
-    x.font = '90px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'
-    x.fillText(icon, w / 2, 86)
-    x.fillStyle = '#fff'
-    let size = 48
-    x.font = `800 ${size}px "Inter Tight", Inter, sans-serif`
-    while (x.measureText(title).width > w - 70 && size > 22) { size -= 3; x.font = `800 ${size}px "Inter Tight", Inter, sans-serif` }
-    x.fillText(title, w / 2, 178)
-  })
-  const mat = new THREE.SpriteMaterial({ map: tex, depthWrite: false, transparent: true })
-  const sign = new THREE.Sprite(mat)
-  sign.scale.set(0.62, 0.31, 1)
-  sign.position.set(0, top + 0.26, 0)
-  sign.userData.noCull = true
-  root.add(sign)
-  return { root, body, sign, dispose: () => { tex.dispose(); mat.dispose(); body.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose() }) } }
+  // (no sign over it: the name shows when the pointer rests on it, as for the room's own corners)
+  void top
+  return { root, body, dispose: () => { body.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose() }) } }
 }

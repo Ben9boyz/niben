@@ -7,7 +7,7 @@ test('a room makes its own menu: tabs with a name and a symbol, pages under them
   const alice = await makeUser(owner)
   const r = await alice.client.post('about_nav', {
     tabs: [
-      { id: 'trening', label: '  Trening<b>!</b> ', icon: '🏊', routes: ['japansk', 'h:abcdef0123', 'japansk', 'NOT A ROUTE'] },
+      { id: 'trening', label: '  Trening<b>!</b> ', icon: 'Waves', routes: ['japansk', 'h:abcdef0123', 'japansk', 'NOT A ROUTE'] },
       { id: 'trening', label: '', icon: '', routes: ['gitar'] }, // (the same id twice: the second gets one of its own)
     ],
     hidden: ['gaming', 'gitar'], // (gitar is already in a tab: not hidden twice)
@@ -15,7 +15,7 @@ test('a room makes its own menu: tabs with a name and a symbol, pages under them
   assert.equal(r.status, 200, r.text)
   const nav = r.json.nav
   assert.equal(nav.tabs[0].label, 'Trening!')
-  assert.equal(nav.tabs[0].icon, '🏊')
+  assert.equal(nav.tabs[0].icon, 'Waves')
   assert.deepEqual(nav.tabs[0].routes, ['japansk', 'h:abcdef0123'])
   assert.notEqual(nav.tabs[1].id, 'trening')
   assert.equal(nav.tabs[1].label, 'Fane')

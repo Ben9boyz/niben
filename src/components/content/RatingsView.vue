@@ -2,6 +2,8 @@
 import { computed, ref, watchEffect } from 'vue'
 import { placed, dataOf, loadModules } from '@/composables/room/useModules'
 import { safeUrl } from '@/lib/modules/safe'
+import { iconOf } from '@/lib/icons'
+import StarRow from '@/components/ui/StarRow.vue'
 
 // Everything you have given stars, from every module together: films beside restaurants beside coffee. Best first.
 const mods = computed(() => placed.value.filter((m) => m.kind.fields.some((f) => f.kind === 'rating')))
@@ -15,7 +17,6 @@ const rows = computed<Row[]>(() => mods.value.flatMap((m) => (dataOf(m.id)?.item
 const shown = computed(() => rows.value.filter((r) => !only.value || r.mod === only.value).sort((a, b) => b.rating - a.rating || b.date.localeCompare(a.date)))
 const withRows = computed(() => mods.value.filter((m) => rows.value.some((r) => r.mod === m.id)))
 const avg = computed(() => (shown.value.length ? (shown.value.reduce((s, r) => s + r.rating, 0) / shown.value.length).toFixed(1).replace('.', ',') : null))
-const stars = (n: number): string => '★'.repeat(n) + '☆'.repeat(5 - n)
 </script>
 
 <template>
@@ -23,16 +24,16 @@ const stars = (n: number): string => '★'.repeat(n) + '☆'.repeat(5 - n)
     <header><h2>Vurderinger</h2><p>Alt du har gitt stjerner, fra alle hobbyene på ett sted.<template v-if="avg">&nbsp;{{ shown.length }} stk, snitt {{ avg }}.</template></p></header>
     <div v-if="withRows.length > 1" class="chips" role="group" aria-label="Fra hobby">
       <button :class="{ on: !only }" @click="only = ''">Alle</button>
-      <button v-for="m in withRows" :key="m.id" :class="{ on: only === m.id }" @click="only = m.id">{{ m.icon }} {{ m.name }}</button>
+      <button v-for="m in withRows" :key="m.id" :class="{ on: only === m.id }" @click="only = m.id"><component :is="iconOf(m.icon)" :size="14" /> {{ m.name }}</button>
     </div>
     <p v-if="!shown.length" class="empty">Ingenting vurdert ennå. Gi stjerner i en film, restaurant eller noe annet, så dukker det opp her.</p>
     <ul class="grid">
       <li v-for="(r, i) in shown" :key="i">
         <router-link :to="{ name: 'modul', params: { id: r.mod } }">
-          <span class="im" :style="r.img ? { backgroundImage: `url(${r.img})` } : undefined"><template v-if="!r.img">{{ r.icon }}</template></span>
+          <span class="im" :style="r.img ? { backgroundImage: `url(${r.img})` } : undefined"><component :is="iconOf(r.icon)" v-if="!r.img" :size="34" /></span>
           <b>{{ r.title }}</b>
-          <small>{{ r.icon }} {{ r.modName }}<template v-if="r.sub"> · {{ r.sub }}</template></small>
-          <span class="st">{{ stars(r.rating) }}</span>
+          <small><component :is="iconOf(r.icon)" :size="12" /> {{ r.modName }}<template v-if="r.sub"> · {{ r.sub }}</template></small>
+          <StarRow :value="r.rating" />
           <p v-if="r.note">{{ r.note }}</p>
         </router-link>
       </li>

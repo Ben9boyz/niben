@@ -129,7 +129,7 @@ const langName = (c: string) => byCode[c]?.en || c
         </div>
         <template v-if="scan">
           <p v-if="scan.missing.length" class="help warn">Siden mangler {{ scan.missing.length }} fil(er), f.eks. <code>{{ scan.missing[0] }}</code>. Last opp hele zip-filen på nytt først – til da slettes ingenting.</p>
-          <p v-else-if="!scan.old.length" class="help">Ingen gamle filer – alt på serveren er i bruk. 👍</p>
+          <p v-else-if="!scan.old.length" class="help">Ingen gamle filer – alt på serveren er i bruk.</p>
           <p v-else class="help">{{ scan.old.length }} gamle filer ({{ mb(oldBytes) }}). Siden bruker {{ scan.kept }} filer, og de blir stående.<template v-if="scan.recent"> {{ scan.recent }} fil(er) lastet opp siste time får også stå.</template> <button class="lnk" @click="showFiles = !showFiles">{{ showFiles ? 'Skjul listen' : 'Vis listen' }}</button></p>
           <ul v-if="showFiles" class="files"><li v-for="o in scan.old" :key="o.name"><code>{{ o.name }}</code><small>{{ (o.bytes / 1024).toFixed(0) }} kB</small></li></ul>
         </template>

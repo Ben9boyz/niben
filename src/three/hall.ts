@@ -62,6 +62,7 @@ export function buildHall(scene: THREE.Scene, tag: <T extends THREE.Object3D>(o:
     return new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.5, roughness: 0.6 })
   }
 
+  const byName = new Map<string, { g: THREE.Group; hinge: THREE.Group }>() // (a room's door, to walk through it)
   let gen = 0 // (a picture that arrives after the doors were rebuilt belongs to doors that are gone: it is dropped)
   const freeDoors = (): void => {
     doors.traverse((o) => {
@@ -76,6 +77,7 @@ export function buildHall(scene: THREE.Scene, tag: <T extends THREE.Object3D>(o:
     const my = ++gen
     const late = (t: THREE.Texture): boolean => { if (my === gen) return false; t.dispose(); return true }
     freeDoors()
+    byName.clear()
     wall?.geometry.dispose()
     if (wall) root.remove(wall)
     texs.splice(0).forEach((t) => t.dispose())
@@ -93,9 +95,20 @@ export function buildHall(scene: THREE.Scene, tag: <T extends THREE.Object3D>(o:
       g.userData.index = i
       const hue = hash(d.username) % 360
       const tint = `hsl(${hue} 70% 58%)`
+      // the door leaf hangs on a hinge at its left edge, so it can swing open (into the room behind it); behind it, warm light
+      const hinge = new THREE.Group()
+      hinge.position.set(-WIDTH / 2, 0, 0)
+      g.add(hinge)
+      const leaf = new THREE.Group()
+      leaf.position.x = WIDTH / 2
+      hinge.add(leaf)
+      // a shallow box of warm light in the doorway (inside the wall): what you see when the door opens, and walk into
+      const glow = new THREE.Mesh(new THREE.BoxGeometry(WIDTH, HEIGHT, 0.3), new THREE.MeshBasicMaterial({ color: 0xffe2b0, side: THREE.BackSide }))
+      glow.position.set(0, HEIGHT / 2, -0.17)
+      g.add(glow)
       const panel = new THREE.Mesh(new THREE.BoxGeometry(WIDTH, HEIGHT, 0.06), new THREE.MeshStandardMaterial({ color: new THREE.Color(`hsl(${hue}, 45%, 38%)`), roughness: 0.5 }))
       panel.position.set(0, HEIGHT / 2, 0.02)
-      g.add(panel)
+      leaf.add(panel)
       // frame
       for (const [w, h, x, y] of [[0.1, HEIGHT + 0.1, -WIDTH / 2 - 0.05, HEIGHT / 2 + 0.05], [0.1, HEIGHT + 0.1, WIDTH / 2 + 0.05, HEIGHT / 2 + 0.05], [WIDTH + 0.3, 0.1, 0, HEIGHT + 0.1]] as [number, number, number, number][]) {
         const f = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.12), frameMat)
@@ -108,18 +121,18 @@ export function buildHall(scene: THREE.Scene, tag: <T extends THREE.Object3D>(o:
         const dm = new THREE.MeshStandardMaterial({ roughness: 0.6 })
         const art = new THREE.Mesh(new THREE.PlaneGeometry(WIDTH, HEIGHT), dm)
         art.position.set(0, HEIGHT / 2, 0.056)
-        g.add(art)
+        leaf.add(art)
         loadTexture(d.door, (t) => { if (late(t)) return; t.colorSpace = THREE.SRGBColorSpace; dm.map = t; dm.needsUpdate = true; texs.push(t); onChange() })
       } else {
         for (const y of [0.55, 1.45]) {
           const p = new THREE.Mesh(new THREE.BoxGeometry(WIDTH * 0.7, y < 1 ? 0.65 : 0.7, 0.02), inset)
           p.position.set(0, y, 0.065)
-          g.add(p)
+          leaf.add(p)
         }
       }
       const handle = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 8), new THREE.MeshStandardMaterial({ color: 0xd7b56d, metalness: 1, roughness: 0.3 }))
       handle.position.set(WIDTH * 0.36, 1.0, 0.1)
-      g.add(handle)
+      leaf.add(handle)
       // the sign (name) over the door and the photo as a round window in it
       const sign = new THREE.Mesh(new THREE.PlaneGeometry(WIDTH + 0.2, (WIDTH + 0.2) / 2), plate(d, tint))
       sign.position.set(0, HEIGHT + 0.5, 0.1)
@@ -127,7 +140,7 @@ export function buildHall(scene: THREE.Scene, tag: <T extends THREE.Object3D>(o:
       const pm = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
       const portrait = new THREE.Mesh(new THREE.CircleGeometry(0.2, 32), pm)
       portrait.position.set(0, 1.62, 0.085)
-      if (!d.door) g.add(portrait)
+      if (!d.door) leaf.add(portrait)
       const initial = canvasTex(128, 128, (x, w, h) => {
         x.fillStyle = tint; x.fillRect(0, 0, w, h)
         x.fillStyle = '#fff'; x.font = '800 78px "Inter Tight", Inter, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'
@@ -137,6 +150,7 @@ export function buildHall(scene: THREE.Scene, tag: <T extends THREE.Object3D>(o:
       pm.map = initial
       if (d.photo) loadTexture(d.photo, (t) => { if (late(t)) return; t.colorSpace = THREE.SRGBColorSpace; pm.map = t; pm.needsUpdate = true; texs.push(t); onChange() })
       doors.add(g)
+      byName.set(d.username, { g, hinge })
     })
     onChange()
   }
@@ -153,6 +167,21 @@ export function buildHall(scene: THREE.Scene, tag: <T extends THREE.Object3D>(o:
       return { pos: [HALL_ORIGIN.x, 1.55, HALL_ORIGIN.z + back], target: [HALL_ORIGIN.x, 1.4, HALL_ORIGIN.z - R] }
     },
     nameOf: (i: number): string | undefined => list[i]?.label,
+    hasDoor: (username: string): boolean => byName.has(username),
+    /** How far a room's door stands open (0 shut … 1 wide open, swung into the room behind it). */
+    setOpen(username: string, a: number): void { const d = byName.get(username); if (d) d.hinge.rotation.y = Math.max(0, Math.min(1, a)) * 1.3 },
+    /** In front of a room's door, and just through it (looking on into the room / back out into the hall). */
+    doorPoses(username: string): { front: { pos: THREE.Vector3; target: THREE.Vector3 }; through: { pos: THREE.Vector3; target: THREE.Vector3 }; out: { pos: THREE.Vector3; target: THREE.Vector3 } } | null {
+      const d = byName.get(username)
+      if (!d) return null
+      d.g.updateWorldMatrix(true, false)
+      const at = (x: number, y: number, z: number): THREE.Vector3 => d.g.localToWorld(new THREE.Vector3(x, y, z))
+      return {
+        front: { pos: at(0, 1.45, 1.7), target: at(0, 1.25, 0) },
+        through: { pos: at(0, 1.3, -0.12), target: at(0, 1.3, -2.5) },
+        out: { pos: at(0, 1.4, -0.25), target: at(0, 1.35, 2) },
+      }
+    },
     userOf: (i: number): string | undefined => list[i]?.username,
   }
 }

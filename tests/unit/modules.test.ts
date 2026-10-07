@@ -20,3 +20,10 @@ describe('the hobby catalogue', () => {
     }
   })
 })
+
+describe('symbols', () => {
+  it('every hobby has a symbol from the icon set (no emoji anywhere)', async () => {
+    const { isIcon } = await import('@/lib/icons')
+    for (const k of CATALOG) expect(isIcon(k.icon), `${k.id}: ${k.icon}`).toBe(true)
+  })
+})

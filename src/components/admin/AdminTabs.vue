@@ -5,6 +5,7 @@ import { api, errorMessage } from '@/composables/site/useAdmin'
 import { reloadData, useData, type NavTab, type SectionId } from '@/composables/site/useData'
 import { GROUPS, HOBBY, ROUTE_ICONS, standardGroups, tabLabel } from '@/lib/nav'
 import { ROUTE_SECTION } from '@/lib/sections'
+import IconPicker from '@/components/ui/IconPicker.vue'
 import { placed } from '@/composables/room/useModules'
 import type { Flash } from '../../types'
 
@@ -13,7 +14,6 @@ import type { Flash } from '../../types'
 const data = useData()
 const msg = ref<Flash | null>(null)
 const busy = ref(false)
-const EMOJIS = ['', '🏠', '🎓', '🛠️', '🧭', '⭐', '🏊', '🏃', '🚴', '🏋️', '⛰️', '🎬', '🎵', '🎸', '🎨', '📷', '🍳', '☕', '🌱', '🐾', '♟️', '🎲', '🕹️', '✍️', '📚', '🌍', '✈️', '💼', '❤️', '🔥']
 
 // every page that can be in the menu (Hjem and the hall always are): the built-in ones, also those switched off, and every hobby module
 const owned = (r: string): boolean => ROUTE_SECTION[r] === r // (a page that is a whole corner of the room of its own)
@@ -28,7 +28,7 @@ const sectionOff = (r: string): boolean => owned(r) && (data.profile.sections as
 function startLayout(): { tabs: NavTab[]; hidden: string[] } {
   const base = data.nav
     ? { tabs: data.nav.tabs.map((t) => ({ ...t, routes: [...t.routes] })), hidden: [...data.nav.hidden] }
-    : { tabs: standardGroups.value.filter((g) => g.id !== 'hjem' && g.id !== 'gangen').map((g) => ({ id: g.id.replace(/[^a-z0-9_-]/g, '').slice(0, 24) || 'fane', label: g.label, icon: g.emoji ?? '', routes: [...g.routes] })), hidden: [] }
+    : { tabs: standardGroups.value.filter((g) => g.id !== 'hjem' && g.id !== 'gangen').map((g) => ({ id: g.id.replace(/[^a-z0-9_-]/g, '').slice(0, 24) || 'fane', label: g.label, icon: g.glyph ?? '', routes: [...g.routes] })), hidden: [] }
   const seen = new Set([...base.tabs.flatMap((t) => t.routes), ...base.hidden])
   for (const r of allPages.value) {
     if (seen.has(r)) continue
@@ -49,7 +49,6 @@ const changed = (): void => { dirty.value = true; msg.value = null }
 
 const svgOf = (t: NavTab): string => GROUPS.find((g) => g.id === t.id)?.icon ?? GROUPS.find((g) => g.id === 'hobby')!.icon
 const pageIcon = (r: string): string | null => ROUTE_ICONS[r] ?? null
-const openIcons = ref('')
 const HIDE = '__skjult'
 function moveTo(r: string, where: string): void {
   const L = layout.value
@@ -61,7 +60,7 @@ function moveTo(r: string, where: string): void {
 }
 function nudge(list: string[], i: number, d: -1 | 1): void { const j = i + d; if (j < 0 || j >= list.length) return; [list[i], list[j]] = [list[j]!, list[i]!]; changed() }
 function moveTab(i: number, d: -1 | 1): void { const T = layout.value.tabs; const j = i + d; if (j < 0 || j >= T.length) return; [T[i], T[j]] = [T[j]!, T[i]!]; changed() }
-function addTab(): void { layout.value.tabs.push({ id: 't' + Math.random().toString(36).slice(2, 8), label: 'Ny fane', icon: '⭐', routes: [] }); changed() }
+function addTab(): void { layout.value.tabs.push({ id: 't' + Math.random().toString(36).slice(2, 8), label: 'Ny fane', icon: 'Star', routes: [] }); changed() }
 function removeTab(i: number): void { const t = layout.value.tabs[i]; if (!t) return; layout.value.hidden.push(...t.routes); layout.value.tabs.splice(i, 1); changed() }
 
 async function save(): Promise<void> {
@@ -94,16 +93,7 @@ async function reset(): Promise<void> {
 
     <section v-for="(t, ti) in layout.tabs" :key="t.id" class="tab" :class="{ empty: !t.routes.length }">
       <header>
-        <div class="icowrap">
-          <button class="ic" type="button" :aria-label="`Symbol for ${t.label}`" :aria-expanded="openIcons === t.id" @click="openIcons = openIcons === t.id ? '' : t.id">
-            <span v-if="t.icon">{{ t.icon }}</span>
-            <svg v-else viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path :d="svgOf(t)" /></svg>
-          </button>
-          <div v-if="openIcons === t.id" class="pop">
-            <button v-for="e in EMOJIS" :key="e || 'std'" type="button" :title="e ? e : 'Standard'" @click="t.icon = e; changed(); openIcons = ''">{{ e || '∅' }}</button>
-            <input v-model="t.icon" maxlength="4" placeholder="Eget" aria-label="Eget symbol" @input="changed" />
-          </div>
-        </div>
+        <IconPicker v-model="t.icon" :label="`Symbol for ${t.label}`" :standard="svgOf(t)" @update:model-value="changed" />
         <input v-model="t.label" class="name" maxlength="24" :aria-label="`Navn på fane ${ti + 1}`" @input="changed" />
         <button class="ib" type="button" :disabled="ti === 0" aria-label="Flytt fanen opp" @click="moveTab(ti, -1)"><ChevronUp :size="16" /></button>
         <button class="ib" type="button" :disabled="ti === layout.tabs.length - 1" aria-label="Flytt fanen ned" @click="moveTab(ti, 1)"><ChevronDown :size="16" /></button>
@@ -152,11 +142,6 @@ async function reset(): Promise<void> {
 .tab header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
 .tab.hidden header { gap: 10px; } .tab.hidden small { color: var(--text-3); }
 .name { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--glass-border); border-radius: 10px; background: var(--bg); color: var(--text); font: 700 0.95rem var(--font); }
-.icowrap { position: relative; }
-.ic { all: unset; cursor: pointer; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font-size: 1.3rem; }
-.pop { position: absolute; z-index: 20; top: 110%; left: 0; width: 260px; display: flex; flex-wrap: wrap; gap: 2px; padding: 8px; border-radius: 14px; background: var(--bg); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28); border: 1px solid var(--glass-border); }
-.pop button { all: unset; cursor: pointer; font-size: 1.3rem; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; } .pop button:hover { background: var(--glass-border); }
-.pop input { width: 100%; margin-top: 4px; padding: 6px 8px; border: 1px solid var(--glass-border); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
 .ib { all: unset; cursor: pointer; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: var(--text-2); }
 .ib:hover:not(:disabled) { background: var(--glass-border); } .ib:disabled { opacity: 0.3; cursor: default; } .ib.sm { width: 22px; height: 26px; } .danger { color: #e5484d; }
 .pages { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { Plus, Trash2, Check, X, Search, Upload } from 'lucide-vue-next'
+import { Plus, Trash2, Check, X, Search, Upload, Star } from 'lucide-vue-next'
 import { canManage } from '@/composables/site/useAdmin'
 import { moduleById, dataOf, loadModule, touch, modState, type Entry } from '@/composables/room/useModules'
 import { decor } from '@/composables/room/useDecor'
@@ -11,6 +11,8 @@ import ModuleExtras from './ModuleExtras.vue'
 import { strava, loadStrava, syncStrava } from '@/composables/site/useStrava'
 import type { ModData } from '@/composables/room/useModules'
 import { safeUrl } from '@/lib/modules/safe'
+import { iconOf } from '@/lib/icons'
+import StarRow from '@/components/ui/StarRow.vue'
 import { parseGpx, routePath, paceText } from '@/lib/modules/gpx'
 
 // One hobby module, whatever the hobby: the kind says which fields an entry has and how the entries are shown
@@ -43,7 +45,7 @@ function startNew(prefill: Entry = {}): void {
 // a click on an entry: I edit it in my own room – a visitor gets to read all of it
 const peek = ref<Entry | null>(null)
 function openEntry(i: number, e: Entry): void { if (mine.value) draft.value = { at: i, e: { ...e } }; else peek.value = peek.value === e ? null : e }
-const shownValue = (f: Field, v: unknown): string => (f.kind === 'rating' ? stars(v) : f.kind === 'number' && f.unit ? `${String(v).replace('.', ',')} ${f.unit}` : String(v))
+const shownValue = (f: Field, v: unknown): string => (f.kind === 'number' && f.unit ? `${String(v).replace('.', ',')} ${f.unit}` : String(v))
 function save(): void {
   const d = draft.value
   const dd = data.value
@@ -76,7 +78,6 @@ const series = computed(() => {
   return v.map((n) => ({ n, h: Math.max(6, Math.round((n / max) * 100)) }))
 })
 const shortDate = (d: unknown): string => { const t = Date.parse(String(d ?? '') + 'T12:00:00'); if (!Number.isFinite(t)) return String(d ?? ''); const x = new Date(t); return x.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', ...(x.getFullYear() !== new Date().getFullYear() ? { year: '2-digit' } : {}) }) }
-const stars = (n: unknown): string => '★'.repeat(Math.round(Number(n) || 0)) + '☆'.repeat(5 - Math.round(Number(n) || 0))
 const sub = (e: Entry): string => (mod.value?.kind.fields ?? []).slice(1).filter((f) => ['select', 'text', 'date'].includes(f.kind) && !['img', 'url', 'note'].includes(f.k) && e[f.k] !== undefined).map((f) => String(e[f.k])).join(' · ')
 
 // ── workouts: a GPX file fills in the entry, a weekly goal sits in the settings ──
@@ -175,7 +176,7 @@ void decor
 <template>
   <div v-if="mod" class="mv" :class="{ compact }" :style="{ '--mc': mod.kind.color }">
     <header class="top">
-      <span class="ico" aria-hidden="true">{{ mod.kind.icon }}</span>
+      <span class="ico" aria-hidden="true"><component :is="iconOf(mod.icon)" :size="28" /></span>
       <div><h2>{{ mod.name }}</h2><p>{{ mod.kind.blurb }}</p></div>
       <button v-if="mine" class="btn primary small add" @click="startNew()"><Plus :size="15" />Ny</button>
     </header>
@@ -225,7 +226,7 @@ void decor
         <span>{{ f.label }}<template v-if="f.unit"> ({{ f.unit }})</template></span>
         <textarea v-if="f.kind === 'longtext'" v-model="(draft.e[f.k] as string)" rows="3" maxlength="400"></textarea>
         <select v-else-if="f.kind === 'select'" v-model="draft.e[f.k]"><option value="">–</option><option v-for="o in f.options" :key="o" :value="o">{{ o }}</option></select>
-        <span v-else-if="f.kind === 'rating'" class="rate"><button v-for="n in 5" :key="n" type="button" :class="{ on: Number(draft.e[f.k]) >= n }" :aria-label="`${n} stjerner`" @click="draft.e[f.k] = Number(draft.e[f.k]) === n ? 0 : n">★</button></span>
+        <span v-else-if="f.kind === 'rating'" class="rate"><button v-for="n in 5" :key="n" type="button" :class="{ on: Number(draft.e[f.k]) >= n }" :aria-label="`${n} stjerner`" @click="draft.e[f.k] = Number(draft.e[f.k]) === n ? 0 : n"><Star :size="22" /></button></span>
         <input v-else v-model="draft.e[f.k]" :type="fieldInput(f)" :step="f.kind === 'number' ? 'any' : undefined" maxlength="400" />
       </label>
       <div class="acts">
@@ -242,7 +243,7 @@ void decor
       <div>
         <h3>{{ title(peek) }}</h3>
         <dl>
-          <template v-for="f in mod.kind.fields" :key="f.k"><template v-if="f.k !== 't' && f.kind !== 'hidden' && f.kind !== 'url' && peek[f.k] !== undefined && peek[f.k] !== ''"><dt>{{ f.label }}</dt><dd :class="{ long: f.kind === 'longtext' }">{{ shownValue(f, peek[f.k]) }}</dd></template></template>
+          <template v-for="f in mod.kind.fields" :key="f.k"><template v-if="f.k !== 't' && f.kind !== 'hidden' && f.kind !== 'url' && peek[f.k] !== undefined && peek[f.k] !== ''"><dt>{{ f.label }}</dt><dd :class="{ long: f.kind === 'longtext' }"><StarRow v-if="f.kind === 'rating'" :value="Number(peek[f.k])" /><template v-else>{{ shownValue(f, peek[f.k]) }}</template></dd></template></template>
         </dl>
         <svg v-if="typeof peek.route === 'string' && peek.route" class="route big" viewBox="-30 -30 1060 1060" aria-label="Ruten"><path :d="routePath(peek.route)" /></svg>
         <a v-if="safeUrl(peek.url)" :href="safeUrl(peek.url) ?? undefined" target="_blank" rel="noopener noreferrer">Åpne lenken</a>
@@ -285,10 +286,10 @@ void decor
     <ul v-else class="cards">
       <li v-for="{ e, i } in shown" :key="i">
         <button @click="openEntry(i, e)">
-          <span class="im" :style="safeUrl(e.img) ? { backgroundImage: `url(${safeUrl(e.img)})` } : undefined"><template v-if="!safeUrl(e.img)">{{ mod.icon }}</template></span>
+          <span class="im" :style="safeUrl(e.img) ? { backgroundImage: `url(${safeUrl(e.img)})` } : undefined"><component :is="iconOf(mod.icon)" v-if="!safeUrl(e.img)" :size="34" class="ph" /></span>
           <b>{{ title(e) }}</b>
           <small>{{ sub(e) }}</small>
-          <span v-if="e.rating" class="st">{{ stars(e.rating) }}</span>
+          <StarRow v-if="e.rating" :value="Number(e.rating)" />
           <p v-if="e.note && !compact">{{ e.note }}</p>
           <a v-if="safeUrl(e.url) && !compact" :href="safeUrl(e.url) ?? undefined" target="_blank" rel="noopener noreferrer" @click.stop>Åpne</a>
         </button>
@@ -321,7 +322,8 @@ void decor
 .form .wide, .look, .acts { grid-column: 1 / -1; }
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--text-3); }
 .field input, .field select, .field textarea { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--glass-border); border-radius: 10px; padding: 8px 10px; }
-.rate { display: flex; gap: 2px; } .rate button { all: unset; cursor: pointer; font-size: 1.4rem; color: var(--text-3); opacity: 0.4; } .rate button.on { color: #f5a524; opacity: 1; }
+.rate { display: flex; gap: 2px; } .rate button { all: unset; cursor: pointer; color: var(--text-3); opacity: 0.45; } .rate button.on { color: #f5a524; opacity: 1; } .rate button.on svg { fill: currentColor; }
+.ico { color: var(--mc); } .im .ph { color: var(--mc); opacity: 0.8; }
 .acts { display: flex; gap: 8px; }
 .del { margin-left: auto; }
 .hits { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow: auto; }

@@ -56,7 +56,7 @@ test('the address of a module this room does not have goes home instead of to an
 test('a module can have its own tab with its own symbol, or sit under one of the existing tabs', async () => {
   const owner = await ownerClient()
   const m = (await owner.post('mod_add', { type: 'svomming', name: 'Bassenget' })).json.item
-  await owner.post('decor_save', { items: [{ id: m.id, x: 0, z: 1, rot: 0, scale: 1, ico: '🏊', grp: 'Trening' }] })
+  await owner.post('decor_save', { items: [{ id: m.id, x: 0, z: 1, rot: 0, scale: 1, ico: 'Waves', grp: 'Trening' }] })
   const page = await openPage(browser, { hash: `/h/${m.id}` })
   await page.getByRole('link', { name: /Trening/ }).waitFor()
   await owner.post('decor_save', { items: [{ id: m.id, x: 0, z: 1, rot: 0, scale: 1, grp: 'lare' }] })
@@ -69,10 +69,10 @@ test('a module can have its own tab with its own symbol, or sit under one of the
 test('a room makes its own tabs: a name and a symbol, the pages it wants under each, the rest hidden', async () => {
   const owner = await ownerClient()
   const m = (await owner.post('mod_add', { type: 'svomming', name: 'Svømmehallen' })).json.item
-  await owner.post('about_nav', { tabs: [{ id: 'trening', label: 'Trening', icon: '🏊', routes: [`h:${m.id}`, 'ovelse'] }, { id: 'lare', label: 'Språk', icon: '', routes: ['japansk'] }], hidden: ['gaming'] })
+  await owner.post('about_nav', { tabs: [{ id: 'trening', label: 'Trening', icon: 'Waves', routes: [`h:${m.id}`, 'ovelse'] }, { id: 'lare', label: 'Språk', icon: '', routes: ['japansk'] }], hidden: ['gaming'] })
   const page = await openPage(browser, { hash: `/h/${m.id}` })
   await page.locator('.nav-wrap .item', { hasText: 'Trening' }).waitFor()
-  assert.equal(await page.locator('.nav-wrap .item', { hasText: 'Trening' }).locator('.emo').innerText(), '🏊')
+  assert.ok(await page.locator('.nav-wrap .item', { hasText: 'Trening' }).locator('svg').count(), 'the tab has its symbol')
   await page.getByRole('tab', { name: /Svømmehallen/ }).waitFor() // (the module and Gitar-øving are the tab's two pages)
   await page.getByRole('tab', { name: /Gitar-øving/ }).waitFor()
   assert.ok(await page.locator('.nav-wrap .item', { hasText: 'Språk' }).count())

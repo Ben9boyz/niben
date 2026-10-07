@@ -99,7 +99,7 @@ export interface RoomData { gitarer?: Guitar[]; boker?: Book[]; reiser?: Trip[];
 export type GfxInput = Partial<Omit<GfxValues, 'res' | 'ao'>> & { mode?: GfxMode; res?: number | 'auto'; ao?: GfxValues['ao'] | 'auto'; showFps?: boolean }
 interface Eff extends Omit<GfxValues, 'res' | 'ao'> { res: number | 'auto'; ao: GfxValues['ao'] | 'auto'; showFps: boolean; areaLights: boolean; smallLights: boolean }
 /** One of my uploaded 3D models in the room. */
-interface DecorObject { root: THREE.Group; item: DecorItem; prop?: PropHandle; sig?: string; sig2?: string; glb?: THREE.Object3D; box?: THREE.Box3; culled?: boolean }
+interface DecorObject { root: THREE.Group; item: DecorItem; prop?: PropHandle; sig?: string; sig2?: string; glb?: THREE.Object3D; box?: THREE.Box3; culled?: boolean; c?: THREE.Vector3 /* a room corner: where it stands to begin with */ }
 /** What the pointer rests on, found by raycasting. */
 interface HitInfo { object: THREE.Object3D; kind?: string; index?: number; station?: string; country?: string }
 interface Flight { from: Pose3; to: Pose3; t: number; dur: number; lift: number }
@@ -617,6 +617,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   let timerInterval = 10
 
   // Soft contact shadows on the floor under each corner – what stands in for the shadow map on a weak machine
+  const blobs = new Map<THREE.Object3D, THREE.Mesh>() // (a corner's soft floor shadow, so it can move with the corner)
   const contact = new THREE.Group()
   contact.name = 'contactShadows'
   {
@@ -629,6 +630,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     const b = new THREE.Box3(), size = new THREE.Vector3(), mid = new THREE.Vector3()
     scene.updateMatrixWorld(true)
     for (const o of interactive) {
+      if (o.userData.station === 'gangen') continue
       if (o.userData.station === 'om') continue
       b.setFromObject(o)
       if (b.isEmpty() || b.min.y > 0.4) continue
@@ -641,9 +643,45 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       m.renderOrder = -1
       m.userData.noCull = true
       contact.add(m)
+      blobs.set(o, m)
     }
   }
   scene.add(contact)
+
+  // ── The room's own corners can be moved, turned and resized just like the hobby modules ──
+  // Each corner hangs from a pivot standing where the corner stands to begin with; "Rediger rommet" moves the pivot, and the
+  // camera's places for that corner follow it (cornerMatrix). Its soft shadow on the floor goes along.
+  const GUITAR_WALL = new THREE.Vector3(-3.6, 0, GUITAR_Z)
+  const CORNER_UNITS: Record<string, { objs: THREE.Object3D[]; at?: THREE.Vector3 }> = {
+    lytte: { objs: [listening.group] }, japansk: { objs: [japan.group] }, gitar: { objs: [guitarRoot], at: GUITAR_WALL }, figurer: { objs: [figures.group] },
+    ovelse: { objs: [practice.group] }, reiser: { objs: [globeTable.group] }, boker: { objs: [shelf.group] }, kode: { objs: [desk.group] }, om: { objs: [portrait, spot, spot.target] },
+  }
+  const STATION_CORNER: Record<string, string> = { gaming: 'kode', kode: 'kode', figurer: 'figurer', gitar: 'gitar', boker: 'boker', reiser: 'reiser', om: 'om', ovelse: 'ovelse', lytte: 'lytte', japansk: 'japansk' }
+  const cornerPivots = new Map<string, { pivot: THREE.Group; c: THREE.Vector3 }>()
+  scene.updateMatrixWorld(true)
+  for (const [id, unit] of Object.entries(CORNER_UNITS)) {
+    const box = new THREE.Box3()
+    for (const o of unit.objs) if (!(o instanceof THREE.Light)) box.expandByObject(o)
+    const c = unit.at?.clone() ?? (box.isEmpty() ? unit.objs[0]!.getWorldPosition(new THREE.Vector3()) : box.getCenter(new THREE.Vector3()))
+    c.y = 0
+    const pivot = new THREE.Group()
+    pivot.name = 'corner-' + id
+    pivot.position.copy(c)
+    pivot.userData.decorId = 'c-' + id
+    pivot.userData.noCull = true
+    scene.add(pivot)
+    pivot.updateMatrixWorld(true)
+    for (const o of unit.objs) { pivot.attach(o); const bl = blobs.get(o); if (bl) pivot.attach(bl) }
+    cornerPivots.set(id, { pivot, c })
+  }
+  const cornerM = new THREE.Matrix4(), undoC = new THREE.Matrix4()
+  /** How a station's camera places move with its corner (null: not moved, or not a corner). */
+  function cornerMatrix(st: string): THREE.Matrix4 | null {
+    const cp = cornerPivots.get(STATION_CORNER[st] ?? '')
+    if (!cp) return null
+    cp.pivot.updateMatrixWorld(true)
+    return cornerM.copy(cp.pivot.matrixWorld).multiply(undoC.makeTranslation(-cp.c.x, 0, -cp.c.z))
+  }
 
   function setPortrait(om: RoomData['om'], navn: string | undefined): void {
     const initial = (navn || 'n').trim()[0]?.toUpperCase() || 'N'
@@ -710,12 +748,16 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       else {
         // "Spiller nå" while a playlist plays on the iPod: the table as before, but turned and moved towards the iPod so it is a main part of the picture
         const top = { pos: new THREE.Vector3(...LYTTE_TOP.pos), target: new THREE.Vector3(...LYTTE_TOP.target) }
+        const Mt = cornerMatrix('lytte')
+        if (Mt) { top.pos.applyMatrix4(Mt); top.target.applyMatrix4(Mt) }
         to = { pos: top.pos.lerp(near.pos, 0.55), target: top.target.lerp(near.target, 0.7) }
       }
     } else {
       const s: Pose | null | undefined = station === 'gangen' ? hall.pose() : station === 'modul' ? modulePose() : station === 'lytte' && lyttePose ? { shelf: LYTTE_SHELF, top: LYTTE_TOP, deck: LYTTE_DECK }[lyttePose as 'shelf' | 'top' | 'deck'] : STATIONS[station]
       if (!s) return
       to = { pos: new THREE.Vector3(...s.pos), target: new THREE.Vector3(...s.target) }
+      const M = cornerMatrix(station) // (the corner may have been moved, turned or resized)
+      if (M) { to.pos.applyMatrix4(M); to.target.applyMatrix4(M) }
       if (station === 'hjem' && homeFit !== 1) to.pos.sub(to.target).multiplyScalar(homeFit).add(to.target) // (the overview: nearer or farther so the room fills the space the panel leaves)
     }
     if (instant || reduced) {
@@ -733,6 +775,38 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       dur: duration ?? THREE.MathUtils.clamp(0.9 + dist * 0.18, 1.1, 2.0),
       lift: Math.min(0.6, dist * 0.07),
     }
+  }
+
+  // ── Through a door in the hall: into somebody's room, and out of the room you were in ──
+  let doorAnim: { user: string; from: number; to: number; t: number; dur: number; delay: number } | null = null
+  function flyPose(to: Pose3, dur: number, lift = 0): void {
+    invalidate(dur + 0.6)
+    flight = { from: { pos: camPos.clone(), target: camTarget.clone() }, to: { pos: to.pos.clone(), target: to.target.clone() }, t: 0, dur, lift }
+  }
+  /** Up to the door, it swings open, and in through it. Resolves when the camera is through (false: no such door here). */
+  function enterDoor(user: string): Promise<boolean> {
+    const p = station === 'gangen' ? hall.doorPoses(user) : null
+    if (!p || reduced) return Promise.resolve(false)
+    doorAnim = { user, from: 0, to: 1, t: 0, dur: 0.5, delay: 0.05 }
+    flyPose(p.front, 0.6)
+    return new Promise((done) => {
+      setTimeout(() => flyPose(p.through, 0.5), 620)
+      setTimeout(() => done(true), 1050)
+    })
+  }
+  /** Coming out of a room's own door into the hall (the room you were just in): the door shuts behind you. */
+  function exitDoor(user: string): boolean {
+    const p = hall.doorPoses(user)
+    if (!p || reduced) return false
+    station = 'gangen'
+    hall.setOpen(user, 1)
+    camPos.copy(p.out.pos); camTarget.copy(p.out.target)
+    camera.position.copy(p.out.pos); lookAt.copy(p.out.target)
+    const h = hall.pose()
+    flyPose({ pos: new THREE.Vector3(...h.pos), target: new THREE.Vector3(...h.target) }, 1.3)
+    doorAnim = { user, from: 1, to: 0, t: 0, dur: 0.6, delay: 0.75 }
+    updateCull(true, flight?.to)
+    return true
   }
 
   // ── Only what is in view is drawn ──────────────────────
@@ -800,6 +874,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     }
     // my own models and the hobby modules: the same – out of view, out of the picture (twenty of them must not cost anything you don't see)
     for (const o of decorObjs.values()) {
+      if (o.c) continue // (a corner is switched off by its own pieces above)
       let cull = false
       if (cullOn && !roam.on && !decorEdit) {
         if (!o.box) { o.box = new THREE.Box3().setFromObject(o.root); if (!o.box.isEmpty()) o.box.expandByScalar(0.4) }
@@ -1011,7 +1086,8 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
 
   function placeDecor(o: DecorObject): void {
     const it = o.item
-    o.root.position.set(it.x, it.y || 0, it.z)
+    if (o.c) { o.root.position.set(o.c.x + it.x, it.y || 0, o.c.z + it.z); stationBoxes.clear(); tinies = null; shadowsDirty = true } // (a corner: x / z are how far it has moved)
+    else o.root.position.set(it.x, it.y || 0, it.z)
     o.root.rotation.y = it.rot || 0
     o.root.scale.setScalar(it.scale || 1)
     o.root.visible = (it.visible !== false || decorEdit) && !o.culled // hidden ones still show while editing, so they can be found again
@@ -1044,7 +1120,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
       const c = b.getCenter(new THREE.Vector3())
       m.position.set(-c.x, -b.min.y, -c.z)
       m.traverse((n) => { if (n instanceof THREE.Mesh) { n.castShadow = true; n.receiveShadow = true } })
-      if (o.prop) { o.prop.body.removeFromParent(); o.prop.sign.position.y = b.getSize(new THREE.Vector3()).y + 0.26 }
+      if (o.prop) o.prop.body.removeFromParent()
       o.glb?.removeFromParent()
       o.glb = m
       o.root.add(m)
@@ -1094,12 +1170,21 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     const ids = new Set(list.map((i) => i.id))
     for (const [id, o] of decorObjs) {
       if (ids.has(id)) continue
+      if (o.c) { o.item = { ...o.item, x: 0, y: 0, z: 0, rot: 0, scale: 1, visible: true }; placeDecor(o); decorObjs.delete(id); continue } // (a corner back where it was)
       o.prop?.dispose()
       decorGroup.remove(o.root)
       decorObjs.delete(id)
       if (decorSel === id) selectDecor(null)
     }
     for (const it of list) {
+      if (it.corner) { // one of the room's own corners: it is there already – only where it stands changes
+        const cp = cornerPivots.get(it.corner)
+        if (!cp) continue
+        let co = decorObjs.get(it.id)
+        if (!co) { co = { root: cp.pivot, item: { ...it }, c: cp.c }; decorObjs.set(it.id, co) } else if (decorDrag?.id !== it.id) co.item = { ...it }
+        placeDecor(co)
+        continue
+      }
       const existing = decorObjs.get(it.id)
       if (existing) {
         if (decorDrag?.id !== it.id) { existing.item = { ...it }; placeDecor(existing) }
@@ -1123,7 +1208,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   }
   function decorAt(): string | null {
     ray.setFromCamera(ndc, camera)
-    const hits = ray.intersectObjects(decorGroup.children.filter((c) => c.visible), true)
+    const hits = ray.intersectObjects([...decorGroup.children.filter((c) => c.visible), ...[...cornerPivots.values()].map((p) => p.pivot)], true)
     for (const h of hits) {
       let n: THREE.Object3D | null = h.object
       while (n && !n.userData.decorId) n = n.parent
@@ -1151,8 +1236,9 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     if (!o) return
     ray.setFromCamera(ndc, camera)
     if (!ray.ray.intersectPlane(dPlane, dPoint)) return
-    o.item.x = clampN(dPoint.x + decorDrag.ox, -DECOR_X, DECOR_X)
-    o.item.z = clampN(dPoint.z + decorDrag.oz, -DECOR_Z, DECOR_Z)
+    const ax = clampN(dPoint.x + decorDrag.ox, -DECOR_X, DECOR_X), az = clampN(dPoint.z + decorDrag.oz, -DECOR_Z, DECOR_Z)
+    o.item.x = o.c ? ax - o.c.x : ax
+    o.item.z = o.c ? az - o.c.z : az
     decorDrag.moved = true
     placeDecor(o)
     selBox.setFromObject(o.root)
@@ -1174,8 +1260,8 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     if (patch.rot !== undefined) it.rot = patch.rot
     if (patch.scale !== undefined) it.scale = clampN(patch.scale, 0.05, 8)
     if (patch.y !== undefined) it.y = clampN(patch.y, 0, 3)
-    if (patch.x !== undefined) it.x = clampN(patch.x, -DECOR_X, DECOR_X)
-    if (patch.z !== undefined) it.z = clampN(patch.z, -DECOR_Z, DECOR_Z)
+    if (patch.x !== undefined) it.x = o.c ? clampN(o.c.x + patch.x, -DECOR_X, DECOR_X) - o.c.x : clampN(patch.x, -DECOR_X, DECOR_X)
+    if (patch.z !== undefined) it.z = o.c ? clampN(o.c.z + patch.z, -DECOR_Z, DECOR_Z) - o.c.z : clampN(patch.z, -DECOR_Z, DECOR_Z)
     if (patch.visible !== undefined) it.visible = patch.visible
     if (patch.name !== undefined) it.name = patch.name
     placeDecor(o)
@@ -1225,7 +1311,7 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
   /** A free place on the floor for a new hobby module: not in the furniture, not on top of another module – the front of the room first. */
   function freeSpot(skip?: string): { x: number; z: number } | null {
     const boxes = floorBoxes(true, 0.45)
-    const others = [...decorObjs.values()].filter((o) => o.item.id !== skip).map((o) => o.item)
+    const others = [...decorObjs.values()].filter((o) => o.item.id !== skip && !o.c).map((o) => o.item)
     for (let z = 2.9; z >= -2.9; z -= 0.4) {
       for (const dx of [0, 0.5, -0.5, 1, -1, 1.5, -1.5, 2, -2, 2.5, -2.5, 3, -3]) {
         const x = dx
@@ -1618,6 +1704,13 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     simT += dt
     const t = simT
 
+    // a door in the hall swinging open / shut
+    if (doorAnim) {
+      doorAnim.t += dt
+      const k = Math.min(1, Math.max(0, (doorAnim.t - doorAnim.delay) / doorAnim.dur))
+      hall.setOpen(doorAnim.user, doorAnim.from + (doorAnim.to - doorAnim.from) * easeInOut(k))
+      if (k >= 1) doorAnim = null
+    }
     // camera flight
     if (flight) {
       flight.t = Math.min(1, flight.t + dt / flight.dur)
@@ -1756,6 +1849,18 @@ export function createRoom(host: HTMLElement, { onPick, onHover, onReady, timerS
     /** Which hobby module the camera looks at when the station is 'modul'. */
     freeSpot,
     focusModule(id: string | null) { focusId = id; if (station === 'modul') goTo('modul') },
+    enterDoor,
+    exitDoor,
+    /** Just through the door of a new room: standing in its doorway, then a few steps back to see all of it. */
+    arriveInRoom(): void {
+      station = 'hjem'
+      flight = null
+      camPos.set(0.3, 1.65, 4.6); camTarget.set(0, 1.1, 0)
+      camera.position.copy(camPos); lookAt.copy(camTarget)
+      updateCull(true)
+      goTo('hjem', { duration: 1.6 })
+    },
+    hasDoor: (user: string): boolean => hall.hasDoor(user),
     setDoors(list: Door[]) { hall.setDoors(list); if (station === 'gangen') goTo('gangen', { instant: true }) },
     setSelection,
     setTheme,

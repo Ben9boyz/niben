@@ -127,7 +127,7 @@ onBeforeUnmount(() => { clearInterval(timer); clearTimeout(soon) })
         <button v-if="mineCount > 2" class="edit" title="Bland rekkefølgen i køen din" @click="shuffleMine"><Shuffle :size="13" />Bland</button>
         <button v-if="editing" class="lnk" @click="clearAll"><Trash2 :size="12" />Tøm</button>
       </div>
-      <p v-if="editing" class="hint">Dra et album opp eller ned, eller bruk pilene. ✕ tar det bort. Neste låt blir låst like før den spilles.</p>
+      <p v-if="editing" class="hint">Dra et album opp eller ned, eller bruk pilene. Krysset tar det bort. Neste låt blir låst like før den spilles.</p>
 
       <div v-if="mineCount" class="lists">
         <div class="div mine">Min kø</div>

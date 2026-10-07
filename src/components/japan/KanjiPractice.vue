@@ -109,7 +109,7 @@ const GR: [KanjiGrade, string, string][] = [['again', 'Igjen', '1'], ['hard', 'V
       </div>
 
       <div v-if="done" class="done">
-        <b>Ferdig for nå 🎉</b>
+        <b>Ferdig for nå</b>
         <p class="muted">Kanjiene kommer tilbake når det er tid for å repetere dem.</p>
         <label class="fresh">Nye per økt <input v-model.number="fresh" type="number" min="0" max="50" /></label>
         <button class="btn primary small" @click="load"><RotateCcw :size="14" /> Én økt til</button>

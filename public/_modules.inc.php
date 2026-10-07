@@ -38,7 +38,7 @@ function mod_free_spot(array $list): array {
             $x = -3.0 + $col * 1.5;
             $z = 3.0 - $row * 1.3;
             $ok = true;
-            foreach ($list as $d) if (hypot(($d['x'] ?? 0) - $x, ($d['z'] ?? 0) - $z) < 1.2) { $ok = false; break; }
+            foreach ($list as $d) if (empty($d['corner']) && hypot(($d['x'] ?? 0) - $x, ($d['z'] ?? 0) - $z) < 1.2) { $ok = false; break; }
             if ($ok) return [$x, $z];
         }
     }

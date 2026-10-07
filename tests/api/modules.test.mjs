@@ -63,3 +63,18 @@ test('hobby modules: a room adds, fills, moves and removes them; others only loo
   assert.equal((await alice.client.post('mod_remove', { id })).status, 200)
   assert.equal((await alice.client.get('decor_get')).json.items.find((i) => i.id === id), undefined)
 })
+
+test('the room’s own corners are in the same list: a name, a symbol (only from the icon set), moved and hidden like a hobby', async () => {
+  const owner = await ownerClient()
+  const alice = await makeUser(owner)
+  const list = (await alice.client.get('decor_get')).json.items
+  assert.deepEqual(list.filter((i) => i.corner).map((i) => i.corner).sort(), ['boker', 'figurer', 'gitar', 'japansk', 'kode', 'lytte', 'om', 'ovelse', 'reiser'])
+  const r = await alice.client.post('decor_save', { items: [{ id: 'c-japansk', x: 2.5, z: -1, rot: 0.5, scale: 1.2, name: 'Nihongo', ico: 'Languages', visible: false }, { id: 'c-lytte', ico: '🎵' }, { id: 'c-nope', x: 1 }] })
+  assert.equal(r.status, 200, r.text)
+  const j = r.json.items.find((i) => i.id === 'c-japansk')
+  assert.deepEqual([j.x, j.z, j.rot, j.scale, j.name, j.ico, j.visible], [2.5, -1, 0.5, 1.2, 'Nihongo', 'Languages', false])
+  assert.equal(r.json.items.find((i) => i.id === 'c-lytte').ico, '', 'an emoji is not a symbol')
+  assert.equal(r.json.items.find((i) => i.id === 'c-nope'), undefined, 'no corners that do not exist')
+  // another room's corners are its own
+  assert.equal((await owner.get('decor_get')).json.items.find((i) => i.id === 'c-japansk').x, 0)
+})

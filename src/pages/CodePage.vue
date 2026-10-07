@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { tx } from '@/composables/site/useTexts'
 import { ref } from 'vue'
-import { ArrowUpRight, BookOpenText } from 'lucide-vue-next'
+import { ArrowUpRight, BookOpenText, Star } from 'lucide-vue-next'
 import RepoBrowser from '@/components/content/RepoBrowser.vue'
 import ServiceSetup from '@/components/ui/ServiceSetup.vue'
 import { useData, type Project } from '@/composables/site/useData'
@@ -19,7 +19,7 @@ const reading = ref<string | null>(null)
     </header>
     <div class="grid projects">
       <article v-for="(p, i) in data.prosjekter" :key="i" class="glass card proj rise" :style="{ '--i': i }">
-        <div class="top"><span class="num">{{ String(i + 1).padStart(2, '0') }}</span><span class="muted">{{ p.aar }}<template v-if="p.stjerner"> · ★ {{ p.stjerner }}</template><template v-if="p.github"> · GitHub</template></span></div>
+        <div class="top"><span class="num">{{ String(i + 1).padStart(2, '0') }}</span><span class="muted">{{ p.aar }}<template v-if="p.stjerner"> · <Star :size="12" class="gs" /> {{ p.stjerner }}</template><template v-if="p.github"> · GitHub</template></span></div>
         <h2>{{ p.navn }}</h2>
         <p class="body">{{ p.beskrivelse }}</p>
         <div class="tags"><span v-for="t in p.teknologi" :key="t" class="chip">{{ t }}</span></div>
@@ -45,4 +45,5 @@ const reading = ref<string | null>(null)
 .muted { color: var(--text-3); font-size: 0.85rem; }
 h2 { font-size: 1.5rem; margin: 14px 0 6px; }
 .body { color: var(--text-2); flex: 1; }
+.gs { vertical-align: -1px; }
 </style>

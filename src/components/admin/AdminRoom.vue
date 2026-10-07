@@ -41,7 +41,7 @@ function edit() { decor.editing = true; if (mode.value !== 'rom') router.push('/
     </div>
 
     <ul v-if="decor.items.length" class="list">
-      <li v-for="it in decor.items.filter((i) => !i.mod)" :key="it.id" :class="{ off: it.visible === false }">
+      <li v-for="it in decor.items.filter((i) => !i.mod && !i.corner)" :key="it.id" :class="{ off: it.visible === false }">
         <Box :size="17" aria-hidden="true" />
         <input v-model="it.name" type="text" maxlength="50" aria-label="Navn" @change="rename" />
         <button class="ic" :title="it.visible === false ? 'Vis' : 'Skjul'" :aria-label="it.visible === false ? 'Vis' : 'Skjul'" @click="toggle(it)"><EyeOff v-if="it.visible !== false" :size="16" /><Eye v-else :size="16" /></button>

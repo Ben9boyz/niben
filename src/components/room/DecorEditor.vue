@@ -4,7 +4,8 @@ import { RotateCcw, RotateCw, Minus, Plus, ArrowUp, ArrowDown, Eye, EyeOff, Tras
 import { kindOf } from '@/lib/modules/catalog'
 import { decor, uploadDecor, removeDecor, changed } from '@/composables/room/useDecor'
 import { room } from '@/composables/room/useRoom'
-import { admin } from '@/composables/site/useAdmin'
+import { admin, canManage } from '@/composables/site/useAdmin'
+import { cornerName } from '@/lib/corners'
 import { pickedFile } from '@/lib/dom'
 import type { DecorItem } from '@/composables/room/useDecor'
 
@@ -24,16 +25,16 @@ function done() { decor.editing = false }
 
 <template>
   <transition name="fade">
-    <div v-if="decor.editing && admin.loggedIn" class="de glass" role="toolbar" aria-label="Rediger rommet" translate="no">
+    <div v-if="decor.editing && canManage" class="de glass" role="toolbar" aria-label="Rediger rommet" translate="no">
       <div class="top">
         <b><Move :size="15" aria-hidden="true" />Rediger rommet</b>
         <span class="st">{{ decor.saved ? 'Lagret' : 'Lagrer …' }}</span>
-        <label class="btn small"><Upload :size="14" aria-hidden="true" />{{ decor.busy === 'upload' ? 'Laster opp …' : 'Legg til modell' }}<input type="file" accept=".glb,model/gltf-binary" hidden @change="onFile" /></label>
+        <label v-if="admin.loggedIn" class="btn small"><Upload :size="14" aria-hidden="true" />{{ decor.busy === 'upload' ? 'Laster opp …' : 'Legg til modell' }}<input type="file" accept=".glb,model/gltf-binary" hidden @change="onFile" /></label>
         <button class="btn primary small" @click="done"><Check :size="14" aria-hidden="true" />Ferdig</button>
       </div>
       <p v-if="decor.error" class="err">{{ decor.error }}</p>
       <div v-if="decor.items.length" class="chips pills">
-        <button v-for="i in decor.items" :key="i.id" :class="{ on: i.id === decor.selected, off: i.visible === false }" @click="pick(i.id)">{{ i.name || kindOf(i.mod)?.name || 'Modell' }}</button>
+        <button v-for="i in decor.items" :key="i.id" :class="{ on: i.id === decor.selected, off: i.visible === false }" @click="pick(i.id)">{{ i.name || (i.corner ? cornerName(i.corner) : kindOf(i.mod)?.name) || 'Modell' }}</button>
       </div>
       <p v-else class="hint">Ingen modeller ennå. Legg til en .glb-fil, så dukker den opp midt i rommet.</p>
       <div v-if="sel" class="tools">
@@ -44,9 +45,9 @@ function done() { decor.editing = false }
         <button title="Løft opp (på en hylle eller et bord)" aria-label="Løft opp" @click="adj({ y: (sel.y || 0) + 0.05 })"><ArrowUp :size="17" /></button>
         <button title="Ned" aria-label="Ned" @click="adj({ y: (sel.y || 0) - 0.05 })"><ArrowDown :size="17" /></button>
         <button :title="sel.visible === false ? 'Vis' : 'Skjul for besøkende'" :aria-label="sel.visible === false ? 'Vis' : 'Skjul'" @click="adj({ visible: sel.visible === false })"><EyeOff v-if="sel.visible !== false" :size="17" /><Eye v-else :size="17" /></button>
-        <button class="danger" title="Slett" aria-label="Slett" @click="del"><Trash2 :size="17" /></button>
+        <button v-if="!sel.corner" class="danger" title="Slett" aria-label="Slett" @click="del"><Trash2 :size="17" /></button>
       </div>
-      <p class="hint">Dra en modell for å flytte den. Scrollhjul = drei · Shift + scroll = størrelse. Trykk på gulvet for å velge bort.</p>
+      <p class="hint">Dra en modell, en hobby eller et av rommets egne hjørner for å flytte det. Scrollhjul = drei · Shift + scroll = størrelse. Trykk på gulvet for å velge bort.</p>
     </div>
   </transition>
 </template>
