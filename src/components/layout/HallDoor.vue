@@ -2,7 +2,6 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { Search } from 'lucide-vue-next'
-import { rooms } from '@/composables/room/useRooms'
 
 // The way out to the hall – not a tab of the room, but a door out of it: the hall is where you go to look for another room.
 // So it stands on its own, below the menu: a small door that swings ajar when you come near, with light from the hall behind it.
@@ -10,11 +9,11 @@ import { rooms } from '@/composables/room/useRooms'
 const route = useRoute()
 const inHall = computed(() => route.name === 'gangen')
 const to = computed(() => (inHall.value ? '/' : '/gangen'))
-const shown = computed(() => rooms.total > 1 || inHall.value)
 </script>
 
 <template>
-  <router-link v-if="shown" :to="to" class="hd glass" :class="{ open: inHall }" :aria-label="inHall ? 'Tilbake inn i rommet' : 'Gangen – finn et annet rom'" :title="inHall ? 'Tilbake inn i rommet' : 'Gangen – finn et annet rom'">
+  <!-- always there: the way between rooms is part of the rail, also while yours is the only room so far -->
+  <router-link :to="to" class="hd glass" :class="{ open: inHall }" :aria-label="inHall ? 'Tilbake inn i rommet' : 'Gangen – finn et annet rom'" :title="inHall ? 'Tilbake inn i rommet' : 'Gangen – finn et annet rom'">
     <span class="frame" aria-hidden="true">
       <span class="light"><Search :size="11" stroke-width="2.6" /></span>
       <span class="leaf"><i class="knob"></i></span>
