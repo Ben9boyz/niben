@@ -78,3 +78,29 @@ test('the room’s own corners are in the same list: a name, a symbol (only from
   // another room's corners are its own
   assert.equal((await owner.get('decor_get')).json.items.find((i) => i.id === 'c-japansk').x, 0)
 })
+
+test('a picture for an entry can be uploaded – and only the room that uploaded it can use or throw it away', async () => {
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+  const owner = await ownerClient()
+  const alice = await makeUser(owner)
+  const bob = await makeUser(owner)
+  const am = (await alice.client.post('mod_add', { type: 'oppskrifter' })).json.item.id
+  const bm = (await bob.client.post('mod_add', { type: 'oppskrifter' })).json.item.id
+
+  assert.notEqual((await bob.client.upload('mod_image', { id: am }, { name: 'x.png', bytes: PNG })).status, 200, 'not into somebody else’s module')
+  const up = await alice.client.upload('mod_image', { id: am }, { name: 'x.png', bytes: PNG })
+  assert.equal(up.status, 200, up.text)
+  const path = up.json.path
+  assert.match(path, /^uploads\/photos\/[a-f0-9]{20}\.jpg$/)
+
+  // bob cannot put alice's picture in his own entry, nor throw it away
+  const bs = await bob.client.post('mod_save', { id: bm, data: { items: [{ t: 'Tyveri', img: path }] } })
+  assert.equal(bs.json.data.items[0].img, undefined, 'somebody else’s upload is left out')
+  await bob.client.post('mod_image_drop', { id: bm, path })
+  const as = await alice.client.post('mod_save', { id: am, data: { items: [{ t: 'Pannekaker', img: path }] } })
+  assert.equal(as.json.data.items[0].img, path, 'her own goes in')
+  assert.equal((await alice.client.get('mod_get', `&id=${am}`)).json.data.items[0].img, path)
+  // a saved one is not thrown away by a drop
+  await alice.client.post('mod_image_drop', { id: am, path })
+  assert.equal((await alice.client.get('mod_get', `&id=${am}`)).json.data.items[0].img, path)
+})

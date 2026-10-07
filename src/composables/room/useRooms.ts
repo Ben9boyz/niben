@@ -21,7 +21,7 @@ import { resetStrava } from '@/composables/site/useStrava'
 // page: the room flies off, everything that belonged to it is reset and fetched again for the new room, and the new
 // one flies in (the 3D scene stays loaded – it only gets new data).
 export interface RoomInfo { username: string; owner: boolean; photo: string | null; door?: string | null; tagline: string }
-export const rooms = reactive({ list: [] as RoomInfo[], total: 0, current: null as string | null, loaded: false })
+export const rooms = reactive({ list: [] as RoomInfo[], total: 0, current: null as string | null, loaded: false, entering: '' /* the room on its way in (a spinner shows while it loads) */ })
 
 // The hall: every room has a door, so a page at a time (and a search) – a house with a thousand rooms has to stay quick.
 export const hall = reactive({ q: '', offset: 0, limit: 12, items: [] as RoomInfo[], total: 0, busy: false, loaded: false })
@@ -87,12 +87,15 @@ export async function setRoom(username: string, { viaDoor = false }: { viaDoor?:
   if (switching) { queued = username; return }
   if (username === rooms.current) return
   switching = true
+  rooms.entering = username
   stashRoom(rooms.current ?? '')
   const root = document.documentElement
   if (!viaDoor) root.dataset.roomfx = 'out' // the room flies off (style.css) – unless you walked through its door: then you are simply in it
   try {
     await Promise.all([api('room_set', { username }), wait(viaDoor ? 0 : 320)])
     await swapRoomState(username)
+    // the room's things (corners, hobbies) arrive a moment after its content: the spinner stays until they are there
+    for (let i = 0; i < 60 && !decor.loaded; i++) await wait(100)
     // stay in the corner you are in – only a corner this room does not have (or the admin of somebody else's room) sends you home
     const here = location.hash.replace(/^#\/?/, '').split(/[/?]/)[0]
     if (here && ((useData().profile.sections as Record<string, boolean | undefined>)?.[here] === false || (here === 'admin' && !admin.mine))) location.hash = '#/'
@@ -108,6 +111,7 @@ export async function setRoom(username: string, { viaDoor = false }: { viaDoor?:
   } finally {
     delete root.dataset.roomfx
     switching = false
+    rooms.entering = ''
   }
   const next = queued
   queued = null

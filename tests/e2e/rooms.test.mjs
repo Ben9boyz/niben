@@ -124,8 +124,12 @@ test('the hall: a door of its own outside the menu, one door per room there, and
   await page.waitForFunction(() => location.hash.startsWith('#/gangen'))
   await page.locator('.door[data-room]').first().waitFor()
   assert.ok((await page.locator('.door[data-room]').count()) >= 2, 'a door for each room')
+  // a slow answer: a spinner (a swinging door) says where you are going while the room loads, and goes when it is there
+  await page.route('**/api.php?action=room_set*', async (r) => { await new Promise((ok) => setTimeout(ok, 1500)); await r.continue() })
   await page.locator('.door', { hasText: alice.name }).first().click()
+  await page.getByRole('status').filter({ hasText: `Går inn i rommet til ${alice.name}` }).waitFor()
   await page.getByRole('heading', { level: 1, name: /Alicia/ }).waitFor()
+  await page.getByRole('status').filter({ hasText: 'Går inn i rommet' }).waitFor({ state: 'detached' })
   assert.equal(await cookie(page, 'niben_r'), String(alice.id))
   assert.deepEqual(page.errors, [])
 })

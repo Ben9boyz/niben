@@ -4,13 +4,13 @@ import { Plus, Trash2, Check, X, Search, Upload, Star } from 'lucide-vue-next'
 import { canManage } from '@/composables/site/useAdmin'
 import { moduleById, dataOf, loadModule, touch, modState, type Entry } from '@/composables/room/useModules'
 import { decor } from '@/composables/room/useDecor'
-import { api, errorMessage } from '@/composables/site/useAdmin'
+import { api, errorMessage, shrinkImage } from '@/composables/site/useAdmin'
 import type { Field } from '@/lib/modules/catalog'
 import LogInsights from './LogInsights.vue'
 import ModuleExtras from './ModuleExtras.vue'
 import { strava, loadStrava, syncStrava } from '@/composables/site/useStrava'
 import type { ModData } from '@/composables/room/useModules'
-import { safeUrl } from '@/lib/modules/safe'
+import { safeUrl, isUpload } from '@/lib/modules/safe'
 import { iconOf } from '@/lib/icons'
 import StarRow from '@/components/ui/StarRow.vue'
 import { parseGpx, routePath, paceText } from '@/lib/modules/gpx'
@@ -169,6 +169,33 @@ function saveAccount(): void {
   d.settings = { ...d.settings, provider: acct.provider, account: acct.user.trim() }
   touch(props.id)
 }
+// ── a picture for an entry: from the device, or a web address ──
+const imgBusy = ref('')
+const imgErr = ref('')
+const fresh = new Set<string>() // uploaded while this entry was open – thrown away again unless a saved entry uses it
+async function uploadImg(k: string, ev: Event): Promise<void> {
+  const input = ev.target as HTMLInputElement
+  const f = input.files?.[0]
+  input.value = ''
+  const d = draft.value
+  if (!f || !d) return
+  imgBusy.value = k
+  imgErr.value = ''
+  try {
+    const fd = new FormData()
+    fd.append('id', props.id)
+    fd.append('file', await shrinkImage(f, 1600))
+    const r = await api<{ path: string }>('mod_image', fd)
+    fresh.add(r.path)
+    d.e[k] = r.path
+  } catch (e) { imgErr.value = errorMessage(e) } finally { imgBusy.value = '' }
+}
+// when the entry closes (saved, cancelled, deleted): the uploads no saved entry ended up with go again
+watch(draft, (now, was) => {
+  if (!was || now === was) return
+  const used = new Set((data.value?.items ?? []).map((e) => e.img))
+  for (const p of [...fresh]) if (!used.has(p)) { fresh.delete(p); void api('mod_image_drop', { id: props.id, path: p }).catch(() => undefined) } else fresh.delete(p)
+})
 const fieldInput = (f: Field): string => (f.kind === 'number' ? 'number' : f.kind === 'date' ? 'date' : f.kind === 'url' ? 'url' : 'text')
 void decor
 </script>
@@ -222,13 +249,20 @@ void decor
         <p v-if="gpxErr" class="err">{{ gpxErr }}</p>
         <svg v-if="typeof draft.e.route === 'string' && draft.e.route" class="route big" viewBox="-30 -30 1060 1060" aria-label="Ruten"><path :d="routePath(draft.e.route)" /></svg>
       </div>
-      <label v-for="f in mod.kind.fields.filter((x) => x.kind !== 'hidden')" :key="f.k" class="field" :class="{ wide: f.kind === 'longtext' }">
+      <component :is="f.kind === 'image' ? 'div' : 'label'" v-for="f in mod.kind.fields.filter((x) => x.kind !== 'hidden')" :key="f.k" class="field" :class="{ wide: f.kind === 'longtext' || f.kind === 'image' }">
         <span>{{ f.label }}<template v-if="f.unit"> ({{ f.unit }})</template></span>
-        <textarea v-if="f.kind === 'longtext'" v-model="(draft.e[f.k] as string)" rows="3" maxlength="400"></textarea>
+        <div v-if="f.kind === 'image'" class="imgf">
+          <span class="thumb" :style="safeUrl(draft.e[f.k]) ? { backgroundImage: `url(${safeUrl(draft.e[f.k])})` } : undefined"><component :is="iconOf(mod.icon)" v-if="!safeUrl(draft.e[f.k])" :size="22" /></span>
+          <label class="btn soft small up"><Upload :size="14" />{{ imgBusy === f.k ? 'Laster opp …' : draft.e[f.k] ? 'Bytt bilde' : 'Last opp bilde' }}<input type="file" accept="image/jpeg,image/png,image/webp" hidden :disabled="imgBusy === f.k" @change="uploadImg(f.k, $event)" /></label>
+          <input :value="isUpload(draft.e[f.k]) ? '' : (draft.e[f.k] ?? '')" type="url" :placeholder="isUpload(draft.e[f.k]) ? 'Lastet opp – eller lim inn en lenke' : '… eller lim inn en lenke'" :aria-label="`${f.label}: lenke`" maxlength="400" @input="draft.e[f.k] = ($event.target as HTMLInputElement).value" />
+          <button v-if="draft.e[f.k]" type="button" class="btn soft small" :aria-label="`Fjern ${f.label.toLowerCase()}`" @click="draft.e[f.k] = ''"><X :size="14" /></button>
+          <small v-if="imgErr && !imgBusy" class="bad">{{ imgErr }}</small>
+        </div>
+        <textarea v-else-if="f.kind === 'longtext'" v-model="(draft.e[f.k] as string)" rows="3" maxlength="400"></textarea>
         <select v-else-if="f.kind === 'select'" v-model="draft.e[f.k]"><option value="">–</option><option v-for="o in f.options" :key="o" :value="o">{{ o }}</option></select>
         <span v-else-if="f.kind === 'rating'" class="rate"><button v-for="n in 5" :key="n" type="button" :class="{ on: Number(draft.e[f.k]) >= n }" :aria-label="`${n} stjerner`" @click="draft.e[f.k] = Number(draft.e[f.k]) === n ? 0 : n"><Star :size="22" /></button></span>
         <input v-else v-model="draft.e[f.k]" :type="fieldInput(f)" :step="f.kind === 'number' ? 'any' : undefined" maxlength="400" />
-      </label>
+      </component>
       <div class="acts">
         <button class="btn primary small"><Check :size="14" />Lagre</button>
         <button type="button" class="btn soft small" @click="draft = null"><X :size="14" />Avbryt</button>
@@ -243,7 +277,7 @@ void decor
       <div>
         <h3>{{ title(peek) }}</h3>
         <dl>
-          <template v-for="f in mod.kind.fields" :key="f.k"><template v-if="f.k !== 't' && f.kind !== 'hidden' && f.kind !== 'url' && peek[f.k] !== undefined && peek[f.k] !== ''"><dt>{{ f.label }}</dt><dd :class="{ long: f.kind === 'longtext' }"><StarRow v-if="f.kind === 'rating'" :value="Number(peek[f.k])" /><template v-else>{{ shownValue(f, peek[f.k]) }}</template></dd></template></template>
+          <template v-for="f in mod.kind.fields" :key="f.k"><template v-if="f.k !== 't' && f.kind !== 'hidden' && f.kind !== 'url' && f.kind !== 'image' && peek[f.k] !== undefined && peek[f.k] !== ''"><dt>{{ f.label }}</dt><dd :class="{ long: f.kind === 'longtext' }"><StarRow v-if="f.kind === 'rating'" :value="Number(peek[f.k])" /><template v-else>{{ shownValue(f, peek[f.k]) }}</template></dd></template></template>
         </dl>
         <svg v-if="typeof peek.route === 'string' && peek.route" class="route big" viewBox="-30 -30 1060 1060" aria-label="Ruten"><path :d="routePath(peek.route)" /></svg>
         <a v-if="safeUrl(peek.url)" :href="safeUrl(peek.url) ?? undefined" target="_blank" rel="noopener noreferrer">Åpne lenken</a>
@@ -321,6 +355,11 @@ void decor
 .form { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; padding: 14px; border-radius: 16px; border: 1px solid var(--glass-border); background: color-mix(in srgb, var(--bg) 70%, transparent); }
 .form .wide, .look, .acts { grid-column: 1 / -1; }
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--text-3); }
+.imgf { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.imgf .thumb { width: 54px; height: 54px; border-radius: 12px; flex: none; display: grid; place-items: center; background: var(--accent-soft) center / cover no-repeat; color: var(--accent); }
+.imgf .up { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; color: var(--text); }
+.imgf input { flex: 1; min-width: 140px; }
+.imgf .bad { flex-basis: 100%; color: #e5484d; }
 .field input, .field select, .field textarea { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--glass-border); border-radius: 10px; padding: 8px 10px; }
 .rate { display: flex; gap: 2px; } .rate button { all: unset; cursor: pointer; color: var(--text-3); opacity: 0.45; } .rate button.on { color: #f5a524; opacity: 1; } .rate button.on svg { fill: currentColor; }
 .ico { color: var(--mc); } .im .ph { color: var(--mc); opacity: 0.8; }

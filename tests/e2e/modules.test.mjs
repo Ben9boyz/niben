@@ -1,7 +1,7 @@
 import { test, before, after, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-import { launch, openPage, closePages, ownerClient } from './helpers.mjs'
+import { launch, openPage, closePages, ownerClient, makeUser, clearLimits } from './helpers.mjs'
 
 let browser
 before(async () => { browser = await launch() })
@@ -90,5 +90,30 @@ test('in the 3D room a module stands as a piece of furniture and a click on its 
   await page.evaluate(() => window.__room.goTo('modul', { instant: true })) // (a software-rendered room flies very slowly: jump)
   await page.waitForTimeout(2500)
   if (process.env.SHOT) fs.writeFileSync(process.env.SHOT, await page.screenshot({ timeout: 60000 }))
+  assert.deepEqual(page.errors, [])
+})
+
+test('a picture for an entry is uploaded from the device (no web address needed) and shows on the card', async () => {
+  const owner = await ownerClient()
+  const u = await makeUser(owner)
+  const m = (await u.client.post('mod_add', { type: 'oppskrifter', name: 'Kokeboka' })).json.item
+  clearLimits()
+  const page = await openPage(browser, { hash: '/admin' })
+  await page.getByLabel(/Brukernavn/).fill(u.name)
+  await page.getByLabel(/^Passord/).fill(u.password)
+  await Promise.all([page.waitForEvent('load'), page.getByRole('button', { name: 'Logg inn' }).last().click()]) // (logging in loads the page again, in her room)
+  await page.locator('.side .it', { hasText: 'Kokeboka' }).waitFor() // (in her own room now)
+  await page.evaluate((id) => { location.hash = `#/h/${id}` }, m.id)
+  await page.getByRole('button', { name: 'Ny', exact: true }).click()
+  await page.locator('label.field', { hasText: /^Rett/ }).locator('input').fill('Pannekaker')
+  // a small picture, made in the page
+  const png = Buffer.from(await page.evaluate(async () => { const c = document.createElement('canvas'); c.width = 64; c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#e33'; x.fillRect(0, 0, 64, 64); const b = await new Promise((r) => c.toBlob(r, 'image/png')); return [...new Uint8Array(await b.arrayBuffer())] }))
+  await page.locator('.imgf input[type=file]').setInputFiles({ name: 'p.png', mimeType: 'image/png', buffer: png })
+  await page.getByText('Bytt bilde').waitFor()
+  await page.getByRole('button', { name: 'Lagre' }).click()
+  await page.waitForFunction(() => [...document.querySelectorAll('.im')].some((e) => /uploads\/photos\//.test(e.getAttribute('style') ?? '')), null, { timeout: 10000 })
+  await page.waitForTimeout(1500) // (saved in the background)
+  const img = (await u.client.get('mod_get', `&id=${m.id}`)).json.data.items[0].img
+  assert.match(img, /^uploads\/photos\/[a-f0-9]{20}\.jpg$/)
   assert.deepEqual(page.errors, [])
 })

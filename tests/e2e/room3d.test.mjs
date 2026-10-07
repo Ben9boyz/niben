@@ -54,8 +54,9 @@ test('the hall in 3D: you come out of your own room’s door, and go into anothe
   await page.waitForFunction(() => !!window.__room, null, { timeout: 30000 })
   await page.waitForTimeout(2500)
   await page.evaluate(() => { location.hash = '#/gangen' })
-  await page.locator('.door[data-room]').first().waitFor()
-  await page.waitForFunction(() => window.__room.debug.station === 'gangen', null, { timeout: 15000 })
+  // (a software-drawn hall takes its time over the first frames – seconds each on a test machine – and the panel changes on a frame)
+  await page.locator('.door[data-room]').first().waitFor({ timeout: 60000 })
+  await page.waitForFunction(() => window.__room.debug.station === 'gangen', null, { timeout: 30000 })
   if (process.env.SHOT) {
     await page.evaluate((n) => { const r = window.__room; r.goTo('gangen', { instant: true }) }, alice.name)
     await page.waitForTimeout(1500)

@@ -27,6 +27,15 @@ function mod_cache_set(string $key, array $d): void {
     try { kv_set($key, json_encode(['t' => time(), 'd' => $d], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); } finally { kv_scope($room); }
 }
 function mod_data_key(string $id): string { return 'mod_' . $id; }
+/** A picture uploaded to an entry (uploads/photos/…), or null. */
+function mod_own_img($v): ?string { return is_string($v) && preg_match('~^uploads/photos/[a-f0-9]{20}\.jpg$~', $v) ? $v : null; }
+/** The uploaded pictures a module's content uses. */
+/** Pictures this room has uploaded that no saved entry uses yet (only these may be put in an entry or thrown away). */
+function mod_pending(?array $set = null): array {
+    if ($set !== null) { kv_set('mod_img_pending', json_encode(array_values(array_slice(array_unique($set), -60)))); return $set; }
+    return array_values(array_filter((array)json_decode((string)kv_get('mod_img_pending'), true), 'is_string'));
+}
+function mod_imgs(?array $data): array { $o = []; foreach ((array)($data['items'] ?? []) as $it) if ($p = mod_own_img($it['img'] ?? null)) $o[$p] = true; return array_keys($o); }
 function mod_find(string $id): ?array {
     foreach (decor_list() as $d) if (($d['id'] ?? '') === $id && !empty($d['mod'])) return $d;
     return null;
@@ -54,6 +63,7 @@ function mod_clean_data($in): array {
             if (!preg_match('~^[a-z][a-z0-9_]{0,23}$~i', $k)) continue;
             if (is_bool($v)) $row[$k] = $v;
             elseif (is_numeric($v) && !is_string($v)) $row[$k] = $v + 0;
+            elseif ($k === 'img' && mod_own_img($v)) $row[$k] = $v; // (a picture uploaded here)
             elseif ($k === 'url' || $k === 'img') { $u = mod_safe_url((string)$v); if ($u !== null) $row[$k] = $u; } // (a link or a picture: only http(s), nothing that can run)
             else { $s = mb_substr(trim((string)$v), 0, $k === 'route' ? 700 : 400); if ($k === 'route' && !preg_match('~^\d{1,3},\d{1,3}( \d{1,3},\d{1,3})*$~', $s)) continue; if ($s !== '') $row[$k] = $s; }
         }
@@ -108,7 +118,15 @@ function mod_handle(string $action, bool $post): void {
         $data = mod_clean_data(body()['data'] ?? []);
         $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if (strlen($json) > MOD_MAX_BYTES) fail('Det er for mye i modulen.');
+        $before = mod_imgs(json_decode((string)kv_get(mod_data_key($id)), true));
+        // an uploaded picture only goes in if this module had it already, or this room just uploaded it (never somebody else's file)
+        $pending = mod_pending();
+        foreach ($data['items'] as &$it) if (($p = mod_own_img($it['img'] ?? null)) && !in_array($p, $before, true) && !in_array($p, $pending, true)) unset($it['img']);
+        unset($it);
+        $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         kv_set(mod_data_key($id), $json);
+        mod_pending(array_diff($pending, mod_imgs($data)));
+        foreach (array_diff($before, mod_imgs($data)) as $gone) delete_upload($gone); // (a picture swapped or an entry deleted: its file goes too)
         out(['ok' => true, 'data' => $data]);
     }
     case 'mod_model': {
@@ -144,12 +162,35 @@ function mod_handle(string $action, bool $post): void {
         decor_store($list);
         out(['ok' => true]);
     }
+    case 'mod_image': {
+        // a picture for an entry (a recipe, a plant, a Lego set …) from the device, instead of a web address. One that ends up
+        // not being used (the entry was cancelled, another picture picked) is thrown away again by the page: mod_image_drop.
+        if (!$post) fail('Bruk POST.', 405);
+        require_room_owner();
+        $id = (string)($_POST['id'] ?? '');
+        if (!mod_find($id)) fail('Fant ikke modulen.', 404);
+        rl_or_fail('mod_image', 60, 3600);
+        [$path] = save_photo($_FILES['file'] ?? []);
+        mod_pending([...mod_pending(), $path]);
+        out(['ok' => true, 'path' => $path]);
+    }
+    case 'mod_image_drop': {
+        if (!$post) fail('Bruk POST.', 405);
+        require_room_owner();
+        $id = (string)(body()['id'] ?? '');
+        $p = mod_own_img(body()['path'] ?? null);
+        if (!mod_find($id) || !$p) fail('Fant ikke bildet.', 404);
+        $pending = mod_pending();
+        if (in_array($p, $pending, true)) { delete_upload($p); mod_pending(array_diff($pending, [$p])); } // (only one this room uploaded and has not used)
+        out(['ok' => true]);
+    }
     case 'mod_remove': {
         if (!$post) fail('Bruk POST.', 405);
         require_room_owner();
         $id = (string)(body()['id'] ?? '');
         if (!mod_find($id)) fail('Fant ikke modulen.', 404);
         foreach (decor_list() as $d) if (($d['id'] ?? '') === $id) mod_unlink($d['file'] ?? '');
+        foreach (mod_imgs(json_decode((string)kv_get(mod_data_key($id)), true)) as $p) delete_upload($p);
         decor_store(array_values(array_filter(decor_list(), fn($d) => ($d['id'] ?? '') !== $id)));
         kv_del(mod_data_key($id));
         out(['ok' => true]);

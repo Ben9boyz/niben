@@ -1,6 +1,6 @@
 // The hobby modules a room can add. Every kind is data: a name, a symbol, a colour, the fields of one entry and how the entries
 // are shown. Adding a hobby = adding a line here (the server only keeps what the page sends, so nothing else needs to change).
-export type FieldKind = 'text' | 'longtext' | 'number' | 'date' | 'select' | 'rating' | 'url' | 'hidden'
+export type FieldKind = 'text' | 'longtext' | 'number' | 'date' | 'select' | 'rating' | 'url' | 'image' | 'hidden'
 export interface Field { k: string; label: string; kind: FieldKind; options?: string[]; unit?: string }
 /** How the entries look: a card grid, a dated log with numbers and a chart, or a checklist with progress. */
 export type Layout = 'cards' | 'log' | 'checklist'
@@ -25,7 +25,7 @@ const num = (k: string, label: string, unit?: string): Field => ({ k, label, kin
 const stars = (): Field => ({ k: 'rating', label: 'Vurdering', kind: 'rating' })
 const pick = (k: string, label: string, options: string[]): Field => ({ k, label, kind: 'select', options })
 const link = (): Field => ({ k: 'url', label: 'Lenke', kind: 'url' })
-const img = (): Field => ({ k: 'img', label: 'Bilde (adresse)', kind: 'url' })
+const img = (): Field => ({ k: 'img', label: 'Bilde', kind: 'image' }) // (uploaded from the device, or a web address)
 const STATUS = ['Vil prøve', 'Holder på', 'Ferdig']
 
 export const CATALOG: ModuleKind[] = [

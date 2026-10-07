@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import NavBar from '@/components/layout/NavBar.vue'
+import RoomEntering from '@/components/room/RoomEntering.vue'
 import MusicToast from '@/components/music/MusicToast.vue'
 import { useMediaSession } from '@/composables/music/useMediaSession'
 import { defineAsyncComponent } from 'vue'
@@ -57,6 +58,7 @@ const toTop = () => window.scrollTo(0, 0)
   <LangSuggest />
   <SlowSuggest />
   <ContextMenu />
+  <RoomEntering />
   <NewPlaylistDialog />
   <GlobalMini v-if="mode !== 'rom'" :show="route.name !== 'lytte' && route.name !== 'admin'" />
   <NavBar v-if="shell !== 'player'" />
